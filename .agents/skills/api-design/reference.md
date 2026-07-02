@@ -340,16 +340,36 @@ Same payload rules as public API:
 
 ## OpenAPI Templates
 
+### Shared examples
+
+Canonical JSON payloads and public ids live in `workbench-web/.../api/OpenApiExamples.kt`. Reference them from `@ExampleObject(value = OpenApiExamples.…)` so controllers stay DRY and match [examples.md](examples.md).
+
+```kotlin
+ExampleObject(
+  name = "success",
+  summary = "Created project",
+  value = OpenApiExamples.PROJECT_CREATED,
+)
+```
+
+ProblemDetail negative examples: `VALIDATION_FAILED`, `PERMISSION_DENIED`, `RESOURCE_NOT_FOUND`, `AUTHENTICATION_FAILED`, `TENANT_NOT_SELECTED`, `INVALID_REQUEST`.
+
+### Standard error responses
+
+`@StandardErrorResponses` (class- or method-level) declares 400/401/403/404/409 with `application/problem+json` schema and named examples. Endpoint-level `@ApiResponse` can add operation-specific negative examples on top.
+
 ### Controller tag
 
 ```kotlin
 @RestController
 @RequestMapping("/api/projects")
 @Tag(name = "Projects", description = "Tenant-scoped project management")
+@SessionSecured
+@StandardErrorResponses
 class ProjectController(…)
 ```
 
-### Create endpoint
+### Create endpoint with positive and negative examples
 
 ```kotlin
 @PostMapping
@@ -357,18 +377,47 @@ class ProjectController(…)
 @TenantScoped
 @Authorize(action = "project.create", resource = "project")
 @ResponseStatus(HttpStatus.CREATED)
-@Operation(summary = "Create a project", description = "Creates a project in the active session tenant.")
-@ApiResponses(
-  ApiResponse(responseCode = "201", description = "Created",
-    content = [Content(schema = Schema(implementation = ProjectResponse::class))]),
-  ApiResponse(responseCode = "400", description = "Validation failed",
-    content = [Content(schema = Schema(implementation = ProblemDetail::class))]),
-  ApiResponse(responseCode = "403", description = "Permission denied",
-    content = [Content(schema = Schema(implementation = ProblemDetail::class))]),
+@Operation(
+  summary = "Create a project",
+  description = "Creates a project in the active session tenant. Returns 201 with a Location header.",
+  responses = [
+    ApiResponse(
+      responseCode = "201",
+      description = "Created",
+      content = [Content(
+        mediaType = "application/json",
+        schema = Schema(implementation = ProjectResponse::class),
+        examples = [ExampleObject(name = "created", value = OpenApiExamples.PROJECT_CREATED)],
+      )],
+    ),
+    ApiResponse(
+      responseCode = "400",
+      description = "Validation failed",
+      content = [Content(
+        mediaType = "application/problem+json",
+        schema = Schema(implementation = ProblemDetail::class),
+        examples = [ExampleObject(name = "invalidIdentifier", value = OpenApiExamples.VALIDATION_FAILED)],
+      )],
+    ),
+  ],
 )
-@SecurityRequirement(name = "SessionAuth")
-suspend fun create(…): ProjectResponse
+suspend fun create(
+  @io.swagger.v3.oas.annotations.parameters.RequestBody(
+    content = [Content(
+      mediaType = "application/json",
+      schema = Schema(implementation = CreateProjectRequest::class),
+      examples = [
+        ExampleObject(name = "valid", value = OpenApiExamples.CREATE_PROJECT_REQUEST),
+        ExampleObject(name = "invalidIdentifier", value = OpenApiExamples.CREATE_PROJECT_REQUEST_INVALID),
+      ],
+    )],
+  )
+  @Valid @RequestBody request: CreateProjectRequest,
+  tenantContext: TenantRequestContext,
+): ResponseEntity<ProjectResponse>
 ```
+
+Annotation parameters must be compile-time constants — use single-line `description` strings (no `.trimIndent()`).
 
 ### Request field schema
 

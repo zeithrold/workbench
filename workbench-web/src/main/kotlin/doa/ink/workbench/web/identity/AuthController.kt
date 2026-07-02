@@ -2,6 +2,7 @@ package doa.ink.workbench.web.identity
 
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.service.identity.AuthApplicationService
+import doa.ink.workbench.web.api.OpenApiExamples
 import doa.ink.workbench.web.api.SessionSecured
 import doa.ink.workbench.web.api.StandardErrorResponses
 import doa.ink.workbench.web.api.http.HttpClientContext
@@ -11,10 +12,16 @@ import doa.ink.workbench.web.api.http.defaultRedirectUri
 import doa.ink.workbench.web.api.http.sessionCookieValue
 import doa.ink.workbench.web.api.http.toServiceContext
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.ExampleObject
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -28,7 +35,11 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Auth", description = "Authentication and session protocol")
+@Tag(
+  name = "Auth",
+  description =
+    "Authentication and session protocol. Public endpoints establish sessions; secured endpoints require WORKBENCH_SESSION.",
+)
 @StandardErrorResponses
 class AuthController(
   private val authApplicationService: AuthApplicationService,
@@ -37,10 +48,76 @@ class AuthController(
   @PostMapping("/login")
   @Operation(
     summary = "Sign in",
-    description = "Authenticates the user and sets the session cookie.",
+    description =
+      "Authenticates the user and sets the WORKBENCH_SESSION cookie. Public endpoint with no prior session required. Optionally returns a bearer token when issueBearerToken is true.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Login succeeded",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = LoginResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "sessionOnly",
+                      summary = "Session cookie only",
+                      value = OpenApiExamples.LOGIN_SUCCESS,
+                    ),
+                    ExampleObject(
+                      name = "withBearerToken",
+                      summary = "Session plus bearer token",
+                      value = OpenApiExamples.LOGIN_SUCCESS_WITH_BEARER,
+                    ),
+                  ],
+              )
+            ],
+        ),
+        ApiResponse(
+          responseCode = "401",
+          description = "Authentication failed",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "invalidCredentials",
+                      value = OpenApiExamples.AUTHENTICATION_FAILED,
+                    )
+                  ],
+              )
+            ],
+        ),
+      ],
   )
   suspend fun login(
-    @Valid @RequestBody request: LoginRequest,
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      description = "Credentials and login method selection.",
+      content =
+        [
+          Content(
+            mediaType = "application/json",
+            schema = Schema(implementation = LoginRequest::class),
+            examples =
+              [
+                ExampleObject(
+                  name = "passwordLogin",
+                  summary = "Password sign-in",
+                  value = OpenApiExamples.LOGIN_REQUEST_PASSWORD,
+                )
+              ],
+          )
+        ],
+    )
+    @Valid
+    @RequestBody
+    request: LoginRequest,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
@@ -51,7 +128,9 @@ class AuthController(
   @PostMapping("/logout")
   @Operation(
     summary = "Sign out",
-    description = "Revokes the active session or bearer token and clears the session cookie.",
+    description =
+      "Revokes the active session or bearer token and clears the WORKBENCH_SESSION cookie. Accepts either the session cookie or Authorization: Bearer header.",
+    responses = [ApiResponse(responseCode = "200", description = "Logged out; session cookie cleared")],
   )
   suspend fun logout(servletRequest: HttpServletRequest): ResponseEntity<Void> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
@@ -67,7 +146,29 @@ class AuthController(
   @SessionSecured
   @Operation(
     summary = "List memberships",
-    description = "Lists tenant memberships for the authenticated user.",
+    description =
+      "Lists tenant memberships for the authenticated user. Each item embeds the tenant summary.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "User memberships",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = MembershipResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.MEMBERSHIP_LIST,
+                    )
+                  ],
+              )
+            ],
+        )
+      ],
   )
   suspend fun memberships(principal: AuthenticatedPrincipal): List<MembershipResponse> =
     authApplicationService.listMemberships(principal).map { MembershipResponse.from(it) }
@@ -75,16 +176,64 @@ class AuthController(
   @GetMapping("/login-options")
   @Operation(
     summary = "List login options",
-    description = "Discovers tenant and login method options for an identifier.",
+    description =
+      "Discovers tenant and login method options for an identifier such as an email address. Public endpoint used before sign-in to render the login UI.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Available login options",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = LoginOptionResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.LOGIN_OPTIONS,
+                    )
+                  ],
+              )
+            ],
+        )
+      ],
   )
-  suspend fun loginOptions(@RequestParam identifier: String): List<LoginOptionResponse> =
+  suspend fun loginOptions(
+    @Parameter(description = "User identifier such as email.", example = "user@example.com")
+    @RequestParam
+    identifier: String,
+  ): List<LoginOptionResponse> =
     authApplicationService.listLoginOptions(identifier).map { LoginOptionResponse.from(it) }
 
   @PostMapping("/tokens")
   @SessionSecured
   @Operation(
     summary = "Issue bearer token",
-    description = "Creates a long-lived bearer token for API access.",
+    description =
+      "Creates a long-lived bearer token for API access. Requires an active session. The token secret is returned only once.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Token issued",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = IssuedTokenResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.ISSUED_TOKEN,
+                    )
+                  ],
+              )
+            ],
+        )
+      ],
   )
   suspend fun createToken(
     @Valid @RequestBody request: CreateTokenRequest,
@@ -106,9 +255,36 @@ class AuthController(
   @DeleteMapping("/tokens/{id}")
   @SessionSecured
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(summary = "Revoke bearer token", description = "Revokes a bearer token by public id.")
+  @Operation(
+    summary = "Revoke bearer token",
+    description = "Revokes a bearer token by public id. Returns 204 with an empty body.",
+    responses =
+      [
+        ApiResponse(responseCode = "204", description = "Token revoked"),
+        ApiResponse(
+          responseCode = "404",
+          description = "Token not found",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "notFound",
+                      value = OpenApiExamples.RESOURCE_NOT_FOUND,
+                    )
+                  ],
+              )
+            ],
+        ),
+      ],
+  )
   suspend fun revokeToken(
-    @PathVariable id: String,
+    @Parameter(description = "Public bearer token id.", example = OpenApiExamples.BEARER_TOKEN_ID)
+    @PathVariable
+    id: String,
     principal: AuthenticatedPrincipal,
     servletRequest: HttpServletRequest,
   ) {
@@ -119,7 +295,29 @@ class AuthController(
   @PostMapping("/federated/authorize")
   @Operation(
     summary = "Start federated login",
-    description = "Begins OAuth or SAML authorization for the given tenant and login method.",
+    description =
+      "Begins OAuth or SAML authorization for the given tenant and login method. Returns a provider authorization URL for the browser to redirect to.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Authorization URL generated",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = FederatedAuthorizeResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.FEDERATED_AUTHORIZE,
+                    )
+                  ],
+              )
+            ],
+        )
+      ],
   )
   suspend fun federatedAuthorize(
     @Valid @RequestBody request: FederatedAuthorizeRequest,
@@ -140,11 +338,55 @@ class AuthController(
   @GetMapping("/oauth2/callback")
   @Operation(
     summary = "OAuth callback",
-    description = "Completes OAuth login after provider redirect.",
+    description =
+      "Completes OAuth login after the identity provider redirects back. Called by the provider, not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "OAuth login completed",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = LoginResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.LOGIN_SUCCESS,
+                    )
+                  ],
+              )
+            ],
+        ),
+        ApiResponse(
+          responseCode = "401",
+          description = "OAuth exchange failed",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "authenticationFailed",
+                      value = OpenApiExamples.AUTHENTICATION_FAILED,
+                    )
+                  ],
+              )
+            ],
+        ),
+      ],
   )
   suspend fun oauthCallback(
-    @RequestParam code: String,
-    @RequestParam state: String,
+    @Parameter(description = "Authorization code from the provider.")
+    @RequestParam
+    code: String,
+    @Parameter(description = "Opaque state echoed from the authorize step.")
+    @RequestParam
+    state: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
@@ -156,11 +398,55 @@ class AuthController(
   @PostMapping("/saml2/acs")
   @Operation(
     summary = "SAML assertion consumer",
-    description = "Completes SAML login from the identity provider POST.",
+    description =
+      "Completes SAML login from the identity provider POST. Called by the IdP ACS endpoint, not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "SAML login completed",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = LoginResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.LOGIN_SUCCESS,
+                    )
+                  ],
+              )
+            ],
+        ),
+        ApiResponse(
+          responseCode = "401",
+          description = "SAML assertion rejected",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "authenticationFailed",
+                      value = OpenApiExamples.AUTHENTICATION_FAILED,
+                    )
+                  ],
+              )
+            ],
+        ),
+      ],
   )
   suspend fun samlAcs(
-    @RequestParam("SAMLResponse") samlResponse: String,
-    @RequestParam("RelayState") relayState: String,
+    @Parameter(description = "Base64-encoded SAML response from the IdP.")
+    @RequestParam("SAMLResponse")
+    samlResponse: String,
+    @Parameter(description = "Relay state from the authorize step.")
+    @RequestParam("RelayState")
+    relayState: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
@@ -172,9 +458,31 @@ class AuthController(
   @ResponseStatus(HttpStatus.ACCEPTED)
   @Operation(
     summary = "Request magic link",
-    description = "Sends a magic-link email for passwordless sign-in.",
+    description =
+      "Sends a magic-link email for passwordless sign-in. Returns 202 with an empty body. Does not reveal whether the email exists.",
+    responses = [ApiResponse(responseCode = "202", description = "Magic link request accepted")],
   )
-  suspend fun requestMagicLink(@Valid @RequestBody request: MagicLinkRequest) {
+  suspend fun requestMagicLink(
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+      content =
+        [
+          Content(
+            mediaType = "application/json",
+            schema = Schema(implementation = MagicLinkRequest::class),
+            examples =
+              [
+                ExampleObject(
+                  name = "valid",
+                  value = OpenApiExamples.MAGIC_LINK_REQUEST,
+                )
+              ],
+          )
+        ],
+    )
+    @Valid
+    @RequestBody
+    request: MagicLinkRequest,
+  ) {
     authApplicationService.requestMagicLink(
       email = request.email,
       tenantId = request.tenantId,
@@ -185,10 +493,52 @@ class AuthController(
   @GetMapping("/magic-link/verify")
   @Operation(
     summary = "Verify magic link",
-    description = "Completes magic-link login from the email link.",
+    description =
+      "Completes magic-link login from the email link. Sets the WORKBENCH_SESSION cookie on success.",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Magic link verified",
+          content =
+            [
+              Content(
+                mediaType = "application/json",
+                schema = Schema(implementation = LoginResponse::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "success",
+                      value = OpenApiExamples.LOGIN_SUCCESS,
+                    )
+                  ],
+              )
+            ],
+        ),
+        ApiResponse(
+          responseCode = "401",
+          description = "Invalid or expired token",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+                examples =
+                  [
+                    ExampleObject(
+                      name = "authenticationFailed",
+                      value = OpenApiExamples.AUTHENTICATION_FAILED,
+                    )
+                  ],
+              )
+            ],
+        ),
+      ],
   )
   suspend fun verifyMagicLink(
-    @RequestParam token: String,
+    @Parameter(description = "Opaque token from the magic-link email.")
+    @RequestParam
+    token: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
