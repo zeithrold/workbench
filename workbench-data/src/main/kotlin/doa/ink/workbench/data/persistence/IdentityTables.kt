@@ -62,6 +62,7 @@ object TenantMembersTable : Table("tenant_members") {
 
 object LoginMethodDefinitionsTable : Table("login_method_definitions") {
   val id = uuid("id")
+  val apiId = text("api_id").uniqueIndex()
   val code = text("code").uniqueIndex()
   val kind = text("kind")
   val name = text("name")
@@ -142,6 +143,7 @@ object AuthSessionsTable : Table("auth_sessions") {
 
 object BearerTokensTable : Table("bearer_tokens") {
   val id = uuid("id")
+  val apiId = text("api_id").uniqueIndex()
   val tokenHash = text("token_hash").uniqueIndex()
   val userId = uuid("user_id").references(UsersTable.id)
   val loginAccountId = uuid("login_account_id").references(LoginAccountsTable.id)

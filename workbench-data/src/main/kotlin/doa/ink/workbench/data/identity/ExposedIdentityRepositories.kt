@@ -1,6 +1,8 @@
 package doa.ink.workbench.data.identity
 
 import doa.ink.workbench.core.common.ids.PublicId
+import doa.ink.workbench.core.common.summary.LoginMethodSummary
+import doa.ink.workbench.core.common.summary.TenantSummary
 import doa.ink.workbench.core.identity.AuthEventRepository
 import doa.ink.workbench.core.identity.LoginAccountRepository
 import doa.ink.workbench.core.identity.TenantMemberRepository
@@ -154,9 +156,11 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
   ): LoginMethodDefinitionRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
+      val apiId = PublicId.new("lmg")
       val now = nowUtc()
       LoginMethodDefinitionsTable.insert {
         it[LoginMethodDefinitionsTable.id] = id.toKotlinUuid()
+        it[LoginMethodDefinitionsTable.apiId] = apiId.value
         it[LoginMethodDefinitionsTable.code] = command.code
         it[LoginMethodDefinitionsTable.kind] = command.kind.dbValue
         it[LoginMethodDefinitionsTable.name] = command.name
@@ -377,6 +381,17 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
         ?.toLoginMethodDefinitionRecord()
     }
 
+  override suspend fun findLoginMethodByApiId(apiId: String): LoginMethodDefinitionRecord? =
+    suspendTransaction(db = database) {
+      LoginMethodDefinitionsTable.selectAll()
+        .where {
+          (LoginMethodDefinitionsTable.apiId eq apiId) and
+            LoginMethodDefinitionsTable.isEnabledGlobally
+        }
+        .singleOrNull()
+        ?.toLoginMethodDefinitionRecord()
+    }
+
   override suspend fun findLoginMethodById(id: UUID): LoginMethodDefinitionRecord? =
     suspendTransaction(db = database) {
       LoginMethodDefinitionsTable.selectAll()
@@ -463,12 +478,8 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
                 .singleOrNull() ?: return@mapNotNull null
             val method = methodRow.toLoginMethodDefinitionRecord()
             TenantLoginOption(
-              tenantId = tenant.id,
-              tenantApiId = tenant.apiId.value,
-              tenantName = tenant.name,
-              loginMethodCode = method.code,
-              loginMethodKind = method.kind,
-              loginMethodName = method.name,
+              tenant = TenantSummary.from(tenant),
+              loginMethod = LoginMethodSummary.from(method),
             )
           }
       }

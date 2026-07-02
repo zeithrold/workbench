@@ -20,6 +20,7 @@ data class TenantMemberRecord(
 
 data class LoginMethodDefinitionRecord(
   val id: UUID,
+  val apiId: PublicId,
   val code: String,
   val kind: LoginMethodKind,
   val name: String,
@@ -110,6 +111,7 @@ data class AuthSessionRecord(
 
 data class BearerTokenRecord(
   val id: UUID,
+  val apiId: PublicId,
   val tokenHash: String,
   val userId: UUID,
   val loginAccountId: UUID,
@@ -126,14 +128,15 @@ data class BearerTokenRecord(
 
 data class IssuedCredential(
   val id: UUID,
+  val apiId: PublicId?,
   val secret: String,
   val expiresAt: OffsetDateTime,
 )
 
 data class LoginCommand(
   val method: LoginMethodKind,
-  val loginMethodCode: String? = null,
-  val tenantApiId: String? = null,
+  val loginMethodId: String? = null,
+  val tenantId: String? = null,
   val subject: String? = null,
   val password: String? = null,
   val token: String? = null,
@@ -282,12 +285,8 @@ data class MagicLinkTokenRecord(
 )
 
 data class TenantLoginOption(
-  val tenantId: UUID,
-  val tenantApiId: String,
-  val tenantName: String,
-  val loginMethodCode: String,
-  val loginMethodKind: LoginMethodKind,
-  val loginMethodName: String,
+  val tenant: doa.ink.workbench.core.common.summary.TenantSummary,
+  val loginMethod: doa.ink.workbench.core.common.summary.LoginMethodSummary,
 )
 
 data class AuthenticatedIdentity(

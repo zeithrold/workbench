@@ -45,20 +45,19 @@ class FederatedAuthService(
   private val stateTtl = Duration.ofMinutes(10)
 
   suspend fun beginAuthorize(
-    loginMethodCode: String,
-    tenantApiId: String,
+    loginMethodId: String,
+    tenantId: String,
     returnUrl: String,
     redirectUri: String,
   ): FederatedAuthorizeResult {
     val tenant =
-      tenants.findByApiId(tenantApiId)
-        ?: throw InvalidRequestException("Unknown tenant: $tenantApiId")
+      tenants.findByApiId(tenantId) ?: throw InvalidRequestException("Unknown tenant: $tenantId")
     val method =
-      loginAccounts.findLoginMethodByCode(loginMethodCode)
-        ?: throw InvalidRequestException("Unknown login method: $loginMethodCode")
+      loginAccounts.findLoginMethodByApiId(loginMethodId)
+        ?: throw InvalidRequestException("Unknown login method: $loginMethodId")
     if (method.kind !in setOf(LoginMethodKind.OAUTH2, LoginMethodKind.OIDC, LoginMethodKind.SAML)) {
       throw InvalidRequestException(
-        "Login method $loginMethodCode does not support federated authorize."
+        "Login method $loginMethodId does not support federated authorize."
       )
     }
     val setting = loginAccounts.findTenantSetting(tenant.id, method.id)

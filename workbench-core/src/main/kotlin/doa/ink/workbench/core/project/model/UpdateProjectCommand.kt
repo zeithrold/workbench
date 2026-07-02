@@ -1,0 +1,11 @@
+package doa.ink.workbench.core.project.model
+
+import java.util.UUID
+
+data class UpdateProjectCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val identifier: String?,
+  val name: String?,
+  val description: String?,
+)

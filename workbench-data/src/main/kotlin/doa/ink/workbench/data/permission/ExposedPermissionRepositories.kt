@@ -78,6 +78,18 @@ class ExposedRoleRepository(private val database: Database) : RoleRepository {
         ?.toRoleRecord()
     }
 
+  override suspend fun findByApiId(tenantId: UUID?, apiId: String): RoleRecord? =
+    suspendTransaction(db = database) {
+      RolesTable.selectAll()
+        .where {
+          (RolesTable.apiId eq apiId) and
+            if (tenantId == null) RolesTable.tenantId.isNull()
+            else RolesTable.tenantId eq tenantId.toKotlinUuid()
+        }
+        .singleOrNull()
+        ?.toRoleRecord()
+    }
+
   override suspend fun findByCode(tenantId: UUID?, code: String): RoleRecord? =
     suspendTransaction(db = database) {
       RolesTable.selectAll()
@@ -188,6 +200,17 @@ class ExposedPermissionPolicyRepository(private val database: Database) :
         .map { it.toPermissionPolicyRecord() }
     }
 
+  override suspend fun findByApiId(tenantId: UUID, apiId: String): PermissionPolicyRecord? =
+    suspendTransaction(db = database) {
+      selectPolicies()
+        .where {
+          (PermissionPoliciesTable.tenantId eq tenantId.toKotlinUuid()) and
+            (PermissionPoliciesTable.apiId eq apiId)
+        }
+        .singleOrNull()
+        ?.toPermissionPolicyRecord()
+    }
+
   override suspend fun listActiveByRoles(
     tenantId: UUID,
     roleIds: Collection<UUID>,
@@ -248,6 +271,17 @@ class ExposedRoleAssignmentRepository(private val database: Database) : RoleAssi
         .where { RoleAssignmentsTable.tenantId eq tenantId.toKotlinUuid() }
         .orderBy(RoleAssignmentsTable.createdAt to SortOrder.DESC)
         .map { it.toRoleAssignmentRecord() }
+    }
+
+  override suspend fun findByApiId(tenantId: UUID, apiId: String): RoleAssignmentRecord? =
+    suspendTransaction(db = database) {
+      RoleAssignmentsTable.selectAll()
+        .where {
+          (RoleAssignmentsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (RoleAssignmentsTable.apiId eq apiId)
+        }
+        .singleOrNull()
+        ?.toRoleAssignmentRecord()
     }
 
   override suspend fun listActiveByUser(

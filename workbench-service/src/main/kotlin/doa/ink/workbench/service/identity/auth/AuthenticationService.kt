@@ -186,6 +186,18 @@ class AuthenticationService(
     return revoked
   }
 
+  suspend fun revokeBearerTokenByApiId(
+    tokenApiId: String,
+    actorUserId: UUID,
+    ipAddress: String?,
+    userAgent: String?,
+  ): Boolean {
+    val token =
+      bearerTokens.findByApiId(tokenApiId)
+        ?: throw AuthenticationFailedException("Token not found.")
+    return revokeBearerTokenById(token.id, actorUserId, ipAddress, userAgent)
+  }
+
   suspend fun revokeBearerTokenById(
     tokenId: UUID,
     actorUserId: UUID,
@@ -270,7 +282,7 @@ class AuthenticationService(
           activeTenantId = null,
         )
       )
-    return IssuedCredential(session.id, secret, session.expiresAt)
+    return IssuedCredential(session.id, null, secret, session.expiresAt)
   }
 
   private suspend fun issueBearerToken(
@@ -297,7 +309,7 @@ class AuthenticationService(
           createdBy = createdBy,
         )
       )
-    return IssuedCredential(token.id, secret, token.expiresAt)
+    return IssuedCredential(token.id, token.apiId, secret, token.expiresAt)
   }
 
   private suspend fun sessionTtlForUser(userId: UUID): Duration {

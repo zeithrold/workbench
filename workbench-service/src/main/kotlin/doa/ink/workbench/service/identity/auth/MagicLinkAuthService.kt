@@ -31,16 +31,15 @@ class MagicLinkAuthService(
 ) {
   private val tokenTtl = Duration.ofMinutes(15)
 
-  suspend fun requestMagicLink(email: String, tenantApiId: String, loginMethodCode: String) {
+  suspend fun requestMagicLink(email: String, tenantId: String, loginMethodId: String) {
     val normalizedEmail = normalizeSubject(email)
     val tenant =
-      tenants.findByApiId(tenantApiId)
-        ?: throw InvalidRequestException("Unknown tenant: $tenantApiId")
+      tenants.findByApiId(tenantId) ?: throw InvalidRequestException("Unknown tenant: $tenantId")
     val method =
-      loginAccounts.findLoginMethodByCode(loginMethodCode)
-        ?: throw InvalidRequestException("Unknown login method: $loginMethodCode")
+      loginAccounts.findLoginMethodByApiId(loginMethodId)
+        ?: throw InvalidRequestException("Unknown login method: $loginMethodId")
     if (method.kind != LoginMethodKind.EMAIL_MAGIC_LINK) {
-      throw InvalidRequestException("Login method $loginMethodCode is not email_magic_link.")
+      throw InvalidRequestException("Login method $loginMethodId is not email_magic_link.")
     }
     val setting = loginAccounts.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
@@ -80,7 +79,7 @@ class MagicLinkAuthService(
         ?: throw InvalidRequestException("Magic link is invalid or expired.")
     magicLinkTokens.consume(record.id, now)
     val method =
-      loginAccounts.findLoginMethodByCode("email_magic_link")
+      loginAccounts.findLoginMethodById(record.loginMethodId)
         ?: throw InvalidRequestException("Magic link login is not configured.")
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, record.normalizedSubject)

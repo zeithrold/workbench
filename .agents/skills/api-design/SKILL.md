@@ -3,7 +3,7 @@ name: api-design
 description: >-
   Workbench REST API design principles: RESTful conventions, Direct Resource payloads,
   Ref/Embed field organization, RFC 7807 errors, auth annotations, and OpenAPI patterns.
-  Use when designing or implementing API endpoints, DTOs, controllers, or reviewing API changes.
+  Use when designing or implementing API endpoints, controllers, request/response types, or reviewing API changes.
 ---
 
 # Workbench API Design
@@ -13,25 +13,54 @@ Source of truth for HTTP API shape in this monolith. For generic Spring patterns
 ## When to Activate
 
 - New controller or endpoint
-- Request/response DTO design
+- Request/response type design (`*Request`, `*Response`)
 - API review or OpenAPI documentation
 - Pagination, error format, or payload organization questions
 
 ## Architecture
 
 ```
-Client → Controller (*Request → *Command) → Service → Controller (*Record/*View → *Response) → Client
+Client → Controller (*Request → *Command) → Service (*View with *Summary) → Controller (*Response) → Client
 ```
 
 | Layer | Module | Naming |
 |-------|--------|--------|
-| Controller + HTTP DTOs | `workbench-web` | `*Request`, `*Response` |
-| Business logic | `workbench-service` | `*Command`, `*View` |
-| Domain / ports | `workbench-core` | `*Record`, `*Query`, `*Projection` |
+| Controller + HTTP boundary types | `workbench-web` | `*Request`, `*Response` |
+| Business logic + view assembly | `workbench-service` | `*Command`, `*View` |
+| Domain / ports / exchange projections | `workbench-core` | `*Record`, `*Query`, `*Projection`, `*Summary` |
 
-- Controllers are `suspend fun`; map only — no business logic.
-- Avoid `BO`/`PO`/`VO`/`DTO` suffixes (see [README.md](../../../README.md)).
+`*Summary` is a domain-level lightweight exchange projection (public `id` + display fields), shared by Service `*View` and Web `*Response`. It lives in `workbench-core/.../common/summary/`, not in the web module.
+
+- Controllers are `suspend fun`; HTTP adaptation only — no business logic.
+- Avoid `BO`/`PO`/`VO`/`DTO` suffixes and `*Dtos.kt` files (see [README.md](../../../README.md)).
 - Canonical controller: `workbench-web/.../project/ProjectController.kt`
+
+## Thin Controller (required)
+
+Each endpoint method body target **≤ 8 lines**. Controllers **only** adapt HTTP:
+
+| Allowed | Forbidden |
+|---------|-----------|
+| `*Request` → `*Command` field mapping | Inject `*Repository` (bypass Service) |
+| Call **one** Service method per use case | Multi-service orchestration, domain branching |
+| `*View` → `*Response` / `Response.from(view)` | `SecurityContextHolder`, handwritten `currentPrincipal()` |
+| HTTP semantics: status, `Location`, `Set-Cookie` | Domain rules, permission assembly, state machines |
+| `TenantRequestContext`, `AuthenticatedPrincipal` params | `PermissionCondition` or Record mapping in Controller |
+
+HTTP-only helpers live in `workbench-web/.../api/http/` (`HttpClientContext`, `SessionCookieWriter`) and `AuthenticatedPrincipalResolver`.
+
+```kotlin
+suspend fun create(
+  @Valid @RequestBody request: CreateProjectRequest,
+  tenantContext: TenantRequestContext,
+): ResponseEntity<ProjectResponse> {
+  val view = projectService.create(request.toCommand(tenantContext))
+  val response = ProjectResponse.from(view)
+  return ResponseEntity.created(locationFor(response)).body(response)
+}
+```
+
+Public id resolution (`tenantId` string → UUID) belongs in **Service** (`PublicIdResolver`), not Controller.
 
 ## Response Envelope — Direct Resource
 
@@ -52,8 +81,21 @@ Use `ResponseEntity<T>` only when setting headers (e.g. `Set-Cookie` in auth flo
 
 ### Primary keys
 
-- Resource public id field is always **`id`** (typed string: `prj_`, `usr_`, `rol_`, `tnt_`, `mem_`).
-- Format: three-letter prefix + ULID (`workbench-core/.../ids/PublicId.kt`).
+Public id prefixes (three letters + ULID via `workbench-core/.../ids/PublicId.kt`):
+
+| Entity | Prefix |
+|--------|--------|
+| Tenant | `ten_` |
+| Membership | `tmb_` |
+| Project | `prj_` |
+| User | `usr_` |
+| Role | `rol_` |
+| Policy | `pol_` |
+| Role assignment | `ras_` |
+| Login method | `lmg_` |
+| Bearer token | `btk_` |
+
+- Resource public id field is always **`id`** in JSON.
 - Never `apiId` in JSON; never internal `UUID` in request/response bodies.
 - URL path params: `/api/projects/{id}`.
 
@@ -86,14 +128,24 @@ data class ProjectResponse(val id: String, ...)  // id = record.apiId.value
 
 ```json
 {
-  "tenant": { "id": "tnt_01J…", "name": "Acme", "slug": "acme" },
+  "tenant": { "id": "ten_01J…", "name": "Acme", "slug": "acme" },
   "loginMethod": { "id": "lmg_01J…", "code": "password", "kind": "PASSWORD", "name": "Password" }
 }
 ```
 
-Reuse `*Summary` types in responses: `TenantSummary`, `UserSummary`, `LoginMethodSummary`, `RoleSummary`.
+Reuse core `*Summary` types in responses: `TenantSummary`, `UserSummary`, `LoginMethodSummary`, `RoleSummary` from `workbench-core/.../common/summary/`.
 
 **Session aggregates** (`SessionResponse`, `LoginResponse`) may nest `user`, `activeTenant`, `bearerToken` as composition roots. Children follow the same `id` + Ref/Embed rules.
+
+### HTTP type file layout
+
+| Purpose | Type | File |
+|---------|------|------|
+| Request body | `CreateProjectRequest` | Same file as controller, or `{Domain}Requests.kt` |
+| Response body | `ProjectResponse` | Same file as controller, or `{Domain}Responses.kt` |
+| Cross-domain embed | `TenantSummary` | `workbench-core/.../common/summary/{Name}.kt` |
+
+No `dto/` package directory. No `*Dtos.kt`.
 
 ### Scalar naming (S2)
 
@@ -236,25 +288,25 @@ suspend fun create(
 
 ## Versioning
 
-- Header: `X-Workbench-API-Version: 2026-07-02`
+- Header: `X-Workbench-API-Version: 2026-07-03`
 - Default when omitted: `ApiVersion.Default`
 - OpenAPI `info.version` stays in sync
 - Breaking changes: new date version + migration notes (not `/v2` in URL)
 
-## Validation & DTOs
+## Validation & request types
 
 - `@Valid @RequestBody` on all request bodies
 - Jakarta constraints: `@NotBlank`, `@Pattern`, `@Size`
 - OpenAPI: `@field:Schema(example = …)` on non-obvious fields
-- Response mapping: `companion object { fun from(record): XResponse }`
-- Co-locate small DTOs with controller; extract when reused or >~30 lines
+- Response mapping: `companion object { fun from(view): XResponse }`
+- Co-locate small types with controller; extract to `{Domain}Requests.kt` / `{Domain}Responses.kt` when reused or >~30 lines combined
 
 ## OpenAPI (required for new endpoints)
 
 - `@Tag` on controller
 - `@Operation(summary, description)` per endpoint
-- `@ApiResponse` for success + 400, 401, 403, 404, 409
-- `@SecurityRequirement` when not public
+- `@StandardErrorResponses` (or explicit `@ApiResponse`) for 400, 401, 403, 404, 409
+- `@SessionSecured` / `@SecurityRequirement` when not public
 - Config: `workbench-web/.../api/OpenApiConfiguration.kt` — Session + Bearer schemes
 - Frontend Orval reads `/v3/api-docs` — field renames are breaking
 
@@ -288,6 +340,7 @@ See [reference.md](reference.md) for full spec.
 - [ ] Booleans without `is`; timestamps `*At` ISO-8601
 
 **Implementation**
+- [ ] Thin controller (≤8 lines); Service owns orchestration and id resolution
 - [ ] `@Valid` + constraints; tenant/auth annotations
 - [ ] Map to `*Command`; throw domain exceptions
 - [ ] OpenAPI annotations; test happy + failure paths
@@ -298,7 +351,7 @@ See [reference.md](reference.md) for full spec.
 
 **Payload:** `apiId` vs `id` mix, prefix-flattening, nested entities in requests, `is*` booleans
 
-**General:** controller business logic, `Map<String, Any>` bodies, response envelopes, `@RequirePermission`, missing `TenantRequestContext` on `@TenantScoped`
+**General:** controller business logic, repository injection in controllers, `Map<String, Any>` bodies, response envelopes, `@RequirePermission`, missing `TenantRequestContext` on `@TenantScoped`, `*Dtos.kt` files
 
 ## Additional Resources
 

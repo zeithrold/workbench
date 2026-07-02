@@ -21,7 +21,7 @@ class ProjectResponseTest :
 
       val response = ProjectResponse.from(record)
 
-      response.apiId shouldBe record.apiId.value
+      response.id shouldBe record.apiId.value
       response.identifier shouldBe "CORE"
     }
   })

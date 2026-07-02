@@ -176,6 +176,8 @@ private class FakeRoleAssignments(
     }
 
   override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean = false
+
+  override suspend fun findByApiId(tenantId: UUID, apiId: String): RoleAssignmentRecord? = null
 }
 
 private class FakePolicies(private val policies: List<PermissionPolicyRecord>) :
@@ -193,6 +195,8 @@ private class FakePolicies(private val policies: List<PermissionPolicyRecord>) :
   ): List<PermissionPolicyRecord> = policies.filter { it.roleId in roleIds }
 
   override suspend fun expire(id: UUID, validTo: OffsetDateTime): Boolean = false
+
+  override suspend fun findByApiId(tenantId: UUID, apiId: String): PermissionPolicyRecord? = null
 }
 
 private fun policy(

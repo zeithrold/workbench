@@ -1,5 +1,6 @@
 package doa.ink.workbench.data.identity
 
+import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.auth.AuthSessionRepository
 import doa.ink.workbench.core.identity.auth.BearerTokenRepository
 import doa.ink.workbench.core.identity.model.AuthSessionRecord
@@ -108,9 +109,11 @@ class ExposedBearerTokenRepository(private val database: Database) : BearerToken
   override suspend fun create(command: CreateBearerTokenCommand): BearerTokenRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
+      val apiId = PublicId.new("btk")
       val now = nowUtc()
       BearerTokensTable.insert {
         it[BearerTokensTable.id] = id.toKotlinUuid()
+        it[BearerTokensTable.apiId] = apiId.value
         it[tokenHash] = command.tokenHash
         it[userId] = command.userId.toKotlinUuid()
         it[loginAccountId] = command.loginAccountId.toKotlinUuid()
@@ -132,6 +135,14 @@ class ExposedBearerTokenRepository(private val database: Database) : BearerToken
     suspendTransaction(db = database) {
       BearerTokensTable.selectAll()
         .where { BearerTokensTable.id eq id.toKotlinUuid() }
+        .singleOrNull()
+        ?.toBearerTokenRecord()
+    }
+
+  override suspend fun findByApiId(apiId: String): BearerTokenRecord? =
+    suspendTransaction(db = database) {
+      BearerTokensTable.selectAll()
+        .where { BearerTokensTable.apiId eq apiId }
         .singleOrNull()
         ?.toBearerTokenRecord()
     }

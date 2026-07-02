@@ -51,6 +51,8 @@ interface BearerTokenRepository {
 
   suspend fun findById(id: UUID): BearerTokenRecord?
 
+  suspend fun findByApiId(apiId: String): BearerTokenRecord?
+
   suspend fun findActiveByHash(tokenHash: String, now: OffsetDateTime): BearerTokenRecord?
 
   suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean

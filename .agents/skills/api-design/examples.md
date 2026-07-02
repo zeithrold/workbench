@@ -9,7 +9,7 @@ Annotated examples for Workbench API shape. See [SKILL.md](SKILL.md) for rules.
 ```http
 POST /api/projects HTTP/1.1
 Content-Type: application/json
-X-Workbench-API-Version: 2026-07-02
+X-Workbench-API-Version: 2026-07-03
 
 {"identifier":"CORE","name":"Core Platform","description":"Platform engineering."}
 ```
@@ -138,9 +138,9 @@ Bare FKs only — no `userName`/`roleName` alongside ids. If display metadata ne
 ```json
 [
   {
-    "id": "mem_01JABCDEFGHJKMNPQRSTVWXYZ0",
+    "id": "tmb_01JABCDEFGHJKMNPQRSTVWXYZ0",
     "tenant": {
-      "id": "tnt_01JABCDEFGHJKMNPQRSTVWXYZ0",
+      "id": "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
       "name": "Acme Corp",
       "slug": "acme"
     }
@@ -152,10 +152,10 @@ Bare FKs only — no `userName`/`roleName` alongside ids. If display metadata ne
 
 ```json
 {
-  "tenantApiId": "tnt_01J…",
+  "tenantApiId": "ten_01J…",
   "tenantName": "Acme Corp",
   "tenantSlug": "acme",
-  "membershipApiId": "mem_01J…"
+  "membershipApiId": "tmb_01J…"
 }
 ```
 
@@ -182,7 +182,7 @@ data class TenantSummary(val id: String, val name: String, val slug: String)
 [
   {
     "tenant": {
-      "id": "tnt_01JABCDEFGHJKMNPQRSTVWXYZ0",
+      "id": "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
       "name": "Acme Corp"
     },
     "loginMethod": {
@@ -199,7 +199,7 @@ data class TenantSummary(val id: String, val name: String, val slug: String)
 
 ```json
 {
-  "tenantApiId": "tnt_01J…",
+  "tenantApiId": "ten_01J…",
   "tenantName": "Acme Corp",
   "loginMethodCode": "password",
   "loginMethodKind": "PASSWORD",
@@ -220,7 +220,7 @@ Two entities → two embed objects. Inner fields unprefixed (`code`, not `loginM
 ```json
 {
   "method": "PASSWORD",
-  "tenantId": "tnt_01JABCDEFGHJKMNPQRSTVWXYZ0",
+  "tenantId": "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
   "loginMethodId": "lmg_01JABCDEFGHJKMNPQRSTVWXYZ0",
   "subject": "user@example.com",
   "password": "secret",
@@ -248,7 +248,7 @@ Not `GET /api/sessions/{id}` — session is an ephemeral aggregate keyed by auth
     "primaryEmail": "jane@example.com"
   },
   "activeTenant": {
-    "id": "tnt_01JABCDEFGHJKMNPQRSTVWXYZ0",
+    "id": "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
     "name": "Acme Corp",
     "slug": "acme"
   },
@@ -259,7 +259,7 @@ Not `GET /api/sessions/{id}` — session is an ephemeral aggregate keyed by auth
 **Tenant switch** — `PATCH /api/session`:
 
 ```json
-{ "tenantId": "tnt_01JOTHER…" }
+{ "tenantId": "ten_01JOTHER…" }
 ```
 
 Request: single id ref. Response: full `SessionResponse` with embeds.
