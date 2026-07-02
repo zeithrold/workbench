@@ -20,6 +20,7 @@ dependencies {
   implementation(libs.springdoc.openapi)
   implementation(libs.scalar.webmvc)
   implementation(libs.logstash.logback)
+  runtimeOnly(libs.kotlinx.coroutines.reactor)
   runtimeOnly(libs.postgresql)
   testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
   testImplementation("org.springframework.boot:spring-boot-starter-security-test")
