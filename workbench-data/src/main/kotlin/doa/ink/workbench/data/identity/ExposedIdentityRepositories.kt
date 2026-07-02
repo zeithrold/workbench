@@ -390,7 +390,8 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
   override suspend fun touchLastUsed(loginAccountId: UUID, usedAt: OffsetDateTime): Boolean =
     suspendTransaction(db = database) {
       LoginAccountsTable.update({
-        (LoginAccountsTable.id eq loginAccountId.toKotlinUuid()) and LoginAccountsTable.disabledAt.isNull()
+        (LoginAccountsTable.id eq loginAccountId.toKotlinUuid()) and
+          LoginAccountsTable.disabledAt.isNull()
       }) {
         it[LoginAccountsTable.lastUsedAt] = usedAt
         it[LoginAccountsTable.updatedAt] = usedAt

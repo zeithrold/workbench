@@ -1,10 +1,10 @@
 package doa.ink.workbench.web.api
 
+import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InfrastructureUnavailableException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
-import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import java.net.URI
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus

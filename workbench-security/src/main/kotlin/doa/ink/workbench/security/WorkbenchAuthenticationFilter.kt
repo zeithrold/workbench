@@ -24,11 +24,10 @@ class WorkbenchAuthenticationFilter(
     response: HttpServletResponse,
     filterChain: FilterChain,
   ) {
-    val principal =
-      runBlocking {
-        bearerToken(request)?.let { bearerTokenAuthenticator.authenticateBearerToken(it) }
-          ?: sessionCookie(request)?.let { sessionAuthenticator.authenticateSession(it) }
-      }
+    val principal = runBlocking {
+      bearerToken(request)?.let { bearerTokenAuthenticator.authenticateBearerToken(it) }
+        ?: sessionCookie(request)?.let { sessionAuthenticator.authenticateSession(it) }
+    }
 
     if (principal != null) {
       SecurityContextHolder.getContext().authentication =

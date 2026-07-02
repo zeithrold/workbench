@@ -3,9 +3,9 @@ package doa.ink.workbench.data.identity
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.model.AuditEventResult
 import doa.ink.workbench.core.identity.model.AuthEventType
+import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
 import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
 import doa.ink.workbench.core.identity.model.CreateBearerTokenCommand
-import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
 import doa.ink.workbench.core.identity.model.CreateLoginAccountCommand
 import doa.ink.workbench.core.identity.model.CreateLoginMethodDefinitionCommand
 import doa.ink.workbench.core.identity.model.CreateTenantLoginMethodSettingCommand

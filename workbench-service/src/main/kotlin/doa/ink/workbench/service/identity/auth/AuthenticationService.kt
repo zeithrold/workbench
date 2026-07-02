@@ -64,9 +64,7 @@ class AuthenticationService(
     }
 
     val passwordHash =
-      loginAccounts
-        .findParameter(account.id, LoginAccountParameterKey.PasswordHash)
-        ?.parameterValue
+      loginAccounts.findParameter(account.id, LoginAccountParameterKey.PasswordHash)?.parameterValue
         ?: failLogin(command, AuthenticationFailureReason.INVALID_CREDENTIALS, account)
 
     if (!passwordVerifier.verify(command.password, passwordHash)) {
@@ -117,7 +115,8 @@ class AuthenticationService(
     ipAddress: String?,
     userAgent: String?,
   ): IssuedCredential {
-    val user = users.findById(userId) ?: throw InvalidRequestException("Authenticated user not found.")
+    val user =
+      users.findById(userId) ?: throw InvalidRequestException("Authenticated user not found.")
     val token = issueBearerToken(user.id, loginAccountId, now())
     authEvents.append(
       CreateAuthEventCommand(
@@ -132,9 +131,14 @@ class AuthenticationService(
     return token
   }
 
-  suspend fun logoutSession(sessionSecret: String, ipAddress: String?, userAgent: String?): Boolean {
+  suspend fun logoutSession(
+    sessionSecret: String,
+    ipAddress: String?,
+    userAgent: String?,
+  ): Boolean {
     val now = now()
-    val session = sessions.findActiveByHash(credentialHasher.hash(sessionSecret), now) ?: return false
+    val session =
+      sessions.findActiveByHash(credentialHasher.hash(sessionSecret), now) ?: return false
     val revoked = sessions.revoke(session.id, now)
     if (revoked) {
       authEvents.append(
@@ -151,9 +155,14 @@ class AuthenticationService(
     return revoked
   }
 
-  suspend fun revokeBearerToken(tokenSecret: String, ipAddress: String?, userAgent: String?): Boolean {
+  suspend fun revokeBearerToken(
+    tokenSecret: String,
+    ipAddress: String?,
+    userAgent: String?,
+  ): Boolean {
     val now = now()
-    val token = bearerTokens.findActiveByHash(credentialHasher.hash(tokenSecret), now) ?: return false
+    val token =
+      bearerTokens.findActiveByHash(credentialHasher.hash(tokenSecret), now) ?: return false
     val revoked = bearerTokens.revoke(token.id, now)
     if (revoked) {
       authEvents.append(
@@ -232,7 +241,11 @@ class AuthenticationService(
     }
   }
 
-  private suspend fun issueSession(userId: UUID, loginAccountId: UUID, now: OffsetDateTime): IssuedCredential {
+  private suspend fun issueSession(
+    userId: UUID,
+    loginAccountId: UUID,
+    now: OffsetDateTime,
+  ): IssuedCredential {
     val secret = secretGenerator.generate()
     val session =
       sessions.create(

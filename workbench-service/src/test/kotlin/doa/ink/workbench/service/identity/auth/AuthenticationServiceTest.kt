@@ -20,7 +20,6 @@ import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
 import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
 import doa.ink.workbench.core.identity.model.LoginAccountParameterRecord
 import doa.ink.workbench.core.identity.model.LoginAccountRecord
-import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.identity.model.PasswordLoginCommand
 import doa.ink.workbench.core.identity.model.TenantLoginMethodSettingRecord
 import doa.ink.workbench.core.identity.model.TenantMemberRecord
@@ -57,7 +56,9 @@ class AuthenticationServiceTest :
     "password login failure records a generic failure event" {
       val fixture = Fixture(passwordMatches = false)
 
-      shouldThrow<AuthenticationFailedException> { fixture.service.loginWithPassword(fixture.loginCommand) }
+      shouldThrow<AuthenticationFailedException> {
+        fixture.service.loginWithPassword(fixture.loginCommand)
+      }
 
       fixture.appendedEvents.single().eventType shouldBe AuthEventType.LOGIN_FAILURE
       fixture.appendedEvents.single().result shouldBe AuditEventResult.FAILURE
@@ -129,8 +130,9 @@ private class Fixture(passwordMatches: Boolean = true) {
     )
 
   init {
-    coEvery { loginAccounts.findLoginAccountByMethodAndSubject("password", "ada@example.test") } returns
-      loginAccount
+    coEvery {
+      loginAccounts.findLoginAccountByMethodAndSubject("password", "ada@example.test")
+    } returns loginAccount
     coEvery { loginAccounts.findTenantSetting(tenantId, loginAccount.loginMethodId) } returns
       TenantLoginMethodSettingRecord(
         id = UUID.randomUUID(),
@@ -146,7 +148,9 @@ private class Fixture(passwordMatches: Boolean = true) {
         createdAt = now,
         updatedAt = now,
       )
-    coEvery { loginAccounts.findParameter(loginAccount.id, LoginAccountParameterKey.PasswordHash) } returns
+    coEvery {
+      loginAccounts.findParameter(loginAccount.id, LoginAccountParameterKey.PasswordHash)
+    } returns
       LoginAccountParameterRecord(
         id = UUID.randomUUID(),
         loginAccountId = loginAccount.id,
@@ -171,42 +175,44 @@ private class Fixture(passwordMatches: Boolean = true) {
         createdAt = now,
         updatedAt = now,
       )
-    coEvery { sessions.create(any<CreateAuthSessionCommand>()) } answers {
-      firstArg<CreateAuthSessionCommand>().let {
-        AuthSessionRecord(
-          id = UUID.randomUUID(),
-          sessionHash = it.sessionHash,
-          userId = it.userId,
-          loginAccountId = it.loginAccountId,
-          expiresAt = it.expiresAt,
-          revokedAt = null,
-          lastUsedAt = null,
-          createdAt = now,
-          updatedAt = now,
-        )
+    coEvery { sessions.create(any<CreateAuthSessionCommand>()) } answers
+      {
+        firstArg<CreateAuthSessionCommand>().let {
+          AuthSessionRecord(
+            id = UUID.randomUUID(),
+            sessionHash = it.sessionHash,
+            userId = it.userId,
+            loginAccountId = it.loginAccountId,
+            expiresAt = it.expiresAt,
+            revokedAt = null,
+            lastUsedAt = null,
+            createdAt = now,
+            updatedAt = now,
+          )
+        }
       }
-    }
     coEvery { loginAccounts.touchLastUsed(loginAccount.id, any()) } returns true
-    coEvery { authEvents.append(any<CreateAuthEventCommand>()) } answers {
-      firstArg<CreateAuthEventCommand>().let {
-        appendedEvents += it
-        AuthEventRecord(
-          id = UUID.randomUUID(),
-          authEventId = PublicId.new("aut"),
-          tenantId = it.tenantId,
-          userId = it.userId,
-          loginAccountId = it.loginAccountId,
-          loginMethodId = it.loginMethodId,
-          eventType = it.eventType,
-          result = it.result,
-          failureReason = it.failureReason,
-          ipAddress = it.ipAddress,
-          userAgent = it.userAgent,
-          metadata = it.metadata,
-          occurredAt = now,
-        )
+    coEvery { authEvents.append(any<CreateAuthEventCommand>()) } answers
+      {
+        firstArg<CreateAuthEventCommand>().let {
+          appendedEvents += it
+          AuthEventRecord(
+            id = UUID.randomUUID(),
+            authEventId = PublicId.new("aut"),
+            tenantId = it.tenantId,
+            userId = it.userId,
+            loginAccountId = it.loginAccountId,
+            loginMethodId = it.loginMethodId,
+            eventType = it.eventType,
+            result = it.result,
+            failureReason = it.failureReason,
+            ipAddress = it.ipAddress,
+            userAgent = it.userAgent,
+            metadata = it.metadata,
+            occurredAt = now,
+          )
+        }
       }
-    }
   }
 
   companion object {
