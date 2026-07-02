@@ -33,6 +33,7 @@ class ExposedAuthSessionRepository(private val database: Database) : AuthSession
         it[sessionHash] = command.sessionHash
         it[userId] = command.userId.toKotlinUuid()
         it[loginAccountId] = command.loginAccountId.toKotlinUuid()
+        it[activeTenantId] = command.activeTenantId?.toKotlinUuid()
         it[expiresAt] = command.expiresAt
         it[createdAt] = now
         it[updatedAt] = now
@@ -41,6 +42,14 @@ class ExposedAuthSessionRepository(private val database: Database) : AuthSession
         .where { AuthSessionsTable.id eq id.toKotlinUuid() }
         .single()
         .toAuthSessionRecord()
+    }
+
+  override suspend fun findById(id: UUID): AuthSessionRecord? =
+    suspendTransaction(db = database) {
+      AuthSessionsTable.selectAll()
+        .where { AuthSessionsTable.id eq id.toKotlinUuid() }
+        .singleOrNull()
+        ?.toAuthSessionRecord()
     }
 
   override suspend fun findActiveByHash(
@@ -55,6 +64,20 @@ class ExposedAuthSessionRepository(private val database: Database) : AuthSession
         .singleOrNull()
         ?.toAuthSessionRecord()
         ?.takeIf { it.expiresAt.isAfter(now) }
+    }
+
+  override suspend fun updateActiveTenant(
+    id: UUID,
+    activeTenantId: UUID?,
+    updatedAt: OffsetDateTime,
+  ): Boolean =
+    suspendTransaction(db = database) {
+      AuthSessionsTable.update({
+        (AuthSessionsTable.id eq id.toKotlinUuid()) and AuthSessionsTable.revokedAt.isNull()
+      }) {
+        it[AuthSessionsTable.activeTenantId] = activeTenantId?.toKotlinUuid()
+        it[AuthSessionsTable.updatedAt] = updatedAt
+      } > 0
     }
 
   override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean =

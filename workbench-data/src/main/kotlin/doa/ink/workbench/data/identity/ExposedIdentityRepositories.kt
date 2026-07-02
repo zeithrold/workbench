@@ -27,7 +27,9 @@ import doa.ink.workbench.data.persistence.LoginAccountParametersTable
 import doa.ink.workbench.data.persistence.LoginAccountsTable
 import doa.ink.workbench.data.persistence.LoginMethodDefinitionsTable
 import doa.ink.workbench.data.persistence.TenantLoginMethodSettingsTable
+import doa.ink.workbench.core.identity.model.TenantLoginOption
 import doa.ink.workbench.data.persistence.TenantMembersTable
+import doa.ink.workbench.data.persistence.TenantsTable
 import doa.ink.workbench.data.persistence.UserLoginAccountsTable
 import doa.ink.workbench.data.persistence.UsersTable
 import java.time.OffsetDateTime
@@ -362,6 +364,113 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
         }
         .singleOrNull()
         ?.toLoginAccountRecord()
+    }
+
+  override suspend fun findLoginMethodByCode(code: String): LoginMethodDefinitionRecord? =
+    suspendTransaction(db = database) {
+      LoginMethodDefinitionsTable.selectAll()
+        .where {
+          (LoginMethodDefinitionsTable.code eq code) and LoginMethodDefinitionsTable.isEnabledGlobally
+        }
+        .singleOrNull()
+        ?.toLoginMethodDefinitionRecord()
+    }
+
+  override suspend fun findLoginMethodById(id: UUID): LoginMethodDefinitionRecord? =
+    suspendTransaction(db = database) {
+      LoginMethodDefinitionsTable.selectAll()
+        .where {
+          (LoginMethodDefinitionsTable.id eq id.toKotlinUuid()) and
+            LoginMethodDefinitionsTable.isEnabledGlobally
+        }
+        .singleOrNull()
+        ?.toLoginMethodDefinitionRecord()
+    }
+
+  override suspend fun findLoginAccountByParameterValue(
+    loginMethodCode: String,
+    parameterKey: LoginAccountParameterKey,
+    parameterValue: String,
+  ): LoginAccountRecord? =
+    suspendTransaction(db = database) {
+      val methodId = findLoginMethodId(loginMethodCode) ?: return@suspendTransaction null
+      val parameter =
+        LoginAccountParametersTable.selectAll()
+          .where {
+            (LoginAccountParametersTable.parameterKey eq parameterKey.value) and
+              (LoginAccountParametersTable.parameterValue eq parameterValue)
+          }
+          .singleOrNull() ?: return@suspendTransaction null
+      LoginAccountsTable.selectAll()
+        .where {
+          (LoginAccountsTable.disabledAt.isNull()) and
+            (LoginAccountsTable.id eq parameter[LoginAccountParametersTable.loginAccountId]) and
+            (LoginAccountsTable.loginMethodId eq methodId)
+        }
+        .singleOrNull()
+        ?.toLoginAccountRecord()
+    }
+
+  override suspend fun listLoginOptionsForIdentifier(
+    normalizedIdentifier: String,
+  ): List<TenantLoginOption> =
+    suspendTransaction(db = database) {
+      val user =
+        UsersTable.selectAll()
+          .where {
+            (UsersTable.deletedAt.isNull()) and (UsersTable.primaryEmail eq normalizedIdentifier)
+          }
+          .singleOrNull()
+          ?.toUserRecord()
+          ?: findUserByMethodAndSubject("password", normalizedIdentifier)
+
+      if (user == null) {
+        return@suspendTransaction emptyList()
+      }
+
+      val memberships =
+        TenantMembersTable.selectAll()
+          .where {
+            (TenantMembersTable.userId eq user.id.toKotlinUuid()) and
+              (TenantMembersTable.status eq "active") and
+              TenantMembersTable.deletedAt.isNull()
+          }
+          .map { it.toTenantMemberRecord() }
+
+      memberships.flatMap { membership ->
+        val tenant =
+          TenantsTable.selectAll()
+            .where {
+              (TenantsTable.id eq membership.tenantId.toKotlinUuid()) and TenantsTable.deletedAt.isNull()
+            }
+            .singleOrNull()
+            ?.toTenantRecord() ?: return@flatMap emptyList()
+
+        TenantLoginMethodSettingsTable.selectAll()
+          .where {
+            (TenantLoginMethodSettingsTable.tenantId eq membership.tenantId.toKotlinUuid()) and
+              TenantLoginMethodSettingsTable.isEnabled
+          }
+          .mapNotNull { settingRow ->
+            val methodRow =
+              LoginMethodDefinitionsTable.selectAll()
+                .where {
+                  (LoginMethodDefinitionsTable.id eq
+                    settingRow[TenantLoginMethodSettingsTable.loginMethodId]) and
+                    LoginMethodDefinitionsTable.isEnabledGlobally
+                }
+                .singleOrNull() ?: return@mapNotNull null
+            val method = methodRow.toLoginMethodDefinitionRecord()
+            TenantLoginOption(
+              tenantId = tenant.id,
+              tenantApiId = tenant.apiId.value,
+              tenantName = tenant.name,
+              loginMethodCode = method.code,
+              loginMethodKind = method.kind,
+              loginMethodName = method.name,
+            )
+          }
+      }
     }
 
   override suspend fun findUserByMethodAndSubject(

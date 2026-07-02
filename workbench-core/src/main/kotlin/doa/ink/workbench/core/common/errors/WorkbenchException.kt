@@ -10,6 +10,8 @@ class AuthenticationFailedException(message: String) : WorkbenchException(messag
 
 class InvalidRequestException(message: String) : WorkbenchException(message)
 
+class TenantNotSelectedException(message: String) : WorkbenchException(message)
+
 class InfrastructureUnavailableException(
   val component: String,
   message: String,

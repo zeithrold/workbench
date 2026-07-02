@@ -4,6 +4,7 @@ import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InfrastructureUnavailableException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
+import doa.ink.workbench.core.common.errors.TenantNotSelectedException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import java.net.URI
 import org.springframework.dao.DataAccessException
@@ -18,6 +19,10 @@ class GlobalExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException::class)
   fun notFound(error: ResourceNotFoundException): ProblemDetail =
     problem(HttpStatus.NOT_FOUND, "Resource Not Found", error.message.orEmpty())
+
+  @ExceptionHandler(TenantNotSelectedException::class)
+  fun tenantNotSelected(error: TenantNotSelectedException): ProblemDetail =
+    problem(HttpStatus.CONFLICT, "Tenant Not Selected", error.message.orEmpty())
 
   @ExceptionHandler(PermissionDeniedException::class)
   fun denied(error: PermissionDeniedException): ProblemDetail =

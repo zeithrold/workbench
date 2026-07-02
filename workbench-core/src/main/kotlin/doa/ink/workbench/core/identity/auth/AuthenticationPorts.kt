@@ -31,7 +31,11 @@ interface CredentialHasher {
 interface AuthSessionRepository {
   suspend fun create(command: CreateAuthSessionCommand): AuthSessionRecord
 
+  suspend fun findById(id: UUID): AuthSessionRecord?
+
   suspend fun findActiveByHash(sessionHash: String, now: OffsetDateTime): AuthSessionRecord?
+
+  suspend fun updateActiveTenant(id: UUID, activeTenantId: UUID?, updatedAt: OffsetDateTime): Boolean
 
   suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean
 

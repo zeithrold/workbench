@@ -13,6 +13,7 @@ import doa.ink.workbench.core.identity.model.LoginAccountParameterRecord
 import doa.ink.workbench.core.identity.model.LoginAccountRecord
 import doa.ink.workbench.core.identity.model.LoginMethodDefinitionRecord
 import doa.ink.workbench.core.identity.model.TenantLoginMethodSettingRecord
+import doa.ink.workbench.core.identity.model.TenantLoginOption
 import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import doa.ink.workbench.core.identity.model.UserLoginAccountRecord
@@ -74,6 +75,18 @@ interface LoginAccountRepository {
     loginMethodCode: String,
     normalizedSubject: String,
   ): LoginAccountRecord?
+
+  suspend fun findLoginMethodByCode(code: String): LoginMethodDefinitionRecord?
+
+  suspend fun findLoginMethodById(id: UUID): LoginMethodDefinitionRecord?
+
+  suspend fun findLoginAccountByParameterValue(
+    loginMethodCode: String,
+    parameterKey: LoginAccountParameterKey,
+    parameterValue: String,
+  ): LoginAccountRecord?
+
+  suspend fun listLoginOptionsForIdentifier(normalizedIdentifier: String): List<TenantLoginOption>
 
   suspend fun findUserByMethodAndSubject(
     loginMethodCode: String,

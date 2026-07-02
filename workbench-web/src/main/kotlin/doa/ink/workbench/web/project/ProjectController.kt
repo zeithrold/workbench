@@ -1,10 +1,12 @@
 package doa.ink.workbench.web.project
 
+import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.service.project.ProjectService
 import doa.ink.workbench.web.api.Audit
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.RequirePermission
+import doa.ink.workbench.web.api.TenantScoped
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
@@ -12,7 +14,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Pattern
-import java.util.UUID
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,14 +26,13 @@ import org.springframework.web.bind.annotation.RestController
 class ProjectController(private val service: ProjectService) {
   @PostMapping
   @Authenticated
+  @TenantScoped
   @RequirePermission("project.manage")
   @Audit("project.create")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(
     summary = "Create a project",
-    description =
-      "Creates a tenant-scoped project skeleton. The tenant id is temporary until TenantRequestContext " +
-        "is enforced on tenant-scoped APIs.",
+    description = "Creates a project in the active session tenant.",
     responses =
       [
         ApiResponse(
@@ -42,11 +42,14 @@ class ProjectController(private val service: ProjectService) {
         )
       ],
   )
-  suspend fun create(@Valid @RequestBody request: CreateProjectRequest): ProjectResponse {
+  suspend fun create(
+    @Valid @RequestBody request: CreateProjectRequest,
+    tenantContext: TenantRequestContext,
+  ): ProjectResponse {
     val record =
       service.create(
         CreateProjectCommand(
-          tenantId = request.tenantId,
+          tenantId = tenantContext.tenantId,
           identifier = request.identifier,
           name = request.name,
           description = request.description,
@@ -57,7 +60,6 @@ class ProjectController(private val service: ProjectService) {
 }
 
 data class CreateProjectRequest(
-  @field:Schema(example = "00000000-0000-0000-0000-000000000001") val tenantId: UUID,
   @field:NotBlank
   @field:Pattern(regexp = "^[A-Z][A-Z0-9]{1,9}$")
   @field:Schema(

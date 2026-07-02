@@ -4,103 +4,86 @@ import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.identity.AuthEventRepository
 import doa.ink.workbench.core.identity.LoginAccountRepository
-import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.auth.AuthSessionRepository
 import doa.ink.workbench.core.identity.auth.BearerTokenAuthenticator
 import doa.ink.workbench.core.identity.auth.BearerTokenRepository
 import doa.ink.workbench.core.identity.auth.CredentialHasher
 import doa.ink.workbench.core.identity.auth.CredentialSecretGenerator
-import doa.ink.workbench.core.identity.auth.PasswordVerifier
 import doa.ink.workbench.core.identity.auth.SessionAuthenticator
 import doa.ink.workbench.core.identity.model.AuditEventResult
 import doa.ink.workbench.core.identity.model.AuthEventType
+import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
-import doa.ink.workbench.core.identity.model.AuthenticationFailureReason
 import doa.ink.workbench.core.identity.model.AuthenticationResult
 import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
 import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
 import doa.ink.workbench.core.identity.model.CreateBearerTokenCommand
 import doa.ink.workbench.core.identity.model.IssuedCredential
-import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
-import doa.ink.workbench.core.identity.model.LoginAccountRecord
-import doa.ink.workbench.core.identity.model.PasswordLoginCommand
-import doa.ink.workbench.core.identity.model.TenantMemberStatus
+import doa.ink.workbench.core.identity.model.LoginCommand
 import java.time.Clock
 import java.time.Duration
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
 
-private const val PASSWORD_METHOD_CODE = "password"
-
 @Service
 @Suppress("TooManyFunctions")
 class AuthenticationService(
   private val users: UserRepository,
-  private val tenantMembers: TenantMemberRepository,
   private val loginAccounts: LoginAccountRepository,
   private val authEvents: AuthEventRepository,
   private val sessions: AuthSessionRepository,
   private val bearerTokens: BearerTokenRepository,
-  private val passwordVerifier: PasswordVerifier,
+  private val loginOrchestrator: LoginOrchestrator,
   private val secretGenerator: CredentialSecretGenerator,
   private val credentialHasher: CredentialHasher,
   private val clock: Clock,
 ) : SessionAuthenticator, BearerTokenAuthenticator {
-  private val sessionTtl = Duration.ofHours(12)
-  private val bearerTokenTtl = Duration.ofDays(30)
+  private val defaultSessionTtl = Duration.ofHours(12)
+  private val defaultBearerTokenTtl = Duration.ofDays(30)
 
-  suspend fun loginWithPassword(command: PasswordLoginCommand): AuthenticationResult {
+  suspend fun login(command: LoginCommand): AuthenticationResult {
+    val identity =
+      try {
+        loginOrchestrator.authenticate(command)
+      } catch (error: AuthenticationFailedException) {
+        recordLoginFailure(command, error.message)
+        throw error
+      }
+
+    return completeLogin(identity, command.issueBearerToken, command.ipAddress, command.userAgent)
+  }
+
+  suspend fun completeLogin(
+    identity: AuthenticatedIdentity,
+    issueBearerToken: Boolean,
+    ipAddress: String?,
+    userAgent: String?,
+    tenantIdForAudit: UUID? = null,
+  ): AuthenticationResult {
     val now = now()
-    val normalizedSubject = normalizeSubject(command.subject)
-    val account =
-      loginAccounts.findLoginAccountByMethodAndSubject(PASSWORD_METHOD_CODE, normalizedSubject)
-        ?: failLogin(command, AuthenticationFailureReason.INVALID_CREDENTIALS)
-
-    val tenantSetting = loginAccounts.findTenantSetting(command.tenantId, account.loginMethodId)
-    if (tenantSetting?.isEnabled != true) {
-      failLogin(command, AuthenticationFailureReason.LOGIN_METHOD_DISABLED, account)
-    }
-
-    val passwordHash =
-      loginAccounts.findParameter(account.id, LoginAccountParameterKey.PasswordHash)?.parameterValue
-        ?: failLogin(command, AuthenticationFailureReason.INVALID_CREDENTIALS, account)
-
-    if (!passwordVerifier.verify(command.password, passwordHash)) {
-      failLogin(command, AuthenticationFailureReason.INVALID_CREDENTIALS, account)
-    }
-
-    val user =
-      loginAccounts.findLinkedUser(account.id)
-        ?: failLogin(command, AuthenticationFailureReason.INVALID_CREDENTIALS, account)
-    val member = tenantMembers.findByTenantAndUser(command.tenantId, user.id)
-    if (member?.status != TenantMemberStatus.ACTIVE) {
-      failLogin(command, AuthenticationFailureReason.TENANT_MEMBER_INACTIVE, account)
-    }
-
-    val session = issueSession(user.id, account.id, now)
+    val session = issueSession(identity.user.id, identity.loginAccount.id, now)
     val bearerToken =
-      if (command.issueBearerToken) issueBearerToken(user.id, account.id, now) else null
-    loginAccounts.touchLastUsed(account.id, now)
+      if (issueBearerToken) issueBearerToken(identity.user.id, identity.loginAccount.id, now) else null
+    loginAccounts.touchLastUsed(identity.loginAccount.id, now)
     authEvents.append(
       CreateAuthEventCommand(
-        tenantId = command.tenantId,
-        userId = user.id,
-        loginAccountId = account.id,
-        loginMethodId = account.loginMethodId,
+        tenantId = tenantIdForAudit,
+        userId = identity.user.id,
+        loginAccountId = identity.loginAccount.id,
+        loginMethodId = identity.loginAccount.loginMethodId,
         eventType = AuthEventType.LOGIN_SUCCESS,
         result = AuditEventResult.SUCCESS,
-        ipAddress = command.ipAddress,
-        userAgent = command.userAgent,
+        ipAddress = ipAddress,
+        userAgent = userAgent,
       )
     )
-
     return AuthenticationResult(
       principal =
         AuthenticatedPrincipal(
-          user = user,
-          loginAccountId = account.id,
+          user = identity.user,
+          loginAccountId = identity.loginAccount.id,
           sessionId = session.id.toString(),
           bearerTokenId = bearerToken?.id?.toString(),
         ),
@@ -247,6 +230,7 @@ class AuthenticationService(
     now: OffsetDateTime,
   ): IssuedCredential {
     val secret = secretGenerator.generate()
+    val sessionTtl = sessionTtlForUser(userId)
     val session =
       sessions.create(
         CreateAuthSessionCommand(
@@ -254,6 +238,7 @@ class AuthenticationService(
           userId = userId,
           loginAccountId = loginAccountId,
           expiresAt = now.plus(sessionTtl),
+          activeTenantId = null,
         )
       )
     return IssuedCredential(session.id, secret, session.expiresAt)
@@ -265,39 +250,41 @@ class AuthenticationService(
     now: OffsetDateTime,
   ): IssuedCredential {
     val secret = secretGenerator.generate()
+    val tokenTtl = bearerTokenTtlForUser(userId)
     val token =
       bearerTokens.create(
         CreateBearerTokenCommand(
           tokenHash = credentialHasher.hash(secret),
           userId = userId,
           loginAccountId = loginAccountId,
-          expiresAt = now.plus(bearerTokenTtl),
+          expiresAt = now.plus(tokenTtl),
         )
       )
     return IssuedCredential(token.id, secret, token.expiresAt)
   }
 
-  private suspend fun failLogin(
-    command: PasswordLoginCommand,
-    reason: AuthenticationFailureReason,
-    account: LoginAccountRecord? = null,
-  ): Nothing {
+  private suspend fun sessionTtlForUser(userId: UUID): Duration {
+    val memberships = users.findById(userId) ?: return defaultSessionTtl
+    return defaultSessionTtl
+  }
+
+  private suspend fun bearerTokenTtlForUser(userId: UUID): Duration {
+    users.findById(userId)
+    return defaultBearerTokenTtl
+  }
+
+  private suspend fun recordLoginFailure(command: LoginCommand, reason: String?) {
     authEvents.append(
       CreateAuthEventCommand(
-        tenantId = command.tenantId,
-        loginAccountId = account?.id,
-        loginMethodId = account?.loginMethodId,
+        tenantId = null,
         eventType = AuthEventType.LOGIN_FAILURE,
         result = AuditEventResult.FAILURE,
-        failureReason = reason.eventValue,
+        failureReason = reason ?: "invalid_credentials",
         ipAddress = command.ipAddress,
         userAgent = command.userAgent,
       )
     )
-    throw AuthenticationFailedException("Invalid credentials.")
   }
-
-  private fun normalizeSubject(subject: String): String = subject.trim().lowercase()
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)
 }

@@ -100,6 +100,7 @@ data class AuthSessionRecord(
   val sessionHash: String,
   val userId: UUID,
   val loginAccountId: UUID,
+  val activeTenantId: UUID?,
   val expiresAt: OffsetDateTime,
   val revokedAt: OffsetDateTime?,
   val lastUsedAt: OffsetDateTime?,
@@ -125,10 +126,14 @@ data class IssuedCredential(
   val expiresAt: OffsetDateTime,
 )
 
-data class PasswordLoginCommand(
-  val tenantId: UUID,
-  val subject: String,
-  val password: String,
+data class LoginCommand(
+  val method: LoginMethodKind,
+  val loginMethodCode: String? = null,
+  val tenantApiId: String? = null,
+  val subject: String? = null,
+  val password: String? = null,
+  val token: String? = null,
+  val email: String? = null,
   val issueBearerToken: Boolean = false,
   val ipAddress: String? = null,
   val userAgent: String? = null,
@@ -145,6 +150,7 @@ data class CreateAuthSessionCommand(
   val userId: UUID,
   val loginAccountId: UUID,
   val expiresAt: OffsetDateTime,
+  val activeTenantId: UUID? = null,
 )
 
 data class CreateBearerTokenCommand(
@@ -231,4 +237,52 @@ data class CreateAuthEventCommand(
   val ipAddress: String? = null,
   val userAgent: String? = null,
   val metadata: JsonElement = JsonObject(emptyMap()),
+)
+
+data class AuthLoginStateRecord(
+  val id: UUID,
+  val stateHash: String,
+  val tenantId: UUID,
+  val loginMethodId: UUID,
+  val redirectUri: String,
+  val pkceVerifier: String?,
+  val returnUrl: String?,
+  val expiresAt: OffsetDateTime,
+  val consumedAt: OffsetDateTime?,
+  val createdAt: OffsetDateTime,
+)
+
+data class CreateAuthLoginStateCommand(
+  val stateHash: String,
+  val tenantId: UUID,
+  val loginMethodId: UUID,
+  val redirectUri: String,
+  val pkceVerifier: String?,
+  val returnUrl: String?,
+  val expiresAt: OffsetDateTime,
+)
+
+data class MagicLinkTokenRecord(
+  val id: UUID,
+  val tokenHash: String,
+  val loginMethodId: UUID,
+  val tenantId: UUID,
+  val normalizedSubject: String,
+  val expiresAt: OffsetDateTime,
+  val consumedAt: OffsetDateTime?,
+  val createdAt: OffsetDateTime,
+)
+
+data class TenantLoginOption(
+  val tenantId: UUID,
+  val tenantApiId: String,
+  val tenantName: String,
+  val loginMethodCode: String,
+  val loginMethodKind: LoginMethodKind,
+  val loginMethodName: String,
+)
+
+data class AuthenticatedIdentity(
+  val user: UserRecord,
+  val loginAccount: LoginAccountRecord,
 )

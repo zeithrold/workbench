@@ -131,6 +131,7 @@ object AuthSessionsTable : Table("auth_sessions") {
   val sessionHash = text("session_hash").uniqueIndex()
   val userId = uuid("user_id").references(UsersTable.id)
   val loginAccountId = uuid("login_account_id").references(LoginAccountsTable.id)
+  val activeTenantId = uuid("active_tenant_id").references(TenantsTable.id).nullable()
   val expiresAt = timestampWithTimeZone("expires_at")
   val revokedAt = timestampWithTimeZone("revoked_at").nullable()
   val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
@@ -149,5 +150,31 @@ object BearerTokensTable : Table("bearer_tokens") {
   val lastUsedAt = timestampWithTimeZone("last_used_at").nullable()
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
+  override val primaryKey = PrimaryKey(id)
+}
+
+object AuthLoginStatesTable : Table("auth_login_states") {
+  val id = uuid("id")
+  val stateHash = text("state_hash").uniqueIndex()
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val loginMethodId = uuid("login_method_id").references(LoginMethodDefinitionsTable.id)
+  val redirectUri = text("redirect_uri")
+  val pkceVerifier = text("pkce_verifier").nullable()
+  val returnUrl = text("return_url").nullable()
+  val expiresAt = timestampWithTimeZone("expires_at")
+  val consumedAt = timestampWithTimeZone("consumed_at").nullable()
+  val createdAt = timestampWithTimeZone("created_at")
+  override val primaryKey = PrimaryKey(id)
+}
+
+object MagicLinkTokensTable : Table("magic_link_tokens") {
+  val id = uuid("id")
+  val tokenHash = text("token_hash").uniqueIndex()
+  val loginMethodId = uuid("login_method_id").references(LoginMethodDefinitionsTable.id)
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val normalizedSubject = text("normalized_subject")
+  val expiresAt = timestampWithTimeZone("expires_at")
+  val consumedAt = timestampWithTimeZone("consumed_at").nullable()
+  val createdAt = timestampWithTimeZone("created_at")
   override val primaryKey = PrimaryKey(id)
 }
