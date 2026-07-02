@@ -24,7 +24,16 @@ data class AuthenticatedPrincipal(
   val loginAccountId: UUID?,
   val sessionId: String?,
   val bearerTokenId: String?,
+  val credentialType: CredentialType =
+    if (bearerTokenId != null) CredentialType.BEARER_TOKEN else CredentialType.SESSION,
+  val tenantId: UUID? = null,
+  val credentialScopes: Set<String> = emptySet(),
 )
+
+enum class CredentialType {
+  SESSION,
+  BEARER_TOKEN,
+}
 
 enum class TenantMemberStatus(val dbValue: String) {
   ACTIVE("active"),

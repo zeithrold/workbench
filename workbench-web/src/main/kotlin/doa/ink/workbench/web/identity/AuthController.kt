@@ -7,6 +7,7 @@ import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.service.identity.MembershipService
+import doa.ink.workbench.service.identity.SessionService
 import doa.ink.workbench.service.identity.auth.AuthenticationService
 import doa.ink.workbench.service.identity.auth.FederatedAuthService
 import doa.ink.workbench.service.identity.auth.MagicLinkAuthService
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController
 @Suppress("TooManyFunctions")
 class AuthController(
   private val authenticationService: AuthenticationService,
+  private val sessionService: SessionService,
   private val membershipService: MembershipService,
   private val loginAccounts: LoginAccountRepository,
   private val federatedAuthService: FederatedAuthService,
@@ -110,14 +112,21 @@ class AuthController(
     }
 
   @PostMapping("/tokens")
-  suspend fun createToken(servletRequest: HttpServletRequest): IssuedTokenResponse {
+  suspend fun createToken(
+    @Valid @RequestBody request: CreateTokenRequest,
+    servletRequest: HttpServletRequest,
+  ): IssuedTokenResponse {
     val principal = currentPrincipal()
     val loginAccountId =
       principal.loginAccountId ?: throw AuthenticationFailedException("Authentication required.")
+    val tenantId = request.tenantId ?: sessionService.requireActiveTenantId(principal)
     val token =
       authenticationService.createBearerToken(
         userId = principal.user.id,
         loginAccountId = loginAccountId,
+        tenantId = tenantId,
+        name = request.name,
+        scopes = request.scopes.toSet(),
         ipAddress = servletRequest.remoteAddr,
         userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
       )
@@ -329,6 +338,12 @@ data class IssuedTokenResponse(
   val id: UUID,
   val token: String,
   val expiresAt: OffsetDateTime,
+)
+
+data class CreateTokenRequest(
+  val tenantId: UUID? = null,
+  val name: String? = null,
+  val scopes: List<String> = listOf("workbench.api"),
 )
 
 data class MembershipResponse(

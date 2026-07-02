@@ -24,9 +24,18 @@ class WorkbenchAuthenticationFilter(
     response: HttpServletResponse,
     filterChain: FilterChain,
   ) {
+    val bearerToken = bearerToken(request)
     val principal = runBlocking {
-      bearerToken(request)?.let { bearerTokenAuthenticator.authenticateBearerToken(it) }
-        ?: sessionCookie(request)?.let { sessionAuthenticator.authenticateSession(it) }
+      if (bearerToken != null) {
+        bearerTokenAuthenticator.authenticateBearerToken(bearerToken)
+      } else {
+        sessionCookie(request)?.let { sessionAuthenticator.authenticateSession(it) }
+      }
+    }
+
+    if (bearerToken != null && principal == null) {
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+      return
     }
 
     if (principal != null) {

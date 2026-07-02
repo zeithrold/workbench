@@ -1,7 +1,5 @@
 package doa.ink.workbench.core.permission.model
 
-import doa.ink.workbench.core.identity.model.UserRecord
-
 enum class PermissionEffect {
   ALLOW,
   DENY,
@@ -31,19 +29,6 @@ data class PermissionRule(
   val condition: PermissionCondition?,
 )
 
-data class PermissionContext(val projectApiId: String?, val issueApiId: String?)
-
-sealed interface PermissionDecision {
-  data object Allowed : PermissionDecision
-
-  data class Denied(val reason: String) : PermissionDecision
-}
-
 interface PermissionService {
-  suspend fun can(
-    actor: UserRecord,
-    action: PermissionAction,
-    resource: ResourcePattern,
-    context: PermissionContext,
-  ): PermissionDecision
+  suspend fun decide(request: AuthorizationRequest): AuthorizationDecision
 }

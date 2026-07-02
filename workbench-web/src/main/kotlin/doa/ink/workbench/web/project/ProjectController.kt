@@ -5,7 +5,7 @@ import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.service.project.ProjectService
 import doa.ink.workbench.web.api.Audit
 import doa.ink.workbench.web.api.Authenticated
-import doa.ink.workbench.web.api.RequirePermission
+import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.TenantScoped
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
@@ -27,7 +27,7 @@ class ProjectController(private val service: ProjectService) {
   @PostMapping
   @Authenticated
   @TenantScoped
-  @RequirePermission("project.manage")
+  @Authorize(action = "project.create", resource = "project")
   @Audit("project.create")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(
