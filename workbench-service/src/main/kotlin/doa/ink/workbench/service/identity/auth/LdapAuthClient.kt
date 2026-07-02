@@ -1,3 +1,5 @@
+@file:Suppress("ThrowsCount")
+
 package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
@@ -14,11 +16,17 @@ import org.springframework.stereotype.Component
 class LdapAuthClient {
   private val json = Json { ignoreUnknownKeys = true }
 
-  fun authenticate(setting: TenantLoginMethodSettingRecord, subject: String, password: String): String {
+  fun authenticate(
+    setting: TenantLoginMethodSettingRecord,
+    subject: String,
+    password: String,
+  ): String {
     val config = setting.config as? JsonObject ?: JsonObject(emptyMap())
-    val host = config.stringValue("host") ?: throw AuthenticationFailedException("Invalid credentials.")
+    val host =
+      config.stringValue("host") ?: throw AuthenticationFailedException("Invalid credentials.")
     val port = config.stringValue("port")?.toIntOrNull() ?: 389
-    val baseDn = config.stringValue("base_dn") ?: throw AuthenticationFailedException("Invalid credentials.")
+    val baseDn =
+      config.stringValue("base_dn") ?: throw AuthenticationFailedException("Invalid credentials.")
     val userDn = "uid=$subject,$baseDn"
     val env =
       mapOf(

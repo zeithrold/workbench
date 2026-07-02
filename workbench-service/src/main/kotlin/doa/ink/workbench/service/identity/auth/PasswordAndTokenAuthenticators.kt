@@ -1,3 +1,5 @@
+@file:Suppress("ThrowsCount")
+
 package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
@@ -21,8 +23,10 @@ class PasswordLoginAuthenticator(
   override val kind: LoginMethodKind = LoginMethodKind.PASSWORD
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
-    val subject = command.subject ?: throw InvalidRequestException("subject is required for password login.")
-    val password = command.password ?: throw InvalidRequestException("password is required for password login.")
+    val subject =
+      command.subject ?: throw InvalidRequestException("subject is required for password login.")
+    val password =
+      command.password ?: throw InvalidRequestException("password is required for password login.")
     val normalizedSubject = normalizeSubject(subject)
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(PASSWORD_METHOD_CODE, normalizedSubject)
@@ -52,7 +56,8 @@ class ApiTokenLoginAuthenticator(
   override val kind: LoginMethodKind = LoginMethodKind.API_TOKEN
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
-    val token = command.token ?: throw InvalidRequestException("token is required for api_token login.")
+    val token =
+      command.token ?: throw InvalidRequestException("token is required for api_token login.")
     val methodCode = command.loginMethodCode ?: "api_token"
     val tokenHash = credentialHasher.hash(token)
 
@@ -81,11 +86,15 @@ class LdapLoginAuthenticator(
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     val methodCode =
-      command.loginMethodCode ?: throw InvalidRequestException("loginMethodCode is required for ldap login.")
+      command.loginMethodCode
+        ?: throw InvalidRequestException("loginMethodCode is required for ldap login.")
     val tenantApiId =
-      command.tenantApiId ?: throw InvalidRequestException("tenantApiId is required for ldap login.")
-    val subject = command.subject ?: throw InvalidRequestException("subject is required for ldap login.")
-    val password = command.password ?: throw InvalidRequestException("password is required for ldap login.")
+      command.tenantApiId
+        ?: throw InvalidRequestException("tenantApiId is required for ldap login.")
+    val subject =
+      command.subject ?: throw InvalidRequestException("subject is required for ldap login.")
+    val password =
+      command.password ?: throw InvalidRequestException("password is required for ldap login.")
 
     val tenant =
       tenants.findByApiId(tenantApiId)

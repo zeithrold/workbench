@@ -2,9 +2,9 @@ package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.TenantRepository
+import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
 import doa.ink.workbench.core.identity.model.TenantRecord
-import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -23,7 +23,9 @@ class MembershipService(
       tenantMembers.listByUser(userId).filter { it.status == TenantMemberStatus.ACTIVE }
     val tenantById = tenants.findByIds(memberships.map { it.tenantId }).associateBy { it.id }
     return memberships.mapNotNull { membership ->
-      tenantById[membership.tenantId]?.let { TenantMembershipView(tenant = it, membership = membership) }
+      tenantById[membership.tenantId]?.let {
+        TenantMembershipView(tenant = it, membership = membership)
+      }
     }
   }
 }
