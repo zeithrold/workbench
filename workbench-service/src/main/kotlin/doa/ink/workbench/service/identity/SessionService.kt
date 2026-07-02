@@ -1,3 +1,5 @@
+@file:Suppress("ThrowsCount")
+
 package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
@@ -31,8 +33,7 @@ class SessionService(
   suspend fun getCurrent(principal: AuthenticatedPrincipal): SessionView {
     val sessionId = sessionUuid(principal)
     val session =
-      sessions.findById(sessionId)
-        ?: throw InvalidRequestException("Active session not found.")
+      sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
     val activeTenant = session.activeTenantId?.let { tenants.findById(it) }
     return SessionView(
       user = principal.user,
@@ -67,11 +68,12 @@ class SessionService(
   suspend fun requireActiveTenantId(principal: AuthenticatedPrincipal): UUID {
     val sessionId = sessionUuid(principal)
     val session =
-      sessions.findById(sessionId)
-        ?: throw InvalidRequestException("Active session not found.")
+      sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
     val tenantId =
       session.activeTenantId
-        ?: throw TenantNotSelectedException("Select a tenant via PATCH /api/session before calling tenant-scoped APIs.")
+        ?: throw TenantNotSelectedException(
+          "Select a tenant via PATCH /api/session before calling tenant-scoped APIs."
+        )
     val membership = tenantMembers.findByTenantAndUser(tenantId, principal.user.id)
     if (membership?.status != TenantMemberStatus.ACTIVE) {
       throw PermissionDeniedException("You are not an active member of the selected tenant.")
@@ -87,7 +89,8 @@ class SessionService(
 
   private fun sessionUuid(principal: AuthenticatedPrincipal): UUID {
     val sessionId =
-      principal.sessionId ?: throw InvalidRequestException("Session context is required for tenant switching.")
+      principal.sessionId
+        ?: throw InvalidRequestException("Session context is required for tenant switching.")
     return UUID.fromString(sessionId)
   }
 }

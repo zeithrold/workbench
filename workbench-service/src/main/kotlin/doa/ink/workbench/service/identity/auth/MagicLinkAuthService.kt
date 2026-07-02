@@ -1,3 +1,5 @@
+@file:Suppress("ThrowsCount")
+
 package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
@@ -10,7 +12,6 @@ import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.tenantconfig.model.MailSmtpTenantConfig
 import doa.ink.workbench.core.tenantconfig.model.TenantConfigSpecs
 import doa.ink.workbench.service.tenantconfig.TenantConfigService
-import jakarta.mail.internet.InternetAddress
 import java.time.Clock
 import java.time.Duration
 import java.time.OffsetDateTime

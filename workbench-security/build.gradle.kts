@@ -7,4 +7,6 @@ dependencies {
   implementation(project(":workbench-service"))
   implementation("org.springframework.boot:spring-boot-starter-security")
   compileOnly("jakarta.servlet:jakarta.servlet-api")
+  testImplementation("jakarta.servlet:jakarta.servlet-api")
+  testImplementation("org.springframework:spring-test")
 }
