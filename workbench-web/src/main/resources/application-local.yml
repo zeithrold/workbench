@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/workbench
+    username: workbench
+    password: workbench
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:19092
+workbench:
+  elasticsearch:
+    url: http://localhost:9200
+  debezium:
+    connect-url: http://localhost:8083

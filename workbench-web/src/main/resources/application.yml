@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: workbench
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    problemdetails:
+      enabled: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  docker:
+    compose:
+      enabled: false
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+scalar:
+  enabled: true
+  path: /scalar
+  url: /v3/api-docs
+logging:
+  structured:
+    format:
+      console: ecs

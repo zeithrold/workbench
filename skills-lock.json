@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "kotlin-exposed-patterns": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-exposed-patterns/SKILL.md",
+      "computedHash": "2670f68b44ef80a601ddcb4a3b6efcfb537853e456df53ab9fcfd8453ee42839"
+    },
+    "kotlin-patterns": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-patterns/SKILL.md",
+      "computedHash": "581e5e74aec1c33ba37209f24f6bca68ba6949d7549ab58c5bc6a75d0fca9d0d"
+    },
+    "kotlin-testing": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/kotlin-testing/SKILL.md",
+      "computedHash": "c4ee26f777f74682257cecd8c0f5d7bc0bee2f0d6dd0cb4376219d3e4c946682"
+    },
+    "springboot-patterns": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/springboot-patterns/SKILL.md",
+      "computedHash": "d2c003485e50a3e0f7ca325df55ea72c2810e9a0ab099313bd350b979733015c"
+    },
+    "springboot-verification": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/springboot-verification/SKILL.md",
+      "computedHash": "5a2abe74331daccf722b452d9c85d2ec7dc4777a901f33b91e007b6102b84b05"
+    },
+    "svelte": {
+      "source": "EpicenterHQ/epicenter",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/svelte/SKILL.md",
+      "computedHash": "a0850d99e0a5c6d9d80db6d1142244388795703e4f95ab7c61837102dccd37a4"
+    }
+  }
+}

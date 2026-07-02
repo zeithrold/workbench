@@ -1,0 +1,19 @@
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+      <providers>
+        <timestamp />
+        <logLevel />
+        <loggerName />
+        <threadName />
+        <message />
+        <stackTrace />
+        <mdc />
+      </providers>
+    </encoder>
+  </appender>
+  <root level="INFO">
+    <appender-ref ref="CONSOLE" />
+  </root>
+</configuration>
