@@ -103,6 +103,8 @@ interface RoleRepository {
 
   suspend fun findById(id: UUID): RoleRecord?
 
+  suspend fun findByApiId(tenantId: UUID?, apiId: String): RoleRecord?
+
   suspend fun findByCode(tenantId: UUID?, code: String): RoleRecord?
 
   suspend fun list(tenantId: UUID?): List<RoleRecord>
@@ -121,6 +123,8 @@ interface PermissionPolicyRepository {
 
   suspend fun listByTenant(tenantId: UUID): List<PermissionPolicyRecord>
 
+  suspend fun findByApiId(tenantId: UUID, apiId: String): PermissionPolicyRecord?
+
   suspend fun listActiveByRoles(
     tenantId: UUID,
     roleIds: Collection<UUID>,
@@ -134,6 +138,8 @@ interface RoleAssignmentRepository {
   suspend fun assign(command: AssignRoleCommand): RoleAssignmentRecord
 
   suspend fun listByTenant(tenantId: UUID): List<RoleAssignmentRecord>
+
+  suspend fun findByApiId(tenantId: UUID, apiId: String): RoleAssignmentRecord?
 
   suspend fun listActiveByUser(
     tenantId: UUID,

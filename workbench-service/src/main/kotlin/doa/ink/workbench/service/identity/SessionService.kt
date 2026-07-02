@@ -4,30 +4,26 @@ package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
-import doa.ink.workbench.core.common.errors.TenantNotSelectedException
+import doa.ink.workbench.core.common.summary.TenantSummary
+import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.auth.AuthSessionRepository
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
 import doa.ink.workbench.core.identity.model.TenantRecord
-import doa.ink.workbench.core.identity.model.UserRecord
+import doa.ink.workbench.service.common.PublicIdResolver
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
-
-data class SessionView(
-  val user: UserRecord,
-  val activeTenant: TenantRecord?,
-  val sessionExpiresAt: OffsetDateTime,
-)
 
 @Service
 class SessionService(
   private val sessions: AuthSessionRepository,
   private val tenantMembers: TenantMemberRepository,
   private val tenants: TenantRepository,
+  private val publicIds: PublicIdResolver,
   private val clock: Clock,
 ) {
   suspend fun getCurrent(principal: AuthenticatedPrincipal): SessionView {
@@ -36,29 +32,27 @@ class SessionService(
       sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
     val activeTenant = session.activeTenantId?.let { tenants.findById(it) }
     return SessionView(
-      user = principal.user,
-      activeTenant = activeTenant,
+      user = UserSummary.from(principal.user),
+      activeTenant = activeTenant?.let { TenantSummary.from(it) },
       sessionExpiresAt = session.expiresAt,
     )
   }
 
-  suspend fun switchTenant(principal: AuthenticatedPrincipal, tenantApiId: String?): SessionView {
+  suspend fun switchTenant(principal: AuthenticatedPrincipal, tenantId: String?): SessionView {
     val sessionId = sessionUuid(principal)
     val now = OffsetDateTime.now(clock)
-    val tenantId =
-      if (tenantApiId == null) {
+    val resolvedTenantId =
+      if (tenantId == null) {
         null
       } else {
-        val tenant =
-          tenants.findByApiId(tenantApiId)
-            ?: throw InvalidRequestException("Unknown tenant: $tenantApiId")
+        val tenant = publicIds.resolveTenant(tenantId)
         val membership = tenantMembers.findByTenantAndUser(tenant.id, principal.user.id)
         if (membership?.status != TenantMemberStatus.ACTIVE) {
           throw PermissionDeniedException("You are not an active member of this tenant.")
         }
         tenant.id
       }
-    val updated = sessions.updateActiveTenant(sessionId, tenantId, now)
+    val updated = sessions.updateActiveTenant(sessionId, resolvedTenantId, now)
     if (!updated) {
       throw InvalidRequestException("Unable to update session tenant.")
     }
@@ -66,26 +60,26 @@ class SessionService(
   }
 
   suspend fun requireActiveTenantId(principal: AuthenticatedPrincipal): UUID {
-    principal.tenantId?.let { tenantId ->
-      val membership = tenantMembers.findByTenantAndUser(tenantId, principal.user.id)
+    principal.tenantId?.let { activeTenantId ->
+      val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
       if (membership?.status != TenantMemberStatus.ACTIVE) {
         throw PermissionDeniedException("You are not an active member of the selected tenant.")
       }
-      return tenantId
+      return activeTenantId
     }
     val sessionId = sessionUuid(principal)
     val session =
       sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
-    val tenantId =
+    val activeTenantId =
       session.activeTenantId
-        ?: throw TenantNotSelectedException(
+        ?: throw doa.ink.workbench.core.common.errors.TenantNotSelectedException(
           "Select a tenant via PATCH /api/session before calling tenant-scoped APIs."
         )
-    val membership = tenantMembers.findByTenantAndUser(tenantId, principal.user.id)
+    val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
     if (membership?.status != TenantMemberStatus.ACTIVE) {
       throw PermissionDeniedException("You are not an active member of the selected tenant.")
     }
-    return tenantId
+    return activeTenantId
   }
 
   suspend fun requireActiveTenant(principal: AuthenticatedPrincipal): TenantRecord {

@@ -78,6 +78,8 @@ interface LoginAccountRepository {
 
   suspend fun findLoginMethodByCode(code: String): LoginMethodDefinitionRecord?
 
+  suspend fun findLoginMethodByApiId(apiId: String): LoginMethodDefinitionRecord?
+
   suspend fun findLoginMethodById(id: UUID): LoginMethodDefinitionRecord?
 
   suspend fun findLoginAccountByParameterValue(

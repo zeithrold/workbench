@@ -148,7 +148,7 @@ Domain resources (projects, roles, policies) use standard CRUD patterns under `/
 
 ```json
 {
-  "tenantId": "tnt_01J…",
+  "tenantId": "ten_01J…",
   "loginMethodId": "lmg_01J…",
   "userId": "usr_01J…",
   "roleId": "rol_01J…",
@@ -181,8 +181,8 @@ Domain resources (projects, roles, policies) use standard CRUD patterns under `/
 
 ```json
 {
-  "id": "mem_01J…",
-  "tenant": { "id": "tnt_01J…", "name": "Acme Corp", "slug": "acme" }
+  "id": "tmb_01J…",
+  "tenant": { "id": "ten_01J…", "name": "Acme Corp", "slug": "acme" }
 }
 ```
 
@@ -230,7 +230,7 @@ data class ProjectSummary(
 )
 ```
 
-Place shared summaries in `workbench-web/.../api/summaries/` or co-locate until reused.
+Place shared summaries in `workbench-core/.../common/summary/`. Each provides `companion object { fun from(record): XSummary }` with `id = record.apiId.value`.
 
 ## Exception → ProblemDetail
 
@@ -329,7 +329,7 @@ Same payload rules as public API:
 ```json
 {
   "user": { "id": "usr_…", "displayName": "…", "primaryEmail": "…" },
-  "activeTenant": { "id": "tnt_…", "name": "…", "slug": "…" },
+  "activeTenant": { "id": "ten_…", "name": "…", "slug": "…" },
   "sessionExpiresAt": "2026-07-02T12:00:00+00:00"
 }
 ```
@@ -404,13 +404,6 @@ data class CreateProjectRequest(
 | `TenantSummaryResponse` | `TenantSummary` with `id` not `apiId` |
 | UUID path params | Public string `{id}` |
 
-### Files needing alignment
+### Files aligned (2026-07-03)
 
-| File | Priority |
-|------|----------|
-| `workbench-web/.../project/ProjectResponse.kt` | Rename `apiId` → `id` |
-| `workbench-web/.../permission/PermissionAdminController.kt` | UUID removal, `builtin`, public ids |
-| `workbench-web/.../identity/AuthController.kt` | Membership, login options, login request |
-| `workbench-web/.../identity/SessionController.kt` | `TenantSummary`, `UserSummary` ids |
-
-New endpoints must follow target shape even if legacy endpoints are not yet migrated.
+All controllers now use public `id`, core `*Summary` embeds, thin-controller delegation to services, and OpenAPI `info.version` `2026-07-03`.

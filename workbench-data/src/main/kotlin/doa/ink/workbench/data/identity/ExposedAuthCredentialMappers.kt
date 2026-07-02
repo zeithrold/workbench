@@ -50,6 +50,7 @@ internal fun ResultRow.toAuthSessionRecord() =
 internal fun ResultRow.toBearerTokenRecord() =
   BearerTokenRecord(
     id = this[BearerTokensTable.id].toJavaUuid(),
+    apiId = PublicId(this[BearerTokensTable.apiId]),
     tokenHash = this[BearerTokensTable.tokenHash],
     userId = this[BearerTokensTable.userId].toJavaUuid(),
     loginAccountId = this[BearerTokensTable.loginAccountId].toJavaUuid(),

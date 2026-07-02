@@ -4,6 +4,7 @@ import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.ProjectRecord
+import doa.ink.workbench.service.common.PublicIdResolver
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -33,7 +34,9 @@ class ProjectServiceTest :
       val repository = mockk<ProjectRepository>()
       coEvery { repository.create(command) } returns record
 
-      val result = ProjectService(repository).create(command)
+      val publicIds = mockk<PublicIdResolver>()
+
+      val result = ProjectService(repository, publicIds).create(command)
 
       result shouldBe record
       coVerify(exactly = 1) { repository.create(command) }

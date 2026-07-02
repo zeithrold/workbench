@@ -59,6 +59,7 @@ internal fun ResultRow.toTenantRecord() =
 internal fun ResultRow.toLoginMethodDefinitionRecord() =
   LoginMethodDefinitionRecord(
     id = this[LoginMethodDefinitionsTable.id].toJavaUuid(),
+    apiId = PublicId(this[LoginMethodDefinitionsTable.apiId]),
     code = this[LoginMethodDefinitionsTable.code],
     kind = loginMethodKindOf(this[LoginMethodDefinitionsTable.kind]),
     name = this[LoginMethodDefinitionsTable.name],

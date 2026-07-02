@@ -1,29 +1,21 @@
 package doa.ink.workbench.web.identity
 
-import doa.ink.workbench.core.common.errors.AuthenticationFailedException
-import doa.ink.workbench.core.identity.LoginAccountRepository
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
-import doa.ink.workbench.core.identity.model.LoginCommand
-import doa.ink.workbench.core.identity.model.LoginMethodKind
-import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
-import doa.ink.workbench.service.identity.MembershipService
-import doa.ink.workbench.service.identity.SessionService
-import doa.ink.workbench.service.identity.auth.AuthenticationService
-import doa.ink.workbench.service.identity.auth.FederatedAuthService
-import doa.ink.workbench.service.identity.auth.MagicLinkAuthService
-import doa.ink.workbench.service.identity.auth.normalizeSubject
+import doa.ink.workbench.service.identity.AuthApplicationService
+import doa.ink.workbench.web.api.SessionSecured
+import doa.ink.workbench.web.api.StandardErrorResponses
+import doa.ink.workbench.web.api.http.HttpClientContext
+import doa.ink.workbench.web.api.http.SessionCookieWriter
+import doa.ink.workbench.web.api.http.bearerTokenValue
+import doa.ink.workbench.web.api.http.defaultRedirectUri
+import doa.ink.workbench.web.api.http.sessionCookieValue
+import doa.ink.workbench.web.api.http.toServiceContext
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
-import java.time.Clock
-import java.time.Duration
-import java.time.OffsetDateTime
-import java.util.UUID
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseCookie
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -36,355 +28,171 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
-@Suppress("TooManyFunctions")
+@Tag(name = "Auth", description = "Authentication and session protocol")
+@StandardErrorResponses
 class AuthController(
-  private val authenticationService: AuthenticationService,
-  private val sessionService: SessionService,
-  private val membershipService: MembershipService,
-  private val loginAccounts: LoginAccountRepository,
-  private val federatedAuthService: FederatedAuthService,
-  private val magicLinkAuthService: MagicLinkAuthService,
-  private val clock: Clock,
+  private val authApplicationService: AuthApplicationService,
+  private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @PostMapping("/login")
+  @Operation(
+    summary = "Sign in",
+    description = "Authenticates the user and sets the session cookie.",
+  )
   suspend fun login(
     @Valid @RequestBody request: LoginRequest,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
-    val result =
-      authenticationService.login(
-        LoginCommand(
-          method = request.method,
-          loginMethodCode = request.loginMethodCode,
-          tenantApiId = request.tenantApiId,
-          subject = request.subject,
-          password = request.password,
-          token = request.token,
-          email = request.email,
-          issueBearerToken = request.issueBearerToken,
-          ipAddress = servletRequest.remoteAddr,
-          userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-        )
-      )
-    return loginResponse(result)
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    val view = authApplicationService.login(request.toCommand(client))
+    return sessionCookieWriter.loginResponse(LoginResponse.from(view), view.sessionSecret)
   }
 
   @PostMapping("/logout")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(
+    summary = "Sign out",
+    description = "Revokes the active session or bearer token and clears the session cookie.",
+  )
   suspend fun logout(servletRequest: HttpServletRequest): ResponseEntity<Void> {
-    sessionCookieValue(servletRequest)?.let {
-      authenticationService.logoutSession(
-        sessionSecret = it,
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-      )
-    }
-    bearerToken(servletRequest)?.let {
-      authenticationService.revokeBearerToken(
-        tokenSecret = it,
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-      )
-    }
-    return ResponseEntity.noContent()
-      .header(HttpHeaders.SET_COOKIE, expiredSessionCookie().toString())
-      .build()
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    authApplicationService.logout(
+      client = client,
+      sessionSecret = servletRequest.sessionCookieValue(),
+      bearerToken = servletRequest.bearerTokenValue(),
+    )
+    return sessionCookieWriter.logoutResponse()
   }
 
   @GetMapping("/memberships")
-  suspend fun memberships(): List<MembershipResponse> {
-    val principal = currentPrincipal()
-    return membershipService.listActiveMemberships(principal.user.id).map {
-      MembershipResponse.from(it)
-    }
-  }
+  @SessionSecured
+  @Operation(
+    summary = "List memberships",
+    description = "Lists tenant memberships for the authenticated user.",
+  )
+  suspend fun memberships(principal: AuthenticatedPrincipal): List<MembershipResponse> =
+    authApplicationService.listMemberships(principal).map { MembershipResponse.from(it) }
 
   @GetMapping("/login-options")
+  @Operation(
+    summary = "List login options",
+    description = "Discovers tenant and login method options for an identifier.",
+  )
   suspend fun loginOptions(@RequestParam identifier: String): List<LoginOptionResponse> =
-    loginAccounts.listLoginOptionsForIdentifier(normalizeSubject(identifier)).map {
-      LoginOptionResponse(
-        tenantApiId = it.tenantApiId,
-        tenantName = it.tenantName,
-        loginMethodCode = it.loginMethodCode,
-        loginMethodKind = it.loginMethodKind,
-        loginMethodName = it.loginMethodName,
-      )
-    }
+    authApplicationService.listLoginOptions(identifier).map { LoginOptionResponse.from(it) }
 
   @PostMapping("/tokens")
+  @SessionSecured
+  @Operation(
+    summary = "Issue bearer token",
+    description = "Creates a long-lived bearer token for API access.",
+  )
   suspend fun createToken(
     @Valid @RequestBody request: CreateTokenRequest,
+    principal: AuthenticatedPrincipal,
     servletRequest: HttpServletRequest,
   ): IssuedTokenResponse {
-    val principal = currentPrincipal()
-    val loginAccountId =
-      principal.loginAccountId ?: throw AuthenticationFailedException("Authentication required.")
-    val tenantId = request.tenantId ?: sessionService.requireActiveTenantId(principal)
-    val token =
-      authenticationService.createBearerToken(
-        userId = principal.user.id,
-        loginAccountId = loginAccountId,
-        tenantId = tenantId,
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    return IssuedTokenResponse.from(
+      authApplicationService.issueBearerToken(
+        principal = principal,
+        tenantId = request.tenantId,
         name = request.name,
-        scopes = request.scopes.toSet(),
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
+        scopes = request.scopes,
+        client = client,
       )
-    return IssuedTokenResponse(id = token.id, token = token.secret, expiresAt = token.expiresAt)
-  }
-
-  @DeleteMapping("/tokens/{id}")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  suspend fun revokeToken(
-    @PathVariable id: UUID,
-    servletRequest: HttpServletRequest,
-  ) {
-    authenticationService.revokeBearerTokenById(
-      tokenId = id,
-      actorUserId = currentPrincipal().user.id,
-      ipAddress = servletRequest.remoteAddr,
-      userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
     )
   }
 
+  @DeleteMapping("/tokens/{id}")
+  @SessionSecured
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Revoke bearer token", description = "Revokes a bearer token by public id.")
+  suspend fun revokeToken(
+    @PathVariable id: String,
+    principal: AuthenticatedPrincipal,
+    servletRequest: HttpServletRequest,
+  ) {
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    authApplicationService.revokeBearerToken(principal, id, client)
+  }
+
   @PostMapping("/federated/authorize")
+  @Operation(
+    summary = "Start federated login",
+    description = "Begins OAuth or SAML authorization for the given tenant and login method.",
+  )
   suspend fun federatedAuthorize(
     @Valid @RequestBody request: FederatedAuthorizeRequest,
     servletRequest: HttpServletRequest,
   ): FederatedAuthorizeResponse {
     val redirectUri =
-      request.redirectUri ?: defaultRedirectUri(servletRequest, "/api/auth/oauth2/callback")
-    val result =
-      federatedAuthService.beginAuthorize(
-        loginMethodCode = request.loginMethodCode,
-        tenantApiId = request.tenantApiId,
+      request.redirectUri ?: servletRequest.defaultRedirectUri("/api/auth/oauth2/callback")
+    return FederatedAuthorizeResponse.from(
+      authApplicationService.beginFederatedAuthorize(
+        loginMethodId = request.loginMethodId,
+        tenantId = request.tenantId,
         returnUrl = request.returnUrl,
         redirectUri = redirectUri,
       )
-    return FederatedAuthorizeResponse(
-      authorizationUrl = result.authorizationUrl,
-      state = result.state,
     )
   }
 
   @GetMapping("/oauth2/callback")
+  @Operation(
+    summary = "OAuth callback",
+    description = "Completes OAuth login after provider redirect.",
+  )
   suspend fun oauthCallback(
     @RequestParam code: String,
     @RequestParam state: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
-    val redirectUri = defaultRedirectUri(servletRequest, "/api/auth/oauth2/callback")
-    val identity = federatedAuthService.completeOAuthCallback(code, state, redirectUri)
-    val result =
-      authenticationService.completeLogin(
-        identity = identity,
-        issueBearerToken = false,
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-      )
-    return loginResponse(result)
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    val redirectUri = servletRequest.defaultRedirectUri("/api/auth/oauth2/callback")
+    val view = authApplicationService.completeOAuthLogin(code, state, redirectUri, client)
+    return sessionCookieWriter.loginResponse(LoginResponse.from(view), view.sessionSecret)
   }
 
   @PostMapping("/saml2/acs")
+  @Operation(
+    summary = "SAML assertion consumer",
+    description = "Completes SAML login from the identity provider POST.",
+  )
   suspend fun samlAcs(
     @RequestParam("SAMLResponse") samlResponse: String,
     @RequestParam("RelayState") relayState: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
-    val identity = federatedAuthService.completeSamlAcs(samlResponse, relayState)
-    val result =
-      authenticationService.completeLogin(
-        identity = identity,
-        issueBearerToken = false,
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-      )
-    return loginResponse(result)
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    val view = authApplicationService.completeSamlLogin(samlResponse, relayState, client)
+    return sessionCookieWriter.loginResponse(LoginResponse.from(view), view.sessionSecret)
   }
 
   @PostMapping("/magic-link/request")
   @ResponseStatus(HttpStatus.ACCEPTED)
+  @Operation(
+    summary = "Request magic link",
+    description = "Sends a magic-link email for passwordless sign-in.",
+  )
   suspend fun requestMagicLink(@Valid @RequestBody request: MagicLinkRequest) {
-    magicLinkAuthService.requestMagicLink(
+    authApplicationService.requestMagicLink(
       email = request.email,
-      tenantApiId = request.tenantApiId,
-      loginMethodCode = request.loginMethodCode,
+      tenantId = request.tenantId,
+      loginMethodId = request.loginMethodId,
     )
   }
 
   @GetMapping("/magic-link/verify")
+  @Operation(
+    summary = "Verify magic link",
+    description = "Completes magic-link login from the email link.",
+  )
   suspend fun verifyMagicLink(
     @RequestParam token: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
-    val identity = magicLinkAuthService.resolveToken(token)
-    val result =
-      authenticationService.completeLogin(
-        identity =
-          identity.let {
-            doa.ink.workbench.core.identity.model.AuthenticatedIdentity(
-              user = it.user,
-              loginAccount = it.loginAccount,
-            )
-          },
-        issueBearerToken = false,
-        ipAddress = servletRequest.remoteAddr,
-        userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
-        tenantIdForAudit = null,
-      )
-    return loginResponse(result)
-  }
-
-  private fun loginResponse(
-    result: doa.ink.workbench.core.identity.model.AuthenticationResult
-  ): ResponseEntity<LoginResponse> {
-    val cookie = sessionCookie(result.session.secret, result.session.expiresAt)
-    return ResponseEntity.status(HttpStatus.OK)
-      .header(HttpHeaders.SET_COOKIE, cookie.toString())
-      .body(
-        LoginResponse(
-          user =
-            AuthenticatedUserResponse(
-              id = result.principal.user.id,
-              apiId = result.principal.user.apiId.value,
-              displayName = result.principal.user.displayName,
-              primaryEmail = result.principal.user.primaryEmail,
-            ),
-          sessionExpiresAt = result.session.expiresAt,
-          bearerToken =
-            result.bearerToken?.let {
-              IssuedTokenResponse(id = it.id, token = it.secret, expiresAt = it.expiresAt)
-            },
-        )
-      )
-  }
-
-  private fun defaultRedirectUri(request: HttpServletRequest, path: String): String {
-    val scheme = request.scheme
-    val host = request.serverName
-    val port = request.serverPort
-    val portSuffix = if (isDefaultPort(scheme, port)) "" else ":$port"
-    return "$scheme://$host$portSuffix$path"
-  }
-
-  private fun isDefaultPort(scheme: String, port: Int): Boolean =
-    (scheme == "http" && port == 80) || (scheme == "https" && port == 443)
-
-  private fun sessionCookie(secret: String, expiresAt: OffsetDateTime): ResponseCookie {
-    val maxAge = Duration.between(OffsetDateTime.now(clock), expiresAt).coerceAtLeast(Duration.ZERO)
-    return ResponseCookie.from(WORKBENCH_SESSION_COOKIE_NAME, secret)
-      .httpOnly(true)
-      .secure(true)
-      .sameSite("Lax")
-      .path("/")
-      .maxAge(maxAge)
-      .build()
-  }
-
-  private fun expiredSessionCookie(): ResponseCookie =
-    ResponseCookie.from(WORKBENCH_SESSION_COOKIE_NAME, "")
-      .httpOnly(true)
-      .secure(true)
-      .sameSite("Lax")
-      .path("/")
-      .maxAge(Duration.ZERO)
-      .build()
-
-  private fun currentPrincipal(): AuthenticatedPrincipal =
-    SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedPrincipal
-      ?: throw AuthenticationFailedException("Authentication required.")
-
-  private fun sessionCookieValue(request: HttpServletRequest): String? =
-    request.cookies
-      ?.firstOrNull { it.name == WORKBENCH_SESSION_COOKIE_NAME }
-      ?.value
-      ?.takeIf { it.isNotBlank() }
-
-  private fun bearerToken(request: HttpServletRequest): String? {
-    val value = request.getHeader(HttpHeaders.AUTHORIZATION)
-    return value
-      ?.takeIf { it.startsWith("Bearer ", ignoreCase = true) }
-      ?.substringAfter(" ")
-      ?.trim()
-      ?.takeIf { it.isNotEmpty() }
+    val client = HttpClientContext.from(servletRequest).toServiceContext()
+    val view = authApplicationService.verifyMagicLink(token, client)
+    return sessionCookieWriter.loginResponse(LoginResponse.from(view), view.sessionSecret)
   }
 }
-
-data class LoginRequest(
-  val method: LoginMethodKind,
-  val loginMethodCode: String? = null,
-  val tenantApiId: String? = null,
-  val subject: String? = null,
-  val password: String? = null,
-  val token: String? = null,
-  val email: String? = null,
-  val issueBearerToken: Boolean = false,
-)
-
-data class LoginResponse(
-  val user: AuthenticatedUserResponse,
-  val sessionExpiresAt: OffsetDateTime,
-  val bearerToken: IssuedTokenResponse?,
-)
-
-data class AuthenticatedUserResponse(
-  val id: UUID,
-  val apiId: String,
-  val displayName: String,
-  val primaryEmail: String?,
-)
-
-data class IssuedTokenResponse(
-  val id: UUID,
-  val token: String,
-  val expiresAt: OffsetDateTime,
-)
-
-data class CreateTokenRequest(
-  val tenantId: UUID? = null,
-  val name: String? = null,
-  val scopes: List<String> = listOf("workbench.api"),
-)
-
-data class MembershipResponse(
-  val tenantApiId: String,
-  val tenantName: String,
-  val tenantSlug: String,
-  val membershipApiId: String,
-) {
-  companion object {
-    fun from(view: doa.ink.workbench.service.identity.TenantMembershipView) =
-      MembershipResponse(
-        tenantApiId = view.tenant.apiId.value,
-        tenantName = view.tenant.name,
-        tenantSlug = view.tenant.slug,
-        membershipApiId = view.membership.apiId.value,
-      )
-  }
-}
-
-data class LoginOptionResponse(
-  val tenantApiId: String,
-  val tenantName: String,
-  val loginMethodCode: String,
-  val loginMethodKind: LoginMethodKind,
-  val loginMethodName: String,
-)
-
-data class FederatedAuthorizeRequest(
-  @field:NotBlank val loginMethodCode: String,
-  @field:NotBlank val tenantApiId: String,
-  @field:NotBlank val returnUrl: String,
-  val redirectUri: String? = null,
-)
-
-data class FederatedAuthorizeResponse(
-  val authorizationUrl: String,
-  val state: String,
-)
-
-data class MagicLinkRequest(
-  @field:NotBlank val email: String,
-  @field:NotBlank val tenantApiId: String,
-  @field:NotBlank val loginMethodCode: String,
-)

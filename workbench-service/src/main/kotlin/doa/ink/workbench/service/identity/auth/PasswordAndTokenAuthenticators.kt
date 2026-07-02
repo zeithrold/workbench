@@ -58,7 +58,8 @@ class ApiTokenLoginAuthenticator(
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     val token =
       command.token ?: throw InvalidRequestException("token is required for api_token login.")
-    val methodCode = command.loginMethodCode ?: "api_token"
+    val methodCode =
+      command.loginMethodId?.let { loginAccounts.findLoginMethodByApiId(it)?.code } ?: "api_token"
     val tokenHash = credentialHasher.hash(token)
 
     val account =
@@ -85,25 +86,23 @@ class LdapLoginAuthenticator(
   override val kind: LoginMethodKind = LoginMethodKind.LDAP
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
-    val methodCode =
-      command.loginMethodCode
-        ?: throw InvalidRequestException("loginMethodCode is required for ldap login.")
-    val tenantApiId =
-      command.tenantApiId
-        ?: throw InvalidRequestException("tenantApiId is required for ldap login.")
+    val loginMethodId =
+      command.loginMethodId
+        ?: throw InvalidRequestException("loginMethodId is required for ldap login.")
+    val tenantId =
+      command.tenantId ?: throw InvalidRequestException("tenantId is required for ldap login.")
     val subject =
       command.subject ?: throw InvalidRequestException("subject is required for ldap login.")
     val password =
       command.password ?: throw InvalidRequestException("password is required for ldap login.")
 
     val tenant =
-      tenants.findByApiId(tenantApiId)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+      tenants.findByApiId(tenantId) ?: throw AuthenticationFailedException("Invalid credentials.")
     val method =
-      loginAccounts.findLoginMethodByCode(methodCode)
+      loginAccounts.findLoginMethodByApiId(loginMethodId)
         ?: throw AuthenticationFailedException("Invalid credentials.")
     if (method.kind != LoginMethodKind.LDAP) {
-      throw InvalidRequestException("Login method $methodCode is not LDAP.")
+      throw InvalidRequestException("Login method $loginMethodId is not LDAP.")
     }
     val setting = loginAccounts.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
@@ -112,7 +111,7 @@ class LdapLoginAuthenticator(
 
     val normalizedSubject = ldapClient.authenticate(setting, subject, password)
     val account =
-      loginAccounts.findLoginAccountByMethodAndSubject(methodCode, normalizedSubject)
+      loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
         ?: throw AuthenticationFailedException("Invalid credentials.")
     val user =
       loginAccounts.findLinkedUser(account.id)
