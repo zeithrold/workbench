@@ -1,5 +1,6 @@
 package doa.ink.workbench.security
 
+import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -22,15 +23,18 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
         }
       }
       .authorizeHttpRequests {
+        it.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
         it.requestMatchers("/actuator/health", "/scalar/**", "/v3/api-docs/**").permitAll()
-        it.requestMatchers(
-          "/api/auth/login",
-          "/api/auth/login-options",
-          "/api/auth/federated/**",
-          "/api/auth/oauth2/callback",
-          "/api/auth/saml2/**",
-          "/api/auth/magic-link/**",
-        ).permitAll()
+        it
+          .requestMatchers(
+            "/api/auth/login",
+            "/api/auth/login-options",
+            "/api/auth/federated/**",
+            "/api/auth/oauth2/callback",
+            "/api/auth/saml2/**",
+            "/api/auth/magic-link/**",
+          )
+          .permitAll()
         it.anyRequest().authenticated()
       }
       .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
