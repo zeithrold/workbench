@@ -20,5 +20,5 @@ dependencies {
 }
 
 springBoot {
-  mainClass.set("doa.ink.workbench.WorkbenchWorkerApplicationKt")
+  mainClass.set("doa.ink.workbench.worker.WorkbenchWorkerApplicationKt")
 }

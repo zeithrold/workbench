@@ -1,5 +1,8 @@
 spring:
   application:
     name: workbench-worker
+  threads:
+    virtual:
+      enabled: true
   main:
     web-application-type: none

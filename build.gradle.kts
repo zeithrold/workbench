@@ -79,7 +79,9 @@ configure(backendProjects) {
                         "*.WorkbenchApplication*",
                         "*.WorkbenchWorkerApplication*",
                         "*.api.*Configuration",
+                        "*.security.*Configuration",
                         "*.infrastructure.persistence.*Configuration",
+                        "*.data.persistence.*Configuration",
                     )
                 }
             }
