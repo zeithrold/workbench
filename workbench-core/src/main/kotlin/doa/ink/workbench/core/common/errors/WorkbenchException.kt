@@ -6,6 +6,8 @@ class ResourceNotFoundException(message: String) : WorkbenchException(message)
 
 class PermissionDeniedException(message: String) : WorkbenchException(message)
 
+class AuthenticationFailedException(message: String) : WorkbenchException(message)
+
 class InvalidRequestException(message: String) : WorkbenchException(message)
 
 class InfrastructureUnavailableException(

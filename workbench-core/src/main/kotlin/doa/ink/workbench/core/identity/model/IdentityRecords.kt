@@ -1,6 +1,7 @@
 package doa.ink.workbench.core.identity.model
 
 import doa.ink.workbench.core.common.ids.PublicId
+import java.time.OffsetDateTime
 import java.util.UUID
 
 data class TenantRecord(val id: UUID, val apiId: PublicId, val slug: String, val name: String)
@@ -10,10 +11,65 @@ data class UserRecord(
   val apiId: PublicId,
   val displayName: String,
   val primaryEmail: String?,
+  val avatarUrl: String? = null,
+  val timezone: String? = null,
+  val locale: String? = null,
+  val isSystem: Boolean = false,
+  val createdAt: OffsetDateTime? = null,
+  val updatedAt: OffsetDateTime? = null,
 )
 
 data class AuthenticatedPrincipal(
   val user: UserRecord,
+  val loginAccountId: UUID?,
   val sessionId: String?,
   val bearerTokenId: String?,
 )
+
+enum class TenantMemberStatus(val dbValue: String) {
+  ACTIVE("active"),
+  INVITED("invited"),
+  SUSPENDED("suspended"),
+  REMOVED("removed"),
+}
+
+enum class LoginMethodKind(val dbValue: String) {
+  PASSWORD("password"),
+  EMAIL_MAGIC_LINK("email_magic_link"),
+  OAUTH2("oauth2"),
+  OIDC("oidc"),
+  LDAP("ldap"),
+  SAML("saml"),
+  API_TOKEN("api_token"),
+}
+
+enum class AuthEventType(val dbValue: String) {
+  LOGIN_SUCCESS("login_success"),
+  LOGIN_FAILURE("login_failure"),
+  LOGOUT("logout"),
+  PASSWORD_CHANGED("password_changed"),
+  PASSWORD_RESET_REQUESTED("password_reset_requested"),
+  CREDENTIAL_LINKED("credential_linked"),
+  CREDENTIAL_UNLINKED("credential_unlinked"),
+  TOKEN_CREATED("token_created"),
+  TOKEN_REVOKED("token_revoked"),
+}
+
+enum class AuditEventResult(val dbValue: String) {
+  SUCCESS("success"),
+  FAILURE("failure"),
+}
+
+@JvmInline
+value class LoginAccountParameterKey(val value: String) {
+  init {
+    require(value.matches(Regex("^[a-z][a-z0-9_]*$"))) {
+      "Login account parameter key must be lower snake case."
+    }
+  }
+
+  companion object {
+    val PasswordHash = LoginAccountParameterKey("password_hash")
+    val ApiTokenHash = LoginAccountParameterKey("api_token_hash")
+  }
+}

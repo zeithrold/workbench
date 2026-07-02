@@ -2,6 +2,7 @@ package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.context.ApiVersion
 import doa.ink.workbench.core.common.context.RequestContext
+import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import java.time.Clock
 import java.util.UUID
 import org.springframework.context.annotation.Configuration
@@ -12,6 +13,7 @@ import org.springframework.web.context.request.NativeWebRequest
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import org.springframework.security.core.context.SecurityContextHolder
 
 @Component
 class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentResolver {
@@ -27,11 +29,13 @@ class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentRe
     val version =
       webRequest.getAttribute(ApiVersion::class.java.name, NativeWebRequest.SCOPE_REQUEST)
         as? ApiVersion ?: ApiVersion.Default
+    val principal =
+      SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedPrincipal
     return RequestContext(
       requestId = webRequest.getHeader("X-Request-Id") ?: UUID.randomUUID().toString(),
       apiVersion = version,
-      actorUserId = null,
-      actorPublicId = null,
+      actorUserId = principal?.user?.id,
+      actorPublicId = principal?.user?.apiId,
       receivedAt = clock.instant(),
     )
   }

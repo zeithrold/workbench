@@ -4,6 +4,7 @@ import doa.ink.workbench.core.common.errors.InfrastructureUnavailableException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import java.net.URI
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
@@ -21,6 +22,10 @@ class GlobalExceptionHandler {
   @ExceptionHandler(PermissionDeniedException::class)
   fun denied(error: PermissionDeniedException): ProblemDetail =
     problem(HttpStatus.FORBIDDEN, "Permission Denied", error.message.orEmpty())
+
+  @ExceptionHandler(AuthenticationFailedException::class)
+  fun authenticationFailed(error: AuthenticationFailedException): ProblemDetail =
+    problem(HttpStatus.UNAUTHORIZED, "Authentication Failed", error.message.orEmpty())
 
   @ExceptionHandler(InvalidRequestException::class, IllegalArgumentException::class)
   fun invalid(error: RuntimeException): ProblemDetail =

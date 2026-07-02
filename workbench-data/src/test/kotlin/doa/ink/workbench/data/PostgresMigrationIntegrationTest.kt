@@ -18,7 +18,7 @@ class PostgresMigrationIntegrationTest :
             .load()
             .migrate()
 
-        result.migrationsExecuted shouldBe 2
+        result.migrationsExecuted shouldBe 3
       }
     }
   })
