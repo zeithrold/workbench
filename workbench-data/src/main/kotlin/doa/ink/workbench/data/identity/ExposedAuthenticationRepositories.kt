@@ -12,6 +12,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
@@ -112,6 +114,10 @@ class ExposedBearerTokenRepository(private val database: Database) : BearerToken
         it[tokenHash] = command.tokenHash
         it[userId] = command.userId.toKotlinUuid()
         it[loginAccountId] = command.loginAccountId.toKotlinUuid()
+        it[tenantId] = command.tenantId?.toKotlinUuid()
+        it[name] = command.name
+        it[scopes] = JsonArray(command.scopes.sorted().map { scope -> JsonPrimitive(scope) })
+        it[createdBy] = command.createdBy?.toKotlinUuid()
         it[expiresAt] = command.expiresAt
         it[createdAt] = now
         it[updatedAt] = now

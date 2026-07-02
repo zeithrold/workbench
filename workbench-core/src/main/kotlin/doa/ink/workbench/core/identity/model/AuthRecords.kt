@@ -113,6 +113,10 @@ data class BearerTokenRecord(
   val tokenHash: String,
   val userId: UUID,
   val loginAccountId: UUID,
+  val tenantId: UUID?,
+  val name: String?,
+  val scopes: Set<String>,
+  val createdBy: UUID?,
   val expiresAt: OffsetDateTime,
   val revokedAt: OffsetDateTime?,
   val lastUsedAt: OffsetDateTime?,
@@ -158,6 +162,10 @@ data class CreateBearerTokenCommand(
   val userId: UUID,
   val loginAccountId: UUID,
   val expiresAt: OffsetDateTime,
+  val tenantId: UUID? = null,
+  val name: String? = null,
+  val scopes: Set<String> = emptySet(),
+  val createdBy: UUID? = null,
 )
 
 enum class AuthenticationFailureReason(val eventValue: String) {

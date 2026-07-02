@@ -22,7 +22,23 @@ annotation class RateLimited(val permitsPerMinute: Long = 120)
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
+@Deprecated("Use @Authorize with a complete authorization resource model.")
 annotation class RequirePermission(val action: String)
+
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Authorize(
+  val action: String,
+  val resource: String,
+)
+
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ResourceId
+
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ResourceProjectId
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)

@@ -12,6 +12,8 @@ import doa.ink.workbench.data.persistence.AuthSessionsTable
 import doa.ink.workbench.data.persistence.BearerTokensTable
 import doa.ink.workbench.data.persistence.MagicLinkTokensTable
 import kotlin.uuid.toJavaUuid
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.exposed.v1.core.ResultRow
 
 internal fun ResultRow.toAuthEventRecord() =
@@ -51,6 +53,13 @@ internal fun ResultRow.toBearerTokenRecord() =
     tokenHash = this[BearerTokensTable.tokenHash],
     userId = this[BearerTokensTable.userId].toJavaUuid(),
     loginAccountId = this[BearerTokensTable.loginAccountId].toJavaUuid(),
+    tenantId = this[BearerTokensTable.tenantId]?.toJavaUuid(),
+    name = this[BearerTokensTable.name],
+    scopes =
+      (this[BearerTokensTable.scopes] as? JsonArray)
+        ?.mapNotNull { (it as? JsonPrimitive)?.content }
+        ?.toSet() ?: emptySet(),
+    createdBy = this[BearerTokensTable.createdBy]?.toJavaUuid(),
     expiresAt = this[BearerTokensTable.expiresAt],
     revokedAt = this[BearerTokensTable.revokedAt],
     lastUsedAt = this[BearerTokensTable.lastUsedAt],

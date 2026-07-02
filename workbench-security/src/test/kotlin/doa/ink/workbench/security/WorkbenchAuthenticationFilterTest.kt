@@ -9,6 +9,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
 import org.springframework.http.HttpHeaders
+import org.springframework.mock.web.MockCookie
 import org.springframework.mock.web.MockFilterChain
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
@@ -40,6 +41,37 @@ class WorkbenchAuthenticationFilterTest :
       filter.doFilter(request, MockHttpServletResponse(), MockFilterChain())
 
       SecurityContextHolder.getContext().authentication?.principal shouldBe PRINCIPAL
+    }
+
+    "invalid bearer token returns unauthorized without falling back to session cookie" {
+      var sessionAuthenticatorCalled = false
+      val filter =
+        WorkbenchAuthenticationFilter(
+          sessionAuthenticator =
+            object : SessionAuthenticator {
+              override suspend fun authenticateSession(sessionId: String): AuthenticatedPrincipal? {
+                sessionAuthenticatorCalled = true
+                return PRINCIPAL
+              }
+            },
+          bearerTokenAuthenticator =
+            object : BearerTokenAuthenticator {
+              override suspend fun authenticateBearerToken(token: String): AuthenticatedPrincipal? =
+                null
+            },
+        )
+      val response = MockHttpServletResponse()
+      val request =
+        MockHttpServletRequest().apply {
+          addHeader(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+          setCookies(MockCookie(WORKBENCH_SESSION_COOKIE_NAME, "valid-session"))
+        }
+
+      filter.doFilter(request, response, MockFilterChain())
+
+      response.status shouldBe 401
+      sessionAuthenticatorCalled shouldBe false
+      SecurityContextHolder.getContext().authentication shouldBe null
     }
   }) {
   private companion object {

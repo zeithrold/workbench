@@ -19,6 +19,7 @@ import doa.ink.workbench.core.identity.model.AuthenticationResult
 import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
 import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
 import doa.ink.workbench.core.identity.model.CreateBearerTokenCommand
+import doa.ink.workbench.core.identity.model.CredentialType
 import doa.ink.workbench.core.identity.model.IssuedCredential
 import doa.ink.workbench.core.identity.model.LoginCommand
 import java.time.Clock
@@ -65,8 +66,17 @@ class AuthenticationService(
     val now = now()
     val session = issueSession(identity.user.id, identity.loginAccount.id, now)
     val bearerToken =
-      if (issueBearerToken) issueBearerToken(identity.user.id, identity.loginAccount.id, now)
-      else null
+      if (issueBearerToken) {
+        issueBearerToken(
+          userId = identity.user.id,
+          loginAccountId = identity.loginAccount.id,
+          tenantId = tenantIdForAudit,
+          name = null,
+          scopes = setOf("workbench.api"),
+          createdBy = identity.user.id,
+          now = now,
+        )
+      } else null
     loginAccounts.touchLastUsed(identity.loginAccount.id, now)
     authEvents.append(
       CreateAuthEventCommand(
@@ -87,6 +97,7 @@ class AuthenticationService(
           loginAccountId = identity.loginAccount.id,
           sessionId = session.id.toString(),
           bearerTokenId = bearerToken?.id?.toString(),
+          credentialType = CredentialType.SESSION,
         ),
       session = session,
       bearerToken = bearerToken,
@@ -96,12 +107,24 @@ class AuthenticationService(
   suspend fun createBearerToken(
     userId: UUID,
     loginAccountId: UUID,
+    tenantId: UUID?,
+    name: String?,
+    scopes: Set<String>,
     ipAddress: String?,
     userAgent: String?,
   ): IssuedCredential {
     val user =
       users.findById(userId) ?: throw InvalidRequestException("Authenticated user not found.")
-    val token = issueBearerToken(user.id, loginAccountId, now())
+    val token =
+      issueBearerToken(
+        userId = user.id,
+        loginAccountId = loginAccountId,
+        tenantId = tenantId,
+        name = name,
+        scopes = scopes.ifEmpty { setOf("workbench.api") },
+        createdBy = user.id,
+        now = now(),
+      )
     authEvents.append(
       CreateAuthEventCommand(
         userId = user.id,
@@ -203,6 +226,8 @@ class AuthenticationService(
           loginAccountId = it.loginAccountId,
           sessionId = it.id.toString(),
           bearerTokenId = null,
+          credentialType = CredentialType.SESSION,
+          tenantId = it.activeTenantId,
         )
       }
     }
@@ -220,6 +245,9 @@ class AuthenticationService(
           loginAccountId = it.loginAccountId,
           sessionId = null,
           bearerTokenId = it.id.toString(),
+          credentialType = CredentialType.BEARER_TOKEN,
+          tenantId = it.tenantId,
+          credentialScopes = it.scopes,
         )
       }
     }
@@ -248,6 +276,10 @@ class AuthenticationService(
   private suspend fun issueBearerToken(
     userId: UUID,
     loginAccountId: UUID,
+    tenantId: UUID?,
+    name: String?,
+    scopes: Set<String>,
+    createdBy: UUID?,
     now: OffsetDateTime,
   ): IssuedCredential {
     val secret = secretGenerator.generate()
@@ -259,6 +291,10 @@ class AuthenticationService(
           userId = userId,
           loginAccountId = loginAccountId,
           expiresAt = now.plus(tokenTtl),
+          tenantId = tenantId,
+          name = name,
+          scopes = scopes,
+          createdBy = createdBy,
         )
       )
     return IssuedCredential(token.id, secret, token.expiresAt)

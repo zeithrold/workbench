@@ -66,6 +66,13 @@ class SessionService(
   }
 
   suspend fun requireActiveTenantId(principal: AuthenticatedPrincipal): UUID {
+    principal.tenantId?.let { tenantId ->
+      val membership = tenantMembers.findByTenantAndUser(tenantId, principal.user.id)
+      if (membership?.status != TenantMemberStatus.ACTIVE) {
+        throw PermissionDeniedException("You are not an active member of the selected tenant.")
+      }
+      return tenantId
+    }
     val sessionId = sessionUuid(principal)
     val session =
       sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
