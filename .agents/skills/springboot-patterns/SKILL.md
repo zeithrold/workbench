@@ -9,6 +9,8 @@ metadata:
 
 Spring Boot architecture and API patterns for scalable, production-grade services.
 
+> **Workbench HTTP API shape:** follow [api-design](../api-design/SKILL.md) for REST conventions, payloads, and errors — not the `ApiError` / `Page<T>` examples below.
+
 ## When to Activate
 
 - Building REST APIs with Spring MVC or WebFlux
