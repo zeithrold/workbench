@@ -1,3 +1,5 @@
+@file:Suppress("ReturnCount", "ThrowsCount", "UnusedParameter")
+
 package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
@@ -55,7 +57,9 @@ class FederatedAuthService(
       loginAccounts.findLoginMethodByCode(loginMethodCode)
         ?: throw InvalidRequestException("Unknown login method: $loginMethodCode")
     if (method.kind !in setOf(LoginMethodKind.OAUTH2, LoginMethodKind.OIDC, LoginMethodKind.SAML)) {
-      throw InvalidRequestException("Login method $loginMethodCode does not support federated authorize.")
+      throw InvalidRequestException(
+        "Login method $loginMethodCode does not support federated authorize."
+      )
     }
     val setting = loginAccounts.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
@@ -82,14 +86,26 @@ class FederatedAuthService(
     val authorizationUrl =
       when (method.kind) {
         LoginMethodKind.SAML -> buildSamlAuthorizeUrl(config, redirectUri, state)
-        LoginMethodKind.OAUTH2, LoginMethodKind.OIDC ->
-          buildOAuthAuthorizeUrl(config, setting.secretRef, redirectUri, state, challenge, method.kind)
+        LoginMethodKind.OAUTH2,
+        LoginMethodKind.OIDC ->
+          buildOAuthAuthorizeUrl(
+            config,
+            setting.secretRef,
+            redirectUri,
+            state,
+            challenge,
+            method.kind,
+          )
         else -> throw InvalidRequestException("Login method does not support federated authorize.")
       }
     return FederatedAuthorizeResult(authorizationUrl = authorizationUrl, state = state)
   }
 
-  suspend fun completeOAuthCallback(code: String, state: String, redirectUri: String): AuthenticatedIdentity {
+  suspend fun completeOAuthCallback(
+    code: String,
+    state: String,
+    redirectUri: String,
+  ): AuthenticatedIdentity {
     val now = OffsetDateTime.now(clock)
     val loginState =
       loginStates.findActiveByStateHash(credentialHasher.hash(state), now)
@@ -103,7 +119,14 @@ class FederatedAuthService(
       loginAccounts.findTenantSetting(loginState.tenantId, loginState.loginMethodId)
         ?: throw InvalidRequestException("Tenant login settings not found.")
     val config = setting.config as? JsonObject ?: JsonObject(emptyMap())
-    val tokenResponse = exchangeAuthorizationCode(config, setting.secretRef, code, redirectUri, loginState.pkceVerifier)
+    val tokenResponse =
+      exchangeAuthorizationCode(
+        config,
+        setting.secretRef,
+        code,
+        redirectUri,
+        loginState.pkceVerifier,
+      )
     val subject = fetchSubject(config, setting.secretRef, tokenResponse, methodRecord.kind)
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(methodRecord.code, normalizeSubject(subject))
@@ -141,11 +164,14 @@ class FederatedAuthService(
     challenge: String,
     kind: LoginMethodKind,
   ): String {
-    val clientId = config.stringValue("client_id") ?: throw InvalidRequestException("client_id missing in config.")
+    val clientId =
+      config.stringValue("client_id")
+        ?: throw InvalidRequestException("client_id missing in config.")
     val issuer = config.stringValue("issuer") ?: config.stringValue("authorization_endpoint_base")
     val authorizeEndpoint =
       when {
-        config.stringValue("authorization_endpoint") != null -> config.stringValue("authorization_endpoint")!!
+        config.stringValue("authorization_endpoint") != null ->
+          config.stringValue("authorization_endpoint")!!
         issuer != null && kind == LoginMethodKind.OIDC -> "$issuer/oauth2/v2.0/authorize"
         issuer != null -> "$issuer/oauth2/authorize"
         else -> throw InvalidRequestException("authorization endpoint missing in config.")
@@ -166,9 +192,14 @@ class FederatedAuthService(
     return authorizeEndpoint + "?" + params.entries.joinToString("&") { encode(it.key, it.value) }
   }
 
-  private fun buildSamlAuthorizeUrl(config: JsonObject, redirectUri: String, relayState: String): String {
+  private fun buildSamlAuthorizeUrl(
+    config: JsonObject,
+    redirectUri: String,
+    relayState: String,
+  ): String {
     val idpSsoUrl =
-      config.stringValue("idp_sso_url") ?: throw InvalidRequestException("idp_sso_url missing in SAML config.")
+      config.stringValue("idp_sso_url")
+        ?: throw InvalidRequestException("idp_sso_url missing in SAML config.")
     return idpSsoUrl + "?" + encode("RelayState", relayState) + "&" + encode("ACS", redirectUri)
   }
 
@@ -179,21 +210,21 @@ class FederatedAuthService(
     redirectUri: String,
     verifier: String?,
   ): JsonObject {
-    val clientId = config.stringValue("client_id") ?: throw InvalidRequestException("client_id missing.")
+    val clientId =
+      config.stringValue("client_id") ?: throw InvalidRequestException("client_id missing.")
     val clientSecret = secretRef?.let(secretResolver::resolve)
     val tokenEndpoint =
       config.stringValue("token_endpoint")
         ?: config.stringValue("issuer")?.let { "$it/oauth2/v2.0/token" }
         ?: throw InvalidRequestException("token_endpoint missing.")
-    val body =
-      buildString {
-        append("grant_type=authorization_code")
-        append("&code=").append(encodeValue(code))
-        append("&redirect_uri=").append(encodeValue(redirectUri))
-        append("&client_id=").append(encodeValue(clientId))
-        if (clientSecret != null) append("&client_secret=").append(encodeValue(clientSecret))
-        if (verifier != null) append("&code_verifier=").append(encodeValue(verifier))
-      }
+    val body = buildString {
+      append("grant_type=authorization_code")
+      append("&code=").append(encodeValue(code))
+      append("&redirect_uri=").append(encodeValue(redirectUri))
+      append("&client_id=").append(encodeValue(clientId))
+      if (clientSecret != null) append("&client_secret=").append(encodeValue(clientSecret))
+      if (verifier != null) append("&code_verifier=").append(encodeValue(verifier))
+    }
     val request =
       HttpRequest.newBuilder()
         .uri(URI.create(tokenEndpoint))
@@ -217,14 +248,21 @@ class FederatedAuthService(
       val payload = idToken.split(".").getOrNull(1) ?: return@let null
       val decoded = String(Base64.getUrlDecoder().decode(payload), StandardCharsets.UTF_8)
       val claims = json.parseToJsonElement(decoded).jsonObject
-      claims.stringValue("email")?.let { return it }
-      claims.stringValue("sub")?.let { return it }
+      claims.stringValue("email")?.let {
+        return it
+      }
+      claims.stringValue("sub")?.let {
+        return it
+      }
     }
     val accessToken =
-      tokenResponse.stringValue("access_token") ?: throw InvalidRequestException("access_token missing.")
+      tokenResponse.stringValue("access_token")
+        ?: throw InvalidRequestException("access_token missing.")
     val userInfoEndpoint =
       config.stringValue("userinfo_endpoint")
-        ?: config.stringValue("issuer")?.let { if (kind == LoginMethodKind.OIDC) "$it/oidc/userinfo" else null }
+        ?: config.stringValue("issuer")?.let {
+          if (kind == LoginMethodKind.OIDC) "$it/oidc/userinfo" else null
+        }
     if (userInfoEndpoint != null) {
       val request =
         HttpRequest.newBuilder()
@@ -235,21 +273,27 @@ class FederatedAuthService(
       val response = http.send(request, HttpResponse.BodyHandlers.ofString())
       if (response.statusCode() in 200..299) {
         val body = json.parseToJsonElement(response.body()).jsonObject
-        body.stringValue("email")?.let { return it }
-        body.stringValue("sub")?.let { return it }
+        body.stringValue("email")?.let {
+          return it
+        }
+        body.stringValue("sub")?.let {
+          return it
+        }
       }
     }
     throw InvalidRequestException("Unable to resolve federated subject.")
   }
 
   private fun pkceChallenge(verifier: String): String {
-    val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(StandardCharsets.US_ASCII))
+    val digest =
+      MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(StandardCharsets.US_ASCII))
     return Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
   }
 
   private fun JsonObject.stringValue(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
 
-  private fun encode(key: String, value: String): String = "${encodeValue(key)}=${encodeValue(value)}"
+  private fun encode(key: String, value: String): String =
+    "${encodeValue(key)}=${encodeValue(value)}"
 
   private fun encodeValue(value: String): String = URLEncoder.encode(value, StandardCharsets.UTF_8)
 }

@@ -65,7 +65,8 @@ class AuthenticationService(
     val now = now()
     val session = issueSession(identity.user.id, identity.loginAccount.id, now)
     val bearerToken =
-      if (issueBearerToken) issueBearerToken(identity.user.id, identity.loginAccount.id, now) else null
+      if (issueBearerToken) issueBearerToken(identity.user.id, identity.loginAccount.id, now)
+      else null
     loginAccounts.touchLastUsed(identity.loginAccount.id, now)
     authEvents.append(
       CreateAuthEventCommand(

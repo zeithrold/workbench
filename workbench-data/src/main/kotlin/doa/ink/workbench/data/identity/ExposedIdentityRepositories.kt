@@ -18,6 +18,7 @@ import doa.ink.workbench.core.identity.model.LoginAccountParameterRecord
 import doa.ink.workbench.core.identity.model.LoginAccountRecord
 import doa.ink.workbench.core.identity.model.LoginMethodDefinitionRecord
 import doa.ink.workbench.core.identity.model.TenantLoginMethodSettingRecord
+import doa.ink.workbench.core.identity.model.TenantLoginOption
 import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import doa.ink.workbench.core.identity.model.UserLoginAccountRecord
@@ -27,7 +28,6 @@ import doa.ink.workbench.data.persistence.LoginAccountParametersTable
 import doa.ink.workbench.data.persistence.LoginAccountsTable
 import doa.ink.workbench.data.persistence.LoginMethodDefinitionsTable
 import doa.ink.workbench.data.persistence.TenantLoginMethodSettingsTable
-import doa.ink.workbench.core.identity.model.TenantLoginOption
 import doa.ink.workbench.data.persistence.TenantMembersTable
 import doa.ink.workbench.data.persistence.TenantsTable
 import doa.ink.workbench.data.persistence.UserLoginAccountsTable
@@ -370,7 +370,8 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
     suspendTransaction(db = database) {
       LoginMethodDefinitionsTable.selectAll()
         .where {
-          (LoginMethodDefinitionsTable.code eq code) and LoginMethodDefinitionsTable.isEnabledGlobally
+          (LoginMethodDefinitionsTable.code eq code) and
+            LoginMethodDefinitionsTable.isEnabledGlobally
         }
         .singleOrNull()
         ?.toLoginMethodDefinitionRecord()
@@ -412,7 +413,7 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
     }
 
   override suspend fun listLoginOptionsForIdentifier(
-    normalizedIdentifier: String,
+    normalizedIdentifier: String
   ): List<TenantLoginOption> =
     suspendTransaction(db = database) {
       val user =
@@ -421,8 +422,7 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
             (UsersTable.deletedAt.isNull()) and (UsersTable.primaryEmail eq normalizedIdentifier)
           }
           .singleOrNull()
-          ?.toUserRecord()
-          ?: findUserByMethodAndSubject("password", normalizedIdentifier)
+          ?.toUserRecord() ?: findUserByMethodAndSubject("password", normalizedIdentifier)
 
       if (user == null) {
         return@suspendTransaction emptyList()
@@ -441,7 +441,8 @@ class ExposedLoginAccountRepository(private val database: Database) : LoginAccou
         val tenant =
           TenantsTable.selectAll()
             .where {
-              (TenantsTable.id eq membership.tenantId.toKotlinUuid()) and TenantsTable.deletedAt.isNull()
+              (TenantsTable.id eq membership.tenantId.toKotlinUuid()) and
+                TenantsTable.deletedAt.isNull()
             }
             .singleOrNull()
             ?.toTenantRecord() ?: return@flatMap emptyList()

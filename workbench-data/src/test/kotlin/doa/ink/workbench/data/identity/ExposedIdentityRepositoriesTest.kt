@@ -132,13 +132,15 @@ class ExposedIdentityRepositoriesTest :
               loginMethodId = method.id,
               eventType = AuthEventType.TOKEN_CREATED,
               result = AuditEventResult.SUCCESS,
+              ipAddress = "127.0.0.1",
               metadata = JsonObject(mapOf("source" to JsonPrimitive("test"))),
             )
           )
 
         event.authEventId.value.startsWith("aut_") shouldBe true
+        event.ipAddress shouldBe "127.0.0.1"
         events.listRecentByUser(user.id, 5).shouldHaveSize(1)
-        events.listRecentByLoginAccount(loginAccount.id, 5).single().id shouldBe event.id
+        events.listRecentByLoginAccount(loginAccount.id, 5).single().ipAddress shouldBe "127.0.0.1"
       }
     }
 

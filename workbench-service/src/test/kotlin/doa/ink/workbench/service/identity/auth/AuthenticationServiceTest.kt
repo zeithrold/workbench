@@ -16,9 +16,9 @@ import doa.ink.workbench.core.identity.model.AuthSessionRecord
 import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
 import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
+import doa.ink.workbench.core.identity.model.LoginAccountRecord
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
-import doa.ink.workbench.core.identity.model.LoginAccountRecord
 import doa.ink.workbench.core.identity.model.UserRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -26,12 +26,12 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import kotlinx.coroutines.runBlocking
 
 class AuthenticationServiceTest :
   StringSpec({

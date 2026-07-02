@@ -12,7 +12,9 @@ class LoginOrchestrator(authenticators: List<LoginAuthenticator>) {
 
   suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     if (command.method in FEDERATED_OR_ASYNC_KINDS) {
-      throw InvalidRequestException("Login method ${command.method} must use the dedicated /api/auth endpoint.")
+      throw InvalidRequestException(
+        "Login method ${command.method} must use the dedicated /api/auth endpoint."
+      )
     }
     val authenticator =
       authenticatorsByKind[command.method]

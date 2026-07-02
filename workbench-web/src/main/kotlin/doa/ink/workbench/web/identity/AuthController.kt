@@ -14,6 +14,10 @@ import doa.ink.workbench.service.identity.auth.normalizeSubject
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
+import java.time.Clock
+import java.time.Duration
+import java.time.OffsetDateTime
+import java.util.UUID
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
@@ -28,13 +32,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import java.time.Clock
-import java.time.Duration
-import java.time.OffsetDateTime
-import java.util.UUID
 
 @RestController
 @RequestMapping("/api/auth")
+@Suppress("TooManyFunctions")
 class AuthController(
   private val authenticationService: AuthenticationService,
   private val membershipService: MembershipService,
@@ -63,7 +64,7 @@ class AuthController(
           userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
         )
       )
-    return loginResponse(result, servletRequest)
+    return loginResponse(result)
   }
 
   @PostMapping("/logout")
@@ -91,7 +92,9 @@ class AuthController(
   @GetMapping("/memberships")
   suspend fun memberships(): List<MembershipResponse> {
     val principal = currentPrincipal()
-    return membershipService.listActiveMemberships(principal.user.id).map { MembershipResponse.from(it) }
+    return membershipService.listActiveMemberships(principal.user.id).map {
+      MembershipResponse.from(it)
+    }
   }
 
   @GetMapping("/login-options")
@@ -140,7 +143,8 @@ class AuthController(
     @Valid @RequestBody request: FederatedAuthorizeRequest,
     servletRequest: HttpServletRequest,
   ): FederatedAuthorizeResponse {
-    val redirectUri = request.redirectUri ?: defaultRedirectUri(servletRequest, "/api/auth/oauth2/callback")
+    val redirectUri =
+      request.redirectUri ?: defaultRedirectUri(servletRequest, "/api/auth/oauth2/callback")
     val result =
       federatedAuthService.beginAuthorize(
         loginMethodCode = request.loginMethodCode,
@@ -148,7 +152,10 @@ class AuthController(
         returnUrl = request.returnUrl,
         redirectUri = redirectUri,
       )
-    return FederatedAuthorizeResponse(authorizationUrl = result.authorizationUrl, state = result.state)
+    return FederatedAuthorizeResponse(
+      authorizationUrl = result.authorizationUrl,
+      state = result.state,
+    )
   }
 
   @GetMapping("/oauth2/callback")
@@ -166,7 +173,7 @@ class AuthController(
         ipAddress = servletRequest.remoteAddr,
         userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
       )
-    return loginResponse(result, servletRequest)
+    return loginResponse(result)
   }
 
   @PostMapping("/saml2/acs")
@@ -183,7 +190,7 @@ class AuthController(
         ipAddress = servletRequest.remoteAddr,
         userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
       )
-    return loginResponse(result, servletRequest)
+    return loginResponse(result)
   }
 
   @PostMapping("/magic-link/request")
@@ -204,23 +211,23 @@ class AuthController(
     val identity = magicLinkAuthService.resolveToken(token)
     val result =
       authenticationService.completeLogin(
-        identity = identity.let {
-          doa.ink.workbench.core.identity.model.AuthenticatedIdentity(
-            user = it.user,
-            loginAccount = it.loginAccount,
-          )
-        },
+        identity =
+          identity.let {
+            doa.ink.workbench.core.identity.model.AuthenticatedIdentity(
+              user = it.user,
+              loginAccount = it.loginAccount,
+            )
+          },
         issueBearerToken = false,
         ipAddress = servletRequest.remoteAddr,
         userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT),
         tenantIdForAudit = null,
       )
-    return loginResponse(result, servletRequest)
+    return loginResponse(result)
   }
 
   private fun loginResponse(
-    result: doa.ink.workbench.core.identity.model.AuthenticationResult,
-    servletRequest: HttpServletRequest,
+    result: doa.ink.workbench.core.identity.model.AuthenticationResult
   ): ResponseEntity<LoginResponse> {
     val cookie = sessionCookie(result.session.secret, result.session.expiresAt)
     return ResponseEntity.status(HttpStatus.OK)
@@ -247,10 +254,12 @@ class AuthController(
     val scheme = request.scheme
     val host = request.serverName
     val port = request.serverPort
-    val portSuffix =
-      if ((scheme == "http" && port == 80) || (scheme == "https" && port == 443)) "" else ":$port"
+    val portSuffix = if (isDefaultPort(scheme, port)) "" else ":$port"
     return "$scheme://$host$portSuffix$path"
   }
+
+  private fun isDefaultPort(scheme: String, port: Int): Boolean =
+    (scheme == "http" && port == 80) || (scheme == "https" && port == 443)
 
   private fun sessionCookie(secret: String, expiresAt: OffsetDateTime): ResponseCookie {
     val maxAge = Duration.between(OffsetDateTime.now(clock), expiresAt).coerceAtLeast(Duration.ZERO)
