@@ -8,11 +8,17 @@ import doa.ink.workbench.service.identity.IssuedTokenView
 import doa.ink.workbench.service.identity.LoginOptionView
 import doa.ink.workbench.service.identity.LoginView
 import doa.ink.workbench.service.identity.TenantMembershipView
+import doa.ink.workbench.web.api.OpenApiExamples
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.OffsetDateTime
 
+@Schema(description = "Successful login payload. Also sets the WORKBENCH_SESSION cookie.")
 data class LoginResponse(
+  @field:Schema(description = "Authenticated user.")
   val user: UserSummary,
+  @field:Schema(description = "Session expiry.", example = "2026-07-02T12:00:00+00:00")
   val sessionExpiresAt: OffsetDateTime,
+  @field:Schema(description = "Optional long-lived bearer token when requested at login.")
   val bearerToken: IssuedTokenResponse?,
 ) {
   companion object {
@@ -32,9 +38,13 @@ data class LoginResponse(
   }
 }
 
+@Schema(description = "Issued bearer token credential.")
 data class IssuedTokenResponse(
+  @field:Schema(description = "Public token id.", example = OpenApiExamples.BEARER_TOKEN_ID)
   val id: String,
+  @field:Schema(description = "Opaque bearer secret. Shown only once at issuance.")
   val token: String,
+  @field:Schema(description = "Token expiry.", example = "2027-07-02T12:00:00+00:00")
   val expiresAt: OffsetDateTime,
 ) {
   companion object {
@@ -43,8 +53,11 @@ data class IssuedTokenResponse(
   }
 }
 
+@Schema(description = "User membership in a tenant.")
 data class MembershipResponse(
+  @field:Schema(description = "Public membership id.", example = OpenApiExamples.MEMBERSHIP_ID)
   val id: String,
+  @field:Schema(description = "Tenant the user belongs to.")
   val tenant: TenantSummary,
 ) {
   companion object {
@@ -53,8 +66,11 @@ data class MembershipResponse(
   }
 }
 
+@Schema(description = "Available tenant and login method pair for sign-in discovery.")
 data class LoginOptionResponse(
+  @field:Schema(description = "Tenant offering this login method.")
   val tenant: TenantSummary,
+  @field:Schema(description = "Login method available for the tenant.")
   val loginMethod: LoginMethodSummary,
 ) {
   companion object {
@@ -63,8 +79,11 @@ data class LoginOptionResponse(
   }
 }
 
+@Schema(description = "Federated authorization redirect details.")
 data class FederatedAuthorizeResponse(
+  @field:Schema(description = "Provider authorization URL to redirect the browser to.")
   val authorizationUrl: String,
+  @field:Schema(description = "Opaque state value echoed on callback.")
   val state: String,
 ) {
   companion object {
