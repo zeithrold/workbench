@@ -10,7 +10,6 @@ import doa.ink.workbench.core.identity.model.CreateBearerTokenCommand
 import doa.ink.workbench.data.persistence.AuthSessionsTable
 import doa.ink.workbench.data.persistence.BearerTokensTable
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonArray
@@ -181,5 +180,3 @@ class ExposedBearerTokenRepository(private val database: Database) : BearerToken
       } > 0
     }
 }
-
-private fun nowUtc(): OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)

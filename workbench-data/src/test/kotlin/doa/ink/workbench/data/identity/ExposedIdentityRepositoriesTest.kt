@@ -44,7 +44,12 @@ class ExposedIdentityRepositoriesTest :
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val members = ExposedTenantMemberRepository(database)
-        val accounts = ExposedLoginAccountRepository(database)
+        val loginMethods = ExposedLoginMethodRepository(database)
+        val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+        val loginAccounts = ExposedLoginAccountStore(database)
+        val userLoginAccounts = ExposedUserLoginAccountRepository(database)
+        val loginDiscovery =
+          ExposedLoginDiscoveryRepository(database, loginAccounts, userLoginAccounts)
 
         val user = users.create(CreateUserCommand("Ada", "ada@example.test"))
         val member =
@@ -56,12 +61,12 @@ class ExposedIdentityRepositoriesTest :
               joinedAt = OffsetDateTime.now(ZoneOffset.UTC),
             )
           )
-        val method = accounts.findLoginMethodByCode("password").shouldNotBeNull()
-        accounts.createTenantSetting(
+        val method = loginMethods.findLoginMethodByCode("password").shouldNotBeNull()
+        tenantLoginSettings.createTenantSetting(
           CreateTenantLoginMethodSettingCommand(tenantId = tenantId, loginMethodId = method.id)
         )
         val loginAccount =
-          accounts.createLoginAccount(
+          loginAccounts.createLoginAccount(
             CreateLoginAccountCommand(
               loginMethodId = method.id,
               subject = "Ada@Example.Test",
@@ -70,7 +75,7 @@ class ExposedIdentityRepositoriesTest :
             )
           )
         val parameter =
-          accounts.upsertParameter(
+          loginAccounts.upsertParameter(
             UpsertLoginAccountParameterCommand(
               loginAccountId = loginAccount.id,
               parameterKey = LoginAccountParameterKey.PasswordHash,
@@ -78,24 +83,32 @@ class ExposedIdentityRepositoriesTest :
               metadata = JsonObject(mapOf("algorithm" to JsonPrimitive("argon2id"))),
             )
           )
-        accounts.linkUser(LinkUserLoginAccountCommand(user.id, loginAccount.id, linkedBy = user.id))
+        userLoginAccounts.linkUser(
+          LinkUserLoginAccountCommand(user.id, loginAccount.id, linkedBy = user.id)
+        )
 
         member.userId shouldBe user.id
         parameter.parameterKey shouldBe LoginAccountParameterKey.PasswordHash
-        accounts.findLoginAccountByMethodAndSubject("password", "ada@example.test")?.id shouldBe
-          loginAccount.id
-        accounts.findUserByMethodAndSubject("password", "ada@example.test")?.id shouldBe user.id
+        loginAccounts
+          .findLoginAccountByMethodAndSubject("password", "ada@example.test")
+          ?.id shouldBe loginAccount.id
+        loginDiscovery.findUserByMethodAndSubject("password", "ada@example.test")?.id shouldBe
+          user.id
 
-        accounts.unlink(loginAccount.id, OffsetDateTime.now(ZoneOffset.UTC)) shouldBe true
-        accounts.findUserByMethodAndSubject("password", "ada@example.test").shouldBeNull()
+        userLoginAccounts.unlink(loginAccount.id, OffsetDateTime.now(ZoneOffset.UTC)) shouldBe true
+        loginDiscovery.findUserByMethodAndSubject("password", "ada@example.test").shouldBeNull()
 
-        accounts.linkUser(LinkUserLoginAccountCommand(user.id, loginAccount.id, linkedBy = user.id))
+        userLoginAccounts.linkUser(
+          LinkUserLoginAccountCommand(user.id, loginAccount.id, linkedBy = user.id)
+        )
         transaction(database) {
           LoginAccountsTable.update({ LoginAccountsTable.id eq loginAccount.id.toKotlinUuid() }) {
             it[disabledAt] = OffsetDateTime.now(ZoneOffset.UTC)
           }
         }
-        accounts.findLoginAccountByMethodAndSubject("password", "ada@example.test").shouldBeNull()
+        loginAccounts
+          .findLoginAccountByMethodAndSubject("password", "ada@example.test")
+          .shouldBeNull()
       }
     }
 
@@ -103,15 +116,16 @@ class ExposedIdentityRepositoriesTest :
       withPostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
-        val accounts = ExposedLoginAccountRepository(database)
+        val loginMethods = ExposedLoginMethodRepository(database)
+        val loginAccounts = ExposedLoginAccountStore(database)
         val events = ExposedAuthEventRepository(database)
         val user = users.create(CreateUserCommand("Grace", "grace@example.test"))
         val method =
-          accounts.createLoginMethod(
+          loginMethods.createLoginMethod(
             CreateLoginMethodDefinitionCommand("api_token", LoginMethodKind.API_TOKEN, "API Token")
           )
         val loginAccount =
-          accounts.createLoginAccount(
+          loginAccounts.createLoginAccount(
             CreateLoginAccountCommand(method.id, "token-owner", "token-owner", "Grace token")
           )
 
@@ -139,16 +153,17 @@ class ExposedIdentityRepositoriesTest :
     "session and bearer token repositories create touch and revoke active credentials" {
       withPostgresDatabase { database ->
         val users = ExposedUserRepository(database)
-        val accounts = ExposedLoginAccountRepository(database)
+        val loginMethods = ExposedLoginMethodRepository(database)
+        val loginAccounts = ExposedLoginAccountStore(database)
         val sessions = ExposedAuthSessionRepository(database)
         val tokens = ExposedBearerTokenRepository(database)
         val user = users.create(CreateUserCommand("Lin", "lin@example.test"))
         val method =
-          accounts.createLoginMethod(
+          loginMethods.createLoginMethod(
             CreateLoginMethodDefinitionCommand("api_token", LoginMethodKind.API_TOKEN, "API Token")
           )
         val loginAccount =
-          accounts.createLoginAccount(
+          loginAccounts.createLoginAccount(
             CreateLoginAccountCommand(method.id, "lin-token", "lin-token", "Lin token")
           )
         val expiresAt = OffsetDateTime.now(ZoneOffset.UTC).plusHours(1)

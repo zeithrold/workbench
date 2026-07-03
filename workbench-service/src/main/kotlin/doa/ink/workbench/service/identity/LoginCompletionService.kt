@@ -1,13 +1,14 @@
 package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.common.summary.TenantSummary
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginDiscoveryRepository
+import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -27,16 +28,17 @@ data class LoginCompletion(
 
 @Service
 class LoginCompletionService(
-  private val loginAccounts: LoginAccountRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val loginDiscovery: LoginDiscoveryRepository,
   private val tenantMembers: TenantMemberRepository,
   private val tenants: TenantRepository,
-  private val adminUsers: AdminUserRepository,
+  private val adminUserQueries: AdminUserQueryRepository,
   private val clock: Clock,
 ) {
   suspend fun resolve(identity: AuthenticatedIdentity, command: LoginCommand): LoginCompletion {
     val method =
-      command.loginMethodId?.let { loginAccounts.findLoginMethodByApiId(it) }
-        ?: loginAccounts.findLoginMethodById(identity.loginAccount.loginMethodId)
+      command.loginMethodId?.let { loginMethods.findLoginMethodByApiId(it) }
+        ?: loginMethods.findLoginMethodById(identity.loginAccount.loginMethodId)
 
     if (method?.code == "instance_password") {
       return LoginCompletion(
@@ -50,7 +52,7 @@ class LoginCompletionService(
     val normalized =
       command.subject?.let { doa.ink.workbench.service.identity.auth.normalizeSubject(it) }
     val tenantOptions =
-      normalized?.let { loginAccounts.listLoginOptionsForIdentifier(it) } ?: emptyList()
+      normalized?.let { loginDiscovery.listLoginOptionsForIdentifier(it) } ?: emptyList()
     val methodOptions = tenantOptions.filter { option ->
       method == null || option.loginMethod.id == method.apiId.value
     }
@@ -85,10 +87,10 @@ class LoginCompletionService(
   suspend fun adminScopes(userId: UUID): List<String> {
     val at = OffsetDateTime.now(clock)
     val scopes = mutableListOf<String>()
-    if (adminUsers.isActiveInstanceAdmin(userId, at)) {
+    if (adminUserQueries.isActiveInstanceAdmin(userId, at)) {
       scopes += "instance"
     }
-    adminUsers
+    adminUserQueries
       .listByUser(userId)
       .filter { it.scope.dbValue == "tenant" && it.validTo == null }
       .forEach {

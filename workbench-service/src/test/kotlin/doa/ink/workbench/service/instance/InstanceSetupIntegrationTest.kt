@@ -5,24 +5,26 @@ import doa.ink.workbench.core.identity.model.BootstrapInstanceAdminCommand
 import doa.ink.workbench.data.identity.ExposedAuthEventRepository
 import doa.ink.workbench.data.identity.ExposedAuthSessionRepository
 import doa.ink.workbench.data.identity.ExposedBearerTokenRepository
-import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
+import doa.ink.workbench.data.identity.ExposedLoginAccountStore
+import doa.ink.workbench.data.identity.ExposedLoginDiscoveryRepository
+import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
 import doa.ink.workbench.data.identity.ExposedTenantMemberRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
+import doa.ink.workbench.data.identity.ExposedUserLoginAccountRepository
 import doa.ink.workbench.data.identity.ExposedUserRepository
 import doa.ink.workbench.data.permission.ExposedAccessGrantRepository
-import doa.ink.workbench.data.permission.ExposedAdminUserRepository
+import doa.ink.workbench.data.permission.ExposedAdminUserCommandRepository
+import doa.ink.workbench.data.permission.ExposedAdminUserQueryRepository
 import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.AuthApplicationService
 import doa.ink.workbench.service.identity.LoginCompletionService
-import doa.ink.workbench.service.identity.LoginDiscoveryService
-import doa.ink.workbench.service.identity.MembershipService
 import doa.ink.workbench.service.identity.SessionService
 import doa.ink.workbench.service.identity.auth.AuthenticationService
-import doa.ink.workbench.service.identity.auth.FederatedAuthService
+import doa.ink.workbench.service.identity.auth.BearerCredentialService
 import doa.ink.workbench.service.identity.auth.LoginOrchestrator
-import doa.ink.workbench.service.identity.auth.MagicLinkAuthService
 import doa.ink.workbench.service.identity.auth.PasswordLoginAuthenticator
 import doa.ink.workbench.service.identity.auth.SecureRandomCredentialSecretGenerator
+import doa.ink.workbench.service.identity.auth.SessionCredentialService
 import doa.ink.workbench.service.identity.auth.Sha256CredentialHasher
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
@@ -30,7 +32,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
-import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -50,7 +51,11 @@ class InstanceSetupIntegrationTest :
     beforeSpec {
       database = AuthIntegrationFixtures.connectDatabase(postgres)
       val users = ExposedUserRepository(database)
-      val loginAccounts = ExposedLoginAccountRepository(database)
+      val loginMethods = ExposedLoginMethodRepository(database)
+      val loginAccounts = ExposedLoginAccountStore(database)
+      val userLoginAccounts = ExposedUserLoginAccountRepository(database)
+      val loginDiscovery =
+        ExposedLoginDiscoveryRepository(database, loginAccounts, userLoginAccounts)
       val passwordHasher =
         object : PasswordHasher {
           private val encoder = BCryptPasswordEncoder()
@@ -59,46 +64,73 @@ class InstanceSetupIntegrationTest :
             encoder.encode(rawPassword) ?: error("Password encoding failed.")
         }
       val tenants = ExposedTenantRepository(database)
-      val deps = UnusedPublicIdResolverDependencies(loginAccounts = loginAccounts)
+      val deps = UnusedPublicIdResolverDependencies(loginMethods = loginMethods)
       val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
-      val adminUsers = ExposedAdminUserRepository(database)
+      val adminUserCommands = ExposedAdminUserCommandRepository(database)
+      val adminUserQueries = ExposedAdminUserQueryRepository(database)
       val accessGrants = ExposedAccessGrantRepository(database)
-      val authenticationService =
-        AuthenticationService(
+      val authEvents = ExposedAuthEventRepository(database)
+      val sessions = ExposedAuthSessionRepository(database)
+      val bearerTokens = ExposedBearerTokenRepository(database)
+      val tenantMembers = ExposedTenantMemberRepository(database)
+      val secretGenerator = SecureRandomCredentialSecretGenerator()
+      val credentialHasher = Sha256CredentialHasher()
+      val sessionCredentialService =
+        SessionCredentialService(
           users = users,
           loginAccounts = loginAccounts,
-          authEvents = ExposedAuthEventRepository(database),
-          sessions = ExposedAuthSessionRepository(database),
-          bearerTokens = ExposedBearerTokenRepository(database),
+          authEvents = authEvents,
+          sessions = sessions,
+          secretGenerator = secretGenerator,
+          credentialHasher = credentialHasher,
+          clock = clock,
+        )
+      val bearerCredentialService =
+        BearerCredentialService(
+          users = users,
+          loginAccounts = loginAccounts,
+          authEvents = authEvents,
+          bearerTokens = bearerTokens,
+          secretGenerator = secretGenerator,
+          credentialHasher = credentialHasher,
+          clock = clock,
+        )
+      val authenticationService =
+        AuthenticationService(
+          loginAccounts = loginAccounts,
+          authEvents = authEvents,
           loginOrchestrator =
             LoginOrchestrator(
               listOf(
                 PasswordLoginAuthenticator(
-                  loginAccounts,
-                  passwordVerifier(encoder = BCryptPasswordEncoder()),
+                  loginMethods = loginMethods,
+                  loginAccounts = loginAccounts,
+                  userLoginAccounts = userLoginAccounts,
+                  passwordVerifier = passwordVerifier(encoder = BCryptPasswordEncoder()),
                 )
               )
             ),
-          secretGenerator = SecureRandomCredentialSecretGenerator(),
-          credentialHasher = Sha256CredentialHasher(),
+          sessionCredentialService = sessionCredentialService,
+          bearerCredentialService = bearerCredentialService,
           clock = clock,
         )
       val publicIds =
         PublicIdResolver(
           tenants = tenants,
           users = users,
-          loginAccounts = loginAccounts,
-          bearerTokens = ExposedBearerTokenRepository(database),
-          adminUsers = adminUsers,
+          loginMethods = loginMethods,
+          bearerTokens = bearerTokens,
+          adminUserQueries = adminUserQueries,
           accessGrants = accessGrants,
           projects = deps.projects,
         )
       val loginCompletionService =
         LoginCompletionService(
-          loginAccounts = loginAccounts,
-          tenantMembers = ExposedTenantMemberRepository(database),
+          loginMethods = loginMethods,
+          loginDiscovery = loginDiscovery,
+          tenantMembers = tenantMembers,
           tenants = tenants,
-          adminUsers = adminUsers,
+          adminUserQueries = adminUserQueries,
           clock = clock,
         )
       val authApplicationService =
@@ -106,39 +138,25 @@ class InstanceSetupIntegrationTest :
           authenticationService = authenticationService,
           sessionService =
             SessionService(
-              sessions = ExposedAuthSessionRepository(database),
-              tenantMembers = ExposedTenantMemberRepository(database),
+              sessions = sessions,
+              tenantMembers = tenantMembers,
               tenants = tenants,
               publicIds = publicIds,
               loginCompletionService = loginCompletionService,
               clock = clock,
             ),
-          membershipService =
-            MembershipService(
-              tenantMembers = ExposedTenantMemberRepository(database),
-              tenants = tenants,
-              adminUsers = adminUsers,
-              clock = clock,
-            ),
-          loginAccounts = loginAccounts,
-          loginDiscoveryService =
-            LoginDiscoveryService(
-              users = users,
-              loginAccounts = loginAccounts,
-              tenantMembers = ExposedTenantMemberRepository(database),
-              adminUsers = adminUsers,
-              clock = clock,
-            ),
           loginCompletionService = loginCompletionService,
-          federatedAuthService = mockk<FederatedAuthService>(relaxed = true),
-          magicLinkAuthService = mockk<MagicLinkAuthService>(relaxed = true),
+          bearerCredentialService = bearerCredentialService,
           publicIds = publicIds,
         )
       service =
         InstanceSetupService(
           users = users,
+          loginMethods = loginMethods,
           loginAccounts = loginAccounts,
-          adminUsers = adminUsers,
+          userLoginAccounts = userLoginAccounts,
+          adminUserCommands = adminUserCommands,
+          adminUserQueries = adminUserQueries,
           accessGrants = accessGrants,
           passwordHasher = passwordHasher,
           instanceProperties = InstanceProperties(),

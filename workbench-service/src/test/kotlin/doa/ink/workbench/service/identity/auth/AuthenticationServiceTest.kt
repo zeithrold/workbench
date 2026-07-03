@@ -3,19 +3,13 @@ package doa.ink.workbench.service.identity.auth
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.AuthEventRepository
-import doa.ink.workbench.core.identity.LoginAccountRepository
-import doa.ink.workbench.core.identity.UserRepository
-import doa.ink.workbench.core.identity.auth.AuthSessionRepository
-import doa.ink.workbench.core.identity.auth.BearerTokenRepository
-import doa.ink.workbench.core.identity.auth.CredentialHasher
-import doa.ink.workbench.core.identity.auth.CredentialSecretGenerator
+import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.model.AuditEventResult
 import doa.ink.workbench.core.identity.model.AuthEventRecord
 import doa.ink.workbench.core.identity.model.AuthEventType
-import doa.ink.workbench.core.identity.model.AuthSessionRecord
 import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.CreateAuthEventCommand
-import doa.ink.workbench.core.identity.model.CreateAuthSessionCommand
+import doa.ink.workbench.core.identity.model.IssuedCredential
 import doa.ink.workbench.core.identity.model.LoginAccountRecord
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
@@ -43,7 +37,14 @@ class AuthenticationServiceTest :
       result.principal.user.id shouldBe fixture.user.id
       result.principal.loginAccountId shouldBe fixture.loginAccount.id
       fixture.appendedEvents.single().eventType shouldBe AuthEventType.LOGIN_SUCCESS
-      coVerify(exactly = 1) { fixture.sessions.create(any()) }
+      coVerify(exactly = 1) {
+        fixture.sessionCredentialService.issueSession(
+          fixture.user.id,
+          fixture.loginAccount.id,
+          any(),
+          any(),
+        )
+      }
       coVerify(exactly = 1) { fixture.loginAccounts.touchLastUsed(fixture.loginAccount.id, any()) }
     }
 
@@ -56,7 +57,9 @@ class AuthenticationServiceTest :
 
       fixture.appendedEvents.single().eventType shouldBe AuthEventType.LOGIN_FAILURE
       fixture.appendedEvents.single().result shouldBe AuditEventResult.FAILURE
-      coVerify(exactly = 0) { fixture.sessions.create(any()) }
+      coVerify(exactly = 0) {
+        fixture.sessionCredentialService.issueSession(any(), any(), any(), any())
+      }
     }
   })
 
@@ -91,36 +94,23 @@ private class Fixture(authenticateFails: Boolean = false) {
       userAgent = "test",
     )
 
-  val users = mockk<UserRepository>()
-  val loginAccounts = mockk<LoginAccountRepository>()
+  val loginAccounts = mockk<LoginAccountStore>()
   val authEvents = mockk<AuthEventRepository>()
-  val sessions = mockk<AuthSessionRepository>()
-  val bearerTokens = mockk<BearerTokenRepository>()
   val loginOrchestrator = mockk<LoginOrchestrator>()
+  val sessionCredentialService = mockk<SessionCredentialService>()
+  val bearerCredentialService = mockk<BearerCredentialService>()
   val appendedEvents = mutableListOf<CreateAuthEventCommand>()
-  val secretGenerator =
-    object : CredentialSecretGenerator {
-      override fun generate(): String = "secret-1"
-    }
-  val hasher =
-    object : CredentialHasher {
-      override fun hash(secret: String): String = "hash:$secret"
-    }
   val service =
     AuthenticationService(
-      users = users,
       loginAccounts = loginAccounts,
       authEvents = authEvents,
-      sessions = sessions,
-      bearerTokens = bearerTokens,
       loginOrchestrator = loginOrchestrator,
-      secretGenerator = secretGenerator,
-      credentialHasher = hasher,
+      sessionCredentialService = sessionCredentialService,
+      bearerCredentialService = bearerCredentialService,
       clock = Clock.fixed(Instant.parse("2026-07-02T00:00:00Z"), ZoneOffset.UTC),
     )
 
   init {
-    coEvery { users.findById(user.id) } returns user
     if (authenticateFails) {
       coEvery { loginOrchestrator.authenticate(any()) } throws
         AuthenticationFailedException("Invalid credentials.")
@@ -128,23 +118,13 @@ private class Fixture(authenticateFails: Boolean = false) {
       coEvery { loginOrchestrator.authenticate(any()) } returns
         AuthenticatedIdentity(user = user, loginAccount = loginAccount)
     }
-    coEvery { sessions.create(any<CreateAuthSessionCommand>()) } answers
-      {
-        firstArg<CreateAuthSessionCommand>().let {
-          AuthSessionRecord(
-            id = UUID.randomUUID(),
-            sessionHash = it.sessionHash,
-            userId = it.userId,
-            loginAccountId = it.loginAccountId,
-            activeTenantId = it.activeTenantId,
-            expiresAt = it.expiresAt,
-            revokedAt = null,
-            lastUsedAt = null,
-            createdAt = now,
-            updatedAt = now,
-          )
-        }
-      }
+    coEvery { sessionCredentialService.issueSession(any(), any(), any(), any()) } returns
+      IssuedCredential(
+        id = UUID.randomUUID(),
+        apiId = null,
+        secret = "secret-1",
+        expiresAt = now.plusHours(12),
+      )
     coEvery { loginAccounts.touchLastUsed(loginAccount.id, any()) } returns true
     coEvery { authEvents.append(any<CreateAuthEventCommand>()) } answers
       {

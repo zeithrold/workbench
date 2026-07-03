@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.identity
 
 import doa.ink.workbench.core.common.ids.PublicId
+import doa.ink.workbench.core.identity.model.InvitationRecord
 import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
 import doa.ink.workbench.core.identity.model.LoginAccountParameterRecord
 import doa.ink.workbench.core.identity.model.LoginAccountRecord
@@ -10,6 +11,7 @@ import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UserLoginAccountRecord
 import doa.ink.workbench.core.identity.model.UserRecord
+import doa.ink.workbench.data.persistence.InvitationsTable
 import doa.ink.workbench.data.persistence.LoginAccountParametersTable
 import doa.ink.workbench.data.persistence.LoginAccountsTable
 import doa.ink.workbench.data.persistence.LoginMethodDefinitionsTable
@@ -55,8 +57,25 @@ internal fun ResultRow.toTenantRecord() =
     name = this[TenantsTable.name],
     timezone = this[TenantsTable.timezone],
     locale = this[TenantsTable.locale],
+    status = tenantStatusOf(this[TenantsTable.status]),
     createdAt = this[TenantsTable.createdAt],
     updatedAt = this[TenantsTable.updatedAt],
+  )
+
+internal fun ResultRow.toInvitationRecord() =
+  InvitationRecord(
+    id = this[InvitationsTable.id].toJavaUuid(),
+    apiId = PublicId(this[InvitationsTable.apiId]),
+    type = invitationTypeOf(this[InvitationsTable.invitationType]),
+    tenantId = this[InvitationsTable.tenantId].toJavaUuid(),
+    email = this[InvitationsTable.email],
+    normalizedEmail = this[InvitationsTable.normalizedEmail],
+    displayName = this[InvitationsTable.displayName],
+    tokenHash = this[InvitationsTable.tokenHash],
+    invitedBy = this[InvitationsTable.invitedBy].toJavaUuid(),
+    expiresAt = this[InvitationsTable.expiresAt],
+    consumedAt = this[InvitationsTable.consumedAt],
+    createdAt = this[InvitationsTable.createdAt],
   )
 
 internal fun ResultRow.toLoginMethodDefinitionRecord() =

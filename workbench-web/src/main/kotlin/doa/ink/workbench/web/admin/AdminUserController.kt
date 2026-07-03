@@ -5,7 +5,9 @@ import doa.ink.workbench.core.common.context.RequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.PermissionEffect
-import doa.ink.workbench.service.permission.AdminUserManagementService
+import doa.ink.workbench.service.permission.AccessGrantManagementService
+import doa.ink.workbench.service.permission.AdminUserService
+import doa.ink.workbench.service.permission.PermissionActionService
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.InstanceScoped
@@ -36,13 +38,17 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 @Tag(name = "Admin Users", description = "Administrator and access grant management.")
 @Suppress("UnusedParameter")
-class AdminUserController(private val service: AdminUserManagementService) {
+class AdminUserController(
+  private val adminUserService: AdminUserService,
+  private val accessGrantService: AccessGrantManagementService,
+  private val permissionActionService: PermissionActionService,
+) {
   @GetMapping("/instance-admins")
   @InstanceScoped
   @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List instance administrators")
   suspend fun listInstanceAdmins(instanceContext: InstanceRequestContext): List<AdminUserResponse> =
-    service.listInstanceAdmins().map { AdminUserResponse.from(it) }
+    adminUserService.listInstanceAdmins().map { AdminUserResponse.from(it) }
 
   @PostMapping("/instance-admins")
   @InstanceScoped
@@ -54,14 +60,16 @@ class AdminUserController(private val service: AdminUserManagementService) {
     instanceContext: InstanceRequestContext,
     requestContext: RequestContext,
   ): AdminUserResponse =
-    AdminUserResponse.from(service.grantInstanceAdmin(request.userId, requestContext.actorUserId))
+    AdminUserResponse.from(
+      adminUserService.grantInstanceAdmin(request.userId, requestContext.actorUserId)
+    )
 
   @GetMapping("/tenant-admins")
   @TenantScoped
   @Authorize(action = "permission.assignment.manage", resource = "permission")
   @Operation(summary = "List tenant administrators")
   suspend fun listTenantAdmins(tenantContext: TenantRequestContext): List<AdminUserResponse> =
-    service.listTenantAdmins(tenantContext.tenantId).map { AdminUserResponse.from(it) }
+    adminUserService.listTenantAdmins(tenantContext.tenantId).map { AdminUserResponse.from(it) }
 
   @PostMapping("/tenant-admins")
   @TenantScoped
@@ -74,7 +82,7 @@ class AdminUserController(private val service: AdminUserManagementService) {
     requestContext: RequestContext,
   ): AdminUserResponse =
     AdminUserResponse.from(
-      service.grantTenantAdmin(
+      adminUserService.grantTenantAdmin(
         tenantId = tenantContext.tenantId,
         userPublicId = request.userId,
         actorUserId = requestContext.actorUserId,
@@ -90,7 +98,7 @@ class AdminUserController(private val service: AdminUserManagementService) {
     @Parameter(example = OpenApiExamples.USER_ID) @PathVariable id: String,
     instanceContext: InstanceRequestContext,
   ) {
-    service.revokeAdmin(id)
+    adminUserService.revokeAdmin(id)
   }
 
   @GetMapping("/grants")
@@ -98,9 +106,9 @@ class AdminUserController(private val service: AdminUserManagementService) {
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List access grants for active tenant")
   suspend fun listGrants(tenantContext: TenantRequestContext): List<AccessGrantResponse> =
-    service.listGrants(scope = null, tenantId = tenantContext.tenantId, subjectUserId = null).map {
-      AccessGrantResponse.from(it)
-    }
+    accessGrantService
+      .listGrants(scope = null, tenantId = tenantContext.tenantId, subjectUserId = null)
+      .map { AccessGrantResponse.from(it) }
 
   @PostMapping("/grants")
   @TenantScoped
@@ -113,7 +121,7 @@ class AdminUserController(private val service: AdminUserManagementService) {
     requestContext: RequestContext,
   ): AccessGrantResponse =
     AccessGrantResponse.from(
-      service.createGrant(
+      accessGrantService.createGrant(
         scope = request.scope,
         tenantId = tenantContext.tenantId,
         userPublicId = request.userId,
@@ -134,7 +142,7 @@ class AdminUserController(private val service: AdminUserManagementService) {
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ) {
-    service.expireGrant(id)
+    accessGrantService.expireGrant(id)
   }
 
   @GetMapping("/actions")
@@ -142,7 +150,7 @@ class AdminUserController(private val service: AdminUserManagementService) {
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List permission actions")
   suspend fun listActions(tenantContext: TenantRequestContext): List<ActionResponse> =
-    service.listActions().map { ActionResponse.from(it) }
+    permissionActionService.listActions().map { ActionResponse.from(it) }
 
   @PostMapping("/actions")
   @TenantScoped
@@ -152,7 +160,8 @@ class AdminUserController(private val service: AdminUserManagementService) {
   suspend fun ensureAction(
     @Valid @RequestBody request: EnsureActionRequest,
     tenantContext: TenantRequestContext,
-  ): ActionResponse = ActionResponse.from(service.ensureAction(request.code, request.description))
+  ): ActionResponse =
+    ActionResponse.from(permissionActionService.ensureAction(request.code, request.description))
 }
 
 data class GrantAdminRequest(

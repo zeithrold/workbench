@@ -11,8 +11,11 @@ import doa.ink.workbench.core.identity.model.CreateUserCommand
 import doa.ink.workbench.core.identity.model.LinkUserLoginAccountCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
-import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
+import doa.ink.workbench.data.identity.ExposedLoginAccountStore
+import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
+import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantMemberRepository
+import doa.ink.workbench.data.identity.ExposedUserLoginAccountRepository
 import doa.ink.workbench.data.identity.ExposedUserRepository
 import doa.ink.workbench.data.persistence.TenantsTable
 import java.time.OffsetDateTime
@@ -63,6 +66,21 @@ class MapSecretResolver(private val secrets: Map<String, String>) : SecretResolv
 }
 
 object AuthIntegrationFixtures {
+  private data class LoginRepositories(
+    val loginMethods: ExposedLoginMethodRepository,
+    val tenantLoginSettings: ExposedTenantLoginMethodSettingRepository,
+    val loginAccounts: ExposedLoginAccountStore,
+    val userLoginAccounts: ExposedUserLoginAccountRepository,
+  )
+
+  private fun loginRepositories(database: Database): LoginRepositories =
+    LoginRepositories(
+      loginMethods = ExposedLoginMethodRepository(database),
+      tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database),
+      loginAccounts = ExposedLoginAccountStore(database),
+      userLoginAccounts = ExposedUserLoginAccountRepository(database),
+    )
+
   fun startPostgres(): PostgreSQLContainer<*> {
     val postgres = PostgreSQLContainer("postgres:18-alpine")
     postgres.start()
@@ -90,7 +108,7 @@ object AuthIntegrationFixtures {
     val methodCode = uniqueMethodCode("ldap")
     val users = ExposedUserRepository(database)
     val members = ExposedTenantMemberRepository(database)
-    val accounts = ExposedLoginAccountRepository(database)
+    val repos = loginRepositories(database)
     val now = OffsetDateTime.now(ZoneOffset.UTC)
 
     val user = users.create(CreateUserCommand("LDAP User", "testuser@example.test"))
@@ -104,14 +122,14 @@ object AuthIntegrationFixtures {
     )
 
     val method =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = methodCode,
           kind = LoginMethodKind.LDAP,
           name = "LDAP",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = method.id,
@@ -119,7 +137,7 @@ object AuthIntegrationFixtures {
       )
     )
     val loginAccount =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = method.id,
           subject = LdapTestContainer.TEST_USER,
@@ -127,7 +145,7 @@ object AuthIntegrationFixtures {
           displayName = "LDAP User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(user.id, loginAccount.id, user.id))
+    repos.userLoginAccounts.linkUser(LinkUserLoginAccountCommand(user.id, loginAccount.id, user.id))
 
     return LdapAuthFixture(
       tenant = tenant,
@@ -145,7 +163,7 @@ object AuthIntegrationFixtures {
     val oauth2MethodCode = uniqueMethodCode("oauth2")
     val users = ExposedUserRepository(database)
     val members = ExposedTenantMemberRepository(database)
-    val accounts = ExposedLoginAccountRepository(database)
+    val repos = loginRepositories(database)
     val now = OffsetDateTime.now(ZoneOffset.UTC)
 
     val oidcUser = users.create(CreateUserCommand("OIDC User", KeycloakTestContainer.OIDC_USER))
@@ -163,14 +181,14 @@ object AuthIntegrationFixtures {
     }
 
     val oidcMethod =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = oidcMethodCode,
           kind = LoginMethodKind.OIDC,
           name = "OIDC",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = oidcMethod.id,
@@ -179,7 +197,7 @@ object AuthIntegrationFixtures {
       )
     )
     val oidcAccount =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = oidcMethod.id,
           subject = KeycloakTestContainer.OIDC_USER,
@@ -187,17 +205,19 @@ object AuthIntegrationFixtures {
           displayName = "OIDC User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(oidcUser.id, oidcAccount.id, oidcUser.id))
+    repos.userLoginAccounts.linkUser(
+      LinkUserLoginAccountCommand(oidcUser.id, oidcAccount.id, oidcUser.id)
+    )
 
     val oauth2Method =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = oauth2MethodCode,
           kind = LoginMethodKind.OAUTH2,
           name = "OAuth2",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = oauth2Method.id,
@@ -206,7 +226,7 @@ object AuthIntegrationFixtures {
       )
     )
     val oauth2Account =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = oauth2Method.id,
           subject = KeycloakTestContainer.OAUTH2_USER,
@@ -214,7 +234,9 @@ object AuthIntegrationFixtures {
           displayName = "OAuth User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(oauth2User.id, oauth2Account.id, oauth2User.id))
+    repos.userLoginAccounts.linkUser(
+      LinkUserLoginAccountCommand(oauth2User.id, oauth2Account.id, oauth2User.id)
+    )
 
     return FederatedAuthFixture(
       tenant = tenant,
@@ -233,7 +255,7 @@ object AuthIntegrationFixtures {
     val tenant = seedTenant(database)
     val users = ExposedUserRepository(database)
     val members = ExposedTenantMemberRepository(database)
-    val accounts = ExposedLoginAccountRepository(database)
+    val repos = loginRepositories(database)
     val now = OffsetDateTime.now(ZoneOffset.UTC)
 
     val ldapUser = users.create(CreateUserCommand("LDAP User", "testuser@example.test"))
@@ -252,14 +274,14 @@ object AuthIntegrationFixtures {
     }
 
     val ldapMethod =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = uniqueMethodCode("ldap"),
           kind = LoginMethodKind.LDAP,
           name = "LDAP",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = ldapMethod.id,
@@ -267,7 +289,7 @@ object AuthIntegrationFixtures {
       )
     )
     val ldapAccount =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = ldapMethod.id,
           subject = LdapTestContainer.TEST_USER,
@@ -275,17 +297,19 @@ object AuthIntegrationFixtures {
           displayName = "LDAP User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(ldapUser.id, ldapAccount.id, ldapUser.id))
+    repos.userLoginAccounts.linkUser(
+      LinkUserLoginAccountCommand(ldapUser.id, ldapAccount.id, ldapUser.id)
+    )
 
     val oidcMethod =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = uniqueMethodCode("oidc"),
           kind = LoginMethodKind.OIDC,
           name = "OIDC",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = oidcMethod.id,
@@ -294,7 +318,7 @@ object AuthIntegrationFixtures {
       )
     )
     val oidcAccount =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = oidcMethod.id,
           subject = KeycloakTestContainer.OIDC_USER,
@@ -302,17 +326,19 @@ object AuthIntegrationFixtures {
           displayName = "OIDC User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(oidcUser.id, oidcAccount.id, oidcUser.id))
+    repos.userLoginAccounts.linkUser(
+      LinkUserLoginAccountCommand(oidcUser.id, oidcAccount.id, oidcUser.id)
+    )
 
     val oauth2Method =
-      accounts.createLoginMethod(
+      repos.loginMethods.createLoginMethod(
         CreateLoginMethodDefinitionCommand(
           code = uniqueMethodCode("oauth2"),
           kind = LoginMethodKind.OAUTH2,
           name = "OAuth2",
         )
       )
-    accounts.createTenantSetting(
+    repos.tenantLoginSettings.createTenantSetting(
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = oauth2Method.id,
@@ -321,7 +347,7 @@ object AuthIntegrationFixtures {
       )
     )
     val oauth2Account =
-      accounts.createLoginAccount(
+      repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = oauth2Method.id,
           subject = KeycloakTestContainer.OAUTH2_USER,
@@ -329,7 +355,9 @@ object AuthIntegrationFixtures {
           displayName = "OAuth User",
         )
       )
-    accounts.linkUser(LinkUserLoginAccountCommand(oauth2User.id, oauth2Account.id, oauth2User.id))
+    repos.userLoginAccounts.linkUser(
+      LinkUserLoginAccountCommand(oauth2User.id, oauth2Account.id, oauth2User.id)
+    )
 
     return AuthIntegrationFixture(
       tenantApiId = tenant.tenantApiId,

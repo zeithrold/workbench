@@ -3,8 +3,11 @@
 package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginAccountStore
+import doa.ink.workbench.core.identity.LoginMethodRepository
+import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
 import doa.ink.workbench.core.identity.TenantRepository
+import doa.ink.workbench.core.identity.UserLoginAccountRepository
 import doa.ink.workbench.core.identity.auth.CredentialHasher
 import doa.ink.workbench.core.identity.auth.CredentialSecretGenerator
 import doa.ink.workbench.core.identity.auth.MagicLinkTokenRepository
@@ -21,7 +24,10 @@ import org.springframework.stereotype.Service
 
 @Service
 class MagicLinkAuthService(
-  private val loginAccounts: LoginAccountRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val tenantLoginSettings: TenantLoginMethodSettingRepository,
+  private val loginAccounts: LoginAccountStore,
+  private val userLoginAccounts: UserLoginAccountRepository,
   private val tenants: TenantRepository,
   private val magicLinkTokens: MagicLinkTokenRepository,
   private val credentialHasher: CredentialHasher,
@@ -36,12 +42,12 @@ class MagicLinkAuthService(
     val tenant =
       tenants.findByApiId(tenantId) ?: throw InvalidRequestException("Unknown tenant: $tenantId")
     val method =
-      loginAccounts.findLoginMethodByApiId(loginMethodId)
+      loginMethods.findLoginMethodByApiId(loginMethodId)
         ?: throw InvalidRequestException("Unknown login method: $loginMethodId")
     if (method.kind != LoginMethodKind.EMAIL_MAGIC_LINK) {
       throw InvalidRequestException("Login method $loginMethodId is not email_magic_link.")
     }
-    val setting = loginAccounts.findTenantSetting(tenant.id, method.id)
+    val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
       throw InvalidRequestException("Magic link login is disabled for this tenant.")
     }
@@ -79,13 +85,13 @@ class MagicLinkAuthService(
         ?: throw InvalidRequestException("Magic link is invalid or expired.")
     magicLinkTokens.consume(record.id, now)
     val method =
-      loginAccounts.findLoginMethodById(record.loginMethodId)
+      loginMethods.findLoginMethodById(record.loginMethodId)
         ?: throw InvalidRequestException("Magic link login is not configured.")
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, record.normalizedSubject)
         ?: throw InvalidRequestException("No account is linked to this magic link.")
     val user =
-      loginAccounts.findLinkedUser(account.id)
+      userLoginAccounts.findLinkedUser(account.id)
         ?: throw InvalidRequestException("No user is linked to this magic link.")
     return MagicLinkIdentity(
       user = user,

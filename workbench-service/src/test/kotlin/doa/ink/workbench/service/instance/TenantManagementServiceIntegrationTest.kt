@@ -2,7 +2,8 @@ package doa.ink.workbench.service.instance
 
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.identity.model.CreateTenantCommand
-import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
+import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
+import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
 import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
@@ -12,6 +13,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.mockk.mockk
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -24,28 +26,33 @@ class TenantManagementServiceIntegrationTest :
     val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
     lateinit var database: Database
     lateinit var tenants: ExposedTenantRepository
-    lateinit var loginAccounts: ExposedLoginAccountRepository
+    lateinit var loginMethods: ExposedLoginMethodRepository
+    lateinit var tenantLoginSettings: ExposedTenantLoginMethodSettingRepository
     lateinit var service: TenantManagementService
 
     beforeSpec {
       database = AuthIntegrationFixtures.connectDatabase(postgres)
       tenants = ExposedTenantRepository(database)
-      loginAccounts = ExposedLoginAccountRepository(database)
-      val deps = UnusedPublicIdResolverDependencies(loginAccounts = loginAccounts)
+      loginMethods = ExposedLoginMethodRepository(database)
+      tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+      val deps = UnusedPublicIdResolverDependencies(loginMethods = loginMethods)
       service =
         TenantManagementService(
           tenants = tenants,
-          loginAccounts = loginAccounts,
+          loginMethods = loginMethods,
+          tenantLoginSettings = tenantLoginSettings,
           publicIds =
             PublicIdResolver(
               tenants = tenants,
               users = deps.users,
-              loginAccounts = loginAccounts,
+              loginMethods = loginMethods,
               bearerTokens = deps.bearerTokens,
-              adminUsers = deps.adminUsers,
+              adminUserQueries = deps.adminUserQueries,
               accessGrants = deps.accessGrants,
               projects = deps.projects,
             ),
+          adminUserService = mockk(relaxed = true),
+          invitationService = mockk(relaxed = true),
         )
     }
 
@@ -64,9 +71,9 @@ class TenantManagementServiceIntegrationTest :
               locale = "en-US",
             )
           )
-        val passwordMethod = loginAccounts.findLoginMethodByCode("password").shouldNotBeNull()
+        val passwordMethod = loginMethods.findLoginMethodByCode("password").shouldNotBeNull()
         val setting =
-          loginAccounts.findTenantSetting(tenant.id, passwordMethod.id).shouldNotBeNull()
+          tenantLoginSettings.findTenantSetting(tenant.id, passwordMethod.id).shouldNotBeNull()
         setting.isEnabled shouldBe true
       }
     }

@@ -8,7 +8,6 @@ import doa.ink.workbench.core.identity.model.MagicLinkTokenRecord
 import doa.ink.workbench.data.persistence.AuthLoginStatesTable
 import doa.ink.workbench.data.persistence.MagicLinkTokensTable
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
@@ -118,5 +117,3 @@ class ExposedMagicLinkTokenRepository(private val database: Database) : MagicLin
       } > 0
     }
 }
-
-private fun nowUtc(): OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)

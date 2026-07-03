@@ -8,8 +8,6 @@ import doa.ink.workbench.core.identity.model.CreateTenantCommand
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UpdateTenantCommand
 import doa.ink.workbench.data.persistence.TenantsTable
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -45,6 +43,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
         it[slug] = command.slug
         it[timezone] = command.timezone
         it[locale] = command.locale
+        it[status] = command.status.dbValue
         it[createdAt] = now
         it[updatedAt] = now
       }
@@ -79,6 +78,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
         command.slug?.let { row[slug] = it }
         command.timezone?.let { row[timezone] = it }
         command.locale?.let { row[locale] = it }
+        command.status?.let { row[status] = it.dbValue }
         row[updatedAt] = now
       }
       TenantsTable.selectAll()
@@ -149,5 +149,3 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
       query.orderBy(TenantsTable.createdAt to SortOrder.ASC).map { it.toTenantRecord() }
     }
 }
-
-private fun nowUtc(): OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)

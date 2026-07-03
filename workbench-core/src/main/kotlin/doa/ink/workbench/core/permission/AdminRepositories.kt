@@ -74,37 +74,6 @@ data class CreateAccessGrantCommand(
   val grantedBy: UUID? = null,
 )
 
-@Suppress("TooManyFunctions")
-interface AdminUserRepository {
-  suspend fun create(command: CreateAdminUserCommand): AdminUserRecord
-
-  suspend fun findById(id: UUID): AdminUserRecord?
-
-  suspend fun findByApiId(apiId: String): AdminUserRecord?
-
-  suspend fun findActiveInstanceAdmin(userId: UUID, at: OffsetDateTime): AdminUserRecord?
-
-  suspend fun findActiveTenantAdmin(
-    tenantId: UUID,
-    userId: UUID,
-    at: OffsetDateTime,
-  ): AdminUserRecord?
-
-  suspend fun existsActiveInstanceAdmin(): Boolean
-
-  suspend fun isActiveInstanceAdmin(userId: UUID, at: OffsetDateTime): Boolean
-
-  suspend fun isActiveTenantAdmin(tenantId: UUID, userId: UUID, at: OffsetDateTime): Boolean
-
-  suspend fun listByUser(userId: UUID): List<AdminUserRecord>
-
-  suspend fun listInstanceAdmins(): List<AdminUserRecord>
-
-  suspend fun listTenantAdmins(tenantId: UUID): List<AdminUserRecord>
-
-  suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean
-}
-
 interface AccessGrantRepository {
   suspend fun create(command: CreateAccessGrantCommand): AccessGrantRecord
 

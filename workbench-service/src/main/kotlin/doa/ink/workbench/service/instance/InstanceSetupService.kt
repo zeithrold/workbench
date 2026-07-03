@@ -5,7 +5,9 @@ import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
 import doa.ink.workbench.core.common.summary.LoginMethodSummary
 import doa.ink.workbench.core.common.summary.UserSummary
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginAccountStore
+import doa.ink.workbench.core.identity.LoginMethodRepository
+import doa.ink.workbench.core.identity.UserLoginAccountRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.auth.PasswordHasher
 import doa.ink.workbench.core.identity.model.BootstrapInstanceAdminCommand
@@ -18,7 +20,8 @@ import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import doa.ink.workbench.core.permission.AccessGrantRepository
 import doa.ink.workbench.core.permission.AdminScope
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserCommandRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.CreateAccessGrantCommand
 import doa.ink.workbench.core.permission.CreateAdminUserCommand
 import doa.ink.workbench.core.permission.GrantScope
@@ -42,8 +45,11 @@ private val DEFAULT_INSTANCE_GRANTS =
 @Service
 class InstanceSetupService(
   private val users: UserRepository,
-  private val loginAccounts: LoginAccountRepository,
-  private val adminUsers: AdminUserRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val loginAccounts: LoginAccountStore,
+  private val userLoginAccounts: UserLoginAccountRepository,
+  private val adminUserCommands: AdminUserCommandRepository,
+  private val adminUserQueries: AdminUserQueryRepository,
   private val accessGrants: AccessGrantRepository,
   private val passwordHasher: PasswordHasher,
   private val instanceProperties: InstanceProperties,
@@ -51,17 +57,17 @@ class InstanceSetupService(
   private val clock: Clock,
 ) {
   suspend fun setupStatus(): InstanceSetupStatusView =
-    InstanceSetupStatusView(initialized = adminUsers.existsActiveInstanceAdmin())
+    InstanceSetupStatusView(initialized = adminUserQueries.existsActiveInstanceAdmin())
 
   @Suppress("LongMethod")
   suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapView {
     validateSetupToken(command.setupToken)
-    if (adminUsers.existsActiveInstanceAdmin()) {
+    if (adminUserQueries.existsActiveInstanceAdmin()) {
       throw InstanceAlreadyInitializedException("Instance is already initialized.")
     }
 
     val instancePasswordMethod =
-      loginAccounts.findLoginMethodByCode(INSTANCE_PASSWORD_METHOD_CODE)
+      loginMethods.findLoginMethodByCode(INSTANCE_PASSWORD_METHOD_CODE)
         ?: throw InvalidRequestException("Instance password login method is not configured.")
 
     val normalizedEmail = normalizeSubject(command.email)
@@ -88,7 +94,7 @@ class InstanceSetupService(
         parameterValue = passwordHasher.hash(command.password),
       )
     )
-    loginAccounts.linkUser(
+    userLoginAccounts.linkUser(
       LinkUserLoginAccountCommand(
         userId = user.id,
         loginAccountId = loginAccount.id,
@@ -97,7 +103,7 @@ class InstanceSetupService(
     )
 
     val now = OffsetDateTime.now(clock)
-    adminUsers.create(
+    adminUserCommands.create(
       CreateAdminUserCommand(
         userId = user.id,
         scope = AdminScope.INSTANCE,
