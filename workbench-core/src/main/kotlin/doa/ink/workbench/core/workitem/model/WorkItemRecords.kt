@@ -3,6 +3,7 @@ package doa.ink.workbench.core.workitem.model
 import doa.ink.workbench.core.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.serialization.json.JsonObject
 
 enum class IssueStatusGroup {
   TODO,
@@ -50,3 +51,43 @@ data class WorkItemResponse(
       )
   }
 }
+
+data class WorkItemSearchPage(
+  val result: WorkItemSearchResult,
+  val page: WorkItemSearchPageInfo,
+)
+
+data class WorkItemSearchResult(
+  val hits: List<WorkItemSearchHit>,
+  val total: Long?,
+)
+
+data class WorkItemSearchPageInfo(
+  val limit: Int,
+  val offset: Long,
+  val nextOffset: Long?,
+)
+
+data class WorkItemSearchHit(
+  val apiId: String,
+  val key: String,
+  val title: String,
+  val description: String?,
+  val projectApiId: String,
+  val issueTypeApiId: String,
+  val issueTypeConfigApiId: String,
+  val statusApiId: String,
+  val statusGroup: String,
+  val priorityApiId: String?,
+  val reporterApiId: String,
+  val assigneeApiId: String?,
+  val sprintApiId: String?,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+  val properties: JsonObject,
+  val sortCursor: WorkItemSearchSortCursor? = null,
+)
+
+data class WorkItemSearchSortCursor(
+  val values: JsonObject,
+)

@@ -1,52 +1,135 @@
 package doa.ink.workbench.core.workitem.query
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
-@Serializable
 data class WorkItemQuery(
   val version: Int = 1,
-  val resource: String = "work_item",
+  val resource: String = RESOURCE,
   val where: ConditionNode? = null,
   val sort: List<SortTerm> = emptyList(),
-)
+) {
+  companion object {
+    const val RESOURCE = "work_item"
+    const val CURRENT_VERSION = 1
+  }
+}
 
-@Serializable
 sealed interface ConditionNode {
-  @Serializable @SerialName("and") data class And(val args: List<ConditionNode>) : ConditionNode
+  data class And(val args: List<ConditionNode>) : ConditionNode
 
-  @Serializable @SerialName("or") data class Or(val args: List<ConditionNode>) : ConditionNode
+  data class Or(val args: List<ConditionNode>) : ConditionNode
 
-  @Serializable @SerialName("not") data class Not(val arg: ConditionNode) : ConditionNode
+  data class Not(val arg: ConditionNode) : ConditionNode
 
-  @Serializable
-  @SerialName("predicate")
-  data class Predicate(val field: String, val op: String, val value: QueryValue? = null) :
+  data class Predicate(val field: QueryField, val op: QueryOperator, val value: QueryValue? = null) :
     ConditionNode
 }
 
-@Serializable
-sealed interface QueryValue {
-  @Serializable @SerialName("literal") data class Literal(val value: String) : QueryValue
+sealed interface QueryField {
+  val canonicalName: String
 
-  @Serializable @SerialName("variable") data class Variable(val name: String) : QueryValue
+  data class System(override val canonicalName: String) : QueryField
+
+  data class Property(val apiId: String?, val code: String?) : QueryField {
+    init {
+      require(!apiId.isNullOrBlank() || !code.isNullOrBlank()) {
+        "Property field requires apiId or code."
+      }
+    }
+
+    override val canonicalName: String = "property.${apiId ?: code}"
+  }
 }
 
-@Serializable
+enum class QueryOperator(val wireName: String) {
+  EQ("eq"),
+  NEQ("neq"),
+  IN("in"),
+  NOT_IN("not_in"),
+  LT("lt"),
+  LTE("lte"),
+  GT("gt"),
+  GTE("gte"),
+  BETWEEN("between"),
+  CONTAINS("contains"),
+  NOT_CONTAINS("not_contains"),
+  STARTS_WITH("starts_with"),
+  ENDS_WITH("ends_with"),
+  MATCHES("matches"),
+  IS_EMPTY("is_empty"),
+  IS_NOT_EMPTY("is_not_empty"),
+  BEFORE("before"),
+  ON_OR_BEFORE("on_or_before"),
+  AFTER("after"),
+  ON_OR_AFTER("on_or_after"),
+  WITHIN("within"),
+  HAS_ANY("has_any"),
+  HAS_ALL("has_all"),
+  HAS_NONE("has_none"),
+  ;
+
+  companion object {
+    fun fromWireName(value: String): QueryOperator? = entries.firstOrNull { it.wireName == value }
+  }
+}
+
+sealed interface QueryValue {
+  data class Literal(val value: JsonElement) : QueryValue
+
+  data class Variable(val name: String) : QueryValue
+
+  data class RelativeDate(val amount: Int, val unit: RelativeDateUnit, val direction: DateDirection, val anchor: String) :
+    QueryValue
+
+  data class Between(val from: JsonElement?, val to: JsonElement?) : QueryValue
+}
+
+enum class RelativeDateUnit(val wireName: String) {
+  DAY("day"),
+  WEEK("week"),
+  MONTH("month"),
+  YEAR("year"),
+  ;
+
+  companion object {
+    fun fromWireName(value: String): RelativeDateUnit? = entries.firstOrNull { it.wireName == value }
+  }
+}
+
+enum class DateDirection(val wireName: String) {
+  PAST("past"),
+  FUTURE("future"),
+  ;
+
+  companion object {
+    fun fromWireName(value: String): DateDirection? = entries.firstOrNull { it.wireName == value }
+  }
+}
+
 data class SortTerm(
-  val field: String,
+  val field: QueryField,
   val direction: SortDirection,
   val nulls: NullOrdering? = null,
 )
 
-@Serializable
-enum class SortDirection {
-  ASC,
-  DESC,
+enum class SortDirection(val wireName: String) {
+  ASC("asc"),
+  DESC("desc"),
+  ;
+
+  companion object {
+    fun fromWireName(value: String): SortDirection? =
+      entries.firstOrNull { it.wireName == value.lowercase() }
+  }
 }
 
-@Serializable
-enum class NullOrdering {
-  FIRST,
-  LAST,
+enum class NullOrdering(val wireName: String) {
+  FIRST("first"),
+  LAST("last"),
+  ;
+
+  companion object {
+    fun fromWireName(value: String): NullOrdering? =
+      entries.firstOrNull { it.wireName == value.lowercase() }
+  }
 }
