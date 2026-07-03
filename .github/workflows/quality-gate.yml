@@ -136,7 +136,7 @@ jobs:
           images: ${{ env.WEB_IMAGE }}
           flavor: suffix=-${{ matrix.arch }},onlatest=true
           tags: |
-            type=sha,prefix=
+            type=sha,format=long,prefix=
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
 
@@ -147,7 +147,7 @@ jobs:
           images: ${{ env.WORKER_IMAGE }}
           flavor: suffix=-${{ matrix.arch }},onlatest=true
           tags: |
-            type=sha,prefix=
+            type=sha,format=long,prefix=
             type=ref,event=branch
             type=raw,value=latest,enable={{is_default_branch}}
 
