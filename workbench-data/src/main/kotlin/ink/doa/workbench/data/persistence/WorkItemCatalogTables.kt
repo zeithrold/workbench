@@ -1,7 +1,10 @@
 package ink.doa.workbench.data.persistence
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.javatime.timestampWithTimeZone
+import org.jetbrains.exposed.v1.json.jsonb
 
 object PrioritiesTable : Table("priorities") {
   val id = uuid("id")
@@ -45,8 +48,8 @@ object PropertyDefinitionsTable : Table("property_definitions") {
   val dataType = text("data_type")
   val isSystem = bool("is_system")
   val isArray = bool("is_array")
-  val validationSchema = text("validation_schema")
-  val searchConfig = text("search_config")
+  val validationSchema = jsonb("validation_schema", Json.Default, JsonElement.serializer())
+  val searchConfig = jsonb("search_config", Json.Default, JsonElement.serializer())
   val isActive = bool("is_active")
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
@@ -152,10 +155,10 @@ object IssueTypeConfigPropertiesTable : Table("issue_type_config_properties") {
   val issueTypeConfigId = uuid("issue_type_config_id").references(IssueTypeConfigsTable.id)
   val propertyId = uuid("property_id").references(PropertyDefinitionsTable.id)
   val isRequired = bool("is_required")
-  val defaultValue = text("default_value").nullable()
-  val validationOverride = text("validation_override")
+  val defaultValue = jsonb("default_value", Json.Default, JsonElement.serializer()).nullable()
+  val validationOverride = jsonb("validation_override", Json.Default, JsonElement.serializer())
   val rank = integer("rank")
-  val displayConfig = text("display_config")
+  val displayConfig = jsonb("display_config", Json.Default, JsonElement.serializer())
   override val primaryKey = PrimaryKey(id)
 }
 
@@ -184,11 +187,11 @@ object WorkflowTransitionsTable : Table("workflow_transitions") {
   val fromStatusId = uuid("from_status_id").references(IssueStatusesTable.id)
   val toStatusId = uuid("to_status_id").references(IssueStatusesTable.id)
   val rank = integer("rank")
-  val permissionCondition = text("permission_condition")
-  val preconditionAst = text("precondition_ast")
-  val requiredProperties = text("required_properties")
-  val optionalProperties = text("optional_properties")
-  val propertyDefaults = text("property_defaults")
+  val permissionCondition = jsonb("permission_condition", Json.Default, JsonElement.serializer())
+  val preconditionAst = jsonb("precondition_ast", Json.Default, JsonElement.serializer())
+  val requiredProperties = jsonb("required_properties", Json.Default, JsonElement.serializer())
+  val optionalProperties = jsonb("optional_properties", Json.Default, JsonElement.serializer())
+  val propertyDefaults = jsonb("property_defaults", Json.Default, JsonElement.serializer())
   val isActive = bool("is_active")
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
