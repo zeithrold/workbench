@@ -17,6 +17,7 @@ rootProject.name = "workbench"
 include(
     ":workbench-core",
     ":workbench-service",
+    ":workbench-agile",
     ":workbench-data",
     ":workbench-security",
     ":workbench-web",

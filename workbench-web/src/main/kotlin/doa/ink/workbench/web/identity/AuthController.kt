@@ -49,7 +49,8 @@ class AuthController(
   @Operation(
     summary = "Sign in",
     description =
-      "Authenticates the user and sets the WORKBENCH_SESSION cookie. Public endpoint with no prior session required. Optionally returns a bearer token when issueBearerToken is true.",
+      "Authenticates the user and sets the WORKBENCH_SESSION cookie. Public endpoint with " +
+        "no prior session required. Optionally returns a bearer token when issueBearerToken is true.",
     responses =
       [
         ApiResponse(
@@ -129,8 +130,10 @@ class AuthController(
   @Operation(
     summary = "Sign out",
     description =
-      "Revokes the active session or bearer token and clears the WORKBENCH_SESSION cookie. Accepts either the session cookie or Authorization: Bearer header.",
-    responses = [ApiResponse(responseCode = "200", description = "Logged out; session cookie cleared")],
+      "Revokes the active session or bearer token and clears the WORKBENCH_SESSION cookie. " +
+        "Accepts either the session cookie or Authorization: Bearer header.",
+    responses =
+      [ApiResponse(responseCode = "200", description = "Logged out; session cookie cleared")],
   )
   suspend fun logout(servletRequest: HttpServletRequest): ResponseEntity<Void> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
@@ -177,7 +180,8 @@ class AuthController(
   @Operation(
     summary = "List login options",
     description =
-      "Discovers tenant and login method options for an identifier such as an email address. Public endpoint used before sign-in to render the login UI.",
+      "Discovers tenant and login method options for an identifier such as an email address. " +
+        "Public endpoint used before sign-in to render the login UI.",
     responses =
       [
         ApiResponse(
@@ -296,7 +300,8 @@ class AuthController(
   @Operation(
     summary = "Start federated login",
     description =
-      "Begins OAuth or SAML authorization for the given tenant and login method. Returns a provider authorization URL for the browser to redirect to.",
+      "Begins OAuth or SAML authorization for the given tenant and login method. " +
+        "Returns a provider authorization URL for the browser to redirect to.",
     responses =
       [
         ApiResponse(
@@ -339,7 +344,8 @@ class AuthController(
   @Operation(
     summary = "OAuth callback",
     description =
-      "Completes OAuth login after the identity provider redirects back. Called by the provider, not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
+      "Completes OAuth login after the identity provider redirects back. Called by the provider, " +
+        "not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
     responses =
       [
         ApiResponse(
@@ -399,7 +405,8 @@ class AuthController(
   @Operation(
     summary = "SAML assertion consumer",
     description =
-      "Completes SAML login from the identity provider POST. Called by the IdP ACS endpoint, not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
+      "Completes SAML login from the identity provider POST. Called by the IdP ACS endpoint, " +
+        "not directly by application clients. Sets the WORKBENCH_SESSION cookie on success.",
     responses =
       [
         ApiResponse(

@@ -33,6 +33,7 @@ subprojects {
 val backendProjects = listOf(
     project(":workbench-core"),
     project(":workbench-service"),
+    project(":workbench-agile"),
     project(":workbench-data"),
     project(":workbench-security"),
     project(":workbench-web"),

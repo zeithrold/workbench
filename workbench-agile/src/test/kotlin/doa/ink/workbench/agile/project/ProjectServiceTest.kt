@@ -1,4 +1,4 @@
-package doa.ink.workbench.service.project
+package doa.ink.workbench.agile.project
 
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.project.ProjectRepository

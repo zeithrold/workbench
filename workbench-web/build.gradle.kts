@@ -8,6 +8,7 @@ plugins {
 dependencies {
   implementation(project(":workbench-core"))
   implementation(project(":workbench-service"))
+  implementation(project(":workbench-agile"))
   implementation(project(":workbench-data"))
   implementation(project(":workbench-security"))
   implementation("org.springframework.boot:spring-boot-starter-webmvc")

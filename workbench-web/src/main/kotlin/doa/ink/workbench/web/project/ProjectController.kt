@@ -3,7 +3,7 @@ package doa.ink.workbench.web.project
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
-import doa.ink.workbench.service.project.ProjectService
+import doa.ink.workbench.agile.project.ProjectService
 import doa.ink.workbench.web.api.Audit
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
@@ -261,7 +261,8 @@ class ProjectController(private val service: ProjectService) {
   @Operation(
     summary = "Update project",
     description =
-      "Partially updates mutable project fields. Omitted fields are left unchanged; explicit null clears nullable fields such as description.",
+      "Partially updates mutable project fields. Omitted fields are left unchanged; " +
+        "explicit null clears nullable fields such as description.",
     responses =
       [
         ApiResponse(
