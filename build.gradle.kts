@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.spring.dependency.management) apply false
@@ -107,8 +109,50 @@ configure(backendProjects) {
         "testImplementation"(coroutinesTestDependency)
     }
 
-    tasks.withType<Test>().configureEach {
+    tasks.withType<Test>().matching { it.name != "fuzzVerification" }.configureEach {
         useJUnitPlatform()
+    }
+
+    tasks.named<Test>("test") {
+        useJUnitPlatform {
+            excludeTags("fuzz")
+        }
+    }
+
+    afterEvaluate {
+        val hasFuzzTests =
+            fileTree("src/test/kotlin") {
+                include("**/*.kt")
+            }.any { it.readText().contains("@Tag(\"fuzz\")") }
+
+        if (hasFuzzTests) {
+            tasks.register<Test>("fuzzVerification") {
+                group = "verification"
+                description = "Runs property-based (fuzz) tests in this module"
+                val testTask = tasks.named<Test>("test").get()
+                testClassesDirs = testTask.testClassesDirs
+                classpath = testTask.classpath
+                failOnNoDiscoveredTests = false
+                useJUnitPlatform {
+                    includeTags("fuzz")
+                }
+            }
+        } else {
+            tasks.register("fuzzVerification") {
+                group = "verification"
+                description = "No fuzz tests configured for this module"
+            }
+        }
+
+        if (hasFuzzTests) {
+            extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
+                currentProject {
+                    instrumentation {
+                        disabledForTestTasks.add("fuzzVerification")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -120,4 +164,16 @@ tasks.register("dev") {
         println("Worker:   ./gradlew :workbench-worker:bootRun --args='--spring.profiles.active=local,worker'")
         println("Frontend: ./gradlew :workbench-frontend:pnpmDev")
     }
+}
+
+tasks.register("fuzzTest") {
+    group = "verification"
+    description = "Runs property-based (fuzz) tests"
+    dependsOn(backendProjects.map { "${it.path}:fuzzVerification" })
+}
+
+tasks.register("mutationTest") {
+    group = "verification"
+    description = "Runs PIT mutation testing"
+    dependsOn(":workbench-web:pitest")
 }
