@@ -47,8 +47,7 @@ class ProjectMemberServiceTest :
     val users = mockk<UserRepository>()
     val tenantMembers = mockk<TenantMemberRepository>()
 
-    val service =
-      ProjectMemberService(bindings, policies, projects, users, tenantMembers, clock)
+    val service = ProjectMemberService(bindings, policies, projects, users, tenantMembers, clock)
 
     val userPublicId = PublicId.new("usr")
     val user =
@@ -145,7 +144,8 @@ class ProjectMemberServiceTest :
       coEvery { bindings.create(capture(commandSlot)) } returns binding
       stubListMembers()
 
-      val member = service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+      val member =
+        service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
 
       member.user.id shouldBe userPublicId.value
       commandSlot.captured.policyId shouldBe memberPolicyId
@@ -175,8 +175,9 @@ class ProjectMemberServiceTest :
       coEvery { users.findByApiId(userPublicId.value) } returns null
 
       shouldThrow<ResourceNotFoundException> {
-        service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
-      }.errorCode shouldBe WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND
+          service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND
     }
 
     "addMember rejects inactive tenant members" {
@@ -185,24 +186,27 @@ class ProjectMemberServiceTest :
         activeMembership().copy(status = TenantMemberStatus.SUSPENDED)
 
       shouldThrow<InvalidRequestException> {
-        service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
-      }.errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_INACTIVE_TENANT_MEMBER
+          service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_INACTIVE_TENANT_MEMBER
     }
 
     "addMember rejects unknown builtin roles" {
       stubActiveMemberLookup()
 
       shouldThrow<InvalidRequestException> {
-        service.addMember(tenantId, projectId, userPublicId.value, null, "owner", actorUserId)
-      }.errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_UNKNOWN_ROLE
+          service.addMember(tenantId, projectId, userPublicId.value, null, "owner", actorUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_UNKNOWN_ROLE
     }
 
     "addMember requires either policy or role" {
       stubActiveMemberLookup()
 
       shouldThrow<InvalidRequestException> {
-        service.addMember(tenantId, projectId, userPublicId.value, null, null, actorUserId)
-      }.errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_POLICY_OR_ROLE_REQUIRED
+          service.addMember(tenantId, projectId, userPublicId.value, null, null, actorUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_POLICY_OR_ROLE_REQUIRED
     }
 
     "attachPolicy delegates to addMember after membership check" {
@@ -230,8 +234,9 @@ class ProjectMemberServiceTest :
       coEvery { bindings.findByApiId(tenantId, bindingPublicId.value) } returns null
 
       shouldThrow<ResourceNotFoundException> {
-        service.removePolicy(tenantId, bindingPublicId.value)
-      }.errorCode shouldBe WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND
+          service.removePolicy(tenantId, bindingPublicId.value)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND
     }
 
     "join adds project-member policy when self-join is open" {
@@ -270,14 +275,18 @@ class ProjectMemberServiceTest :
           nonMemberJoinPolicy = NonMemberJoinPolicy.ADMIN_ONLY,
         )
 
-      shouldThrow<InvalidRequestException> { service.join(tenantId, projectId, userId, actorUserId) }
+      shouldThrow<InvalidRequestException> {
+          service.join(tenantId, projectId, userId, actorUserId)
+        }
         .errorCode shouldBe WorkbenchErrorCode.PROJECT_SELF_JOIN_DISABLED
     }
 
     "join rejects missing projects" {
       coEvery { projects.findById(tenantId, projectId) } returns null
 
-      shouldThrow<ResourceNotFoundException> { service.join(tenantId, projectId, userId, actorUserId) }
+      shouldThrow<ResourceNotFoundException> {
+          service.join(tenantId, projectId, userId, actorUserId)
+        }
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND
     }
   })
