@@ -1,0 +1,75 @@
+package ink.doa.workbench.core.workitem
+
+import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
+import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
+import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
+import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.core.workitem.model.IssueStatusRecord
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.core.workitem.model.IssueTypeRecord
+import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import java.time.OffsetDateTime
+import java.util.UUID
+
+interface WorkItemCatalogRepository {
+  suspend fun createStatus(command: CreateIssueStatusCommand): IssueStatusRecord
+
+  suspend fun listStatuses(tenantId: UUID): List<IssueStatusRecord>
+
+  suspend fun findStatus(tenantId: UUID, apiIdOrCode: String): IssueStatusRecord?
+
+  suspend fun createProperty(command: CreatePropertyDefinitionCommand): PropertyDefinitionRecord
+
+  suspend fun listProperties(tenantId: UUID): List<PropertyDefinitionRecord>
+
+  suspend fun findProperty(tenantId: UUID, apiIdOrCode: String): PropertyDefinitionRecord?
+
+  suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord
+
+  suspend fun listIssueTypes(tenantId: UUID, projectId: UUID? = null): List<IssueTypeRecord>
+
+  suspend fun findIssueType(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    projectId: UUID? = null,
+  ): IssueTypeRecord?
+}
+
+interface WorkflowConfigurationRepository {
+  suspend fun createWorkflow(command: CreateWorkflowCommand): WorkflowRecord
+
+  suspend fun listWorkflows(tenantId: UUID): List<WorkflowRecord>
+
+  suspend fun findWorkflow(tenantId: UUID, apiIdOrCode: String): WorkflowRecord?
+
+  suspend fun publishWorkflow(
+    tenantId: UUID,
+    workflowId: UUID,
+    publishedAt: OffsetDateTime,
+  ): WorkflowRecord
+
+  suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord
+
+  suspend fun listTransitions(tenantId: UUID, workflowId: UUID): List<WorkflowTransitionRecord>
+
+  suspend fun findTransition(tenantId: UUID, apiId: String): WorkflowTransitionRecord?
+}
+
+interface IssueTypeConfigRepository {
+  suspend fun createConfig(command: CreateIssueTypeConfigCommand): IssueTypeConfigDetails
+
+  suspend fun listConfigs(tenantId: UUID, projectId: UUID? = null): List<IssueTypeConfigDetails>
+
+  suspend fun findConfig(tenantId: UUID, apiId: String): IssueTypeConfigDetails?
+
+  suspend fun resolveEffective(
+    tenantId: UUID,
+    projectId: UUID,
+    issueTypeApiIdOrCode: String,
+  ): EffectiveIssueTypeConfig?
+}

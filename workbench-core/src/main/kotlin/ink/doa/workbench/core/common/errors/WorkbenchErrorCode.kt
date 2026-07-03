@@ -471,6 +471,71 @@ enum class WorkbenchErrorCode(
     "work_item.query.variable.trusted_context_required",
     "Variable requires trusted request context binding.",
   ),
+  RESOURCE_WORK_ITEM_STATUS_NOT_FOUND(
+    "resource.work_item_status.not_found",
+    "Work item status not found.",
+  ),
+  RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND(
+    "resource.work_item_property.not_found",
+    "Work item property not found.",
+  ),
+  RESOURCE_WORK_ITEM_TYPE_NOT_FOUND(
+    "resource.work_item_type.not_found",
+    "Work item type not found.",
+  ),
+  RESOURCE_WORKFLOW_NOT_FOUND("resource.workflow.not_found", "Workflow not found."),
+  RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND(
+    "resource.workflow_transition.not_found",
+    "Workflow transition not found.",
+  ),
+  RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND(
+    "resource.work_item_type_config.not_found",
+    "Work item type config not found.",
+  ),
+  WORK_ITEM_CONFIG_SCOPE_UNKNOWN(
+    "work_item.config.scope_unknown",
+    "Unknown work item config scope.",
+  ),
+  WORK_ITEM_STATUS_GROUP_UNKNOWN(
+    "work_item.status.group_unknown",
+    "Unknown work item status group.",
+  ),
+  WORK_ITEM_PROPERTY_TYPE_UNKNOWN(
+    "work_item.property.type_unknown",
+    "Unknown work item property data type.",
+  ),
+  WORK_ITEM_CONFIG_SCOPE_PROJECT_REQUIRED(
+    "work_item.config.scope_project_required",
+    "Project scope requires a project id.",
+  ),
+  WORK_ITEM_CONFIG_SCOPE_PROJECT_FORBIDDEN(
+    "work_item.config.scope_project_forbidden",
+    "Tenant scope must not include a project id.",
+  ),
+  WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED(
+    "work_item.config.initial_status_required",
+    "Exactly one initial status is required.",
+  ),
+  WORK_ITEM_CONFIG_DUPLICATE_STATUS(
+    "work_item.config.duplicate_status",
+    "Status is bound more than once.",
+  ),
+  WORK_ITEM_CONFIG_DUPLICATE_PROPERTY(
+    "work_item.config.duplicate_property",
+    "Property is bound more than once.",
+  ),
+  WORK_ITEM_CONFIG_CROSS_TENANT_REFERENCE(
+    "work_item.config.cross_tenant_reference",
+    "Referenced work item configuration resource belongs to another tenant.",
+  ),
+  WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN(
+    "workflow.published_update_forbidden",
+    "Published workflows cannot be updated in place.",
+  ),
+  WORKFLOW_TRANSITION_STATUS_UNAVAILABLE(
+    "workflow.transition.status_unavailable",
+    "Transition status is not available in the effective type config.",
+  ),
   DOMAIN_EVENT_ENVELOPE_INVALID_JSON(
     "domain_event.envelope.invalid_json",
     "Invalid domain event envelope JSON.",
