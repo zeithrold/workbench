@@ -4,7 +4,16 @@ import doa.ink.workbench.core.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 
-data class TenantRecord(val id: UUID, val apiId: PublicId, val slug: String, val name: String)
+data class TenantRecord(
+  val id: UUID,
+  val apiId: PublicId,
+  val slug: String,
+  val name: String,
+  val timezone: String = "UTC",
+  val locale: String = "en-US",
+  val createdAt: OffsetDateTime? = null,
+  val updatedAt: OffsetDateTime? = null,
+)
 
 data class UserRecord(
   val id: UUID,

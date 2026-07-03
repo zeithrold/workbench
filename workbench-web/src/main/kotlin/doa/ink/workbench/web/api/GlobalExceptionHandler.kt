@@ -2,10 +2,14 @@ package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InfrastructureUnavailableException
+import doa.ink.workbench.core.common.errors.InstanceAlreadyInitializedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
+import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
 import doa.ink.workbench.core.common.errors.TenantNotSelectedException
+import doa.ink.workbench.core.common.errors.WorkbenchException
 import java.net.URI
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
@@ -23,6 +27,17 @@ class GlobalExceptionHandler {
   @ExceptionHandler(TenantNotSelectedException::class)
   fun tenantNotSelected(error: TenantNotSelectedException): ProblemDetail =
     problem(HttpStatus.CONFLICT, "Tenant Not Selected", error.message.orEmpty())
+
+  @ExceptionHandler(
+    ResourceConflictException::class,
+    InstanceAlreadyInitializedException::class,
+  )
+  fun conflict(error: WorkbenchException): ProblemDetail =
+    problem(HttpStatus.CONFLICT, "Conflict", error.message.orEmpty())
+
+  @ExceptionHandler(SetupTokenInvalidException::class)
+  fun setupTokenInvalid(error: SetupTokenInvalidException): ProblemDetail =
+    problem(HttpStatus.FORBIDDEN, "Setup Token Invalid", error.message.orEmpty())
 
   @ExceptionHandler(PermissionDeniedException::class)
   fun denied(error: PermissionDeniedException): ProblemDetail =

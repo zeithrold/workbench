@@ -195,6 +195,30 @@ data class CreateTenantMemberCommand(
   val invitedBy: UUID? = null,
 )
 
+data class CreateTenantCommand(
+  val name: String,
+  val slug: String,
+  val timezone: String = "UTC",
+  val locale: String = "en-US",
+)
+
+data class UpdateTenantCommand(
+  val tenantId: UUID,
+  val name: String? = null,
+  val slug: String? = null,
+  val timezone: String? = null,
+  val locale: String? = null,
+)
+
+data class BootstrapInstanceAdminCommand(
+  val displayName: String,
+  val email: String,
+  val password: String,
+  val setupToken: String? = null,
+  val ipAddress: String? = null,
+  val userAgent: String? = null,
+)
+
 data class CreateLoginMethodDefinitionCommand(
   val code: String,
   val kind: LoginMethodKind,

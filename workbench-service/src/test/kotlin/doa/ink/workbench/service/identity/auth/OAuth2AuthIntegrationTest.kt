@@ -30,6 +30,7 @@ class OAuth2AuthIntegrationTest :
       keycloak.start()
       database = AuthIntegrationFixtures.connectDatabase(postgres)
       fixture = runBlocking { AuthIntegrationFixtures.seedFederatedFixture(database, keycloak) }
+      val secretResolver = MapSecretResolver(AuthIntegrationFixtures.keycloakSecrets())
       federatedAuthService =
         FederatedAuthService(
           loginAccounts = ExposedLoginAccountRepository(database),
@@ -37,7 +38,8 @@ class OAuth2AuthIntegrationTest :
           loginStates = ExposedAuthLoginStateRepository(database),
           secretGenerator = SecureRandomCredentialSecretGenerator(),
           credentialHasher = Sha256CredentialHasher(),
-          secretResolver = MapSecretResolver(AuthIntegrationFixtures.keycloakSecrets()),
+          oauthClient = OAuthFederatedClient(secretResolver),
+          samlClient = SamlFederatedClient(),
           clock = Clock.systemUTC(),
         )
     }

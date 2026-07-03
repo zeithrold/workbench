@@ -20,7 +20,7 @@ class PostgresMigrationIntegrationTest :
             .load()
             .migrate()
 
-        result.migrationsExecuted shouldBe 9
+        result.migrationsExecuted shouldBe 11
       }
     }
   })

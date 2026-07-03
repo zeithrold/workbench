@@ -27,6 +27,9 @@ scalar:
   enabled: true
   path: /scalar
   url: /v3/api-docs
+workbench:
+  instance:
+    setup-token: ${WORKBENCH_SETUP_TOKEN:}
 logging:
   structured:
     format:

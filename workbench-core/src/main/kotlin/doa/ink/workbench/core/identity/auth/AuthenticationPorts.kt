@@ -20,6 +20,10 @@ interface PasswordVerifier {
   fun verify(rawPassword: String, passwordHash: String): Boolean
 }
 
+interface PasswordHasher {
+  fun hash(rawPassword: String): String
+}
+
 interface CredentialSecretGenerator {
   fun generate(): String
 }

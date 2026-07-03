@@ -33,6 +33,8 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
             "/api/auth/oauth2/callback",
             "/api/auth/saml2/**",
             "/api/auth/magic-link/**",
+            "/api/instance/setup-status",
+            "/api/instance/setup",
           )
           .permitAll()
         it.anyRequest().authenticated()

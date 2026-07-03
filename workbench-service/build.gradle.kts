@@ -13,6 +13,7 @@ dependencies {
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.keycloak)
+  testImplementation("org.springframework.security:spring-security-crypto")
   testFixturesImplementation(project(":workbench-core"))
   testFixturesImplementation(project(":workbench-data"))
   testFixturesImplementation(libs.exposed.jdbc)

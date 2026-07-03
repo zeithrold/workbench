@@ -155,11 +155,25 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   private object TestTenants : TenantRepository {
+    override suspend fun create(
+      command: doa.ink.workbench.core.identity.model.CreateTenantCommand
+    ) = error("unused")
+
+    override suspend fun update(
+      command: doa.ink.workbench.core.identity.model.UpdateTenantCommand
+    ) = error("unused")
+
     override suspend fun findById(id: UUID): TenantRecord? = null
 
     override suspend fun findByApiId(apiId: String): TenantRecord? = null
 
+    override suspend fun findBySlug(slug: String): TenantRecord? = null
+
+    override suspend fun existsBySlug(slug: String): Boolean = false
+
     override suspend fun findByIds(ids: Collection<UUID>): List<TenantRecord> = emptyList()
+
+    override suspend fun list(slug: String?): List<TenantRecord> = emptyList()
   }
 
   private object UnusedUserRepository : UserRepository {
@@ -171,6 +185,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findByApiId(apiId: String) = null
 
     override suspend fun findByPrimaryEmail(primaryEmail: String) = null
+
+    override suspend fun existsSystemUser(): Boolean = false
   }
 
   private object UnusedLoginAccountRepository : LoginAccountRepository {
