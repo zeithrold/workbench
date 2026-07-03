@@ -32,6 +32,10 @@ springBoot {
   mainClass.set("doa.ink.workbench.web.WorkbenchApplicationKt")
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+  archiveFileName.set("workbench-web.jar")
+}
+
 pitest {
   junit5PluginVersion.set("1.2.2")
   targetClasses.set(setOf("doa.ink.workbench.*"))

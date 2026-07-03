@@ -1,0 +1,14 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quality-gate:
+    uses: ./.github/workflows/quality-gate.yml
+    with:
+      extended-tests: false

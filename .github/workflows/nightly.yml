@@ -1,0 +1,13 @@
+name: Nightly
+
+on:
+  schedule:
+    # 02:00 Asia/Shanghai (UTC+8)
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  quality-gate:
+    uses: ./.github/workflows/quality-gate.yml
+    with:
+      extended-tests: true
