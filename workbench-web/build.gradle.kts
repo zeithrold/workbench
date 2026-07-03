@@ -26,7 +26,13 @@ dependencies {
   testImplementation("org.springframework.boot:spring-boot-starter-security-test")
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)
+  testImplementation(libs.testcontainers.keycloak)
+  testImplementation(libs.exposed.jdbc)
+  testImplementation(testFixtures(project(":workbench-service")))
+  testImplementation(libs.redisson)
 }
+
+sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))
 
 springBoot {
   mainClass.set("doa.ink.workbench.web.WorkbenchApplicationKt")

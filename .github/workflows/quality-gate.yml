@@ -91,7 +91,8 @@ jobs:
       - name: Build and push web image
         uses: docker/build-push-action@v6
         with:
-          context: workbench-web
+          context: .
+          file: workbench-web/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.web-meta.outputs.tags }}
           labels: ${{ steps.web-meta.outputs.labels }}
@@ -99,7 +100,8 @@ jobs:
       - name: Build and push worker image
         uses: docker/build-push-action@v6
         with:
-          context: workbench-worker
+          context: .
+          file: workbench-worker/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.worker-meta.outputs.tags }}
           labels: ${{ steps.worker-meta.outputs.labels }}
