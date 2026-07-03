@@ -63,4 +63,14 @@ class ExposedInvitationRepository(private val database: Database) : InvitationRe
         it[InvitationsTable.consumedAt] = consumedAt
       } > 0
     }
+
+  override suspend fun cancelPendingByTenant(tenantId: UUID, cancelledAt: OffsetDateTime): Int =
+    suspendTransaction(db = database) {
+      InvitationsTable.update({
+        (InvitationsTable.tenantId eq tenantId.toKotlinUuid()) and
+          InvitationsTable.consumedAt.isNull()
+      }) {
+        it[InvitationsTable.consumedAt] = cancelledAt
+      }
+    }
 }

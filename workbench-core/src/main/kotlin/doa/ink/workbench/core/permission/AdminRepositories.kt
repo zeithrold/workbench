@@ -101,4 +101,6 @@ interface AccessGrantRepository {
   suspend fun listInstanceGrants(): List<AccessGrantRecord>
 
   suspend fun expire(id: UUID, validTo: OffsetDateTime): Boolean
+
+  suspend fun expireByTenant(tenantId: UUID, expiredAt: OffsetDateTime): Int
 }

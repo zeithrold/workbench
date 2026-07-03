@@ -14,6 +14,8 @@ class TenantNotSelectedException(message: String) : WorkbenchException(message)
 
 class ResourceConflictException(message: String) : WorkbenchException(message)
 
+class TenantDestroyingException(message: String) : WorkbenchException(message)
+
 class InstanceAlreadyInitializedException(message: String) : WorkbenchException(message)
 
 class SetupTokenInvalidException(message: String) : WorkbenchException(message)

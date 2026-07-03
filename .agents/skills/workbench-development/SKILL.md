@@ -140,7 +140,7 @@ Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover/P
 - [ ] API changes: `pnpm openapi` run; generated client committed
 - [ ] New Flyway version: `PostgresMigrationIntegrationTest` expected count updated
 - [ ] No secrets or debug logging left in diff
-- [ ] Commit messages: imperative, sentence case (`Add …`, `Fix …`)
+- [ ] Commit messages follow [git-commit](../git-commit/SKILL.md) (Conventional Commits)
 
 ## Anti-patterns
 
@@ -152,6 +152,7 @@ Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover/P
 
 ## Additional Resources
 
+- [git-commit](../git-commit/SKILL.md) — commit message format and agent workflow
 - [reference.md](reference.md) — command cheat sheet, paths, CI stages
 - [README.md](../../../README.md) — baseline stack and architecture
 - [AGENTS.md](../../../AGENTS.md) — Cursor Cloud toolchain notes

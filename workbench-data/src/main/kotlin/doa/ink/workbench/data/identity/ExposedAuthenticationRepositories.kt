@@ -92,6 +92,17 @@ class ExposedAuthSessionRepository(private val database: Database) : AuthSession
       } > 0
     }
 
+  override suspend fun revokeByActiveTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int =
+    suspendTransaction(db = database) {
+      AuthSessionsTable.update({
+        (AuthSessionsTable.activeTenantId eq tenantId.toKotlinUuid()) and
+          AuthSessionsTable.revokedAt.isNull()
+      }) {
+        it[AuthSessionsTable.revokedAt] = revokedAt
+        it[AuthSessionsTable.updatedAt] = revokedAt
+      }
+    }
+
   override suspend fun touch(id: UUID, usedAt: OffsetDateTime): Boolean =
     suspendTransaction(db = database) {
       AuthSessionsTable.update({
@@ -168,6 +179,17 @@ class ExposedBearerTokenRepository(private val database: Database) : BearerToken
         it[BearerTokensTable.revokedAt] = revokedAt
         it[BearerTokensTable.updatedAt] = revokedAt
       } > 0
+    }
+
+  override suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int =
+    suspendTransaction(db = database) {
+      BearerTokensTable.update({
+        (BearerTokensTable.tenantId eq tenantId.toKotlinUuid()) and
+          BearerTokensTable.revokedAt.isNull()
+      }) {
+        it[BearerTokensTable.revokedAt] = revokedAt
+        it[BearerTokensTable.updatedAt] = revokedAt
+      }
     }
 
   override suspend fun touch(id: UUID, usedAt: OffsetDateTime): Boolean =

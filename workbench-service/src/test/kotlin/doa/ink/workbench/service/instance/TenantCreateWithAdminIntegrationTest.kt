@@ -27,6 +27,7 @@ import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependen
 import doa.ink.workbench.service.invitation.InvitationLinkBuilder
 import doa.ink.workbench.service.invitation.InvitationLinkProperties
 import doa.ink.workbench.service.invitation.InvitationService
+import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
 import doa.ink.workbench.service.permission.AdminUserService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -119,11 +120,14 @@ class TenantCreateWithAdminIntegrationTest :
       tenantService =
         TenantManagementService(
           tenants = tenants,
+          users = users,
           loginMethods = loginMethods,
           tenantLoginSettings = tenantLoginSettings,
           publicIds = publicIds,
           adminUserService = adminUserService,
           invitationService = invitationService,
+          domainEventPublisher = RecordingDomainEventPublisher(),
+          clock = clock,
         )
 
       runBlocking {

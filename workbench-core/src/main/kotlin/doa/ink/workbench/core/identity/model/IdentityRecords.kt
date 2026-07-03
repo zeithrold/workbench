@@ -54,6 +54,7 @@ enum class TenantMemberStatus(val dbValue: String) {
 enum class TenantStatus(val dbValue: String) {
   ACTIVE("active"),
   PENDING_ACTIVATION("pending_activation"),
+  DESTROYING("destroying"),
 }
 
 enum class InvitationType(val dbValue: String) {

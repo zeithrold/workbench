@@ -38,6 +38,8 @@ class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository
 
       override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
 
+      override suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime) = 0
+
       override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
     }
 
@@ -79,6 +81,8 @@ class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository
       ) = error("unused")
 
       override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
+
+      override suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime) = 0
     }
 
   val accessGrants: AccessGrantRepository =
@@ -113,6 +117,8 @@ class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository
         emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
 
       override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
+
+      override suspend fun expireByTenant(tenantId: UUID, expiredAt: OffsetDateTime) = 0
     }
 
   val projects: ProjectRepository =

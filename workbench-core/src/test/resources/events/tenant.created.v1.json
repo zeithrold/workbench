@@ -1,0 +1,14 @@
+{
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "type": "tenant.created",
+  "version": 1,
+  "occurredAt": "2026-07-03T00:00:00Z",
+  "traceId": "trace-abc",
+  "tenantId": "ten_sample123",
+  "payload": {
+    "tenantId": "ten_sample123",
+    "name": "Acme",
+    "status": "active",
+    "createdAt": "2026-07-03T00:00:00Z"
+  }
+}

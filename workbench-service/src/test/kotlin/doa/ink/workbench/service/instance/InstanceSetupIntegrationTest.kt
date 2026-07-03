@@ -28,6 +28,7 @@ import doa.ink.workbench.service.identity.auth.SessionCredentialService
 import doa.ink.workbench.service.identity.auth.Sha256CredentialHasher
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
+import doa.ink.workbench.service.tenant.TenantOperationalGuard
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -143,6 +144,7 @@ class InstanceSetupIntegrationTest :
               tenants = tenants,
               publicIds = publicIds,
               loginCompletionService = loginCompletionService,
+              tenantOperationalGuard = TenantOperationalGuard(tenants),
               clock = clock,
             ),
           loginCompletionService = loginCompletionService,

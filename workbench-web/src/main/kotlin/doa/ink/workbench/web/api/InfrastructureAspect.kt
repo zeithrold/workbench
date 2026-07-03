@@ -14,6 +14,7 @@ import doa.ink.workbench.core.permission.model.AuthorizationResource
 import doa.ink.workbench.core.permission.model.AuthorizationScope
 import doa.ink.workbench.core.permission.model.AuthorizationSubject
 import doa.ink.workbench.core.permission.model.PermissionService
+import doa.ink.workbench.service.tenant.TenantOperationalGuard
 import java.time.Clock
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Component
 @Component
 class InfrastructureAspect(
   private val permissionService: PermissionService,
+  private val tenantOperationalGuard: TenantOperationalGuard,
   private val clock: Clock,
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
@@ -57,10 +59,14 @@ class InfrastructureAspect(
   }
 
   @Around("@annotation(doa.ink.workbench.web.api.PublishEvent)")
+  @Deprecated("Use DomainEventPublisher.publish(spec, payload) explicitly in services.")
   fun publishEvent(joinPoint: ProceedingJoinPoint): Any? = joinPoint.proceed()
 
   @Around("@annotation(authorize)")
   fun authorize(joinPoint: ProceedingJoinPoint, authorize: Authorize): Any? {
+    joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()?.let { tenantContext ->
+      runBlocking { tenantOperationalGuard.ensureOperational(tenantContext.tenantId) }
+    }
     val request = authorizationRequest(joinPoint, authorize)
     val decision = runBlocking { permissionService.decide(request) }
     if (decision is AuthorizationDecision.Deny) {

@@ -40,6 +40,7 @@ private val DEFAULT_INSTANCE_GRANTS =
     AuthorizationAction("tenant.create") to "tenant:*",
     AuthorizationAction("tenant.read") to "tenant:*",
     AuthorizationAction("tenant.update") to "tenant:*",
+    AuthorizationAction("tenant.delete") to "tenant:*",
   )
 
 @Service

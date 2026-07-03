@@ -14,6 +14,7 @@ import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.SessionService
 import doa.ink.workbench.service.instance.CreateTenantView
 import doa.ink.workbench.service.instance.TenantManagementService
+import doa.ink.workbench.service.tenant.TenantOperationalGuard
 import doa.ink.workbench.web.api.GlobalExceptionHandler
 import doa.ink.workbench.web.api.InfrastructureAspect
 import doa.ink.workbench.web.api.InstanceRequestContextResolver
@@ -155,6 +156,8 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
     @Bean
     fun clock(): java.time.Clock =
       java.time.Clock.fixed(java.time.Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
+
+    @Bean fun tenantOperationalGuard(): TenantOperationalGuard = mockk(relaxed = true)
 
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 

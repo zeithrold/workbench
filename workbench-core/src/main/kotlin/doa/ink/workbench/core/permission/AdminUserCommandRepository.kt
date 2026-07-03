@@ -7,6 +7,8 @@ interface AdminUserCommandRepository {
   suspend fun create(command: CreateAdminUserCommand): AdminUserRecord
 
   suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean
+
+  suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int
 }
 
 interface AdminUserQueryRepository {

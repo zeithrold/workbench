@@ -9,6 +9,7 @@ import doa.ink.workbench.data.persistence.AdminUsersTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -51,5 +52,17 @@ class ExposedAdminUserCommandRepository(private val database: Database) :
         it[validTo] = revokedAt
         it[updatedAt] = revokedAt
       } > 0
+    }
+
+  override suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int =
+    suspendTransaction(db = database) {
+      AdminUsersTable.update({
+        (AdminUsersTable.tenantId eq tenantId.toKotlinUuid()) and
+          (AdminUsersTable.status eq AdminUserStatus.ACTIVE.dbValue)
+      }) {
+        it[status] = AdminUserStatus.REVOKED.dbValue
+        it[validTo] = revokedAt
+        it[updatedAt] = revokedAt
+      }
     }
 }
