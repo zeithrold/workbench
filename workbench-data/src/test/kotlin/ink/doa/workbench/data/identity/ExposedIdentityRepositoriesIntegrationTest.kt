@@ -30,12 +30,12 @@ import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.Tag
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.junit.jupiter.api.Tag
 import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")

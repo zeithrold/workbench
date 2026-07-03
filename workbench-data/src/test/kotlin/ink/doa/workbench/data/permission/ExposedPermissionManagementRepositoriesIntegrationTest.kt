@@ -21,10 +21,10 @@ import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import kotlinx.coroutines.runBlocking
 import org.flywaydb.core.Flyway
-import org.junit.jupiter.api.Tag
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.junit.jupiter.api.Tag
 import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
