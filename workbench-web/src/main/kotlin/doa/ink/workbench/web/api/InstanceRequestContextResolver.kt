@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
-import doa.ink.workbench.service.instance.InstanceContextProvider
+import doa.ink.workbench.tenant.instance.InstanceContextProvider
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.support.WebDataBinderFactory

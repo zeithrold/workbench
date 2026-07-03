@@ -1,11 +1,12 @@
 package doa.ink.workbench.service.permission
 
+import doa.ink.workbench.agile.project.ProjectAccessService
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
 import doa.ink.workbench.core.permission.model.AuthorizationRequest
 import doa.ink.workbench.core.permission.model.AuthorizationScope
 import doa.ink.workbench.core.permission.model.DecisionReason
 import doa.ink.workbench.core.permission.model.PermissionService
-import doa.ink.workbench.service.project.ProjectAccessService
+import doa.ink.workbench.security.permission.ScopePermissionService
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 

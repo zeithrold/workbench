@@ -20,8 +20,9 @@ import doa.ink.workbench.core.permission.AdminUserCommandRepository
 import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.AdminUserRecord
 import doa.ink.workbench.core.permission.AdminUserStatus
-import doa.ink.workbench.service.identity.AuthApplicationService
-import doa.ink.workbench.service.identity.LoginView
+import doa.ink.workbench.security.identity.AuthApplicationService
+import doa.ink.workbench.security.identity.LoginView
+import doa.ink.workbench.tenant.instance.InstanceProperties
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

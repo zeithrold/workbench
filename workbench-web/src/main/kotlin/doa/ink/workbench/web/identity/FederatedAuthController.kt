@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.identity
 
-import doa.ink.workbench.service.identity.FederatedLoginCompletionService
-import doa.ink.workbench.service.identity.auth.FederatedAuthService
+import doa.ink.workbench.security.identity.FederatedLoginCompletionService
+import doa.ink.workbench.security.identity.auth.FederatedAuthService
 import doa.ink.workbench.web.api.OpenApiExamples
 import doa.ink.workbench.web.api.StandardErrorResponses
 import doa.ink.workbench.web.api.http.HttpClientContext
@@ -81,7 +81,7 @@ class FederatedAuthController(
         redirectUri = redirectUri,
       )
     return FederatedAuthorizeResponse.from(
-      doa.ink.workbench.service.identity.FederatedAuthorizeView(
+      doa.ink.workbench.security.identity.FederatedAuthorizeView(
         authorizationUrl = result.authorizationUrl,
         state = result.state,
       )

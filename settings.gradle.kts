@@ -18,6 +18,7 @@ include(
     ":workbench-core",
     ":workbench-service",
     ":workbench-agile",
+    ":workbench-tenant",
     ":workbench-data",
     ":workbench-security",
     ":workbench-web",

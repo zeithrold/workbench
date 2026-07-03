@@ -15,7 +15,7 @@ import doa.ink.workbench.core.permission.model.AuthorizationResource
 import doa.ink.workbench.core.permission.model.AuthorizationScope
 import doa.ink.workbench.core.permission.model.AuthorizationSubject
 import doa.ink.workbench.core.permission.model.PermissionService
-import doa.ink.workbench.service.tenant.TenantOperationalGuard
+import doa.ink.workbench.tenant.tenant.TenantOperationalGuard
 import java.time.Clock
 import java.util.UUID
 import kotlinx.coroutines.runBlocking

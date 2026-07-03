@@ -4,8 +4,8 @@ import doa.ink.workbench.core.common.context.TenantContextSummary
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
-import doa.ink.workbench.service.identity.SessionService
-import doa.ink.workbench.service.instance.InstanceContextProvider
+import doa.ink.workbench.security.identity.SessionService
+import doa.ink.workbench.tenant.instance.InstanceContextProvider
 import kotlinx.coroutines.runBlocking
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.context.SecurityContextHolder

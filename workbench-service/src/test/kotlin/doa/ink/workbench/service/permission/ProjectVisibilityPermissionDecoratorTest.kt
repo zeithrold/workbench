@@ -1,5 +1,6 @@
 package doa.ink.workbench.service.permission
 
+import doa.ink.workbench.agile.project.ProjectAccessService
 import doa.ink.workbench.core.identity.model.CredentialType
 import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
@@ -9,7 +10,7 @@ import doa.ink.workbench.core.permission.model.AuthorizationResource
 import doa.ink.workbench.core.permission.model.AuthorizationScope
 import doa.ink.workbench.core.permission.model.AuthorizationSubject
 import doa.ink.workbench.core.permission.model.DecisionReason
-import doa.ink.workbench.service.project.ProjectAccessService
+import doa.ink.workbench.security.permission.ScopePermissionService
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coEvery

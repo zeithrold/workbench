@@ -8,6 +8,7 @@ dependencies {
   implementation(project(":workbench-core"))
   implementation(project(":workbench-service"))
   implementation(project(":workbench-agile"))
+  implementation(project(":workbench-tenant"))
   implementation(project(":workbench-data"))
   implementation(project(":workbench-security"))
   implementation("org.springframework.boot:spring-boot-starter-webmvc")
@@ -29,6 +30,7 @@ dependencies {
   testImplementation(libs.testcontainers.keycloak)
   testImplementation(libs.exposed.jdbc)
   testImplementation(testFixtures(project(":workbench-service")))
+  testImplementation(testFixtures(project(":workbench-security")))
   testImplementation(libs.redisson)
 }
 

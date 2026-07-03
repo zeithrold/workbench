@@ -20,10 +20,10 @@ import doa.ink.workbench.core.messaging.EventMetadata
 import doa.ink.workbench.core.port.messaging.DomainEventPublisher
 import doa.ink.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import doa.ink.workbench.core.tenant.events.TenantDomainEvents
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.invitation.InvitationService
-import doa.ink.workbench.service.permission.AdminUserService
-import doa.ink.workbench.service.permission.AdminUserView
+import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.invitation.InvitationService
+import doa.ink.workbench.security.permission.AdminUserService
+import doa.ink.workbench.security.permission.AdminUserView
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID

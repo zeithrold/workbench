@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.identity
 
-import doa.ink.workbench.service.identity.FederatedLoginCompletionService
-import doa.ink.workbench.service.identity.auth.MagicLinkAuthService
+import doa.ink.workbench.security.identity.FederatedLoginCompletionService
+import doa.ink.workbench.security.identity.auth.MagicLinkAuthService
 import doa.ink.workbench.web.api.OpenApiExamples
 import doa.ink.workbench.web.api.StandardErrorResponses
 import doa.ink.workbench.web.api.http.HttpClientContext
@@ -129,7 +129,7 @@ class MagicLinkAuthController(
     val identity = magicLinkAuthService.resolveToken(token)
     val view =
       federatedLoginCompletionService.complete(
-        doa.ink.workbench.service.identity.auth.FederatedLoginResult(
+        doa.ink.workbench.security.identity.auth.FederatedLoginResult(
           identity =
             doa.ink.workbench.core.identity.model.AuthenticatedIdentity(
               user = identity.user,

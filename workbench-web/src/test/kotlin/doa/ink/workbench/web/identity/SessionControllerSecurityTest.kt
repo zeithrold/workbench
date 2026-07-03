@@ -22,10 +22,10 @@ import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.identity.LoginCompletionService
-import doa.ink.workbench.service.identity.SessionService
-import doa.ink.workbench.service.tenant.TenantOperationalGuard
+import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.LoginCompletionService
+import doa.ink.workbench.security.identity.SessionService
+import doa.ink.workbench.tenant.tenant.TenantOperationalGuard
 import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
@@ -109,15 +109,14 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       TenantOperationalGuard(tenants = TestTenants)
 
     @Bean
-    fun projectOperationalGuard(): doa.ink.workbench.service.project.ProjectOperationalGuard =
-      doa.ink.workbench.service.project.ProjectOperationalGuard(UnusedProjectRepository)
+    fun projectOperationalGuard(): doa.ink.workbench.agile.project.ProjectOperationalGuard =
+      doa.ink.workbench.agile.project.ProjectOperationalGuard(UnusedProjectRepository)
 
     @Bean
     fun sessionService(
       clock: Clock,
       publicIdResolver: PublicIdResolver,
       loginCompletionService: LoginCompletionService,
-      tenantOperationalGuard: TenantOperationalGuard,
     ): SessionService =
       SessionService(
         sessions = TestAuthSessions,
@@ -125,7 +124,6 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
         tenants = TestTenants,
         publicIds = publicIdResolver,
         loginCompletionService = loginCompletionService,
-        tenantOperationalGuard = tenantOperationalGuard,
         clock = clock,
       )
   }

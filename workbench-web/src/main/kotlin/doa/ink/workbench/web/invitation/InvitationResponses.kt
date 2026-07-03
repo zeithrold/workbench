@@ -2,8 +2,8 @@ package doa.ink.workbench.web.invitation
 
 import doa.ink.workbench.core.common.summary.TenantSummary
 import doa.ink.workbench.core.common.summary.UserSummary
-import doa.ink.workbench.service.invitation.InvitationAcceptView
-import doa.ink.workbench.service.invitation.InvitationPreviewView
+import doa.ink.workbench.security.invitation.InvitationAcceptView
+import doa.ink.workbench.security.invitation.InvitationPreviewView
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "Invitation preview for a token.")

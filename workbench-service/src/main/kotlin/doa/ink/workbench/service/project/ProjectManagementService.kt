@@ -1,5 +1,6 @@
 package doa.ink.workbench.service.project
 
+import doa.ink.workbench.agile.project.ProjectAccessService
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
@@ -14,7 +15,7 @@ import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.ProjectRecord
 import doa.ink.workbench.core.project.model.ProjectStatus
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
-import doa.ink.workbench.service.permission.PermissionBootstrapService
+import doa.ink.workbench.security.permission.PermissionBootstrapService
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID

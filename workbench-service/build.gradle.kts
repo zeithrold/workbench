@@ -5,10 +5,14 @@ plugins {
 
 dependencies {
   implementation(project(":workbench-core"))
+  implementation(project(":workbench-agile"))
+  implementation(project(":workbench-security"))
+  implementation(project(":workbench-tenant"))
   implementation("org.springframework:spring-context")
   implementation("org.springframework.boot:spring-boot-starter-mail")
   implementation("org.springframework:spring-web")
   testImplementation(project(":workbench-data"))
+  testImplementation(testFixtures(project(":workbench-security")))
   testImplementation(libs.exposed.jdbc)
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)

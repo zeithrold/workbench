@@ -26,9 +26,10 @@ import doa.ink.workbench.core.permission.CreateAccessGrantCommand
 import doa.ink.workbench.core.permission.CreateAdminUserCommand
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.AuthorizationAction
-import doa.ink.workbench.service.identity.AuthApplicationService
-import doa.ink.workbench.service.identity.LoginView
-import doa.ink.workbench.service.identity.auth.normalizeSubject
+import doa.ink.workbench.security.identity.AuthApplicationService
+import doa.ink.workbench.security.identity.LoginView
+import doa.ink.workbench.security.identity.auth.normalizeSubject
+import doa.ink.workbench.tenant.instance.InstanceProperties
 import java.time.Clock
 import java.time.OffsetDateTime
 import org.springframework.stereotype.Service

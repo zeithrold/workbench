@@ -24,7 +24,7 @@ data class SessionResponse(
   val adminScopes: List<String> = emptyList(),
 ) {
   companion object {
-    fun from(view: doa.ink.workbench.service.identity.SessionView): SessionResponse =
+    fun from(view: doa.ink.workbench.security.identity.SessionView): SessionResponse =
       SessionResponse(
         user = view.user,
         activeTenant = view.activeTenant,

@@ -24,8 +24,7 @@ class TenantScopedStartupValidator(private val applicationContext: ApplicationCo
 
         val methodProjectScoped =
           method.isAnnotationPresent(ProjectScoped::class.java) || classProjectScoped
-        val hasTenantContext =
-          method.parameterTypes.any { it == TenantRequestContext::class.java }
+        val hasTenantContext = method.parameterTypes.any { it == TenantRequestContext::class.java }
         val hasProjectContext =
           method.parameterTypes.any { it == ProjectRequestContext::class.java }
         val contextSatisfied = hasTenantContext || (methodProjectScoped && hasProjectContext)

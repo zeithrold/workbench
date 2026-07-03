@@ -5,8 +5,8 @@ import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
-import doa.ink.workbench.service.identity.LoginView
-import doa.ink.workbench.service.identity.SessionService
+import doa.ink.workbench.security.identity.LoginView
+import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.service.instance.InstanceBootstrapView
 import doa.ink.workbench.service.instance.InstanceSetupService
 import doa.ink.workbench.service.instance.InstanceSetupStatusView
@@ -106,7 +106,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 
     @Bean
-    fun publicIdResolver(): doa.ink.workbench.service.common.PublicIdResolver =
+    fun publicIdResolver(): doa.ink.workbench.security.common.PublicIdResolver =
       mockk(relaxed = true)
 
     @Bean

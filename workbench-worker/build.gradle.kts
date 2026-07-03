@@ -7,6 +7,8 @@ plugins {
 dependencies {
   implementation(project(":workbench-core"))
   implementation(project(":workbench-service"))
+  implementation(project(":workbench-agile"))
+  implementation(project(":workbench-tenant"))
   implementation(project(":workbench-data"))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-actuator")

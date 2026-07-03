@@ -2,9 +2,9 @@ package doa.ink.workbench.web.identity
 
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
-import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
-import doa.ink.workbench.service.identity.auth.support.LdapAuthFixture
-import doa.ink.workbench.service.identity.auth.support.LdapTestContainer
+import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
+import doa.ink.workbench.security.identity.auth.support.LdapAuthFixture
+import doa.ink.workbench.security.identity.auth.support.LdapTestContainer
 import doa.ink.workbench.web.identity.support.AuthIntegrationContainers
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
