@@ -14,10 +14,12 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import org.testcontainers.containers.PostgreSQLContainer
 
+@Tag("integration")
 class JdbcWorkItemQueryRepositoryIntegrationTest :
   StringSpec({
     "search filters work items and maps PostgreSQL rows to common result container" {
@@ -25,30 +27,29 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
         val seed = seedWorkItem(jdbc)
         val repository = JdbcWorkItemQueryRepository(jdbc)
 
-        val page =
-          runBlocking {
-            repository.search(
-              scope = WorkItemSearchScope(tenantId = seed.tenantId, projectId = seed.projectId),
-              query =
-                WorkItemQuery(
-                  where =
-                    ConditionNode.And(
-                      listOf(
-                        ConditionNode.Predicate(
-                          field = QueryField.System("statusGroup"),
-                          op = QueryOperator.EQ,
-                          value = QueryValue.Literal(JsonPrimitive("todo")),
-                        ),
-                        ConditionNode.Predicate(
-                          field = QueryField.Property(apiId = null, code = "storyPoints"),
-                          op = QueryOperator.GT,
-                          value = QueryValue.Literal(JsonPrimitive(5)),
-                        ),
-                      )
+        val page = runBlocking {
+          repository.search(
+            scope = WorkItemSearchScope(tenantId = seed.tenantId, projectId = seed.projectId),
+            query =
+              WorkItemQuery(
+                where =
+                  ConditionNode.And(
+                    listOf(
+                      ConditionNode.Predicate(
+                        field = QueryField.System("statusGroup"),
+                        op = QueryOperator.EQ,
+                        value = QueryValue.Literal(JsonPrimitive("todo")),
+                      ),
+                      ConditionNode.Predicate(
+                        field = QueryField.Property(apiId = null, code = "storyPoints"),
+                        op = QueryOperator.GT,
+                        value = QueryValue.Literal(JsonPrimitive(5)),
+                      ),
                     )
-                ),
-            )
-          }
+                  )
+              ),
+          )
+        }
 
         page.result.total shouldBe 1
         page.result.hits.single().apiId shouldBe seed.issueApiId

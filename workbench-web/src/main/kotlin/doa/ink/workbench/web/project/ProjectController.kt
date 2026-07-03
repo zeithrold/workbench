@@ -1,9 +1,9 @@
 package doa.ink.workbench.web.project
 
+import doa.ink.workbench.agile.project.ProjectService
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
-import doa.ink.workbench.agile.project.ProjectService
 import doa.ink.workbench.web.api.Audit
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
@@ -331,7 +331,8 @@ class ProjectController(private val service: ProjectService) {
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Operation(
     summary = "Delete project",
-    description = "Permanently deletes a project in the active session tenant. Returns 204 with an empty body.",
+    description =
+      "Permanently deletes a project in the active session tenant. Returns 204 with an empty body.",
     responses =
       [
         ApiResponse(responseCode = "204", description = "Project deleted"),
@@ -378,7 +379,9 @@ data class CreateProjectRequest(
   @field:Schema(example = "Platform engineering workbench project.") val description: String?,
 )
 
-@Schema(description = "Partial project update. Omitted fields are unchanged; null clears nullable fields.")
+@Schema(
+  description = "Partial project update. Omitted fields are unchanged; null clears nullable fields."
+)
 data class PatchProjectRequest(
   @field:Pattern(regexp = "^[A-Z][A-Z0-9]{1,9}$")
   @field:Schema(description = "New work-item key prefix.", example = "CORE")

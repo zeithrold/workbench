@@ -4,14 +4,11 @@ package doa.ink.workbench.core.workitem.query
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.doubleOrNull
 
 class WorkItemQueryValidator(
-  private val fieldResolver: WorkItemQueryFieldResolver = BuiltInWorkItemQueryFieldResolver,
+  private val fieldResolver: WorkItemQueryFieldResolver = BuiltInWorkItemQueryFieldResolver
 ) {
   fun validate(query: WorkItemQuery) {
     validateEnvelope(query)
@@ -96,26 +93,30 @@ class WorkItemQueryValidator(
   }
 
   private fun requireNonEmptyArray(op: QueryOperator, value: QueryValue) {
-    val literal = value as? QueryValue.Literal
-      ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
-    val array = literal.value as? JsonArray
-      ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
+    val literal =
+      value as? QueryValue.Literal
+        ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
+    val array =
+      literal.value as? JsonArray
+        ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
     if (array.isEmpty()) {
       throw InvalidRequestException("Operator ${op.wireName} requires a non-empty array value.")
     }
   }
 
   private fun requireBetween(value: QueryValue) {
-    val range = value as? QueryValue.Between
-      ?: throw InvalidRequestException("Operator between requires an object value.")
+    val range =
+      value as? QueryValue.Between
+        ?: throw InvalidRequestException("Operator between requires an object value.")
     if (range.from == null && range.to == null) {
       throw InvalidRequestException("Operator between requires from or to.")
     }
   }
 
   private fun requireRelativeDate(value: QueryValue) {
-    val relative = value as? QueryValue.RelativeDate
-      ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
+    val relative =
+      value as? QueryValue.RelativeDate
+        ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
     if (relative.amount <= 0) {
       throw InvalidRequestException("Relative date amount must be positive.")
     }
@@ -137,10 +138,12 @@ class WorkItemQueryValidator(
   }
 
   private fun requireStringValue(op: QueryOperator, value: QueryValue) {
-    val literal = value as? QueryValue.Literal
-      ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
-    val primitive = literal.value as? JsonPrimitive
-      ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
+    val literal =
+      value as? QueryValue.Literal
+        ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
+    val primitive =
+      literal.value as? JsonPrimitive
+        ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
     if (!primitive.isString) {
       throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
     }
@@ -293,7 +296,13 @@ private val LONG_TEXT_OPERATORS =
 
 private val NUMBER_OPERATORS =
   REFERENCE_OPERATORS +
-    setOf(QueryOperator.LT, QueryOperator.LTE, QueryOperator.GT, QueryOperator.GTE, QueryOperator.BETWEEN)
+    setOf(
+      QueryOperator.LT,
+      QueryOperator.LTE,
+      QueryOperator.GT,
+      QueryOperator.GTE,
+      QueryOperator.BETWEEN,
+    )
 
 private val BOOLEAN_OPERATORS =
   setOf(QueryOperator.EQ, QueryOperator.NEQ, QueryOperator.IS_EMPTY, QueryOperator.IS_NOT_EMPTY)

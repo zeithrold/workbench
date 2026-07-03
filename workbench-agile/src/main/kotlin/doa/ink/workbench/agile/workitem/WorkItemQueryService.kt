@@ -9,9 +9,7 @@ import doa.ink.workbench.core.workitem.query.WorkItemQueryValidator
 import org.springframework.stereotype.Service
 
 @Service
-class WorkItemQueryService(
-  private val repository: WorkItemQueryRepository,
-) {
+class WorkItemQueryService(private val repository: WorkItemQueryRepository) {
   private val validator = WorkItemQueryValidator()
 
   suspend fun search(

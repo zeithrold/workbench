@@ -13,12 +13,9 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class WorkItemQueryParser(
-  private val json: Json = Json { ignoreUnknownKeys = false },
-) {
+class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = false }) {
   fun parse(payload: String): WorkItemQuery =
     try {
       parse(json.parseToJsonElement(payload))
@@ -63,7 +60,9 @@ class WorkItemQueryParser(
       val obj = item.asObject("sort term")
       val direction =
         SortDirection.fromWireName(obj.requiredString("direction"))
-          ?: throw InvalidRequestException("Unknown work item sort direction: ${obj.requiredString("direction")}")
+          ?: throw InvalidRequestException(
+            "Unknown work item sort direction: ${obj.requiredString("direction")}"
+          )
       val nulls =
         obj["nulls"]?.let {
           val value = it.asString("sort null ordering")
@@ -91,9 +90,10 @@ class WorkItemQueryParser(
 
   private fun parseFieldPath(path: String): QueryField =
     if (path.startsWith("property.")) {
-      val identity = path.removePrefix("property.").ifBlank {
-        throw InvalidRequestException("Property query field must include an identity.")
-      }
+      val identity =
+        path.removePrefix("property.").ifBlank {
+          throw InvalidRequestException("Property query field must include an identity.")
+        }
       if (identity.startsWith("fld_")) {
         QueryField.Property(apiId = identity, code = null)
       } else {
@@ -110,8 +110,12 @@ class WorkItemQueryParser(
   private fun parseValue(element: JsonElement): QueryValue =
     when (element) {
       is JsonObject -> {
-        element["var"]?.let { return QueryValue.Variable(it.asString("variable")) }
-        element["relativeDate"]?.let { return parseRelativeDate(it) }
+        element["var"]?.let {
+          return QueryValue.Variable(it.asString("variable"))
+        }
+        element["relativeDate"]?.let {
+          return parseRelativeDate(it)
+        }
         if ("from" in element || "to" in element) {
           val from = element["from"]?.takeUnless { it is JsonNull }
           val to = element["to"]?.takeUnless { it is JsonNull }
@@ -126,10 +130,14 @@ class WorkItemQueryParser(
     val obj = element.asObject("relativeDate")
     val unit =
       RelativeDateUnit.fromWireName(obj.requiredString("unit"))
-        ?: throw InvalidRequestException("Unknown relative date unit: ${obj.requiredString("unit")}")
+        ?: throw InvalidRequestException(
+          "Unknown relative date unit: ${obj.requiredString("unit")}"
+        )
     val direction =
       DateDirection.fromWireName(obj.requiredString("direction"))
-        ?: throw InvalidRequestException("Unknown relative date direction: ${obj.requiredString("direction")}")
+        ?: throw InvalidRequestException(
+          "Unknown relative date direction: ${obj.requiredString("direction")}"
+        )
     return QueryValue.RelativeDate(
       amount = obj.requiredInt("amount"),
       unit = unit,

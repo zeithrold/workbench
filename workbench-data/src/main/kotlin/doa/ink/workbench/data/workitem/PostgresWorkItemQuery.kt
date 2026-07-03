@@ -54,11 +54,10 @@ data class PostgresWorkItemQueryPlan(
   val params: List<Any?>,
 )
 
-class PostgresWorkItemFilter(
-  private val fieldResolver: PostgresWorkItemFieldResolver,
-) {
+class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldResolver) {
   fun build(scope: WorkItemSearchScope, query: WorkItemQuery): PostgresWorkItemQueryPlan {
-    val basePredicates = mutableListOf<SqlFragment>(SqlFragment("i.tenant_id = ?", listOf(scope.tenantId)))
+    val basePredicates =
+      mutableListOf<SqlFragment>(SqlFragment("i.tenant_id = ?", listOf(scope.tenantId)))
     scope.projectId?.let { basePredicates += SqlFragment("i.project_id = ?", listOf(it)) }
     if (!scope.includeArchived) basePredicates += SqlFragment("i.archived_at IS NULL")
     if (!scope.includeDeleted) basePredicates += SqlFragment("i.deleted_at IS NULL")
@@ -85,10 +84,14 @@ class PostgresWorkItemFilter(
 
   private fun compilePredicate(predicate: ConditionNode.Predicate): SqlFragment {
     val field = fieldResolver.resolvePostgresField(predicate.field)
-    if (field.definition.type == WorkItemQueryFieldType.LONG_TEXT && predicate.op in TEXT_SEARCH_OPERATORS) {
+    if (
+      field.definition.type == WorkItemQueryFieldType.LONG_TEXT &&
+        predicate.op in TEXT_SEARCH_OPERATORS
+    ) {
       throw InvalidRequestException("Long text work item predicates require Elasticsearch.")
     }
-    val condition = compileOperator(field.valueSql, field.definition.type, predicate.op, predicate.value)
+    val condition =
+      compileOperator(field.valueSql, field.definition.type, predicate.op, predicate.value)
     return when (field) {
       is PostgresWorkItemField.System -> condition
       is PostgresWorkItemField.Property -> {
@@ -166,8 +169,9 @@ class PostgresWorkItemFilter(
   }
 
   private fun between(valueSql: String, value: QueryValue?): SqlFragment {
-    val range = value as? QueryValue.Between
-      ?: throw InvalidRequestException("Operator between requires an object value.")
+    val range =
+      value as? QueryValue.Between
+        ?: throw InvalidRequestException("Operator between requires an object value.")
     val parts = mutableListOf<String>()
     val params = mutableListOf<Any?>()
     range.from?.let {
@@ -188,7 +192,11 @@ class PostgresWorkItemFilter(
     negated: Boolean,
   ): SqlFragment {
     val fragment =
-      if (type == WorkItemQueryFieldType.JSON || type == WorkItemQueryFieldType.MULTI_SELECT || type == WorkItemQueryFieldType.MULTI_USER) {
+      if (
+        type == WorkItemQueryFieldType.JSON ||
+          type == WorkItemQueryFieldType.MULTI_SELECT ||
+          type == WorkItemQueryFieldType.MULTI_USER
+      ) {
         val operand = value.toOperand(jsonb = true)
         SqlFragment("$valueSql @> ${operand.sql}", operand.params)
       } else {
@@ -198,7 +206,12 @@ class PostgresWorkItemFilter(
     return if (negated) SqlFragment("NOT (${fragment.sql})", fragment.params) else fragment
   }
 
-  private fun like(valueSql: String, value: QueryValue?, prefix: String = "", suffix: String = ""): SqlFragment {
+  private fun like(
+    valueSql: String,
+    value: QueryValue?,
+    prefix: String = "",
+    suffix: String = "",
+  ): SqlFragment {
     val literal = value.requireStringLiteral()
     return SqlFragment("$valueSql ILIKE ?", listOf("$prefix${escapeLike(literal)}$suffix"))
   }
@@ -206,9 +219,17 @@ class PostgresWorkItemFilter(
   private fun regex(valueSql: String, value: QueryValue?): SqlFragment =
     SqlFragment("$valueSql ~* ?", listOf(value.requireStringLiteral()))
 
-  private fun emptyCheck(valueSql: String, type: WorkItemQueryFieldType, negated: Boolean): SqlFragment {
+  private fun emptyCheck(
+    valueSql: String,
+    type: WorkItemQueryFieldType,
+    negated: Boolean,
+  ): SqlFragment {
     val expression =
-      if (type == WorkItemQueryFieldType.JSON || type == WorkItemQueryFieldType.MULTI_SELECT || type == WorkItemQueryFieldType.MULTI_USER) {
+      if (
+        type == WorkItemQueryFieldType.JSON ||
+          type == WorkItemQueryFieldType.MULTI_SELECT ||
+          type == WorkItemQueryFieldType.MULTI_USER
+      ) {
         "($valueSql IS NULL OR $valueSql = '[]'::jsonb OR $valueSql = '{}'::jsonb)"
       } else {
         "($valueSql IS NULL OR $valueSql::text = '')"
@@ -217,8 +238,9 @@ class PostgresWorkItemFilter(
   }
 
   private fun within(valueSql: String, value: QueryValue?): SqlFragment {
-    val relative = value as? QueryValue.RelativeDate
-      ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
+    val relative =
+      value as? QueryValue.RelativeDate
+        ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
     val anchor = relative.anchor.toPostgresAnchor()
     val interval = relative.unit.toPostgresInterval()
     return when (relative.direction) {
@@ -306,11 +328,12 @@ sealed interface PostgresWorkItemField {
 interface PostgresWorkItemFieldResolver : WorkItemQueryFieldResolver {
   fun resolvePostgresField(field: QueryField): PostgresWorkItemField
 
-  override fun resolve(field: QueryField): WorkItemFieldDefinition = resolvePostgresField(field).definition
+  override fun resolve(field: QueryField): WorkItemFieldDefinition =
+    resolvePostgresField(field).definition
 }
 
 class StaticPostgresWorkItemFieldResolver(
-  private val propertyTypes: Map<String, WorkItemQueryFieldType> = emptyMap(),
+  private val propertyTypes: Map<String, WorkItemQueryFieldType> = emptyMap()
 ) : PostgresWorkItemFieldResolver {
   override fun resolvePostgresField(field: QueryField): PostgresWorkItemField =
     when (field) {
@@ -338,7 +361,12 @@ class StaticPostgresWorkItemFieldResolver(
       identityParams += it
     }
     return PostgresWorkItemField.Property(
-      definition = WorkItemFieldDefinition(field, resolvedType, sortable = resolvedType in SORTABLE_PROPERTY_TYPES),
+      definition =
+        WorkItemFieldDefinition(
+          field,
+          resolvedType,
+          sortable = resolvedType in SORTABLE_PROPERTY_TYPES,
+        ),
       valueSql = propertyValueColumn(resolvedType),
       identitySql = identityParts.joinToString(" AND "),
       identityParams = identityParams,
@@ -370,22 +398,61 @@ class StaticPostgresWorkItemFieldResolver(
             sortable = true,
           ),
         "tenant" to system("tenant", WorkItemQueryFieldType.ID, "i.tenant_id", sortable = false),
-        "project" to system("project", WorkItemQueryFieldType.PROJECT, "p.api_id", sortable = false),
-        "issueType" to system("issueType", WorkItemQueryFieldType.SINGLE_SELECT, "itype.api_id", sortable = true),
+        "project" to
+          system("project", WorkItemQueryFieldType.PROJECT, "p.api_id", sortable = false),
+        "issueType" to
+          system(
+            "issueType",
+            WorkItemQueryFieldType.SINGLE_SELECT,
+            "itype.api_id",
+            sortable = true,
+          ),
         "title" to system("title", WorkItemQueryFieldType.TEXT, "i.title", sortable = true),
-        "description" to system("description", WorkItemQueryFieldType.LONG_TEXT, "i.description", sortable = false),
-        "status" to system("status", WorkItemQueryFieldType.SINGLE_SELECT, "st.api_id", sortable = true),
-        "statusGroup" to system("statusGroup", WorkItemQueryFieldType.SINGLE_SELECT, "st.status_group", sortable = true),
-        "priority" to system("priority", WorkItemQueryFieldType.SINGLE_SELECT, "pri.api_id", sortable = true),
-        "reporter" to system("reporter", WorkItemQueryFieldType.USER, "reporter.api_id", sortable = true),
-        "assignee" to system("assignee", WorkItemQueryFieldType.USER, "assignee.api_id", sortable = true),
+        "description" to
+          system(
+            "description",
+            WorkItemQueryFieldType.LONG_TEXT,
+            "i.description",
+            sortable = false,
+          ),
+        "status" to
+          system("status", WorkItemQueryFieldType.SINGLE_SELECT, "st.api_id", sortable = true),
+        "statusGroup" to
+          system(
+            "statusGroup",
+            WorkItemQueryFieldType.SINGLE_SELECT,
+            "st.status_group",
+            sortable = true,
+          ),
+        "priority" to
+          system("priority", WorkItemQueryFieldType.SINGLE_SELECT, "pri.api_id", sortable = true),
+        "reporter" to
+          system("reporter", WorkItemQueryFieldType.USER, "reporter.api_id", sortable = true),
+        "assignee" to
+          system("assignee", WorkItemQueryFieldType.USER, "assignee.api_id", sortable = true),
         "sprint" to system("sprint", WorkItemQueryFieldType.ID, "sprint.api_id", sortable = true),
-        "createdBy" to system("createdBy", WorkItemQueryFieldType.USER, "created_by_user.api_id", sortable = false),
-        "updatedBy" to system("updatedBy", WorkItemQueryFieldType.USER, "updated_by_user.api_id", sortable = false),
-        "createdAt" to system("createdAt", WorkItemQueryFieldType.DATETIME, "i.created_at", sortable = true),
-        "updatedAt" to system("updatedAt", WorkItemQueryFieldType.DATETIME, "i.updated_at", sortable = true),
-        "archivedAt" to system("archivedAt", WorkItemQueryFieldType.DATETIME, "i.archived_at", sortable = false),
-        "deletedAt" to system("deletedAt", WorkItemQueryFieldType.DATETIME, "i.deleted_at", sortable = false),
+        "createdBy" to
+          system(
+            "createdBy",
+            WorkItemQueryFieldType.USER,
+            "created_by_user.api_id",
+            sortable = false,
+          ),
+        "updatedBy" to
+          system(
+            "updatedBy",
+            WorkItemQueryFieldType.USER,
+            "updated_by_user.api_id",
+            sortable = false,
+          ),
+        "createdAt" to
+          system("createdAt", WorkItemQueryFieldType.DATETIME, "i.created_at", sortable = true),
+        "updatedAt" to
+          system("updatedAt", WorkItemQueryFieldType.DATETIME, "i.updated_at", sortable = true),
+        "archivedAt" to
+          system("archivedAt", WorkItemQueryFieldType.DATETIME, "i.archived_at", sortable = false),
+        "deletedAt" to
+          system("deletedAt", WorkItemQueryFieldType.DATETIME, "i.deleted_at", sortable = false),
         "parent" to
           system(
             "parent",
@@ -442,7 +509,8 @@ class StaticPostgresWorkItemFieldResolver(
 }
 
 @Repository
-class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) : WorkItemQueryRepository {
+class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) :
+  WorkItemQueryRepository {
   override suspend fun search(
     scope: WorkItemSearchScope,
     query: WorkItemQuery,
@@ -480,7 +548,8 @@ class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) : Work
       val params = plan.params + listOf(page.limit, page.offset)
       val hits = jdbcTemplate.query(selectSql, WorkItemSearchHitRowMapper, *params.toTypedArray())
       val countSql = "SELECT COUNT(*) ${plan.fromSql} WHERE ${plan.where.sql}"
-      val total = jdbcTemplate.queryForObject(countSql, Long::class.java, *plan.params.toTypedArray())
+      val total =
+        jdbcTemplate.queryForObject(countSql, Long::class.java, *plan.params.toTypedArray())
       WorkItemSearchPage(
         result = WorkItemSearchResult(hits = hits, total = total),
         page =
@@ -498,18 +567,22 @@ private class JdbcPostgresWorkItemFieldResolver(
   private val tenantId: UUID,
 ) : PostgresWorkItemFieldResolver {
   override fun resolvePostgresField(field: QueryField): PostgresWorkItemField {
-    if (field is QueryField.System) return StaticPostgresWorkItemFieldResolver().resolvePostgresField(field)
+    if (field is QueryField.System)
+      return StaticPostgresWorkItemFieldResolver().resolvePostgresField(field)
     val property = field as QueryField.Property
     val dataType =
-      jdbcTemplate.query(
-        propertyLookupSql(property),
-        { rs, _ -> rs.getString("data_type") },
-        *propertyLookupParams(property).toTypedArray(),
-      )
+      jdbcTemplate
+        .query(
+          propertyLookupSql(property),
+          { rs, _ -> rs.getString("data_type") },
+          *propertyLookupParams(property).toTypedArray(),
+        )
         .singleOrNull()
         ?: throw InvalidRequestException("Unknown work item query property: ${field.canonicalName}")
     val type = dataType.toWorkItemFieldType()
-    return StaticPostgresWorkItemFieldResolver(mapOf((property.apiId ?: property.code).orEmpty() to type))
+    return StaticPostgresWorkItemFieldResolver(
+        mapOf((property.apiId ?: property.code).orEmpty() to type)
+      )
       .resolvePostgresField(field)
   }
 
@@ -549,15 +622,20 @@ object WorkItemSearchHitRowMapper : RowMapper<WorkItemSearchHit> {
       reporterApiId = rs.getString("reporter_api_id"),
       assigneeApiId = rs.getString("assignee_api_id"),
       sprintApiId = rs.getString("sprint_api_id"),
-      createdAt = rs.getObject("created_at", OffsetDateTime::class.java) ?: rs.getTimestamp("created_at").toOffsetDateTime(),
-      updatedAt = rs.getObject("updated_at", OffsetDateTime::class.java) ?: rs.getTimestamp("updated_at").toOffsetDateTime(),
+      createdAt =
+        rs.getObject("created_at", OffsetDateTime::class.java)
+          ?: rs.getTimestamp("created_at").toOffsetDateTime(),
+      updatedAt =
+        rs.getObject("updated_at", OffsetDateTime::class.java)
+          ?: rs.getTimestamp("updated_at").toOffsetDateTime(),
       properties = parseProperties(rs.getString("properties_snapshot")),
     )
 
   private fun parseProperties(value: String?): JsonObject =
     value?.let { json.parseToJsonElement(it).jsonObject } ?: JsonObject(emptyMap())
 
-  private fun Timestamp.toOffsetDateTime(): OffsetDateTime = toInstant().atOffset(java.time.ZoneOffset.UTC)
+  private fun Timestamp.toOffsetDateTime(): OffsetDateTime =
+    toInstant().atOffset(java.time.ZoneOffset.UTC)
 }
 
 private fun QueryValue?.toOperand(jsonb: Boolean = false): SqlFragment =
@@ -571,16 +649,19 @@ private fun QueryValue?.toOperand(jsonb: Boolean = false): SqlFragment =
   }
 
 private fun QueryValue?.asLiteralArray(): List<JsonElement> {
-  val literal = this as? QueryValue.Literal
-    ?: throw InvalidRequestException("Operator requires an array value.")
-  val array = literal.value as? JsonArray
-    ?: throw InvalidRequestException("Operator requires an array value.")
+  val literal =
+    this as? QueryValue.Literal
+      ?: throw InvalidRequestException("Operator requires an array value.")
+  val array =
+    literal.value as? JsonArray
+      ?: throw InvalidRequestException("Operator requires an array value.")
   return array
 }
 
 private fun QueryValue?.requireStringLiteral(): String {
-  val literal = this as? QueryValue.Literal
-    ?: throw InvalidRequestException("Operator requires a string value.")
+  val literal =
+    this as? QueryValue.Literal
+      ?: throw InvalidRequestException("Operator requires a string value.")
   return (literal.value as? JsonPrimitive)?.contentOrNull
     ?: throw InvalidRequestException("Operator requires a string value.")
 }
@@ -591,14 +672,14 @@ private fun QueryValue.Variable.toSqlVariable(): SqlFragment =
     "date.today" -> SqlFragment("current_date")
     "date.startOfWeek" -> SqlFragment("date_trunc('week', now())")
     "date.endOfWeek" -> SqlFragment("date_trunc('week', now()) + interval '6 days'")
-    else -> throw InvalidRequestException("Variable $name requires trusted request context binding.")
+    else ->
+      throw InvalidRequestException("Variable $name requires trusted request context binding.")
   }
 
 private fun jsonToJdbcValue(element: JsonElement): Any? =
   when (element) {
     is JsonNull -> null
-    is JsonPrimitive ->
-      element.booleanOrNull ?: element.doubleOrNull ?: element.contentOrNull
+    is JsonPrimitive -> element.booleanOrNull ?: element.doubleOrNull ?: element.contentOrNull
     else -> jsonToJsonb(element)
   }
 

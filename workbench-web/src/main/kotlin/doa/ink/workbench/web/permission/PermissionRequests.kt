@@ -18,7 +18,8 @@ data class CreateRoleRequest(
   @field:NotBlank
   @field:Schema(description = "Stable role code within the tenant.", example = "admin")
   val code: String,
-  @field:NotBlank @field:Schema(description = "Display name.", example = "Administrator")
+  @field:NotBlank
+  @field:Schema(description = "Display name.", example = "Administrator")
   val name: String,
   @field:Schema(description = "Optional description.", example = "Full access")
   val description: String? = null,
@@ -29,7 +30,10 @@ data class EnsureActionRequest(
   @field:NotBlank
   @field:Schema(description = "Action code.", example = "project.create")
   val code: String,
-  @field:Schema(description = "Human-readable description.", example = "Create projects in the tenant.")
+  @field:Schema(
+    description = "Human-readable description.",
+    example = "Create projects in the tenant.",
+  )
   val description: String? = null,
 )
 
@@ -84,14 +88,10 @@ data class PermissionConditionRequest(
 
 @Schema(description = "Tenant or global role definition.")
 data class RoleResponse(
-  @field:Schema(description = "Public role id.", example = OpenApiExamples.ROLE_ID)
-  val id: String,
-  @field:Schema(description = "Role scope.", example = "TENANT")
-  val scope: RoleScope,
-  @field:Schema(description = "Stable role code.", example = "admin")
-  val code: String,
-  @field:Schema(description = "Display name.", example = "Administrator")
-  val name: String,
+  @field:Schema(description = "Public role id.", example = OpenApiExamples.ROLE_ID) val id: String,
+  @field:Schema(description = "Role scope.", example = "TENANT") val scope: RoleScope,
+  @field:Schema(description = "Stable role code.", example = "admin") val code: String,
+  @field:Schema(description = "Display name.", example = "Administrator") val name: String,
   @field:Schema(description = "Optional description.", example = "Full access")
   val description: String?,
   @field:Schema(description = "Whether the role is built in.", example = "true")
@@ -112,9 +112,11 @@ data class RoleResponse(
 
 @Schema(description = "Registered permission action.")
 data class ActionResponse(
-  @field:Schema(description = "Action code.", example = "project.create")
-  val code: String,
-  @field:Schema(description = "Human-readable description.", example = "Create projects in the tenant.")
+  @field:Schema(description = "Action code.", example = "project.create") val code: String,
+  @field:Schema(
+    description = "Human-readable description.",
+    example = "Create projects in the tenant.",
+  )
   val description: String?,
 ) {
   companion object {
@@ -131,11 +133,12 @@ data class PolicyResponse(
   val roleId: String,
   @field:Schema(description = "Permission action code.", example = "project.create")
   val action: String,
-  @field:Schema(description = "Policy effect.", example = "ALLOW")
-  val effect: PermissionEffect,
-  @field:Schema(description = "Resource pattern.", example = "project")
-  val resourcePattern: String,
-  @field:Schema(description = "When the policy becomes effective.", example = "2026-07-02T10:00:00+00:00")
+  @field:Schema(description = "Policy effect.", example = "ALLOW") val effect: PermissionEffect,
+  @field:Schema(description = "Resource pattern.", example = "project") val resourcePattern: String,
+  @field:Schema(
+    description = "When the policy becomes effective.",
+    example = "2026-07-02T10:00:00+00:00",
+  )
   val validFrom: java.time.OffsetDateTime,
   @field:Schema(description = "When the policy expires, if set.")
   val validTo: java.time.OffsetDateTime?,
@@ -164,7 +167,10 @@ data class RoleAssignmentResponse(
   val roleId: String,
   @field:Schema(description = "Optional project scope.", example = OpenApiExamples.PROJECT_ID)
   val projectId: String?,
-  @field:Schema(description = "When the assignment becomes effective.", example = "2026-07-02T10:00:00+00:00")
+  @field:Schema(
+    description = "When the assignment becomes effective.",
+    example = "2026-07-02T10:00:00+00:00",
+  )
   val validFrom: java.time.OffsetDateTime,
   @field:Schema(description = "When the assignment expires, if set.")
   val validTo: java.time.OffsetDateTime?,
