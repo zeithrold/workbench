@@ -16,6 +16,10 @@ class ResourceConflictException(message: String) : WorkbenchException(message)
 
 class TenantDestroyingException(message: String) : WorkbenchException(message)
 
+class ProjectDestroyingException(message: String) : WorkbenchException(message)
+
+class ProjectArchivedException(message: String) : WorkbenchException(message)
+
 class InstanceAlreadyInitializedException(message: String) : WorkbenchException(message)
 
 class SetupTokenInvalidException(message: String) : WorkbenchException(message)

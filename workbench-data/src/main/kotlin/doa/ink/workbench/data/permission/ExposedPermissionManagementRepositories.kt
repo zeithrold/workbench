@@ -18,6 +18,7 @@ import doa.ink.workbench.core.permission.PermissionPolicyRuleRecord
 import doa.ink.workbench.core.permission.PermissionPrincipalType
 import doa.ink.workbench.core.permission.ResolvedPermissionRule
 import doa.ink.workbench.core.permission.UpdatePermissionGroupCommand
+import doa.ink.workbench.core.permission.UpdatePermissionPolicyCommand
 import doa.ink.workbench.data.persistence.GroupMembersTable
 import doa.ink.workbench.data.persistence.GroupsTable
 import doa.ink.workbench.data.persistence.PermissionBindingsTable
@@ -35,6 +36,7 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -264,6 +266,47 @@ class ExposedPermissionPolicyRepository(private val database: Database) :
         .map { it.toPermissionPolicyRuleRecord() }
     }
 
+  override suspend fun update(command: UpdatePermissionPolicyCommand): PermissionPolicyRecord =
+    suspendTransaction(db = database) {
+      val now = AdminRepositoryMappers.nowUtc()
+      PermissionPoliciesTable.update({
+        PermissionPoliciesTable.id eq command.policyId.toKotlinUuid()
+      }) {
+        command.name?.let { name -> it[PermissionPoliciesTable.name] = name }
+        command.description?.let { description ->
+          it[PermissionPoliciesTable.description] = description
+        }
+        it[updatedAt] = now
+      }
+      PermissionPoliciesTable.selectAll()
+        .where { PermissionPoliciesTable.id eq command.policyId.toKotlinUuid() }
+        .single()
+        .toPermissionPolicyRecord()
+    }
+
+  override suspend fun delete(tenantId: UUID, id: UUID): Boolean =
+    suspendTransaction(db = database) {
+      PermissionPoliciesTable.update({
+        activePolicy(tenantId) and (PermissionPoliciesTable.id eq id.toKotlinUuid())
+      }) {
+        val now = AdminRepositoryMappers.nowUtc()
+        it[deletedAt] = now
+        it[updatedAt] = now
+      } > 0
+    }
+
+  override suspend fun hasActiveBindings(policyId: UUID, at: OffsetDateTime): Boolean =
+    suspendTransaction(db = database) {
+      PermissionBindingsTable.selectAll()
+        .where {
+          (PermissionBindingsTable.policyId eq policyId.toKotlinUuid()) and
+            (PermissionBindingsTable.validFrom lessEq at) and
+            (PermissionBindingsTable.validTo.isNull() or
+              (PermissionBindingsTable.validTo greater at))
+        }
+        .any()
+    }
+
   private fun activePolicy(tenantId: UUID): Op<Boolean> =
     (PermissionPoliciesTable.tenantId eq tenantId.toKotlinUuid()) and
       PermissionPoliciesTable.deletedAt.isNull()
@@ -316,6 +359,55 @@ class ExposedPermissionBindingRepository(private val database: Database) :
         .map { it.toPermissionBindingRecord() }
     }
 
+  override suspend fun listByProject(
+    tenantId: UUID,
+    projectId: UUID,
+  ): List<PermissionBindingRecord> =
+    suspendTransaction(db = database) {
+      PermissionBindingsTable.selectAll()
+        .where {
+          (PermissionBindingsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (PermissionBindingsTable.projectId eq projectId.toKotlinUuid())
+        }
+        .orderBy(PermissionBindingsTable.createdAt to SortOrder.DESC)
+        .map { it.toPermissionBindingRecord() }
+    }
+
+  override suspend fun listProjectIdsForSubject(
+    tenantId: UUID,
+    subjectUserId: UUID,
+    at: OffsetDateTime,
+  ): Set<UUID> =
+    suspendTransaction(db = database) {
+      val activeGroupIds =
+        GroupMembersTable.selectAll()
+          .where {
+            (GroupMembersTable.userId eq subjectUserId.toKotlinUuid()) and
+              (GroupMembersTable.status eq GroupMemberStatus.ACTIVE.dbValue)
+          }
+          .map { it[GroupMembersTable.groupId] }
+      val principalFilter =
+        (PermissionBindingsTable.principalType eq PermissionPrincipalType.USER.dbValue) and
+          (PermissionBindingsTable.principalUserId eq subjectUserId.toKotlinUuid()) or
+          if (activeGroupIds.isEmpty()) {
+            Op.FALSE
+          } else {
+            (PermissionBindingsTable.principalType eq PermissionPrincipalType.GROUP.dbValue) and
+              (PermissionBindingsTable.principalGroupId inList activeGroupIds)
+          }
+      PermissionBindingsTable.selectAll()
+        .where {
+          (PermissionBindingsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (PermissionBindingsTable.projectId neq null) and
+            principalFilter and
+            (PermissionBindingsTable.validFrom lessEq at) and
+            (PermissionBindingsTable.validTo.isNull() or
+              (PermissionBindingsTable.validTo greater at))
+        }
+        .mapNotNull { it[PermissionBindingsTable.projectId]?.toJavaUuid() }
+        .toSet()
+    }
+
   override suspend fun expire(tenantId: UUID, id: UUID, validTo: OffsetDateTime): Boolean =
     suspendTransaction(db = database) {
       PermissionBindingsTable.update({
@@ -325,6 +417,21 @@ class ExposedPermissionBindingRepository(private val database: Database) :
       }) {
         it[PermissionBindingsTable.validTo] = validTo
       } > 0
+    }
+
+  override suspend fun expireByProject(
+    tenantId: UUID,
+    projectId: UUID,
+    validTo: OffsetDateTime,
+  ): Int =
+    suspendTransaction(db = database) {
+      PermissionBindingsTable.update({
+        (PermissionBindingsTable.tenantId eq tenantId.toKotlinUuid()) and
+          (PermissionBindingsTable.projectId eq projectId.toKotlinUuid()) and
+          PermissionBindingsTable.validTo.isNull()
+      }) {
+        it[PermissionBindingsTable.validTo] = validTo
+      }
     }
 
   override suspend fun listActiveRulesForSubject(
@@ -373,21 +480,23 @@ class ExposedPermissionBindingRepository(private val database: Database) :
       if (activePolicyIds.isEmpty()) {
         emptyList()
       } else {
-        val bindingByPolicy = activePolicyIds.associate { (bindingId, policyId) ->
-          policyId to bindingId
-        }
         PermissionPolicyRulesTable.selectAll()
           .where { PermissionPolicyRulesTable.policyId inList activePolicyIds.map { it.second } }
-          .map {
-            ResolvedPermissionRule(
-              bindingId = bindingByPolicy.getValue(it[PermissionPolicyRulesTable.policyId]),
-              action =
-                doa.ink.workbench.core.permission.model.AuthorizationAction(
-                  it[PermissionPolicyRulesTable.action]
-                ),
-              resourcePattern = it[PermissionPolicyRulesTable.resourcePattern],
-              effect = permissionEffectOf(it[PermissionPolicyRulesTable.effect]),
-            )
+          .flatMap { ruleRow ->
+            val policyId = ruleRow[PermissionPolicyRulesTable.policyId]
+            activePolicyIds
+              .filter { it.second == policyId }
+              .map { (bindingId, _) ->
+                ResolvedPermissionRule(
+                  bindingId = bindingId,
+                  action =
+                    doa.ink.workbench.core.permission.model.AuthorizationAction(
+                      ruleRow[PermissionPolicyRulesTable.action]
+                    ),
+                  resourcePattern = ruleRow[PermissionPolicyRulesTable.resourcePattern],
+                  effect = permissionEffectOf(ruleRow[PermissionPolicyRulesTable.effect]),
+                )
+              }
           }
       }
     }

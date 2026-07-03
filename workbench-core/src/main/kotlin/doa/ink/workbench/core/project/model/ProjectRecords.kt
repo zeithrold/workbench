@@ -1,6 +1,7 @@
 package doa.ink.workbench.core.project.model
 
 import doa.ink.workbench.core.common.ids.PublicId
+import java.time.OffsetDateTime
 import java.util.UUID
 
 data class ProjectRecord(
@@ -10,6 +11,14 @@ data class ProjectRecord(
   val identifier: String,
   val name: String,
   val description: String?,
+  val status: ProjectStatus = ProjectStatus.ACTIVE,
+  val nonMemberVisibility: NonMemberVisibility = NonMemberVisibility.INVISIBLE,
+  val nonMemberJoinPolicy: NonMemberJoinPolicy = NonMemberJoinPolicy.ADMIN_ONLY,
+  val leadUserId: UUID? = null,
+  val createdBy: UUID? = null,
+  val archivedAt: OffsetDateTime? = null,
+  val archivedBy: UUID? = null,
+  val deletedAt: OffsetDateTime? = null,
 )
 
 data class CreateProjectCommand(
@@ -17,4 +26,6 @@ data class CreateProjectCommand(
   val identifier: String,
   val name: String,
   val description: String?,
+  val createdBy: UUID,
+  val leadUserId: UUID,
 )

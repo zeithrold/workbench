@@ -1,5 +1,6 @@
 package doa.ink.workbench.web.api
 
+import doa.ink.workbench.core.common.context.ProjectRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import org.springframework.aop.support.AopUtils
 import org.springframework.boot.ApplicationArguments
@@ -14,12 +15,26 @@ class TenantScopedStartupValidator(private val applicationContext: ApplicationCo
   override fun run(args: ApplicationArguments) {
     applicationContext.getBeansWithAnnotation(RestController::class.java).values.forEach { bean ->
       val targetClass = AopUtils.getTargetClass(bean)
-      val classScoped = targetClass.isAnnotationPresent(TenantScoped::class.java)
+      val classTenantScoped = targetClass.isAnnotationPresent(TenantScoped::class.java)
+      val classProjectScoped = targetClass.isAnnotationPresent(ProjectScoped::class.java)
       targetClass.declaredMethods.forEach { method ->
-        val methodScoped = method.isAnnotationPresent(TenantScoped::class.java) || classScoped
-        if (methodScoped && method.parameterTypes.none { it == TenantRequestContext::class.java }) {
+        val methodTenantScoped =
+          method.isAnnotationPresent(TenantScoped::class.java) || classTenantScoped
+        if (!methodTenantScoped) return@forEach
+
+        val methodProjectScoped =
+          method.isAnnotationPresent(ProjectScoped::class.java) || classProjectScoped
+        val hasTenantContext =
+          method.parameterTypes.any { it == TenantRequestContext::class.java }
+        val hasProjectContext =
+          method.parameterTypes.any { it == ProjectRequestContext::class.java }
+        val contextSatisfied = hasTenantContext || (methodProjectScoped && hasProjectContext)
+        if (!contextSatisfied) {
+          val expected =
+            if (methodProjectScoped) "TenantRequestContext or ProjectRequestContext"
+            else "TenantRequestContext"
           error(
-            "Tenant-scoped controller method must accept TenantRequestContext: ${targetClass.name}.${method.name}"
+            "Tenant-scoped controller method must accept $expected: ${targetClass.name}.${method.name}"
           )
         }
       }

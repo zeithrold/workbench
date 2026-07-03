@@ -10,7 +10,7 @@ interface TenantOwned {
 
 object TenantAccessGuard {
   fun ensureAccessible(context: TenantRequestContext, entity: TenantOwned) {
-    if (entity.tenantId != context.tenantId) {
+    if (entity.tenantId != context.tenant.id) {
       throw PermissionDeniedException("Resource is not accessible in the current tenant context.")
     }
   }

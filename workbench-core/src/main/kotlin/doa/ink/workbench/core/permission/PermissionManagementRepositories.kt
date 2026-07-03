@@ -111,6 +111,12 @@ data class CreatePermissionPolicyCommand(
   val builtin: Boolean = false,
 )
 
+data class UpdatePermissionPolicyCommand(
+  val policyId: UUID,
+  val name: String?,
+  val description: String?,
+)
+
 data class CreatePermissionPolicyRuleCommand(
   val policyId: UUID,
   val action: AuthorizationAction,
@@ -164,9 +170,15 @@ interface PermissionPolicyRepository {
 
   suspend fun list(tenantId: UUID): List<PermissionPolicyRecord>
 
+  suspend fun update(command: UpdatePermissionPolicyCommand): PermissionPolicyRecord
+
+  suspend fun delete(tenantId: UUID, id: UUID): Boolean
+
   suspend fun addRule(command: CreatePermissionPolicyRuleCommand): PermissionPolicyRuleRecord
 
   suspend fun listRules(policyId: UUID): List<PermissionPolicyRuleRecord>
+
+  suspend fun hasActiveBindings(policyId: UUID, at: OffsetDateTime): Boolean
 }
 
 interface PermissionBindingRepository {
@@ -176,7 +188,21 @@ interface PermissionBindingRepository {
 
   suspend fun listByTenant(tenantId: UUID): List<PermissionBindingRecord>
 
+  suspend fun listByProject(tenantId: UUID, projectId: UUID): List<PermissionBindingRecord>
+
+  suspend fun listProjectIdsForSubject(
+    tenantId: UUID,
+    subjectUserId: UUID,
+    at: OffsetDateTime,
+  ): Set<UUID>
+
   suspend fun expire(tenantId: UUID, id: UUID, validTo: OffsetDateTime): Boolean
+
+  suspend fun expireByProject(
+    tenantId: UUID,
+    projectId: UUID,
+    validTo: OffsetDateTime,
+  ): Int
 
   suspend fun listActiveRulesForSubject(
     subjectUserId: UUID,

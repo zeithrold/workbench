@@ -21,6 +21,8 @@ class ProjectServiceTest :
           identifier = "CORE",
           name = "Core Platform",
           description = "Platform work",
+          createdBy = UUID.randomUUID(),
+          leadUserId = UUID.randomUUID(),
         )
       val record =
         ProjectRecord(

@@ -2,6 +2,7 @@ package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.context.ApiVersion
 import doa.ink.workbench.core.common.context.RequestContext
+import doa.ink.workbench.core.common.context.UserContextSummary
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import java.time.Clock
 import java.util.UUID
@@ -25,7 +26,9 @@ class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentRe
     mavContainer: ModelAndViewContainer?,
     webRequest: NativeWebRequest,
     binderFactory: WebDataBinderFactory?,
-  ): Any {
+  ): Any = resolveBase(webRequest)
+
+  fun resolveBase(webRequest: NativeWebRequest): RequestContext {
     val version =
       webRequest.getAttribute(ApiVersion::class.java.name, NativeWebRequest.SCOPE_REQUEST)
         as? ApiVersion ?: ApiVersion.Default
@@ -34,8 +37,7 @@ class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentRe
     return RequestContext(
       requestId = webRequest.getHeader("X-Request-Id") ?: UUID.randomUUID().toString(),
       apiVersion = version,
-      actorUserId = principal?.user?.id,
-      actorPublicId = principal?.user?.apiId,
+      actor = principal?.user?.let(UserContextSummary::from),
       receivedAt = clock.instant(),
     )
   }
@@ -45,12 +47,14 @@ class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentRe
 class WebMvcContextConfiguration(
   private val requestContextResolver: RequestContextResolver,
   private val tenantRequestContextResolver: TenantRequestContextResolver,
+  private val projectRequestContextResolver: ProjectRequestContextResolver,
   private val instanceRequestContextResolver: InstanceRequestContextResolver,
   private val authenticatedPrincipalResolver: AuthenticatedPrincipalResolver,
 ) : WebMvcConfigurer {
   override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
     resolvers.add(requestContextResolver)
     resolvers.add(tenantRequestContextResolver)
+    resolvers.add(projectRequestContextResolver)
     resolvers.add(instanceRequestContextResolver)
     resolvers.add(authenticatedPrincipalResolver)
   }

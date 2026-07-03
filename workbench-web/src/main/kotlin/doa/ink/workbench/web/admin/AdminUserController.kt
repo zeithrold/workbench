@@ -1,7 +1,6 @@
 package doa.ink.workbench.web.admin
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
-import doa.ink.workbench.core.common.context.RequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.PermissionEffect
@@ -58,10 +57,9 @@ class AdminUserController(
   suspend fun grantInstanceAdmin(
     @Valid @RequestBody request: GrantAdminRequest,
     instanceContext: InstanceRequestContext,
-    requestContext: RequestContext,
   ): AdminUserResponse =
     AdminUserResponse.from(
-      adminUserService.grantInstanceAdmin(request.userId, requestContext.actorUserId)
+      adminUserService.grantInstanceAdmin(request.userId, instanceContext.actor?.id)
     )
 
   @GetMapping("/tenant-admins")
@@ -69,7 +67,7 @@ class AdminUserController(
   @Authorize(action = "permission.assignment.manage", resource = "permission")
   @Operation(summary = "List tenant administrators")
   suspend fun listTenantAdmins(tenantContext: TenantRequestContext): List<AdminUserResponse> =
-    adminUserService.listTenantAdmins(tenantContext.tenantId).map { AdminUserResponse.from(it) }
+    adminUserService.listTenantAdmins(tenantContext.tenant.id).map { AdminUserResponse.from(it) }
 
   @PostMapping("/tenant-admins")
   @TenantScoped
@@ -79,13 +77,12 @@ class AdminUserController(
   suspend fun grantTenantAdmin(
     @Valid @RequestBody request: GrantAdminRequest,
     tenantContext: TenantRequestContext,
-    requestContext: RequestContext,
   ): AdminUserResponse =
     AdminUserResponse.from(
       adminUserService.grantTenantAdmin(
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         userPublicId = request.userId,
-        actorUserId = requestContext.actorUserId,
+        actorUserId = tenantContext.actor?.id,
       )
     )
 
@@ -107,7 +104,7 @@ class AdminUserController(
   @Operation(summary = "List access grants for active tenant")
   suspend fun listGrants(tenantContext: TenantRequestContext): List<AccessGrantResponse> =
     accessGrantService
-      .listGrants(scope = null, tenantId = tenantContext.tenantId, subjectUserId = null)
+      .listGrants(scope = null, tenantId = tenantContext.tenant.id, subjectUserId = null)
       .map { AccessGrantResponse.from(it) }
 
   @PostMapping("/grants")
@@ -118,18 +115,17 @@ class AdminUserController(
   suspend fun createGrant(
     @Valid @RequestBody request: CreateAccessGrantRequest,
     tenantContext: TenantRequestContext,
-    requestContext: RequestContext,
   ): AccessGrantResponse =
     AccessGrantResponse.from(
       accessGrantService.createGrant(
         scope = request.scope,
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         userPublicId = request.userId,
         actionCode = request.action,
         resourcePattern = request.resourcePattern,
         effect = request.effect,
         projectPublicId = request.projectId,
-        actorUserId = requestContext.actorUserId,
+        actorUserId = tenantContext.actor?.id,
       )
     )
 
