@@ -244,7 +244,7 @@ Throw typed exceptions from `workbench-core`; `GlobalExceptionHandler` renders P
 
 ```json
 {
-  "type": "https://api.doa.ink/workbench/problems/permission-denied",
+  "type": "https://api.ink.doa/workbench/problems/permission-denied",
   "title": "Permission Denied",
   "status": 403,
   "detail": "Actor lacks permission.project.create on project."
