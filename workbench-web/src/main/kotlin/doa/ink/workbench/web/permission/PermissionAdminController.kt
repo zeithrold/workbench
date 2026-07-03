@@ -150,7 +150,7 @@ class PermissionAdminController(private val service: PermissionManagementService
                 )
               ],
           )
-        ],
+        ]
     )
     @Valid
     @RequestBody
@@ -323,7 +323,7 @@ class PermissionAdminController(private val service: PermissionManagementService
                 )
               ],
           )
-        ],
+        ]
     )
     @Valid
     @RequestBody
@@ -473,7 +473,7 @@ class PermissionAdminController(private val service: PermissionManagementService
                 )
               ],
           )
-        ],
+        ]
     )
     @Valid
     @RequestBody

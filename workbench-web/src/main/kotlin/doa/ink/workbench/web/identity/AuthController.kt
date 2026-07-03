@@ -207,7 +207,7 @@ class AuthController(
   suspend fun loginOptions(
     @Parameter(description = "User identifier such as email.", example = "user@example.com")
     @RequestParam
-    identifier: String,
+    identifier: String
   ): List<LoginOptionResponse> =
     authApplicationService.listLoginOptions(identifier).map { LoginOptionResponse.from(it) }
 
@@ -387,9 +387,7 @@ class AuthController(
       ],
   )
   suspend fun oauthCallback(
-    @Parameter(description = "Authorization code from the provider.")
-    @RequestParam
-    code: String,
+    @Parameter(description = "Authorization code from the provider.") @RequestParam code: String,
     @Parameter(description = "Opaque state echoed from the authorize step.")
     @RequestParam
     state: String,
@@ -484,11 +482,11 @@ class AuthController(
                 )
               ],
           )
-        ],
+        ]
     )
     @Valid
     @RequestBody
-    request: MagicLinkRequest,
+    request: MagicLinkRequest
   ) {
     authApplicationService.requestMagicLink(
       email = request.email,
@@ -543,9 +541,7 @@ class AuthController(
       ],
   )
   suspend fun verifyMagicLink(
-    @Parameter(description = "Opaque token from the magic-link email.")
-    @RequestParam
-    token: String,
+    @Parameter(description = "Opaque token from the magic-link email.") @RequestParam token: String,
     servletRequest: HttpServletRequest,
   ): ResponseEntity<LoginResponse> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()

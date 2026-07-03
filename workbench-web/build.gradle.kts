@@ -2,7 +2,6 @@ plugins {
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.dependency.management)
   alias(libs.plugins.kotlin.spring)
-  alias(libs.plugins.pitest)
 }
 
 dependencies {
@@ -35,12 +34,4 @@ springBoot {
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
   archiveFileName.set("workbench-web.jar")
-}
-
-pitest {
-  junit5PluginVersion.set("1.2.2")
-  targetClasses.set(setOf("doa.ink.workbench.*"))
-  targetTests.set(setOf("doa.ink.workbench.*"))
-  outputFormats.set(setOf("XML", "HTML"))
-  mutationThreshold.set(1)
 }

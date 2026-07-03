@@ -110,4 +110,4 @@ jobs:
 
       - name: Mutation tests
         if: inputs.extended-tests
-        run: ./gradlew mutationTest --no-daemon
+        run: ./gradlew mutationTest --no-daemon --no-parallel --no-configuration-cache

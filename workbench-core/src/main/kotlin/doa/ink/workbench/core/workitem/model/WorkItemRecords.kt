@@ -88,6 +88,4 @@ data class WorkItemSearchHit(
   val sortCursor: WorkItemSearchSortCursor? = null,
 )
 
-data class WorkItemSearchSortCursor(
-  val values: JsonObject,
-)
+data class WorkItemSearchSortCursor(val values: JsonObject)

@@ -51,7 +51,10 @@ class WorkItemQueryServiceTest :
     "rejects invalid queries before repository call" {
       val repository = mockk<WorkItemQueryRepository>()
       val scope = WorkItemSearchScope(tenantId = UUID.randomUUID())
-      val query = WorkItemQuery(where = ConditionNode.Predicate(QueryField.System("unknown"), QueryOperator.EQ, null))
+      val query =
+        WorkItemQuery(
+          where = ConditionNode.Predicate(QueryField.System("unknown"), QueryOperator.EQ, null)
+        )
 
       shouldThrow<RuntimeException> { WorkItemQueryService(repository).search(scope, query) }
 

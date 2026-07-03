@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -27,6 +28,22 @@ val kotestPropertyDependency = libs.kotest.property
 val mockkDependency = libs.mockk
 val coroutinesTestDependency = libs.kotlinx.coroutines.test
 
+val pitestProperties =
+    Properties().apply {
+        rootProject.file("config/pitest/pitest.properties").inputStream().use { load(it) }
+    }
+
+fun pitestProperty(key: String): String =
+    pitestProperties.getProperty(key)
+        ?: error("Missing pitest property: $key")
+
+fun pitestCsvProperty(key: String): Set<String> =
+    pitestProperty(key)
+        .split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .toSet()
+
 subprojects {
     group = rootProject.group
     version = rootProject.version
@@ -42,12 +59,25 @@ val backendProjects = listOf(
     project(":workbench-worker"),
 )
 
+fun pitestEnabledProjects(): List<org.gradle.api.Project> =
+    backendProjects.filter { project ->
+        val hasKotlinTests =
+            project.fileTree("src/test/kotlin") {
+                include("**/*.kt")
+            }.files.isNotEmpty()
+        project.name !in pitestCsvProperty("skipModules") &&
+            (!pitestProperty("autoSkipModulesWithoutTests").toBoolean() || hasKotlinTests)
+    }
+
+apply(plugin = "info.solidsoft.pitest.aggregator")
+
 configure(backendProjects) {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "org.jetbrains.kotlin.plugin.serialization")
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "dev.detekt")
     apply(plugin = "org.jetbrains.kotlinx.kover")
+    apply(plugin = "info.solidsoft.pitest")
 
     extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension>("kotlin") {
         jvmToolchain(25)
@@ -153,6 +183,43 @@ configure(backendProjects) {
                 }
             }
         }
+
+        val skipModules = pitestCsvProperty("skipModules")
+        val autoSkipModulesWithoutTests = pitestProperty("autoSkipModulesWithoutTests").toBoolean()
+        val hasKotlinTests =
+            fileTree("src/test/kotlin") {
+                include("**/*.kt")
+            }.files.isNotEmpty()
+        val skipPitest = name in skipModules || (autoSkipModulesWithoutTests && !hasKotlinTests)
+
+        if (skipPitest) {
+            tasks.matching { it.name == "pitest" }.configureEach {
+                enabled = false
+            }
+        } else {
+            val moduleSuffix = name.removePrefix("workbench-")
+            val packageGlob = "doa.ink.workbench.$moduleSuffix.*"
+
+            extensions.configure<info.solidsoft.gradle.pitest.PitestPluginExtension>("pitest") {
+                junit5PluginVersion.set(pitestProperty("junit5PluginVersion"))
+                targetClasses.set(setOf(packageGlob))
+                targetTests.set(setOf(packageGlob))
+                mutationThreshold.set(pitestProperty("mutationThreshold").toInt())
+                avoidCallsTo.set(pitestCsvProperty("avoidCallsTo"))
+                excludedClasses.set(pitestCsvProperty("excludedClasses"))
+                excludedTestClasses.set(pitestCsvProperty("excludedTestClasses"))
+                excludedGroups.set(pitestCsvProperty("excludedGroups"))
+                outputFormats.set(pitestCsvProperty("perModuleOutputFormats"))
+                timestampedReports.set(pitestProperty("timestampedReports").toBoolean())
+                exportLineCoverage.set(pitestProperty("exportLineCoverage").toBoolean())
+                threads.set(Runtime.getRuntime().availableProcessors())
+                if (name == "workbench-core") {
+                    reportAggregator {
+                        mutationThreshold.set(pitestProperty("mutationThreshold").toInt())
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -172,8 +239,15 @@ tasks.register("fuzzTest") {
     dependsOn(backendProjects.map { "${it.path}:fuzzVerification" })
 }
 
+val pitestTaskPaths = pitestEnabledProjects().map { "${it.path}:pitest" }
+
+tasks.named("pitestReportAggregate") {
+    mustRunAfter(pitestTaskPaths)
+}
+
 tasks.register("mutationTest") {
     group = "verification"
-    description = "Runs PIT mutation testing"
-    dependsOn(":workbench-web:pitest")
+    description = "Runs PIT mutation testing across backend modules"
+    dependsOn(pitestTaskPaths)
+    dependsOn("pitestReportAggregate")
 }

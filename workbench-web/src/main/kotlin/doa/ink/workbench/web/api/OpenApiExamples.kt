@@ -1,8 +1,8 @@
 package doa.ink.workbench.web.api
 
 /**
- * Canonical public ids and JSON example payloads for OpenAPI documentation.
- * Values align with [.agents/skills/api-design/examples.md].
+ * Canonical public ids and JSON example payloads for OpenAPI documentation. Values align with
+ * [.agents/skills/api-design/examples.md].
  */
 object OpenApiExamples {
   const val TENANT_ID = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0"

@@ -21,6 +21,7 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 ### Lint / test caveats
 - Run `./gradlew check` for the JVM build, static analysis, and tests, and `./gradlew :workbench-frontend:pnpmDev|pnpmCoverage|pnpmE2e` for the frontend.
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
+- Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
 
 ### Dependency notes
 - Redisson is pinned to `4.6.1` (3.x's `RedissonAutoConfigurationV2` is incompatible with Spring Boot 4's package relocation), and `workbench-web` includes `kotlinx-coroutines-reactor` at runtime (required for Spring MVC to invoke `suspend` handler functions). Both are needed for the apps to boot and serve requests on Spring Boot 4.

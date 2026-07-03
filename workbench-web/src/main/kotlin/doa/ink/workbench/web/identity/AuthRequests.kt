@@ -29,8 +29,7 @@ data class LoginRequest(
   val subject: String? = null,
   @field:Schema(description = "Password for PASSWORD method.", example = "secret")
   val password: String? = null,
-  @field:Schema(description = "Opaque bearer token for BEARER method.")
-  val token: String? = null,
+  @field:Schema(description = "Opaque bearer token for BEARER method.") val token: String? = null,
   @field:Schema(description = "Email address for MAGIC_LINK method.", example = "user@example.com")
   val email: String? = null,
   @field:Schema(
@@ -77,7 +76,10 @@ data class MagicLinkRequest(
   val email: String,
   @field:Schema(description = "Public tenant id.", example = OpenApiExamples.TENANT_ID)
   val tenantId: String,
-  @field:Schema(description = "Public magic-link login method id.", example = OpenApiExamples.LOGIN_METHOD_ID)
+  @field:Schema(
+    description = "Public magic-link login method id.",
+    example = OpenApiExamples.LOGIN_METHOD_ID,
+  )
   val loginMethodId: String,
 )
 

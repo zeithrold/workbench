@@ -43,7 +43,8 @@ OpenAPI is available at `http://localhost:8080/v3/api-docs`. Scalar is available
 
 ```bash
 ./gradlew check
-./gradlew :workbench-web:pitest
+./gradlew mutationTest
+./gradlew :workbench-core:pitest
 ./gradlew :workbench-frontend:pnpmCoverage
 ./gradlew :workbench-frontend:pnpmE2e
 ```

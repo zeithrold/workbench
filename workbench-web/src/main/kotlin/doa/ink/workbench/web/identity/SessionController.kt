@@ -121,7 +121,7 @@ class SessionController(private val sessionService: SessionService) {
                 )
               ],
           )
-        ],
+        ]
     )
     @Valid
     @RequestBody

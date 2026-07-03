@@ -21,8 +21,11 @@ sealed interface ConditionNode {
 
   data class Not(val arg: ConditionNode) : ConditionNode
 
-  data class Predicate(val field: QueryField, val op: QueryOperator, val value: QueryValue? = null) :
-    ConditionNode
+  data class Predicate(
+    val field: QueryField,
+    val op: QueryOperator,
+    val value: QueryValue? = null,
+  ) : ConditionNode
 }
 
 sealed interface QueryField {
@@ -65,8 +68,7 @@ enum class QueryOperator(val wireName: String) {
   WITHIN("within"),
   HAS_ANY("has_any"),
   HAS_ALL("has_all"),
-  HAS_NONE("has_none"),
-  ;
+  HAS_NONE("has_none");
 
   companion object {
     fun fromWireName(value: String): QueryOperator? = entries.firstOrNull { it.wireName == value }
@@ -78,8 +80,12 @@ sealed interface QueryValue {
 
   data class Variable(val name: String) : QueryValue
 
-  data class RelativeDate(val amount: Int, val unit: RelativeDateUnit, val direction: DateDirection, val anchor: String) :
-    QueryValue
+  data class RelativeDate(
+    val amount: Int,
+    val unit: RelativeDateUnit,
+    val direction: DateDirection,
+    val anchor: String,
+  ) : QueryValue
 
   data class Between(val from: JsonElement?, val to: JsonElement?) : QueryValue
 }
@@ -88,18 +94,18 @@ enum class RelativeDateUnit(val wireName: String) {
   DAY("day"),
   WEEK("week"),
   MONTH("month"),
-  YEAR("year"),
-  ;
+  YEAR("year");
 
   companion object {
-    fun fromWireName(value: String): RelativeDateUnit? = entries.firstOrNull { it.wireName == value }
+    fun fromWireName(value: String): RelativeDateUnit? = entries.firstOrNull {
+      it.wireName == value
+    }
   }
 }
 
 enum class DateDirection(val wireName: String) {
   PAST("past"),
-  FUTURE("future"),
-  ;
+  FUTURE("future");
 
   companion object {
     fun fromWireName(value: String): DateDirection? = entries.firstOrNull { it.wireName == value }
@@ -114,22 +120,22 @@ data class SortTerm(
 
 enum class SortDirection(val wireName: String) {
   ASC("asc"),
-  DESC("desc"),
-  ;
+  DESC("desc");
 
   companion object {
-    fun fromWireName(value: String): SortDirection? =
-      entries.firstOrNull { it.wireName == value.lowercase() }
+    fun fromWireName(value: String): SortDirection? = entries.firstOrNull {
+      it.wireName == value.lowercase()
+    }
   }
 }
 
 enum class NullOrdering(val wireName: String) {
   FIRST("first"),
-  LAST("last"),
-  ;
+  LAST("last");
 
   companion object {
-    fun fromWireName(value: String): NullOrdering? =
-      entries.firstOrNull { it.wireName == value.lowercase() }
+    fun fromWireName(value: String): NullOrdering? = entries.firstOrNull {
+      it.wireName == value.lowercase()
+    }
   }
 }
