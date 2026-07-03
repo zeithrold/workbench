@@ -120,3 +120,15 @@ tasks.register("dev") {
         println("Frontend: ./gradlew :workbench-frontend:pnpmDev")
     }
 }
+
+tasks.register("fuzzTest") {
+    group = "verification"
+    description = "Runs property-based (fuzz) tests"
+    dependsOn(":workbench-core:fuzzVerification")
+}
+
+tasks.register("mutationTest") {
+    group = "verification"
+    description = "Runs PIT mutation testing"
+    dependsOn(":workbench-web:pitest")
+}

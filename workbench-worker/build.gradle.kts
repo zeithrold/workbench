@@ -22,3 +22,7 @@ dependencies {
 springBoot {
   mainClass.set("doa.ink.workbench.worker.WorkbenchWorkerApplicationKt")
 }
+
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+  archiveFileName.set("workbench-worker.jar")
+}

@@ -1,0 +1,66 @@
+name: Quality Gate
+
+on:
+  workflow_call:
+    inputs:
+      extended-tests:
+        description: Run fuzz and mutation testing in addition to the standard quality gate
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: quality-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: workbench-frontend/pnpm-lock.yaml
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: Static checks, tests, and coverage gate
+        run: ./gradlew check --no-daemon
+
+      - name: Build web and worker boot jars
+        run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
+
+      - name: Build web image
+        run: docker build -t workbench-web:ci workbench-web
+
+      - name: Build worker image
+        run: docker build -t workbench-worker:ci workbench-worker
+
+      - name: Fuzz tests
+        if: inputs.extended-tests
+        run: ./gradlew fuzzTest --no-daemon
+
+      - name: Mutation tests
+        if: inputs.extended-tests
+        run: ./gradlew mutationTest --no-daemon
