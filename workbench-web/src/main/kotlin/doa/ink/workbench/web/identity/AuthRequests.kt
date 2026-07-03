@@ -84,7 +84,7 @@ data class MagicLinkRequest(
 )
 
 fun LoginRequest.toCommand(
-  client: doa.ink.workbench.service.identity.ClientContext
+  client: doa.ink.workbench.security.identity.ClientContext
 ): doa.ink.workbench.core.identity.model.LoginCommand =
   doa.ink.workbench.core.identity.model.LoginCommand(
     method = method,

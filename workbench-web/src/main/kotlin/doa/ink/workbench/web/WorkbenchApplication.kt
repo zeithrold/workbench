@@ -1,7 +1,7 @@
 package doa.ink.workbench.web
 
-import doa.ink.workbench.service.instance.InstanceProperties
-import doa.ink.workbench.service.invitation.InvitationLinkProperties
+import doa.ink.workbench.security.invitation.InvitationLinkProperties
+import doa.ink.workbench.tenant.instance.InstanceProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication

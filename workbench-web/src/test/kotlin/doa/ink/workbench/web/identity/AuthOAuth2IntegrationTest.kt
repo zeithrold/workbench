@@ -1,10 +1,10 @@
 package doa.ink.workbench.web.identity
 
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
-import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
-import doa.ink.workbench.service.identity.auth.support.FederatedAuthFixture
-import doa.ink.workbench.service.identity.auth.support.KeycloakTestContainer
-import doa.ink.workbench.service.identity.auth.support.OAuthAuthorizationCodeClient
+import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
+import doa.ink.workbench.security.identity.auth.support.FederatedAuthFixture
+import doa.ink.workbench.security.identity.auth.support.KeycloakTestContainer
+import doa.ink.workbench.security.identity.auth.support.OAuthAuthorizationCodeClient
 import doa.ink.workbench.web.identity.support.AuthIntegrationContainers
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database

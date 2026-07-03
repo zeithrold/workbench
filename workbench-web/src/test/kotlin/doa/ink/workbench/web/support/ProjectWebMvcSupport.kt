@@ -1,9 +1,9 @@
 package doa.ink.workbench.web.support
 
+import doa.ink.workbench.agile.project.ProjectMemberService
+import doa.ink.workbench.agile.project.ProjectOperationalGuard
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.service.project.ProjectManagementService
-import doa.ink.workbench.service.project.ProjectMemberService
-import doa.ink.workbench.service.project.ProjectOperationalGuard
 import io.mockk.mockk
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean

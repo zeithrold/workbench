@@ -37,8 +37,8 @@ data class HttpClientContext(
   }
 }
 
-fun HttpClientContext.toServiceContext(): doa.ink.workbench.service.identity.ClientContext =
-  doa.ink.workbench.service.identity.ClientContext(
+fun HttpClientContext.toServiceContext(): doa.ink.workbench.security.identity.ClientContext =
+  doa.ink.workbench.security.identity.ClientContext(
     ipAddress = ipAddress,
     userAgent = userAgent,
   )

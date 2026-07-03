@@ -5,8 +5,8 @@ import doa.ink.workbench.core.identity.model.CreateTenantCommand
 import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
 import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
+import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
 import io.kotest.assertions.throwables.shouldThrow

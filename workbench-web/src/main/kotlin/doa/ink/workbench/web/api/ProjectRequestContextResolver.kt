@@ -1,10 +1,10 @@
 package doa.ink.workbench.web.api
 
+import doa.ink.workbench.agile.project.ProjectOperationalGuard
+import doa.ink.workbench.agile.project.ProjectResolver
 import doa.ink.workbench.core.common.context.ProjectContextSummary
 import doa.ink.workbench.core.common.context.ProjectRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.project.ProjectOperationalGuard
 import kotlinx.coroutines.runBlocking
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
@@ -17,7 +17,7 @@ import org.springframework.web.servlet.HandlerMapping
 @Component
 class ProjectRequestContextResolver(
   private val tenantRequestContextResolver: TenantRequestContextResolver,
-  private val publicIds: PublicIdResolver,
+  private val projectResolver: ProjectResolver,
   private val projectOperationalGuard: ProjectOperationalGuard,
 ) : HandlerMethodArgumentResolver {
   override fun supportsParameter(parameter: MethodParameter): Boolean =
@@ -38,7 +38,7 @@ class ProjectRequestContextResolver(
       ) as TenantRequestContext
     val projectPublicId = requireProjectPublicId(webRequest)
     val project = runBlocking {
-      val resolved = publicIds.resolveProject(tenantContext.tenant.id, projectPublicId)
+      val resolved = projectResolver.resolveProject(tenantContext.tenant.id, projectPublicId)
       projectOperationalGuard.ensureOperational(tenantContext.tenant.id, resolved.id)
       resolved
     }

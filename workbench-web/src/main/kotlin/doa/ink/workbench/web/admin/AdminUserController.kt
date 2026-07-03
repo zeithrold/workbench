@@ -4,9 +4,9 @@ import doa.ink.workbench.core.common.context.InstanceRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.PermissionEffect
-import doa.ink.workbench.service.permission.AccessGrantManagementService
-import doa.ink.workbench.service.permission.AdminUserService
-import doa.ink.workbench.service.permission.PermissionActionService
+import doa.ink.workbench.security.permission.AccessGrantManagementService
+import doa.ink.workbench.security.permission.AdminUserService
+import doa.ink.workbench.security.permission.PermissionActionService
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.InstanceScoped
@@ -187,7 +187,7 @@ data class AdminUserResponse(
   val status: String,
 ) {
   companion object {
-    fun from(view: doa.ink.workbench.service.permission.AdminUserView) =
+    fun from(view: doa.ink.workbench.security.permission.AdminUserView) =
       AdminUserResponse(
         id = view.id,
         userId = view.userId,
@@ -207,7 +207,7 @@ data class AccessGrantResponse(
   val effect: String,
 ) {
   companion object {
-    fun from(view: doa.ink.workbench.service.permission.AccessGrantView) =
+    fun from(view: doa.ink.workbench.security.permission.AccessGrantView) =
       AccessGrantResponse(
         id = view.id,
         scope = view.scope.dbValue,
@@ -221,7 +221,7 @@ data class AccessGrantResponse(
 
 data class ActionResponse(val code: String, val description: String?) {
   companion object {
-    fun from(view: doa.ink.workbench.service.permission.ActionView) =
+    fun from(view: doa.ink.workbench.security.permission.ActionView) =
       ActionResponse(code = view.code, description = view.description)
   }
 }

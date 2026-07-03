@@ -15,20 +15,20 @@ import doa.ink.workbench.data.identity.ExposedUserRepository
 import doa.ink.workbench.data.permission.ExposedAccessGrantRepository
 import doa.ink.workbench.data.permission.ExposedAdminUserCommandRepository
 import doa.ink.workbench.data.permission.ExposedAdminUserQueryRepository
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.identity.AuthApplicationService
-import doa.ink.workbench.service.identity.LoginCompletionService
-import doa.ink.workbench.service.identity.SessionService
-import doa.ink.workbench.service.identity.auth.AuthenticationService
-import doa.ink.workbench.service.identity.auth.BearerCredentialService
-import doa.ink.workbench.service.identity.auth.LoginOrchestrator
-import doa.ink.workbench.service.identity.auth.PasswordLoginAuthenticator
-import doa.ink.workbench.service.identity.auth.SecureRandomCredentialSecretGenerator
-import doa.ink.workbench.service.identity.auth.SessionCredentialService
-import doa.ink.workbench.service.identity.auth.Sha256CredentialHasher
-import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
+import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.AuthApplicationService
+import doa.ink.workbench.security.identity.LoginCompletionService
+import doa.ink.workbench.security.identity.SessionService
+import doa.ink.workbench.security.identity.auth.AuthenticationService
+import doa.ink.workbench.security.identity.auth.BearerCredentialService
+import doa.ink.workbench.security.identity.auth.LoginOrchestrator
+import doa.ink.workbench.security.identity.auth.PasswordLoginAuthenticator
+import doa.ink.workbench.security.identity.auth.SecureRandomCredentialSecretGenerator
+import doa.ink.workbench.security.identity.auth.SessionCredentialService
+import doa.ink.workbench.security.identity.auth.Sha256CredentialHasher
+import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
-import doa.ink.workbench.service.tenant.TenantOperationalGuard
+import doa.ink.workbench.tenant.instance.InstanceProperties
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -144,7 +144,6 @@ class InstanceSetupIntegrationTest :
               tenants = tenants,
               publicIds = publicIds,
               loginCompletionService = loginCompletionService,
-              tenantOperationalGuard = TenantOperationalGuard(tenants),
               clock = clock,
             ),
           loginCompletionService = loginCompletionService,

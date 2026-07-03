@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.instance
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
-import doa.ink.workbench.service.common.PublicIdResolver
+import doa.ink.workbench.security.common.PublicIdResolver
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize

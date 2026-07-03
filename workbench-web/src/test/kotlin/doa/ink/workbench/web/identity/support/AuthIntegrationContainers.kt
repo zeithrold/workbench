@@ -3,10 +3,10 @@ package doa.ink.workbench.web.identity.support
 import dasniko.testcontainers.keycloak.KeycloakContainer
 import doa.ink.workbench.core.identity.auth.SecretResolver
 import doa.ink.workbench.core.port.locking.DistributedLockService
-import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
-import doa.ink.workbench.service.identity.auth.support.KeycloakTestContainer
-import doa.ink.workbench.service.identity.auth.support.LdapTestContainer
-import doa.ink.workbench.service.identity.auth.support.MapSecretResolver
+import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
+import doa.ink.workbench.security.identity.auth.support.KeycloakTestContainer
+import doa.ink.workbench.security.identity.auth.support.LdapTestContainer
+import doa.ink.workbench.security.identity.auth.support.MapSecretResolver
 import io.mockk.mockk
 import java.time.Duration
 import org.flywaydb.core.Flyway

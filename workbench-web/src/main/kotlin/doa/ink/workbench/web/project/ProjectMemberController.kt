@@ -1,11 +1,11 @@
 package doa.ink.workbench.web.project
 
+import doa.ink.workbench.agile.project.ProjectMemberPolicyView
+import doa.ink.workbench.agile.project.ProjectMemberService
+import doa.ink.workbench.agile.project.ProjectMemberView
+import doa.ink.workbench.agile.project.ProjectPermissionPolicySummary
 import doa.ink.workbench.core.common.context.ProjectRequestContext
 import doa.ink.workbench.core.common.summary.UserSummary
-import doa.ink.workbench.service.permission.PermissionPolicySummary
-import doa.ink.workbench.service.project.ProjectMemberPolicyView
-import doa.ink.workbench.service.project.ProjectMemberService
-import doa.ink.workbench.service.project.ProjectMemberView
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.ProjectScoped
@@ -99,8 +99,7 @@ class ProjectMemberController(private val service: ProjectMemberService) {
   @Operation(summary = "Join an open project")
   suspend fun join(projectContext: ProjectRequestContext): ProjectMemberResponse {
     val actorUserId =
-      projectContext.actor?.id
-        ?: throw IllegalStateException("Authenticated user is required.")
+      projectContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
     return ProjectMemberResponse.from(
       service.join(
         tenantId = projectContext.tenant.id,
@@ -155,7 +154,7 @@ data class PermissionPolicySummaryResponse(
   val name: String,
 ) {
   companion object {
-    fun from(summary: PermissionPolicySummary) =
+    fun from(summary: ProjectPermissionPolicySummary) =
       PermissionPolicySummaryResponse(
         id = summary.id,
         code = summary.code,

@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.invitation
 
 import doa.ink.workbench.core.identity.model.AcceptInvitationCommand
-import doa.ink.workbench.service.invitation.InvitationService
+import doa.ink.workbench.security.invitation.InvitationService
 import doa.ink.workbench.web.api.StandardErrorResponses
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter

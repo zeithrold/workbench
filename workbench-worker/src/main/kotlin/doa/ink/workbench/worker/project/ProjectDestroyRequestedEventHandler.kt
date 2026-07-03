@@ -1,5 +1,6 @@
 package doa.ink.workbench.worker.project
 
+import doa.ink.workbench.agile.project.ProjectDestructionService
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.messaging.EventMetadata
@@ -9,7 +10,6 @@ import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.events.ProjectDestroyRequestedEvent
 import doa.ink.workbench.core.project.events.ProjectDestroyedEvent
 import doa.ink.workbench.core.project.events.ProjectDomainEvents
-import doa.ink.workbench.service.project.ProjectDestructionService
 import doa.ink.workbench.worker.messaging.DomainEventHandler
 import java.time.Clock
 import java.time.Duration

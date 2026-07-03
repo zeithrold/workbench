@@ -8,7 +8,7 @@ import doa.ink.workbench.core.port.messaging.DomainEventPublisher
 import doa.ink.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import doa.ink.workbench.core.tenant.events.TenantDestroyedEvent
 import doa.ink.workbench.core.tenant.events.TenantDomainEvents
-import doa.ink.workbench.service.instance.TenantDestructionService
+import doa.ink.workbench.tenant.instance.TenantDestructionService
 import doa.ink.workbench.worker.messaging.DomainEventHandler
 import java.time.Clock
 import java.time.Duration

@@ -8,7 +8,7 @@ import doa.ink.workbench.core.identity.model.TenantStatus
 import doa.ink.workbench.core.identity.model.UserRecord
 import doa.ink.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import doa.ink.workbench.core.tenant.events.TenantDomainEvents
-import doa.ink.workbench.service.common.PublicIdResolver
+import doa.ink.workbench.security.common.PublicIdResolver
 import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

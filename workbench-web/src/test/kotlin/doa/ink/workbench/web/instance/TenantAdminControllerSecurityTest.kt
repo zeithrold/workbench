@@ -10,11 +10,11 @@ import doa.ink.workbench.core.permission.model.DecisionReason
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
-import doa.ink.workbench.service.common.PublicIdResolver
-import doa.ink.workbench.service.identity.SessionService
+import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.service.instance.CreateTenantView
 import doa.ink.workbench.service.instance.TenantManagementService
-import doa.ink.workbench.service.tenant.TenantOperationalGuard
+import doa.ink.workbench.tenant.tenant.TenantOperationalGuard
 import doa.ink.workbench.web.api.GlobalExceptionHandler
 import doa.ink.workbench.web.api.InfrastructureAspect
 import doa.ink.workbench.web.api.InstanceRequestContextResolver

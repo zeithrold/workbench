@@ -4,6 +4,6 @@ plugins {
 
 dependencies {
   implementation(project(":workbench-core"))
-  implementation(project(":workbench-service"))
   implementation("org.springframework:spring-context")
+  implementation("org.slf4j:slf4j-api")
 }

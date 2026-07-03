@@ -5,13 +5,13 @@ import doa.ink.workbench.core.common.summary.ProjectSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.permission.PermissionPrincipalType
 import doa.ink.workbench.core.permission.model.PermissionEffect
-import doa.ink.workbench.service.permission.GroupMemberView
-import doa.ink.workbench.service.permission.PermissionBindingView
-import doa.ink.workbench.service.permission.PermissionGroupView
-import doa.ink.workbench.service.permission.PermissionManagementService
-import doa.ink.workbench.service.permission.PermissionPolicyRuleView
-import doa.ink.workbench.service.permission.PermissionPolicySummary
-import doa.ink.workbench.service.permission.PermissionPolicyView
+import doa.ink.workbench.security.permission.GroupMemberView
+import doa.ink.workbench.security.permission.PermissionBindingView
+import doa.ink.workbench.security.permission.PermissionGroupView
+import doa.ink.workbench.security.permission.PermissionManagementService
+import doa.ink.workbench.security.permission.PermissionPolicyRuleView
+import doa.ink.workbench.security.permission.PermissionPolicySummary
+import doa.ink.workbench.security.permission.PermissionPolicyView
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.SessionSecured
@@ -160,7 +160,9 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ): PermissionPolicyResponse =
-    PermissionPolicyResponse.from(permissionManagementService.getPolicy(tenantContext.tenant.id, id))
+    PermissionPolicyResponse.from(
+      permissionManagementService.getPolicy(tenantContext.tenant.id, id)
+    )
 
   @PostMapping("/permission-policies")
   @Authorize(action = "permission.policy.manage", resource = "permission")
