@@ -5,10 +5,12 @@ import doa.ink.workbench.core.identity.model.CreateTenantCommand
 import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
 import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
-import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.TenantLoginMethodService
+import doa.ink.workbench.security.identity.UserLookupService
 import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
+import doa.ink.workbench.tenant.tenant.TenantService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -25,14 +27,14 @@ import org.junit.jupiter.api.Tag
 import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
-class TenantManagementServiceIntegrationTest :
+class TenantManagementApplicationServiceIntegrationTest :
   StringSpec({
     val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
     lateinit var database: Database
     lateinit var tenants: ExposedTenantRepository
     lateinit var loginMethods: ExposedLoginMethodRepository
     lateinit var tenantLoginSettings: ExposedTenantLoginMethodSettingRepository
-    lateinit var service: TenantManagementService
+    lateinit var service: TenantManagementApplicationService
 
     beforeSpec {
       database = AuthIntegrationFixtures.connectDatabase(postgres)
@@ -42,21 +44,10 @@ class TenantManagementServiceIntegrationTest :
       val deps = UnusedPublicIdResolverDependencies(loginMethods = loginMethods)
       val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
       service =
-        TenantManagementService(
-          tenants = tenants,
-          users = deps.users,
-          loginMethods = loginMethods,
-          tenantLoginSettings = tenantLoginSettings,
-          publicIds =
-            PublicIdResolver(
-              tenants = tenants,
-              users = deps.users,
-              loginMethods = loginMethods,
-              bearerTokens = deps.bearerTokens,
-              adminUserQueries = deps.adminUserQueries,
-              accessGrants = deps.accessGrants,
-              projects = deps.projects,
-            ),
+        TenantManagementApplicationService(
+          tenants = TenantService(tenants),
+          tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+          userLookupService = UserLookupService(deps.users),
           adminUserService = mockk(relaxed = true),
           invitationService = mockk(relaxed = true),
           domainEventPublisher = RecordingDomainEventPublisher(),

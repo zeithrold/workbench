@@ -8,8 +8,10 @@ import doa.ink.workbench.core.identity.model.TenantStatus
 import doa.ink.workbench.core.identity.model.UserRecord
 import doa.ink.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import doa.ink.workbench.core.tenant.events.TenantDomainEvents
-import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.TenantLoginMethodService
+import doa.ink.workbench.security.identity.UserLookupService
 import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
+import doa.ink.workbench.tenant.tenant.TenantService
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -21,13 +23,12 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 
-class TenantManagementServiceDestroyTest :
+class TenantManagementApplicationServiceDestroyTest :
   StringSpec({
     val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
     val tenants = mockk<TenantRepository>()
     val users = mockk<UserRepository>()
     val publisher = RecordingDomainEventPublisher()
-    val publicIds = mockk<PublicIdResolver>()
 
     val tenantId = UUID.randomUUID()
     val actorId = UUID.randomUUID()
@@ -51,12 +52,10 @@ class TenantManagementServiceDestroyTest :
       )
 
     val service =
-      TenantManagementService(
-        tenants = tenants,
-        users = users,
-        loginMethods = mockk(relaxed = true),
-        tenantLoginSettings = mockk(relaxed = true),
-        publicIds = publicIds,
+      TenantManagementApplicationService(
+        tenants = TenantService(tenants),
+        tenantLoginMethods = mockk<TenantLoginMethodService>(relaxed = true),
+        userLookupService = UserLookupService(users),
         adminUserService = mockk(relaxed = true),
         invitationService = mockk(relaxed = true),
         domainEventPublisher = publisher,
@@ -65,7 +64,7 @@ class TenantManagementServiceDestroyTest :
 
     beforeEach {
       publisher.clear()
-      coEvery { publicIds.resolveTenantForAdmin("ten_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns tenant
+      coEvery { tenants.findByApiIdForAdmin("ten_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns tenant
       coEvery { users.findById(actorId) } returns actor
       coEvery { tenants.markDestroying(tenantId) } returns destroying
     }

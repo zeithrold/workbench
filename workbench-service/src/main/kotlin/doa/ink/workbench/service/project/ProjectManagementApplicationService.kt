@@ -1,21 +1,21 @@
 package doa.ink.workbench.service.project
 
 import doa.ink.workbench.agile.project.ProjectAccessService
-import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.agile.project.ProjectService
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
+import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.common.summary.UserSummary
-import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.messaging.EventMetadata
 import doa.ink.workbench.core.port.messaging.DomainEventPublisher
-import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.events.ProjectDestroyRequestedEvent
 import doa.ink.workbench.core.project.events.ProjectDomainEvents
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.ProjectRecord
 import doa.ink.workbench.core.project.model.ProjectStatus
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
+import doa.ink.workbench.security.identity.UserLookupService
 import doa.ink.workbench.security.permission.PermissionBootstrapService
 import java.time.Clock
 import java.time.OffsetDateTime
@@ -23,9 +23,9 @@ import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
-class ProjectManagementService(
-  private val projects: ProjectRepository,
-  private val users: UserRepository,
+class ProjectManagementApplicationService(
+  private val projects: ProjectService,
+  private val userLookupService: UserLookupService,
   private val projectAccess: ProjectAccessService,
   private val permissionBootstrap: PermissionBootstrapService,
   private val domainEventPublisher: DomainEventPublisher,
@@ -57,19 +57,14 @@ class ProjectManagementService(
     userId: UUID,
     projectPublicId: String,
   ): ProjectView {
-    val project =
-      projects.findByApiId(tenantId, projectPublicId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+    val project = projects.get(tenantId, projectPublicId)
     if (!projectAccess.canViewProject(userId, tenantId, project)) {
       throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     }
     return toView(project)
   }
 
-  suspend fun update(command: UpdateProjectCommand): ProjectView {
-    val record = projects.update(command)
-    return toView(record)
-  }
+  suspend fun update(command: UpdateProjectCommand): ProjectView = toView(projects.update(command))
 
   suspend fun archive(
     tenantId: UUID,
@@ -77,36 +72,32 @@ class ProjectManagementService(
     actorUserId: UUID,
   ): ProjectView {
     val archivedAt = OffsetDateTime.now(clock)
-    return toView(projects.markArchived(tenantId, projectId, archivedAt, actorUserId))
+    return toView(projects.archive(tenantId, projectId, archivedAt, actorUserId))
   }
 
   suspend fun unarchive(tenantId: UUID, projectId: UUID): ProjectView =
-    toView(projects.markActive(tenantId, projectId))
+    toView(projects.unarchive(tenantId, projectId))
 
   @Suppress("ThrowsCount")
   suspend fun requestDestroy(
     tenantId: UUID,
-    tenantPublicId: doa.ink.workbench.core.common.ids.PublicId,
+    tenantPublicId: PublicId,
     projectPublicId: String,
     actorUserId: UUID,
     deleteReason: String?,
   ): ProjectView {
-    val project =
-      projects.findByApiId(tenantId, projectPublicId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+    val project = projects.get(tenantId, projectPublicId)
     if (project.status == ProjectStatus.DESTROYING) {
       throw ResourceConflictException(WorkbenchErrorCode.PROJECT_ALREADY_DESTROYING)
     }
-    val actor =
-      users.findById(actorUserId)
-        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+    val actor = userLookupService.requireAuthenticatedUser(actorUserId)
     val previousStatus = project.status
     val now = OffsetDateTime.now(clock)
     val destroying =
       projects.markDestroying(
         tenantId = tenantId,
         projectId = project.id,
-        deletedBy = actorUserId,
+        actorUserId = actorUserId,
         deleteReason = deleteReason,
       )
     try {
@@ -124,7 +115,7 @@ class ProjectManagementService(
         metadata = EventMetadata(tenantId = tenantPublicId.value),
       )
     } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
-      projects.updateStatus(tenantId, project.id, previousStatus)
+      projects.restoreStatus(tenantId, project.id, previousStatus)
       throw error
     }
     return toView(destroying)
@@ -133,8 +124,7 @@ class ProjectManagementService(
   private suspend fun toView(record: ProjectRecord): ProjectView {
     val lead =
       record.leadUserId?.let { userId ->
-        users.findById(userId)?.let(UserSummary::from)
-          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
+        UserSummary.from(userLookupService.requireUser(userId))
       }
     return ProjectView.from(record, lead)
   }

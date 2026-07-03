@@ -8,7 +8,7 @@ import doa.ink.workbench.security.WorkbenchAuthenticationFilter
 import doa.ink.workbench.security.identity.LoginView
 import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.service.instance.InstanceBootstrapView
-import doa.ink.workbench.service.instance.InstanceSetupService
+import doa.ink.workbench.service.instance.InstanceSetupApplicationService
 import doa.ink.workbench.service.instance.InstanceSetupStatusView
 import doa.ink.workbench.web.api.http.SessionCookieWriter
 import io.mockk.coEvery
@@ -110,7 +110,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
       mockk(relaxed = true)
 
     @Bean
-    fun instanceSetupService(): InstanceSetupService = mockk {
+    fun instanceSetupService(): InstanceSetupApplicationService = mockk {
       coEvery { setupStatus() } returns InstanceSetupStatusView(initialized = false)
       coEvery { bootstrap(any()) } returns
         InstanceBootstrapView(

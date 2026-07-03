@@ -21,6 +21,7 @@ import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.AdminUserRecord
 import doa.ink.workbench.core.permission.AdminUserStatus
 import doa.ink.workbench.security.identity.AuthApplicationService
+import doa.ink.workbench.security.identity.InstanceBootstrapService
 import doa.ink.workbench.security.identity.LoginView
 import doa.ink.workbench.tenant.instance.InstanceProperties
 import io.kotest.assertions.throwables.shouldThrow
@@ -36,7 +37,7 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
-class InstanceSetupServiceTest :
+class InstanceSetupApplicationServiceTest :
   StringSpec({
     "setup status reflects whether an instance admin exists" {
       val adminUserQueries = mockk<AdminUserQueryRepository>()
@@ -192,17 +193,20 @@ private fun service(
   passwordHasher: PasswordHasher = mockk(),
   instanceProperties: InstanceProperties = InstanceProperties(),
   authApplicationService: AuthApplicationService = mockk(),
-): InstanceSetupService =
-  InstanceSetupService(
-    users = users,
-    loginMethods = loginMethods,
-    loginAccounts = loginAccounts,
-    userLoginAccounts = userLoginAccounts,
-    adminUserCommands = adminUserCommands,
-    adminUserQueries = adminUserQueries,
-    accessGrants = accessGrants,
-    passwordHasher = passwordHasher,
+): InstanceSetupApplicationService =
+  InstanceSetupApplicationService(
+    instanceBootstrapService =
+      InstanceBootstrapService(
+        users = users,
+        loginMethods = loginMethods,
+        loginAccounts = loginAccounts,
+        userLoginAccounts = userLoginAccounts,
+        adminUserCommands = adminUserCommands,
+        adminUserQueries = adminUserQueries,
+        accessGrants = accessGrants,
+        passwordHasher = passwordHasher,
+        clock = Clock.systemUTC(),
+      ),
     instanceProperties = instanceProperties,
     authApplicationService = authApplicationService,
-    clock = Clock.systemUTC(),
   )

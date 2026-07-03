@@ -17,6 +17,7 @@ import doa.ink.workbench.data.permission.ExposedAdminUserCommandRepository
 import doa.ink.workbench.data.permission.ExposedAdminUserQueryRepository
 import doa.ink.workbench.security.common.PublicIdResolver
 import doa.ink.workbench.security.identity.AuthApplicationService
+import doa.ink.workbench.security.identity.InstanceBootstrapService
 import doa.ink.workbench.security.identity.LoginCompletionService
 import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.security.identity.auth.AuthenticationService
@@ -43,11 +44,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
-class InstanceSetupIntegrationTest :
+class InstanceSetupApplicationServiceIntegrationTest :
   StringSpec({
     val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
     lateinit var database: Database
-    lateinit var service: InstanceSetupService
+    lateinit var service: InstanceSetupApplicationService
 
     beforeSpec {
       database = AuthIntegrationFixtures.connectDatabase(postgres)
@@ -151,18 +152,21 @@ class InstanceSetupIntegrationTest :
           publicIds = publicIds,
         )
       service =
-        InstanceSetupService(
-          users = users,
-          loginMethods = loginMethods,
-          loginAccounts = loginAccounts,
-          userLoginAccounts = userLoginAccounts,
-          adminUserCommands = adminUserCommands,
-          adminUserQueries = adminUserQueries,
-          accessGrants = accessGrants,
-          passwordHasher = passwordHasher,
+        InstanceSetupApplicationService(
+          instanceBootstrapService =
+            InstanceBootstrapService(
+              users = users,
+              loginMethods = loginMethods,
+              loginAccounts = loginAccounts,
+              userLoginAccounts = userLoginAccounts,
+              adminUserCommands = adminUserCommands,
+              adminUserQueries = adminUserQueries,
+              accessGrants = accessGrants,
+              passwordHasher = passwordHasher,
+              clock = clock,
+            ),
           instanceProperties = InstanceProperties(),
           authApplicationService = authApplicationService,
-          clock = clock,
         )
     }
 

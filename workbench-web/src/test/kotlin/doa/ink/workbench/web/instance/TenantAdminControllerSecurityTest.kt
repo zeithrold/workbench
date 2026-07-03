@@ -13,7 +13,7 @@ import doa.ink.workbench.security.WorkbenchAuthenticationFilter
 import doa.ink.workbench.security.common.PublicIdResolver
 import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.service.instance.CreateTenantView
-import doa.ink.workbench.service.instance.TenantManagementService
+import doa.ink.workbench.service.instance.TenantManagementApplicationService
 import doa.ink.workbench.tenant.tenant.TenantOperationalGuard
 import doa.ink.workbench.web.api.GlobalExceptionHandler
 import doa.ink.workbench.web.api.InfrastructureAspect
@@ -166,8 +166,8 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
     @Bean fun publicIdResolver(): PublicIdResolver = mockk(relaxed = true)
 
     @Bean
-    fun tenantManagementService(): TenantManagementService {
-      val service = mockk<TenantManagementService>()
+    fun tenantManagementService(): TenantManagementApplicationService {
+      val service = mockk<TenantManagementApplicationService>()
       coEvery { service.list(null) } returns listOf(SAMPLE_TENANT)
       coEvery { service.list("acme") } returns listOf(SAMPLE_TENANT)
       coEvery { service.create(any()) } returns SAMPLE_TENANT
