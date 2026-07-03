@@ -1,6 +1,7 @@
 package doa.ink.workbench.tenant.tenantconfig
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.tenantconfig.TenantConfigRepository
 import doa.ink.workbench.core.tenantconfig.model.TenantConfigRecord
 import doa.ink.workbench.core.tenantconfig.model.TenantConfigSpec
@@ -48,7 +49,8 @@ class TenantConfigService(private val repository: TenantConfigRepository) {
       json.decodeFromJsonElement(spec.serializer, record.value)
     } catch (_: SerializationException) {
       throw InvalidRequestException(
-        "Tenant config '${record.key.value}' cannot be decoded as '${spec.key.value}'."
+        WorkbenchErrorCode.TENANT_CONFIG_DECODE_FAILED,
+        "Tenant config '${record.key.value}' cannot be decoded as '${spec.key.value}'.",
       )
     }
 }

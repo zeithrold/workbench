@@ -12,6 +12,7 @@ import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
 import doa.ink.workbench.core.common.errors.TenantDestroyingException
 import doa.ink.workbench.core.common.errors.TenantNotSelectedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.errors.WorkbenchException
 import java.net.URI
 import org.springframework.dao.DataAccessException
@@ -22,14 +23,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
 @RestControllerAdvice
+@Suppress("TooManyFunctions")
 class GlobalExceptionHandler {
   @ExceptionHandler(ResourceNotFoundException::class)
   fun notFound(error: ResourceNotFoundException): ProblemDetail =
-    problem(HttpStatus.NOT_FOUND, "Resource Not Found", error.message.orEmpty())
+    problem(HttpStatus.NOT_FOUND, "Resource Not Found", error)
 
   @ExceptionHandler(TenantNotSelectedException::class)
   fun tenantNotSelected(error: TenantNotSelectedException): ProblemDetail =
-    problem(HttpStatus.CONFLICT, "Tenant Not Selected", error.message.orEmpty())
+    problem(HttpStatus.CONFLICT, "Tenant Not Selected", error)
 
   @ExceptionHandler(
     ResourceConflictException::class,
@@ -39,23 +41,32 @@ class GlobalExceptionHandler {
     ProjectArchivedException::class,
   )
   fun conflict(error: WorkbenchException): ProblemDetail =
-    problem(HttpStatus.CONFLICT, "Conflict", error.message.orEmpty())
+    problem(HttpStatus.CONFLICT, "Conflict", error)
 
   @ExceptionHandler(SetupTokenInvalidException::class)
   fun setupTokenInvalid(error: SetupTokenInvalidException): ProblemDetail =
-    problem(HttpStatus.FORBIDDEN, "Setup Token Invalid", error.message.orEmpty())
+    problem(HttpStatus.FORBIDDEN, "Setup Token Invalid", error)
 
   @ExceptionHandler(PermissionDeniedException::class)
   fun denied(error: PermissionDeniedException): ProblemDetail =
-    problem(HttpStatus.FORBIDDEN, "Permission Denied", error.message.orEmpty())
+    problem(HttpStatus.FORBIDDEN, "Permission Denied", error)
 
   @ExceptionHandler(AuthenticationFailedException::class)
   fun authenticationFailed(error: AuthenticationFailedException): ProblemDetail =
-    problem(HttpStatus.UNAUTHORIZED, "Authentication Failed", error.message.orEmpty())
+    problem(HttpStatus.UNAUTHORIZED, "Authentication Failed", error)
 
   @ExceptionHandler(InvalidRequestException::class, IllegalArgumentException::class)
-  fun invalid(error: RuntimeException): ProblemDetail =
-    problem(HttpStatus.BAD_REQUEST, "Invalid Request", error.message.orEmpty())
+  fun invalid(error: RuntimeException): ProblemDetail {
+    if (error is InvalidRequestException) {
+      return problem(HttpStatus.BAD_REQUEST, "Invalid Request", error)
+    }
+    return problem(
+      HttpStatus.BAD_REQUEST,
+      "Invalid Request",
+      error.message.orEmpty(),
+      WorkbenchErrorCode.REQUEST_INVALID,
+    )
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException::class)
   fun validation(error: MethodArgumentNotValidException): ProblemDetail =
@@ -63,27 +74,40 @@ class GlobalExceptionHandler {
       HttpStatus.BAD_REQUEST,
       "Validation Failed",
       error.bindingResult.fieldErrors.joinToString { "${it.field}: ${it.defaultMessage}" },
+      WorkbenchErrorCode.REQUEST_VALIDATION_FAILED,
     )
 
   @ExceptionHandler(DataAccessException::class)
-  fun database(): ProblemDetail =
+  fun database(@Suppress("UNUSED_PARAMETER") error: DataAccessException): ProblemDetail =
     problem(
       HttpStatus.SERVICE_UNAVAILABLE,
       "Database Unavailable",
-      "The database is temporarily unavailable.",
+      WorkbenchErrorCode.INFRASTRUCTURE_DATABASE_UNAVAILABLE.defaultMessage,
+      WorkbenchErrorCode.INFRASTRUCTURE_DATABASE_UNAVAILABLE,
     )
 
   @ExceptionHandler(InfrastructureUnavailableException::class)
   fun infrastructure(error: InfrastructureUnavailableException): ProblemDetail =
-    problem(HttpStatus.SERVICE_UNAVAILABLE, "Infrastructure Unavailable", error.message.orEmpty())
-      .apply {
-        setProperty("component", error.component)
-      }
+    problem(HttpStatus.SERVICE_UNAVAILABLE, "Infrastructure Unavailable", error).apply {
+      setProperty("component", error.component)
+    }
+
+  private fun problem(status: HttpStatus, title: String, error: WorkbenchException): ProblemDetail =
+    problem(status, title, error.message.orEmpty(), error.errorCode)
 
   private fun problem(status: HttpStatus, title: String, detail: String): ProblemDetail =
+    problem(status, title, detail, WorkbenchErrorCode.REQUEST_INVALID)
+
+  private fun problem(
+    status: HttpStatus,
+    title: String,
+    detail: String,
+    errorCode: WorkbenchErrorCode,
+  ): ProblemDetail =
     ProblemDetail.forStatusAndDetail(status, detail).apply {
       this.title = title
       type =
         URI.create("https://api.doa.ink/workbench/problems/${title.lowercase().replace(" ", "-")}")
+      setProperty("code", errorCode.code)
     }
 }

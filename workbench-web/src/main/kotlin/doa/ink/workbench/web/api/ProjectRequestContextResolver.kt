@@ -5,6 +5,8 @@ import doa.ink.workbench.agile.project.ProjectResolver
 import doa.ink.workbench.core.common.context.ProjectContextSummary
 import doa.ink.workbench.core.common.context.ProjectRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
+import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import kotlinx.coroutines.runBlocking
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
@@ -61,6 +63,6 @@ class ProjectRequestContextResolver(
         NativeWebRequest.SCOPE_REQUEST,
       ) as? Map<String, String>
     return uriVariables?.get("id")
-      ?: throw IllegalArgumentException("Project id path variable is required.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.REQUEST_PROJECT_ID_REQUIRED)
   }
 }

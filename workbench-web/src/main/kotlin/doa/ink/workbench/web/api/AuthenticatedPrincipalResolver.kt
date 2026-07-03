@@ -1,6 +1,7 @@
 package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.context.SecurityContextHolder
@@ -22,5 +23,5 @@ class AuthenticatedPrincipalResolver : HandlerMethodArgumentResolver {
     binderFactory: WebDataBinderFactory?,
   ): Any =
     SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedPrincipal
-      ?: throw AuthenticationFailedException("Authentication required.")
+      ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_AUTHENTICATION_REQUIRED)
 }

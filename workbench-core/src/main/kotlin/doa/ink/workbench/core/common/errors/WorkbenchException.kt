@@ -1,34 +1,71 @@
 package doa.ink.workbench.core.common.errors
 
-sealed class WorkbenchException(message: String) : RuntimeException(message)
+sealed class WorkbenchException(
+  val errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : RuntimeException(detail ?: errorCode.defaultMessage)
 
-class ResourceNotFoundException(message: String) : WorkbenchException(message)
+class ResourceNotFoundException(
+  errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class PermissionDeniedException(message: String) : WorkbenchException(message)
+class PermissionDeniedException(
+  errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class AuthenticationFailedException(message: String) : WorkbenchException(message)
+class AuthenticationFailedException(
+  errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class InvalidRequestException(message: String) : WorkbenchException(message)
+class InvalidRequestException(
+  errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class TenantNotSelectedException(message: String) : WorkbenchException(message)
+class TenantNotSelectedException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.TENANT_NOT_SELECTED,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class ResourceConflictException(message: String) : WorkbenchException(message)
+class ResourceConflictException(
+  errorCode: WorkbenchErrorCode,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class TenantDestroyingException(message: String) : WorkbenchException(message)
+class TenantDestroyingException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.TENANT_DESTROYING,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class ProjectDestroyingException(message: String) : WorkbenchException(message)
+class ProjectDestroyingException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.PROJECT_DESTROYING,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class ProjectArchivedException(message: String) : WorkbenchException(message)
+class ProjectArchivedException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.PROJECT_ARCHIVED,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class InstanceAlreadyInitializedException(message: String) : WorkbenchException(message)
+class InstanceAlreadyInitializedException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.INSTANCE_ALREADY_INITIALIZED,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
-class SetupTokenInvalidException(message: String) : WorkbenchException(message)
+class SetupTokenInvalidException(
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.INSTANCE_SETUP_TOKEN_INVALID,
+  detail: String? = null,
+) : WorkbenchException(errorCode, detail)
 
 class InfrastructureUnavailableException(
   val component: String,
-  message: String,
+  detail: String? = null,
+  errorCode: WorkbenchErrorCode = WorkbenchErrorCode.INFRASTRUCTURE_UNAVAILABLE,
   cause: Throwable? = null,
-) : WorkbenchException(message) {
+) : WorkbenchException(errorCode, detail) {
   init {
     if (cause != null) initCause(cause)
   }

@@ -1,6 +1,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import kotlinx.serialization.json.JsonObject
@@ -15,7 +16,7 @@ class SamlFederatedClient {
   ): String {
     val idpSsoUrl =
       config.stringValue("idp_sso_url")
-        ?: throw InvalidRequestException("idp_sso_url missing in SAML config.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_SAML_IDP_SSO_URL_MISSING)
     return idpSsoUrl +
       "?" +
       encodeQueryParam("RelayState", relayState) +
@@ -29,6 +30,9 @@ object SamlResponseParser {
     val decoded = String(Base64.getDecoder().decode(samlResponse), StandardCharsets.UTF_8)
     val regex = Regex("""NameID[^>]*>([^<]+)</NameID>""")
     return regex.find(decoded)?.groupValues?.get(1)?.trim()
-      ?: throw InvalidRequestException("Unable to parse SAML NameID.")
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.IDENTITY_FEDERATED_SUBJECT_PARSE_FAILED,
+        "Unable to parse SAML NameID.",
+      )
   }
 }

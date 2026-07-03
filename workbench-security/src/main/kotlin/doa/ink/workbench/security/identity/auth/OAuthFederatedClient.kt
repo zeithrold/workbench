@@ -3,6 +3,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.auth.SecretResolver
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import java.net.URI
@@ -37,7 +38,10 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
   ): String {
     val clientId =
       config.stringValue("client_id")
-        ?: throw InvalidRequestException("client_id missing in config.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_OAUTH_CLIENT_ID_MISSING,
+          "client_id missing in config.",
+        )
     val issuer = config.stringValue("issuer") ?: config.stringValue("authorization_endpoint_base")
     val authorizeEndpoint =
       when {
@@ -45,7 +49,10 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
           config.stringValue("authorization_endpoint")!!
         issuer != null && kind == LoginMethodKind.OIDC -> "$issuer/oauth2/v2.0/authorize"
         issuer != null -> "$issuer/oauth2/authorize"
-        else -> throw InvalidRequestException("authorization endpoint missing in config.")
+        else ->
+          throw InvalidRequestException(
+            WorkbenchErrorCode.IDENTITY_OAUTH_AUTHORIZATION_ENDPOINT_MISSING
+          )
       }
     val scope =
       config.stringValue("scope")
@@ -73,12 +80,13 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
     verifier: String?,
   ): JsonObject {
     val clientId =
-      config.stringValue("client_id") ?: throw InvalidRequestException("client_id missing.")
+      config.stringValue("client_id")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_OAUTH_CLIENT_ID_MISSING)
     val clientSecret = secretRef?.let(secretResolver::resolve)
     val tokenEndpoint =
       config.stringValue("token_endpoint")
         ?: config.stringValue("issuer")?.let { "$it/oauth2/v2.0/token" }
-        ?: throw InvalidRequestException("token_endpoint missing.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_OAUTH_TOKEN_ENDPOINT_MISSING)
     val body = buildString {
       append("grant_type=authorization_code")
       append("&code=").append(encodeQueryValue(code))
@@ -95,7 +103,7 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
         .build()
     val response = http.send(request, HttpResponse.BodyHandlers.ofString())
     if (response.statusCode() !in 200..299) {
-      throw InvalidRequestException("Token exchange failed.")
+      throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_OAUTH_TOKEN_EXCHANGE_FAILED)
     }
     return json.parseToJsonElement(response.body()).jsonObject
   }
@@ -128,13 +136,15 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
   ): String {
     val accessToken =
       tokenResponse.stringValue("access_token")
-        ?: throw InvalidRequestException("access_token missing.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_OAUTH_ACCESS_TOKEN_MISSING)
     val userInfoEndpoint =
       config.stringValue("userinfo_endpoint")
         ?: config.stringValue("issuer")?.let {
           if (kind == LoginMethodKind.OIDC) "$it/oidc/userinfo" else null
         }
-        ?: throw InvalidRequestException("userinfo_endpoint missing.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_OAUTH_USERINFO_ENDPOINT_MISSING
+        )
     val request =
       HttpRequest.newBuilder()
         .uri(URI.create(userInfoEndpoint))
@@ -154,6 +164,6 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
         return it
       }
     }
-    throw InvalidRequestException("Unable to resolve federated subject.")
+    throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_FEDERATED_SUBJECT_UNRESOLVED)
   }
 }

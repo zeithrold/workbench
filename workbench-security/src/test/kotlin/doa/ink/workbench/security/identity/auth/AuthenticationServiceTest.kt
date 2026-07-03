@@ -1,6 +1,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.AuthEventRepository
 import doa.ink.workbench.core.identity.LoginAccountStore
@@ -113,7 +114,7 @@ private class Fixture(authenticateFails: Boolean = false) {
   init {
     if (authenticateFails) {
       coEvery { loginOrchestrator.authenticate(any()) } throws
-        AuthenticationFailedException("Invalid credentials.")
+        AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     } else {
       coEvery { loginOrchestrator.authenticate(any()) } returns
         AuthenticatedIdentity(user = user, loginAccount = loginAccount)

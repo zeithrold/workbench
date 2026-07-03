@@ -1,6 +1,8 @@
 package doa.ink.workbench.web.instance
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
+import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.security.common.PublicIdResolver
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.Authenticated
@@ -220,9 +222,7 @@ class TenantAdminController(
       tenantPublicId = id,
       actorUserId =
         instanceContext.actor?.id
-          ?: throw doa.ink.workbench.core.common.errors.InvalidRequestException(
-            "Authenticated user is required."
-          ),
+          ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED),
       deleteReason = request?.deleteReason,
     )
   }

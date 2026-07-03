@@ -3,6 +3,8 @@ package doa.ink.workbench.web.project
 import doa.ink.workbench.agile.project.ProjectOperationalGuard
 import doa.ink.workbench.core.common.context.ProjectRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
+import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.NonMemberJoinPolicy
 import doa.ink.workbench.core.project.model.NonMemberVisibility
@@ -52,7 +54,8 @@ class ProjectController(
     tenantContext: TenantRequestContext,
   ): List<ProjectResponse> {
     val actorUserId =
-      tenantContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      tenantContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return service.list(tenantContext.tenant.id, actorUserId, identifier).map(ProjectResponse::from)
   }
 
@@ -68,7 +71,8 @@ class ProjectController(
     tenantContext: TenantRequestContext,
   ): ResponseEntity<ProjectResponse> {
     val actorUserId =
-      tenantContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      tenantContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     val view =
       service.create(
         CreateProjectCommand(
@@ -93,7 +97,8 @@ class ProjectController(
   @Operation(summary = "Get project")
   suspend fun get(projectContext: ProjectRequestContext): ProjectResponse {
     val actorUserId =
-      projectContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      projectContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return ProjectResponse.from(
       service.get(projectContext.tenant.id, actorUserId, projectContext.project.publicId.value)
     )
@@ -134,7 +139,8 @@ class ProjectController(
   @Operation(summary = "Archive project")
   suspend fun archive(projectContext: ProjectRequestContext): ProjectResponse {
     val actorUserId =
-      projectContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      projectContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return ProjectResponse.from(
       service.archive(projectContext.tenant.id, projectContext.project.id, actorUserId)
     )
@@ -161,7 +167,8 @@ class ProjectController(
     projectContext: ProjectRequestContext,
   ): ProjectResponse {
     val actorUserId =
-      projectContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      projectContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return ProjectResponse.from(
       service.requestDestroy(
         tenantId = projectContext.tenant.id,

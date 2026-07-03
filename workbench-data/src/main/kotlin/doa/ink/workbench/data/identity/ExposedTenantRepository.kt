@@ -2,6 +2,7 @@ package doa.ink.workbench.data.identity
 
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.model.CreateTenantCommand
@@ -36,7 +37,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
           .where { operationalTenantFilter() and (TenantsTable.slug eq command.slug) }
           .any()
       ) {
-        throw ResourceConflictException("Tenant slug is already in use.")
+        throw ResourceConflictException(WorkbenchErrorCode.TENANT_SLUG_IN_USE)
       }
       val id = UUID.randomUUID()
       val apiId = PublicId.new("ten")
@@ -65,7 +66,8 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
           .where {
             operationalTenantFilter() and (TenantsTable.id eq command.tenantId.toKotlinUuid())
           }
-          .singleOrNull() ?: throw ResourceNotFoundException("Tenant not found.")
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
       command.slug?.let { slug ->
         if (
           slug != existing[TenantsTable.slug] &&
@@ -73,7 +75,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
               .where { operationalTenantFilter() and (TenantsTable.slug eq slug) }
               .any()
         ) {
-          throw ResourceConflictException("Tenant slug is already in use.")
+          throw ResourceConflictException(WorkbenchErrorCode.TENANT_SLUG_IN_USE)
         }
       }
       val now = nowUtc()
@@ -100,11 +102,12 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
           .where {
             (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
           }
-          .singleOrNull() ?: throw ResourceNotFoundException("Tenant not found.")
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
       val currentStatus = tenantStatusOf(existing[TenantsTable.status])
       when (currentStatus) {
         TenantStatus.DESTROYING ->
-          throw ResourceConflictException("Tenant is already being destroyed.")
+          throw ResourceConflictException(WorkbenchErrorCode.TENANT_ALREADY_DESTROYING)
         TenantStatus.ACTIVE,
         TenantStatus.PENDING_ACTIVATION -> Unit
       }

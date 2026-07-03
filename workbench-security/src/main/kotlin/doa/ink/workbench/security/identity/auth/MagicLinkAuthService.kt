@@ -3,6 +3,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
@@ -40,21 +41,31 @@ class MagicLinkAuthService(
   suspend fun requestMagicLink(email: String, tenantId: String, loginMethodId: String) {
     val normalizedEmail = normalizeSubject(email)
     val tenant =
-      tenants.findByApiId(tenantId) ?: throw InvalidRequestException("Unknown tenant: $tenantId")
+      tenants.findByApiId(tenantId)
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND,
+          "Unknown tenant: $tenantId",
+        )
     val method =
       loginMethods.findLoginMethodByApiId(loginMethodId)
-        ?: throw InvalidRequestException("Unknown login method: $loginMethodId")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND,
+          "Unknown login method: $loginMethodId",
+        )
     if (method.kind != LoginMethodKind.EMAIL_MAGIC_LINK) {
-      throw InvalidRequestException("Login method $loginMethodId is not email_magic_link.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_NOT_MAGIC_LINK,
+        "Login method $loginMethodId is not email_magic_link.",
+      )
     }
     val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
-      throw InvalidRequestException("Magic link login is disabled for this tenant.")
+      throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_DISABLED)
     }
 
     val mailConfig = tenantConfig.get(tenant.id, TenantConfigSpecs.MailSmtp)
     if (!mailConfig.enabled) {
-      throw InvalidRequestException("Outbound mail is not configured for this tenant.")
+      throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_MAIL_NOT_CONFIGURED)
     }
 
     val secret = secretGenerator.generate()
@@ -82,17 +93,17 @@ class MagicLinkAuthService(
     val now = OffsetDateTime.now(clock)
     val record =
       magicLinkTokens.findActiveByHash(credentialHasher.hash(token), now)
-        ?: throw InvalidRequestException("Magic link is invalid or expired.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_INVALID)
     magicLinkTokens.consume(record.id, now)
     val method =
       loginMethods.findLoginMethodById(record.loginMethodId)
-        ?: throw InvalidRequestException("Magic link login is not configured.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_NOT_CONFIGURED)
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, record.normalizedSubject)
-        ?: throw InvalidRequestException("No account is linked to this magic link.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_ACCOUNT_NOT_FOUND)
     val user =
       userLoginAccounts.findLinkedUser(account.id)
-        ?: throw InvalidRequestException("No user is linked to this magic link.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_USER_NOT_FOUND)
     return MagicLinkIdentity(
       user = user,
       loginAccount = account,

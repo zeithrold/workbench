@@ -4,6 +4,7 @@ package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
@@ -29,9 +30,17 @@ class PasswordLoginAuthenticator(
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     val subject =
-      command.subject ?: throw InvalidRequestException("subject is required for password login.")
+      command.subject
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_SUBJECT_REQUIRED,
+          "subject is required for password login.",
+        )
     val password =
-      command.password ?: throw InvalidRequestException("password is required for password login.")
+      command.password
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_PASSWORD_REQUIRED,
+          "password is required for password login.",
+        )
     val normalizedSubject = normalizeSubject(subject)
     val methodCode =
       command.loginMethodId?.let { apiId ->
@@ -39,19 +48,19 @@ class PasswordLoginAuthenticator(
       } ?: PASSWORD_METHOD_CODE
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(methodCode, normalizedSubject)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     val passwordHash =
       loginAccounts.findParameter(account.id, LoginAccountParameterKey.PasswordHash)?.parameterValue
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     if (!passwordVerifier.verify(password, passwordHash)) {
-      throw AuthenticationFailedException("Invalid credentials.")
+      throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     }
 
     val user =
       userLoginAccounts.findLinkedUser(account.id)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     return AuthenticatedIdentity(user = user, loginAccount = account)
   }
@@ -68,7 +77,8 @@ class ApiTokenLoginAuthenticator(
 
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     val token =
-      command.token ?: throw InvalidRequestException("token is required for api_token login.")
+      command.token
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_LOGIN_TOKEN_REQUIRED)
     val methodCode =
       command.loginMethodId?.let { loginMethods.findLoginMethodByApiId(it)?.code } ?: "api_token"
     val tokenHash = credentialHasher.hash(token)
@@ -78,11 +88,11 @@ class ApiTokenLoginAuthenticator(
         loginMethodCode = methodCode,
         parameterKey = LoginAccountParameterKey.ApiTokenHash,
         parameterValue = tokenHash,
-      ) ?: throw AuthenticationFailedException("Invalid credentials.")
+      ) ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     val user =
       userLoginAccounts.findLinkedUser(account.id)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     return AuthenticatedIdentity(user = user, loginAccount = account)
   }
@@ -102,34 +112,53 @@ class LdapLoginAuthenticator(
   override suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     val loginMethodId =
       command.loginMethodId
-        ?: throw InvalidRequestException("loginMethodId is required for ldap login.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_ID_REQUIRED,
+          "loginMethodId is required for ldap login.",
+        )
     val tenantId =
-      command.tenantId ?: throw InvalidRequestException("tenantId is required for ldap login.")
+      command.tenantId
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_TENANT_ID_REQUIRED,
+          "tenantId is required for ldap login.",
+        )
     val subject =
-      command.subject ?: throw InvalidRequestException("subject is required for ldap login.")
+      command.subject
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_SUBJECT_REQUIRED,
+          "subject is required for ldap login.",
+        )
     val password =
-      command.password ?: throw InvalidRequestException("password is required for ldap login.")
+      command.password
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_PASSWORD_REQUIRED,
+          "password is required for ldap login.",
+        )
 
     val tenant =
-      tenants.findByApiId(tenantId) ?: throw AuthenticationFailedException("Invalid credentials.")
+      tenants.findByApiId(tenantId)
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     val method =
       loginMethods.findLoginMethodByApiId(loginMethodId)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     if (method.kind != LoginMethodKind.LDAP) {
-      throw InvalidRequestException("Login method $loginMethodId is not LDAP.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_NOT_LDAP,
+        "Login method $loginMethodId is not LDAP.",
+      )
     }
     val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
-      throw AuthenticationFailedException("Invalid credentials.")
+      throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     }
 
     val normalizedSubject = ldapClient.authenticate(setting, subject, password)
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     val user =
       userLoginAccounts.findLinkedUser(account.id)
-        ?: throw AuthenticationFailedException("Invalid credentials.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
 
     return AuthenticatedIdentity(user = user, loginAccount = account)
   }

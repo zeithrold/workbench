@@ -3,6 +3,7 @@ package doa.ink.workbench.web.api
 import doa.ink.workbench.core.common.context.TenantContextSummary
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.security.identity.SessionService
 import doa.ink.workbench.tenant.instance.InstanceContextProvider
@@ -45,5 +46,5 @@ class TenantRequestContextResolver(
 
   private fun currentPrincipal(): AuthenticatedPrincipal =
     SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedPrincipal
-      ?: throw AuthenticationFailedException("Authentication required.")
+      ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_AUTHENTICATION_REQUIRED)
 }

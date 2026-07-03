@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.workitem
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.workitem.query.DateDirection
 import doa.ink.workbench.core.workitem.query.QueryOperator
 import doa.ink.workbench.core.workitem.query.QueryValue
@@ -67,7 +68,9 @@ class PostgresWorkItemOperatorCompiler {
   private fun between(valueSql: String, value: QueryValue?): SqlFragment {
     val range =
       value as? QueryValue.Between
-        ?: throw InvalidRequestException("Operator between requires an object value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_BETWEEN_OBJECT_REQUIRED
+        )
     val parts = mutableListOf<String>()
     val params = mutableListOf<Any?>()
     range.from?.let {
@@ -136,7 +139,9 @@ class PostgresWorkItemOperatorCompiler {
   private fun within(valueSql: String, value: QueryValue?): SqlFragment {
     val relative =
       value as? QueryValue.RelativeDate
-        ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_RELATIVE_DATE_REQUIRED
+        )
     val anchor = relative.anchor.toPostgresAnchor()
     val interval = relative.unit.toPostgresInterval()
     return when (relative.direction) {
@@ -166,25 +171,28 @@ internal fun QueryValue?.toOperand(jsonb: Boolean = false): SqlFragment =
       val jdbcValue = if (jsonb) jsonToJsonb(value) else jsonToJdbcValue(value)
       SqlFragment("?", listOf(jdbcValue))
     }
-    else -> throw InvalidRequestException("Operator requires a single value.")
+    else ->
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_SINGLE_VALUE_REQUIRED
+      )
   }
 
 internal fun QueryValue?.asLiteralArray(): List<JsonElement> {
   val literal =
     this as? QueryValue.Literal
-      ?: throw InvalidRequestException("Operator requires an array value.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_ARRAY_REQUIRED)
   val array =
     literal.value as? JsonArray
-      ?: throw InvalidRequestException("Operator requires an array value.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_ARRAY_REQUIRED)
   return array
 }
 
 internal fun QueryValue?.requireStringLiteral(): String {
   val literal =
     this as? QueryValue.Literal
-      ?: throw InvalidRequestException("Operator requires a string value.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_STRING_REQUIRED)
   return (literal.value as? JsonPrimitive)?.contentOrNull
-    ?: throw InvalidRequestException("Operator requires a string value.")
+    ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_STRING_REQUIRED)
 }
 
 private fun QueryValue.Variable.toSqlVariable(): SqlFragment =
@@ -194,7 +202,10 @@ private fun QueryValue.Variable.toSqlVariable(): SqlFragment =
     "date.startOfWeek" -> SqlFragment("date_trunc('week', now())")
     "date.endOfWeek" -> SqlFragment("date_trunc('week', now()) + interval '6 days'")
     else ->
-      throw InvalidRequestException("Variable $name requires trusted request context binding.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_VARIABLE_TRUSTED_CONTEXT_REQUIRED,
+        "Variable $name requires trusted request context binding.",
+      )
   }
 
 internal fun jsonToJdbcValue(element: JsonElement): Any? =
@@ -222,7 +233,11 @@ private fun String.toPostgresAnchor(): String =
     "date.today" -> "current_date"
     "date.startOfWeek" -> "date_trunc('week', now())"
     "date.endOfWeek" -> "date_trunc('week', now()) + interval '6 days'"
-    else -> throw InvalidRequestException("Unknown relative date anchor: $this")
+    else ->
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_ANCHOR_UNKNOWN,
+        "Unknown relative date anchor: $this",
+      )
   }
 
 private fun RelativeDateUnit.toPostgresInterval(): String =

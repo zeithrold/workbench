@@ -1,6 +1,8 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.AuthEventRepository
 import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.UserRepository
@@ -71,8 +73,9 @@ class BearerCredentialService(
   ): IssuedCredential {
     val user =
       users.findById(userId)
-        ?: throw doa.ink.workbench.core.common.errors.InvalidRequestException(
-          "Authenticated user not found."
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND,
+          "Authenticated user not found.",
         )
     val token =
       issueBearerToken(
@@ -116,7 +119,7 @@ class BearerCredentialService(
   ): Boolean {
     val token =
       bearerTokens.findByApiId(tokenApiId)
-        ?: throw AuthenticationFailedException("Token not found.")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_TOKEN_NOT_FOUND)
     return revokeBearerTokenById(token.id, actorUserId, ipAddress, userAgent)
   }
 

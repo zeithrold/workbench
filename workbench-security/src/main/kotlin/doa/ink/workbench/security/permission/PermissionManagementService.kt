@@ -2,6 +2,7 @@ package doa.ink.workbench.security.permission
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.ProjectSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.UserRepository
@@ -71,7 +72,7 @@ class PermissionManagementService(
   ): PermissionGroupView {
     val group = requireGroup(tenantId, publicId)
     if (group.builtin) {
-      throw InvalidRequestException("Built-in groups cannot be updated.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_GROUP_BUILTIN_UPDATE_FORBIDDEN)
     }
     return PermissionGroupView.from(
       groups.update(UpdatePermissionGroupCommand(group.id, name, description))
@@ -81,7 +82,7 @@ class PermissionManagementService(
   suspend fun deleteGroup(tenantId: UUID, publicId: String): Boolean {
     val group = requireGroup(tenantId, publicId)
     if (group.builtin) {
-      throw InvalidRequestException("Built-in groups cannot be deleted.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_GROUP_BUILTIN_DELETE_FORBIDDEN)
     }
     return groups.delete(tenantId, group.id)
   }
@@ -134,7 +135,7 @@ class PermissionManagementService(
     description: String?,
   ): PermissionPolicyView {
     if (policies.findByCode(tenantId, code) != null) {
-      throw InvalidRequestException("Policy code is already in use.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_CODE_IN_USE)
     }
     val policy =
       policies.create(
@@ -157,7 +158,7 @@ class PermissionManagementService(
   ): PermissionPolicyView {
     val policy = requirePolicy(tenantId, publicId)
     if (policy.builtin) {
-      throw InvalidRequestException("Built-in policies cannot be updated.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_BUILTIN_UPDATE_FORBIDDEN)
     }
     return PermissionPolicyView.from(
       policies.update(UpdatePermissionPolicyCommand(policy.id, name, description)),
@@ -168,10 +169,10 @@ class PermissionManagementService(
   suspend fun deletePolicy(tenantId: UUID, publicId: String): Boolean {
     val policy = requirePolicy(tenantId, publicId)
     if (policy.builtin) {
-      throw InvalidRequestException("Built-in policies cannot be deleted.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_BUILTIN_DELETE_FORBIDDEN)
     }
     if (policies.hasActiveBindings(policy.id, OffsetDateTime.now(clock))) {
-      throw InvalidRequestException("Policy has active bindings.")
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_ACTIVE_BINDINGS)
     }
     return policies.delete(tenantId, policy.id)
   }
@@ -185,7 +186,9 @@ class PermissionManagementService(
   ): PermissionPolicyView {
     val policy = requirePolicy(tenantId, policyPublicId)
     if (policy.builtin) {
-      throw InvalidRequestException("Built-in policy rules cannot be changed.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.PERMISSION_POLICY_RULES_BUILTIN_CHANGE_FORBIDDEN
+      )
     }
     policies.addRule(
       CreatePermissionPolicyRuleCommand(
@@ -212,7 +215,9 @@ class PermissionManagementService(
     actorUserId: UUID?,
   ): PermissionBindingView {
     if (effect != null && effect != PermissionEffect.ALLOW) {
-      throw InvalidRequestException("Binding effect overrides are not supported; use policy rules.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.PERMISSION_BINDING_EFFECT_OVERRIDE_UNSUPPORTED
+      )
     }
     val userId = userPublicId?.let { publicIds.resolveUser(it).id }
     val groupId = groupPublicId?.let { requireGroup(tenantId, it).id }
@@ -238,7 +243,7 @@ class PermissionManagementService(
   suspend fun expireBinding(tenantId: UUID, publicId: String): Boolean {
     val binding =
       bindings.findByApiId(tenantId, publicId)
-        ?: throw ResourceNotFoundException("Permission binding not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
     return bindings.expire(tenantId, binding.id, OffsetDateTime.now(clock))
   }
 
@@ -249,17 +254,17 @@ class PermissionManagementService(
   ): PermissionBindingView {
     val policy =
       policies.findById(tenantId, binding.policyId)
-        ?: throw ResourceNotFoundException("Permission policy not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND)
     val user = binding.principalUserId?.let { UserSummary.from(requireUser(it)) }
     val group =
       binding.principalGroupId?.let { id ->
         groups.findById(tenantId, id)?.let { PermissionGroupView.from(it) }
-          ?: throw ResourceNotFoundException("Permission group not found.")
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_GROUP_NOT_FOUND)
       }
     val project =
       binding.projectId?.let { id ->
         projects.findById(tenantId, id)?.let(ProjectSummary::from)
-          ?: throw ResourceNotFoundException("Project not found.")
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
       }
     return PermissionBindingView(
       id = binding.apiId.value,
@@ -273,14 +278,15 @@ class PermissionManagementService(
 
   private suspend fun requireGroup(tenantId: UUID, publicId: String): PermissionGroupRecord =
     groups.findByApiId(tenantId, publicId)
-      ?: throw ResourceNotFoundException("Permission group not found.")
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_GROUP_NOT_FOUND)
 
   private suspend fun requirePolicy(tenantId: UUID, publicId: String): PermissionPolicyRecord =
     policies.findByApiId(tenantId, publicId)
-      ?: throw ResourceNotFoundException("Permission policy not found.")
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND)
 
   private suspend fun requireUser(userId: UUID) =
-    users.findById(userId) ?: throw ResourceNotFoundException("User not found.")
+    users.findById(userId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
 
   @Suppress("ThrowsCount")
   private fun validatePrincipal(
@@ -291,15 +297,17 @@ class PermissionManagementService(
     when (principalType) {
       PermissionPrincipalType.USER ->
         if (userId == null || groupId != null) {
-          throw InvalidRequestException("USER binding requires userId only.")
+          throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_BINDING_USER_TARGET_INVALID)
         }
       PermissionPrincipalType.GROUP ->
         if (groupId == null || userId != null) {
-          throw InvalidRequestException("GROUP binding requires groupId only.")
+          throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_BINDING_GROUP_TARGET_INVALID)
         }
       PermissionPrincipalType.TENANT_MEMBER ->
         if (userId != null || groupId != null) {
-          throw InvalidRequestException("TENANT_MEMBER binding must not include userId or groupId.")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.PERMISSION_BINDING_TENANT_MEMBER_TARGET_INVALID
+          )
         }
     }
   }

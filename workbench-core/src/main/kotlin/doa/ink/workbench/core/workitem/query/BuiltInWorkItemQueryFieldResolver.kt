@@ -1,6 +1,7 @@
 package doa.ink.workbench.core.workitem.query
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 
 object BuiltInWorkItemQueryFieldResolver : WorkItemQueryFieldResolver {
   override fun resolve(field: QueryField): WorkItemFieldDefinition {
@@ -9,7 +10,11 @@ object BuiltInWorkItemQueryFieldResolver : WorkItemQueryFieldResolver {
     }
     val name = field.canonicalName
     val definition =
-      SYSTEM_FIELDS[name] ?: throw InvalidRequestException("Unknown work item query field: $name")
+      SYSTEM_FIELDS[name]
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_UNKNOWN,
+          "Unknown work item query field: $name",
+        )
     return WorkItemFieldDefinition(field, definition.first, definition.second)
   }
 

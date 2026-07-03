@@ -3,6 +3,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.model.TenantLoginMethodSettingRecord
 import javax.naming.Context
 import javax.naming.directory.InitialDirContext
@@ -23,10 +24,12 @@ class LdapAuthClient {
   ): String {
     val config = setting.config as? JsonObject ?: JsonObject(emptyMap())
     val host =
-      config.stringValue("host") ?: throw AuthenticationFailedException("Invalid credentials.")
+      config.stringValue("host")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     val port = config.stringValue("port")?.toIntOrNull() ?: 389
     val baseDn =
-      config.stringValue("base_dn") ?: throw AuthenticationFailedException("Invalid credentials.")
+      config.stringValue("base_dn")
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     val userDn = "uid=$subject,$baseDn"
     val env =
       mapOf(
@@ -40,7 +43,7 @@ class LdapAuthClient {
       InitialDirContext(env.toProperties()).close()
       normalizeSubject(subject)
     } catch (_: Exception) {
-      throw AuthenticationFailedException("Invalid credentials.")
+      throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
     }
   }
 

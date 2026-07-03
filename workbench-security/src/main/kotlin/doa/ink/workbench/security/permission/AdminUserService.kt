@@ -1,6 +1,7 @@
 package doa.ink.workbench.security.permission
 
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.model.CreateTenantMemberCommand
@@ -139,7 +140,8 @@ class AdminUserService(
   }
 
   private suspend fun requireUser(userId: UUID): UserRecord =
-    userRepository.findById(userId) ?: throw ResourceNotFoundException("User not found.")
+    userRepository.findById(userId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)
 }

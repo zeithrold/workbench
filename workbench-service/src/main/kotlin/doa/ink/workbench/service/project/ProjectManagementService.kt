@@ -4,6 +4,7 @@ import doa.ink.workbench.agile.project.ProjectAccessService
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.messaging.EventMetadata
@@ -58,9 +59,9 @@ class ProjectManagementService(
   ): ProjectView {
     val project =
       projects.findByApiId(tenantId, projectPublicId)
-        ?: throw ResourceNotFoundException("Project not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     if (!projectAccess.canViewProject(userId, tenantId, project)) {
-      throw ResourceNotFoundException("Project not found.")
+      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     }
     return toView(project)
   }
@@ -92,13 +93,13 @@ class ProjectManagementService(
   ): ProjectView {
     val project =
       projects.findByApiId(tenantId, projectPublicId)
-        ?: throw ResourceNotFoundException("Project not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     if (project.status == ProjectStatus.DESTROYING) {
-      throw ResourceConflictException("Project is already being destroyed.")
+      throw ResourceConflictException(WorkbenchErrorCode.PROJECT_ALREADY_DESTROYING)
     }
     val actor =
       users.findById(actorUserId)
-        ?: throw InvalidRequestException("Authenticated user is required.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     val previousStatus = project.status
     val now = OffsetDateTime.now(clock)
     val destroying =
@@ -133,7 +134,7 @@ class ProjectManagementService(
     val lead =
       record.leadUserId?.let { userId ->
         users.findById(userId)?.let(UserSummary::from)
-          ?: throw ResourceNotFoundException("User not found.")
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
       }
     return ProjectView.from(record, lead)
   }

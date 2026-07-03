@@ -4,6 +4,7 @@ import doa.ink.workbench.core.common.context.RequestHost
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
 import doa.ink.workbench.core.identity.TenantRepository
@@ -78,7 +79,9 @@ class TenantManagementService(
 
     return when (val assignment = command.adminAssignment) {
       is TenantAdminAssignment.SelfAssignment -> {
-        val actor = actorUserId ?: throw InvalidRequestException("Authenticated user is required.")
+        val actor =
+          actorUserId
+            ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
         val adminView =
           adminUserService.provisionTenantAdmin(
             tenantId = tenant.id,
@@ -97,7 +100,9 @@ class TenantManagementService(
         CreateTenantView(tenant = tenant, admin = adminView, invitationLink = null)
       }
       is TenantAdminAssignment.EmailInviteAssignment -> {
-        val actor = actorUserId ?: throw InvalidRequestException("Authenticated user is required.")
+        val actor =
+          actorUserId
+            ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
         val invitation =
           invitationService.create(
             type = InvitationType.TENANT_ADMIN,
@@ -125,7 +130,7 @@ class TenantManagementService(
   ): TenantRecord {
     val tenant = publicIds.resolveTenantForAdmin(tenantPublicId)
     if (tenant.status == TenantStatus.DESTROYING) {
-      throw ResourceConflictException("Tenant is being destroyed and cannot be updated.")
+      throw ResourceConflictException(WorkbenchErrorCode.TENANT_DESTROYING_UPDATE_FORBIDDEN)
     }
     return tenants.update(
       UpdateTenantCommand(
@@ -146,7 +151,7 @@ class TenantManagementService(
     val tenant = publicIds.resolveTenantForAdmin(tenantPublicId)
     val actor =
       users.findById(actorUserId)
-        ?: throw InvalidRequestException("Authenticated user is required.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     val previousStatus = tenant.status
     val now = OffsetDateTime.now(clock)
     val destroying = tenants.markDestroying(tenant.id)
@@ -173,7 +178,9 @@ class TenantManagementService(
   private suspend fun enablePasswordLoginMethod(tenantId: UUID) {
     val passwordMethod =
       loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
-        ?: throw ResourceNotFoundException("Password login method is not configured.")
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_PASSWORD_LOGIN_METHOD_NOT_FOUND
+        )
     if (tenantLoginSettings.findTenantSetting(tenantId, passwordMethod.id) == null) {
       tenantLoginSettings.createTenantSetting(
         CreateTenantLoginMethodSettingCommand(
