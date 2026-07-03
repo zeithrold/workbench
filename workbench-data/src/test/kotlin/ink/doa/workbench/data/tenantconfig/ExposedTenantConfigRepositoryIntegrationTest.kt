@@ -16,12 +16,14 @@ import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.flywaydb.core.Flyway
+import org.junit.jupiter.api.Tag
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.testcontainers.containers.PostgreSQLContainer
 
-class ExposedTenantConfigRepositoryTest :
+@Tag("integration")
+class ExposedTenantConfigRepositoryIntegrationTest :
   StringSpec({
     "tenant config entries can be upserted found and listed by tenant" {
       withPostgresDatabase { database ->
