@@ -60,51 +60,13 @@ jobs:
       - name: Build web and worker boot jars
         run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
 
-      - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+      - name: Upload boot jars
+        uses: actions/upload-artifact@v4
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker metadata (web)
-        id: web-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.WEB_IMAGE }}
-          tags: |
-            type=sha,prefix=
-            type=ref,event=branch
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Docker metadata (worker)
-        id: worker-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.WORKER_IMAGE }}
-          tags: |
-            type=sha,prefix=
-            type=ref,event=branch
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: workbench-web/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.web-meta.outputs.tags }}
-          labels: ${{ steps.web-meta.outputs.labels }}
-
-      - name: Build and push worker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: workbench-worker/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.worker-meta.outputs.tags }}
-          labels: ${{ steps.worker-meta.outputs.labels }}
+          name: boot-jars
+          path: |
+            workbench-web/build/libs/workbench-web.jar
+            workbench-worker/build/libs/workbench-worker.jar
 
       - name: Fuzz tests
         if: inputs.extended-tests
@@ -133,3 +95,119 @@ jobs:
             build/reports/kover/
             build/reports/pitest/
           retention-days: 14
+
+  docker:
+    name: Docker (${{ matrix.arch }})
+    needs: quality-gate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download boot jars
+        uses: actions/download-artifact@v4
+        with:
+          name: boot-jars
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (web)
+        id: web-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.WEB_IMAGE }}
+          flavor: suffix=-${{ matrix.arch }},onlatest=true
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Docker metadata (worker)
+        id: worker-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.WORKER_IMAGE }}
+          flavor: suffix=-${{ matrix.arch }},onlatest=true
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: workbench-web/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.web-meta.outputs.tags }}
+          labels: ${{ steps.web-meta.outputs.labels }}
+
+      - name: Build and push worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: workbench-worker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.worker-meta.outputs.tags }}
+          labels: ${{ steps.worker-meta.outputs.labels }}
+
+  docker-manifest:
+    name: Docker manifest
+    needs: docker
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create multi-arch manifests
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          create_manifest() {
+            local image="$1"
+            local tag="$2"
+            docker buildx imagetools create \
+              -t "${image}:${tag}" \
+              "${image}:${tag}-amd64" \
+              "${image}:${tag}-arm64"
+          }
+
+          for image in "${WEB_IMAGE}" "${WORKER_IMAGE}"; do
+            create_manifest "${image}" "${GITHUB_SHA}"
+            create_manifest "${image}" "${GITHUB_REF_NAME}"
+
+            if [ "${GITHUB_REF}" = "refs/heads/${DEFAULT_BRANCH}" ]; then
+              create_manifest "${image}" "latest"
+            fi
+          done
