@@ -1,5 +1,6 @@
 package doa.ink.workbench.security
 
+import doa.ink.workbench.core.identity.auth.PasswordHasher
 import doa.ink.workbench.core.identity.auth.PasswordVerifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -15,5 +16,12 @@ class AuthenticationSupport {
     object : PasswordVerifier {
       override fun verify(rawPassword: String, passwordHash: String): Boolean =
         passwordEncoder.matches(rawPassword, passwordHash)
+    }
+
+  @Bean
+  fun passwordHasher(passwordEncoder: PasswordEncoder): PasswordHasher =
+    object : PasswordHasher {
+      override fun hash(rawPassword: String): String =
+        passwordEncoder.encode(rawPassword) ?: error("Password encoding failed.")
     }
 }

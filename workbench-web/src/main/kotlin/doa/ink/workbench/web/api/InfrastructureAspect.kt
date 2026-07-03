@@ -82,6 +82,15 @@ class InfrastructureAspect(
     )
   }
 
+  @Around("@annotation(doa.ink.workbench.web.api.InstanceAdmin)")
+  fun instanceAdmin(joinPoint: ProceedingJoinPoint): Any? {
+    val principal = currentPrincipal()
+    if (!principal.user.isSystem) {
+      throw PermissionDeniedException("Instance administrator access is required.")
+    }
+    return joinPoint.proceed()
+  }
+
   private fun elapsedMillis(started: Long): Long = (System.nanoTime() - started) / 1_000_000
 
   private fun authorizationRequest(

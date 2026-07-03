@@ -98,6 +98,14 @@ class ExposedUserRepository(private val database: Database) : UserRepository {
         .singleOrNull()
         ?.toUserRecord()
     }
+
+  override suspend fun existsSystemUser(): Boolean =
+    suspendTransaction(db = database) {
+      UsersTable.selectAll()
+        .where { (UsersTable.deletedAt.isNull()) and (UsersTable.isSystem eq true) }
+        .limit(1)
+        .any()
+    }
 }
 
 @Repository

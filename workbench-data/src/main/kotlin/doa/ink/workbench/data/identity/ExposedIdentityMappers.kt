@@ -54,6 +54,10 @@ internal fun ResultRow.toTenantRecord() =
     apiId = PublicId(this[TenantsTable.apiId]),
     slug = this[TenantsTable.slug],
     name = this[TenantsTable.name],
+    timezone = this[TenantsTable.timezone],
+    locale = this[TenantsTable.locale],
+    createdAt = this[TenantsTable.createdAt],
+    updatedAt = this[TenantsTable.updatedAt],
   )
 
 internal fun ResultRow.toLoginMethodDefinitionRecord() =

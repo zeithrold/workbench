@@ -21,6 +21,7 @@ import doa.ink.workbench.data.persistence.TenantsTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -55,16 +56,7 @@ class ExposedIdentityRepositoriesTest :
               joinedAt = OffsetDateTime.now(ZoneOffset.UTC),
             )
           )
-        val method =
-          accounts.createLoginMethod(
-            CreateLoginMethodDefinitionCommand(
-              code = "password",
-              kind = LoginMethodKind.PASSWORD,
-              name = "Password",
-              isBuiltin = true,
-              configSchema = JsonObject(mapOf("credential" to JsonPrimitive("password"))),
-            )
-          )
+        val method = accounts.findLoginMethodByCode("password").shouldNotBeNull()
         accounts.createTenantSetting(
           CreateTenantLoginMethodSettingCommand(tenantId = tenantId, loginMethodId = method.id)
         )

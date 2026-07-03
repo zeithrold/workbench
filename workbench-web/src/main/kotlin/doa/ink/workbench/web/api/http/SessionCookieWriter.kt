@@ -21,6 +21,18 @@ class SessionCookieWriter(private val clock: Clock) {
       )
       .body(response)
 
+  fun <T : Any> createdWithSession(
+    body: T,
+    sessionSecret: String,
+    sessionExpiresAt: OffsetDateTime,
+  ): ResponseEntity<T> =
+    ResponseEntity.status(HttpStatus.CREATED)
+      .header(
+        HttpHeaders.SET_COOKIE,
+        sessionCookie(sessionSecret, sessionExpiresAt).toString(),
+      )
+      .body(body)
+
   fun logoutResponse(): ResponseEntity<Void> =
     ResponseEntity.noContent()
       .header(HttpHeaders.SET_COOKIE, expiredSessionCookie().toString())

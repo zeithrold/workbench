@@ -1,0 +1,194 @@
+package doa.ink.workbench.web.instance
+
+import doa.ink.workbench.core.common.ids.PublicId
+import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
+import doa.ink.workbench.core.identity.model.TenantRecord
+import doa.ink.workbench.core.identity.model.UserRecord
+import doa.ink.workbench.security.SecurityConfiguration
+import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
+import doa.ink.workbench.security.WorkbenchAuthenticationFilter
+import doa.ink.workbench.service.identity.SessionService
+import doa.ink.workbench.service.instance.TenantManagementService
+import doa.ink.workbench.web.api.GlobalExceptionHandler
+import doa.ink.workbench.web.api.InfrastructureAspect
+import io.mockk.coEvery
+import io.mockk.mockk
+import jakarta.servlet.http.Cookie
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.util.UUID
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+
+@WebMvcTest(TenantAdminController::class)
+@Import(
+  SecurityConfiguration::class,
+  WorkbenchAuthenticationFilter::class,
+  AopAutoConfiguration::class,
+  InfrastructureAspect::class,
+  GlobalExceptionHandler::class,
+  TenantAdminControllerSecurityTest.TestBeans::class,
+)
+class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
+  @Test
+  fun `tenant admin endpoints reject unauthenticated requests`() {
+    mockMvc.perform(get("/api/admin/tenants")).andExpect(status().isUnauthorized())
+  }
+
+  @Test
+  fun `tenant admin endpoints reject non-system users`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/admin/tenants").cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, REGULAR_SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isForbidden())
+  }
+
+  @Test
+  fun `system administrator can list tenants`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/admin/tenants").cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].slug").value("acme"))
+  }
+
+  @Test
+  fun `system administrator can create tenant`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/admin/tenants")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "name": "Acme",
+                "slug": "acme-new",
+                "timezone": "UTC",
+                "locale": "en-US"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.name").value("Acme"))
+  }
+
+  @TestConfiguration
+  class TestBeans {
+    @Bean
+    fun sessionAuthenticator(): doa.ink.workbench.core.identity.auth.SessionAuthenticator =
+      object : doa.ink.workbench.core.identity.auth.SessionAuthenticator {
+        override suspend fun authenticateSession(sessionId: String): AuthenticatedPrincipal? =
+          when (sessionId) {
+            ADMIN_SESSION -> ADMIN_PRINCIPAL
+            REGULAR_SESSION -> REGULAR_PRINCIPAL
+            else -> null
+          }
+      }
+
+    @Bean
+    fun bearerTokenAuthenticator(): doa.ink.workbench.core.identity.auth.BearerTokenAuthenticator =
+      object : doa.ink.workbench.core.identity.auth.BearerTokenAuthenticator {
+        override suspend fun authenticateBearerToken(token: String): AuthenticatedPrincipal? = null
+      }
+
+    @Bean
+    fun permissionService(): doa.ink.workbench.core.permission.model.PermissionService =
+      mockk(relaxed = true)
+
+    @Bean
+    fun clock(): java.time.Clock =
+      java.time.Clock.fixed(java.time.Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
+
+    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
+
+    @Bean
+    fun tenantManagementService(): TenantManagementService {
+      val service = mockk<TenantManagementService>()
+      coEvery { service.list(null) } returns listOf(SAMPLE_TENANT)
+      coEvery { service.list("acme") } returns listOf(SAMPLE_TENANT)
+      coEvery { service.create(any()) } returns SAMPLE_TENANT
+      coEvery { service.get(any()) } returns SAMPLE_TENANT
+      coEvery { service.update(any(), any(), any(), any(), any()) } returns SAMPLE_TENANT
+      return service
+    }
+  }
+
+  private companion object {
+    const val ADMIN_SESSION = "admin-session"
+    const val REGULAR_SESSION = "regular-session"
+    val USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+    val SAMPLE_TENANT =
+      TenantRecord(
+        id = UUID.fromString("00000000-0000-0000-0000-000000000010"),
+        apiId = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        slug = "acme",
+        name = "Acme",
+        timezone = "UTC",
+        locale = "en-US",
+        createdAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
+        updatedAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
+      )
+    val ADMIN_PRINCIPAL =
+      AuthenticatedPrincipal(
+        user =
+          UserRecord(
+            id = USER_ID,
+            apiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+            displayName = "Admin",
+            primaryEmail = "admin@example.test",
+            isSystem = true,
+          ),
+        loginAccountId = UUID.fromString("00000000-0000-0000-0000-000000000002"),
+        sessionId = "session-id",
+        bearerTokenId = null,
+      )
+    val REGULAR_PRINCIPAL =
+      AuthenticatedPrincipal(
+        user =
+          UserRecord(
+            id = USER_ID,
+            apiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ2"),
+            displayName = "User",
+            primaryEmail = "user@example.test",
+            isSystem = false,
+          ),
+        loginAccountId = UUID.fromString("00000000-0000-0000-0000-000000000003"),
+        sessionId = "session-id",
+        bearerTokenId = null,
+      )
+  }
+}

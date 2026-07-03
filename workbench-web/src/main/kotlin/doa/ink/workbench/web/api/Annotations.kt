@@ -10,6 +10,10 @@ annotation class Authenticated
 
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
+annotation class InstanceAdmin
+
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
 annotation class ProjectScoped
 
 @Target(AnnotationTarget.FUNCTION)
