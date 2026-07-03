@@ -4,6 +4,7 @@ import doa.ink.workbench.core.common.context.RequestHost
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.TenantSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.InvitationRepository
@@ -86,7 +87,8 @@ class InvitationService(
   suspend fun preview(token: String): InvitationPreviewView {
     val invitation = requireActiveInvitation(token)
     val tenant =
-      tenants.findById(invitation.tenantId) ?: throw ResourceNotFoundException("Tenant not found.")
+      tenants.findById(invitation.tenantId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
     return InvitationPreviewView(
       type = invitation.type,
       tenant = TenantSummary.from(tenant),
@@ -100,7 +102,7 @@ class InvitationService(
     return when (invitation.type) {
       InvitationType.TENANT_ADMIN -> acceptTenantAdmin(invitation, command)
       InvitationType.TENANT_MEMBER ->
-        throw InvalidRequestException("Tenant member invitations are not supported yet.")
+        throw InvalidRequestException(WorkbenchErrorCode.TENANT_MEMBER_INVITATION_UNSUPPORTED)
     }
   }
 
@@ -133,11 +135,11 @@ class InvitationService(
 
   private suspend fun requirePendingTenant(tenantId: UUID) =
     tenants.findById(tenantId)?.takeIf { it.status == TenantStatus.PENDING_ACTIVATION }
-      ?: throw InvalidRequestException("Tenant is not pending activation.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.TENANT_PENDING_ACTIVATION_REQUIRED)
 
   private suspend fun ensureEmailAvailable(normalizedEmail: String) {
     if (users.findByPrimaryEmail(normalizedEmail) != null) {
-      throw ResourceConflictException("A user with this email already exists.")
+      throw ResourceConflictException(WorkbenchErrorCode.USER_EMAIL_ALREADY_EXISTS)
     }
   }
 
@@ -147,7 +149,9 @@ class InvitationService(
   ): UserRecord {
     val passwordMethod =
       loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
-        ?: throw ResourceNotFoundException("Password login method is not configured.")
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_PASSWORD_LOGIN_METHOD_NOT_FOUND
+        )
     val user =
       users.create(
         CreateUserCommand(
@@ -183,7 +187,7 @@ class InvitationService(
 
   private suspend fun requireActiveInvitation(token: String) =
     invitations.findActiveByHash(credentialHasher.hash(token), now())
-      ?: throw InvalidRequestException("Invitation is invalid or expired.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.INVITATION_INVALID_OR_EXPIRED)
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)
 }

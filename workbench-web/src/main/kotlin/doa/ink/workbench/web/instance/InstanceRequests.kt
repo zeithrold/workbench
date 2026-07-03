@@ -1,6 +1,7 @@
 package doa.ink.workbench.web.instance
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.LoginMethodSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.model.BootstrapInstanceAdminCommand
@@ -95,13 +96,13 @@ data class TenantAdminAssignmentRequest(
       TenantAdminAssignmentMode.USER -> {
         val publicId =
           userId?.takeIf { it.isNotBlank() }
-            ?: throw InvalidRequestException("userId is required when mode is USER.")
+            ?: throw InvalidRequestException(WorkbenchErrorCode.INSTANCE_SETUP_USER_ID_REQUIRED)
         TenantAdminAssignment.UserAssignment(resolveUserId(publicId))
       }
       TenantAdminAssignmentMode.EMAIL_INVITE -> {
         val inviteEmail =
           email?.takeIf { it.isNotBlank() }
-            ?: throw InvalidRequestException("email is required when mode is EMAIL_INVITE.")
+            ?: throw InvalidRequestException(WorkbenchErrorCode.INSTANCE_SETUP_EMAIL_REQUIRED)
         TenantAdminAssignment.EmailInviteAssignment(
           email = inviteEmail,
           displayName = displayName,

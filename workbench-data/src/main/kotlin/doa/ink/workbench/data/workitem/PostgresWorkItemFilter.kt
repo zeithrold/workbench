@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.workitem
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.workitem.WorkItemSearchScope
 import doa.ink.workbench.core.workitem.query.ConditionNode
 import doa.ink.workbench.core.workitem.query.QueryOperator
@@ -44,7 +45,9 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
       field.definition.type == WorkItemQueryFieldType.LONG_TEXT &&
         predicate.op in TEXT_SEARCH_OPERATORS
     ) {
-      throw InvalidRequestException("Long text work item predicates require Elasticsearch.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_LONG_TEXT_REQUIRES_ELASTICSEARCH
+      )
     }
     val condition =
       operatorCompiler.compile(field.valueSql, field.definition.type, predicate.op, predicate.value)
@@ -83,7 +86,10 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
       query.sort.map { term ->
         val field = fieldResolver.resolvePostgresField(term.field)
         if (!field.definition.sortable) {
-          throw InvalidRequestException("Field ${term.field.canonicalName} is not sortable.")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_NOT_SORTABLE,
+            "Field ${term.field.canonicalName} is not sortable.",
+          )
         }
         val direction = if (term.direction == SortDirection.ASC) "ASC" else "DESC"
         val nulls = term.nulls?.wireName?.uppercase()?.let { " NULLS $it" } ?: ""

@@ -3,6 +3,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
@@ -44,18 +45,26 @@ class FederatedAuthService(
     redirectUri: String,
   ): FederatedAuthorizeResult {
     val tenant =
-      tenants.findByApiId(tenantId) ?: throw InvalidRequestException("Unknown tenant: $tenantId")
+      tenants.findByApiId(tenantId)
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND,
+          "Unknown tenant: $tenantId",
+        )
     val method =
       loginMethods.findLoginMethodByApiId(loginMethodId)
-        ?: throw InvalidRequestException("Unknown login method: $loginMethodId")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND,
+          "Unknown login method: $loginMethodId",
+        )
     if (method.kind !in setOf(LoginMethodKind.OAUTH2, LoginMethodKind.OIDC, LoginMethodKind.SAML)) {
       throw InvalidRequestException(
-        "Login method $loginMethodId does not support federated authorize."
+        WorkbenchErrorCode.IDENTITY_FEDERATED_PROTOCOL_UNSUPPORTED,
+        "Login method $loginMethodId does not support federated authorize.",
       )
     }
     val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
-      throw InvalidRequestException("Login method is disabled for this tenant.")
+      throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_DISABLED)
     }
 
     val state = secretGenerator.generate()
@@ -81,7 +90,8 @@ class FederatedAuthService(
         LoginMethodKind.OAUTH2,
         LoginMethodKind.OIDC ->
           oauthClient.buildAuthorizeUrl(config, redirectUri, state, challenge, method.kind)
-        else -> throw InvalidRequestException("Login method does not support federated authorize.")
+        else ->
+          throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_FEDERATED_PROTOCOL_UNSUPPORTED)
       }
     return FederatedAuthorizeResult(authorizationUrl = authorizationUrl, state = state)
   }
@@ -94,15 +104,17 @@ class FederatedAuthService(
     val now = OffsetDateTime.now(clock)
     val loginState =
       loginStates.findActiveByStateHash(credentialHasher.hash(state), now)
-        ?: throw InvalidRequestException("OAuth state is invalid or expired.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_FEDERATED_OAUTH_STATE_INVALID)
     loginStates.consume(loginState.id, now)
 
     val methodRecord =
       loginMethods.findLoginMethodById(loginState.loginMethodId)
-        ?: throw InvalidRequestException("Login method no longer exists.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND)
     val setting =
       tenantLoginSettings.findTenantSetting(loginState.tenantId, loginState.loginMethodId)
-        ?: throw InvalidRequestException("Tenant login settings not found.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_TENANT_LOGIN_SETTINGS_NOT_FOUND
+        )
     val config = setting.config as? JsonObject ?: JsonObject(emptyMap())
     val tokenResponse =
       oauthClient.exchangeAuthorizationCode(
@@ -123,11 +135,13 @@ class FederatedAuthService(
     val now = OffsetDateTime.now(clock)
     val loginState =
       loginStates.findActiveByStateHash(credentialHasher.hash(relayState), now)
-        ?: throw InvalidRequestException("SAML relay state is invalid or expired.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_FEDERATED_SAML_RELAY_STATE_INVALID
+        )
     loginStates.consume(loginState.id, now)
     val methodRecord =
       loginMethods.findLoginMethodById(loginState.loginMethodId)
-        ?: throw InvalidRequestException("Login method no longer exists.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND)
     val subject = SamlResponseParser.parseNameId(samlResponse)
     return FederatedLoginResult(
       identity = resolveIdentity(methodRecord.code, subject, "SAML"),
@@ -142,10 +156,16 @@ class FederatedAuthService(
   ): AuthenticatedIdentity {
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(methodCode, normalizeSubject(subject))
-        ?: throw InvalidRequestException("No linked account for $protocol identity.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_FEDERATED_LINKED_ACCOUNT_NOT_FOUND,
+          "No linked account for $protocol identity.",
+        )
     val user =
       userLoginAccounts.findLinkedUser(account.id)
-        ?: throw InvalidRequestException("No user linked for $protocol identity.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_FEDERATED_LINKED_USER_NOT_FOUND,
+          "No user linked for $protocol identity.",
+        )
     return AuthenticatedIdentity(user = user, loginAccount = account)
   }
 }

@@ -3,6 +3,7 @@ package doa.ink.workbench.service.instance
 import doa.ink.workbench.core.common.errors.InstanceAlreadyInitializedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.LoginMethodSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.LoginAccountStore
@@ -65,12 +66,14 @@ class InstanceSetupService(
   suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapView {
     validateSetupToken(command.setupToken)
     if (adminUserQueries.existsActiveInstanceAdmin()) {
-      throw InstanceAlreadyInitializedException("Instance is already initialized.")
+      throw InstanceAlreadyInitializedException()
     }
 
     val instancePasswordMethod =
       loginMethods.findLoginMethodByCode(INSTANCE_PASSWORD_METHOD_CODE)
-        ?: throw InvalidRequestException("Instance password login method is not configured.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.RESOURCE_INSTANCE_PASSWORD_LOGIN_METHOD_NOT_FOUND
+        )
 
     val normalizedEmail = normalizeSubject(command.email)
     val user =
@@ -151,7 +154,7 @@ class InstanceSetupService(
       return
     }
     if (provided.isNullOrBlank() || provided != configured) {
-      throw SetupTokenInvalidException("Setup token is invalid.")
+      throw SetupTokenInvalidException()
     }
   }
 }

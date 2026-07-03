@@ -3,6 +3,7 @@
 package doa.ink.workbench.core.workitem.query
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -20,7 +21,10 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     try {
       parse(json.parseToJsonElement(payload))
     } catch (ex: SerializationException) {
-      throw InvalidRequestException("Invalid work item query JSON: ${ex.message}")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_INVALID_JSON,
+        "Invalid work item query JSON: ${ex.message}",
+      )
     }
 
   fun parse(element: JsonElement): WorkItemQuery {
@@ -51,7 +55,11 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
       "and" -> ConditionNode.And(obj.requiredArray("args").map(::parseCondition))
       "or" -> ConditionNode.Or(obj.requiredArray("args").map(::parseCondition))
       "not" -> ConditionNode.Not(parseCondition(obj.required("arg")))
-      else -> throw InvalidRequestException("Unknown work item query logical operator: $op")
+      else ->
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_LOGICAL_OPERATOR_UNKNOWN,
+          "Unknown work item query logical operator: $op",
+        )
     }
   }
 
@@ -61,13 +69,17 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
       val direction =
         SortDirection.fromWireName(obj.requiredString("direction"))
           ?: throw InvalidRequestException(
-            "Unknown work item sort direction: ${obj.requiredString("direction")}"
+            WorkbenchErrorCode.WORK_ITEM_QUERY_SORT_DIRECTION_UNKNOWN,
+            "Unknown work item sort direction: ${obj.requiredString("direction")}",
           )
       val nulls =
         obj["nulls"]?.let {
           val value = it.asString("sort null ordering")
           NullOrdering.fromWireName(value)
-            ?: throw InvalidRequestException("Unknown work item sort null ordering: $value")
+            ?: throw InvalidRequestException(
+              WorkbenchErrorCode.WORK_ITEM_QUERY_SORT_NULL_ORDERING_UNKNOWN,
+              "Unknown work item sort null ordering: $value",
+            )
         }
       SortTerm(field = parseField(obj.required("field")), direction = direction, nulls = nulls)
     }
@@ -78,21 +90,26 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
       is JsonObject -> {
         val kind = element.requiredString("kind")
         if (kind != "property") {
-          throw InvalidRequestException("Unknown work item query field kind: $kind")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_KIND_UNKNOWN,
+            "Unknown work item query field kind: $kind",
+          )
         }
         QueryField.Property(
           apiId = element["apiId"]?.asString("property apiId"),
           code = element["code"]?.asString("property code"),
         )
       }
-      else -> throw InvalidRequestException("Work item query field must be a string or object.")
+      else -> throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_SHAPE_INVALID)
     }
 
   private fun parseFieldPath(path: String): QueryField =
     if (path.startsWith("property.")) {
       val identity =
         path.removePrefix("property.").ifBlank {
-          throw InvalidRequestException("Property query field must include an identity.")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_IDENTITY_REQUIRED
+          )
         }
       if (identity.startsWith("fld_")) {
         QueryField.Property(apiId = identity, code = null)
@@ -105,7 +122,10 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
 
   private fun parseOperator(value: String): QueryOperator =
     QueryOperator.fromWireName(value)
-      ?: throw InvalidRequestException("Unknown work item query operator: $value")
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_UNKNOWN,
+        "Unknown work item query operator: $value",
+      )
 
   private fun parseValue(element: JsonElement): QueryValue =
     when (element) {
@@ -131,12 +151,14 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     val unit =
       RelativeDateUnit.fromWireName(obj.requiredString("unit"))
         ?: throw InvalidRequestException(
-          "Unknown relative date unit: ${obj.requiredString("unit")}"
+          WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_UNIT_UNKNOWN,
+          "Unknown relative date unit: ${obj.requiredString("unit")}",
         )
     val direction =
       DateDirection.fromWireName(obj.requiredString("direction"))
         ?: throw InvalidRequestException(
-          "Unknown relative date direction: ${obj.requiredString("direction")}"
+          WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_DIRECTION_UNKNOWN,
+          "Unknown relative date direction: ${obj.requiredString("direction")}",
         )
     return QueryValue.RelativeDate(
       amount = obj.requiredInt("amount"),
@@ -148,22 +170,40 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
 }
 
 private fun JsonElement.asObject(name: String): JsonObject =
-  this as? JsonObject ?: throw InvalidRequestException("Work item query $name must be an object.")
+  this as? JsonObject
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_OBJECT_REQUIRED,
+      "Work item query $name must be an object.",
+    )
 
 private fun JsonElement.asArray(name: String): JsonArray =
-  this as? JsonArray ?: throw InvalidRequestException("Work item query $name must be an array.")
+  this as? JsonArray
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_ARRAY_REQUIRED,
+      "Work item query $name must be an array.",
+    )
 
 private fun JsonElement.asString(name: String): String =
   (this as? JsonPrimitive)?.contentOrNull
-    ?: throw InvalidRequestException("Work item query $name must be a string.")
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_STRING_REQUIRED,
+      "Work item query $name must be a string.",
+    )
 
 private fun JsonObject.required(key: String): JsonElement =
-  this[key] ?: throw InvalidRequestException("Work item query missing required field: $key")
+  this[key]
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_REQUIRED,
+      "Work item query missing required field: $key",
+    )
 
 private fun JsonObject.requiredString(key: String): String = required(key).asString(key)
 
 private fun JsonObject.requiredInt(key: String): Int =
   required(key).jsonPrimitive.intOrNull
-    ?: throw InvalidRequestException("Work item query $key must be an integer.")
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_INTEGER_REQUIRED,
+      "Work item query $key must be an integer.",
+    )
 
 private fun JsonObject.requiredArray(key: String): JsonArray = required(key).jsonArray

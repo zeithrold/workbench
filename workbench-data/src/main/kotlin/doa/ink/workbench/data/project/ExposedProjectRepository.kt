@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.project
 
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.model.CreateProjectCommand
@@ -111,7 +112,8 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
               (ProjectsTable.tenantId eq command.tenantId.toKotlinUuid()) and
               ProjectsTable.deletedAt.isNull()
           }
-          .singleOrNull() ?: throw ResourceNotFoundException("Project not found.")
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
       val now = OffsetDateTime.now(ZoneOffset.UTC)
       val previousIdentifier = existing[ProjectsTable.identifier]
       ProjectsTable.update({ ProjectsTable.id eq command.projectId.toKotlinUuid() }) {
@@ -173,7 +175,9 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
           it[ProjectsTable.archivedBy] = archivedBy.toKotlinUuid()
           it[ProjectsTable.updatedAt] = archivedAt
         }
-      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      if (updated == 0) {
+        throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+      }
       ProjectsTable.selectAll()
         .where { ProjectsTable.id eq projectId.toKotlinUuid() }
         .single()
@@ -194,7 +198,9 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
           it[ProjectsTable.archivedBy] = null
           it[ProjectsTable.updatedAt] = now
         }
-      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      if (updated == 0) {
+        throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+      }
       ProjectsTable.selectAll()
         .where { ProjectsTable.id eq projectId.toKotlinUuid() }
         .single()
@@ -220,7 +226,9 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
           it[ProjectsTable.deleteReason] = deleteReason
           it[ProjectsTable.updatedAt] = now
         }
-      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      if (updated == 0) {
+        throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+      }
       ProjectsTable.selectAll()
         .where { ProjectsTable.id eq projectId.toKotlinUuid() }
         .single()

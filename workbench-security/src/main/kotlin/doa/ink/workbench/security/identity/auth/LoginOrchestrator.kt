@@ -1,6 +1,7 @@
 package doa.ink.workbench.security.identity.auth
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
@@ -13,12 +14,16 @@ class LoginOrchestrator(authenticators: List<LoginAuthenticator>) {
   suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity {
     if (command.method in FEDERATED_OR_ASYNC_KINDS) {
       throw InvalidRequestException(
-        "Login method ${command.method} must use the dedicated /api/auth endpoint."
+        WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_UNSUPPORTED,
+        "Login method ${command.method} must use the dedicated /api/auth endpoint.",
       )
     }
     val authenticator =
       authenticatorsByKind[command.method]
-        ?: throw InvalidRequestException("Unsupported login method: ${command.method}")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_UNSUPPORTED,
+          "Unsupported login method: ${command.method}",
+        )
     return authenticator.authenticate(command)
   }
 

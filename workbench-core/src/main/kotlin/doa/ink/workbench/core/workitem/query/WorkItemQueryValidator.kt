@@ -1,6 +1,7 @@
 package doa.ink.workbench.core.workitem.query
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 
 class WorkItemQueryValidator(
   private val fieldResolver: WorkItemQueryFieldResolver = BuiltInWorkItemQueryFieldResolver
@@ -14,15 +15,23 @@ class WorkItemQueryValidator(
 
   fun validateEnvelope(query: WorkItemQuery) {
     if (query.version != WorkItemQuery.CURRENT_VERSION) {
-      throw InvalidRequestException("Unsupported work item query version: ${query.version}")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_VERSION_UNSUPPORTED,
+        "Unsupported work item query version: ${query.version}",
+      )
     }
     if (query.resource != WorkItemQuery.RESOURCE) {
-      throw InvalidRequestException("Unsupported query resource: ${query.resource}")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RESOURCE_UNSUPPORTED,
+        "Unsupported query resource: ${query.resource}",
+      )
     }
   }
 
   private fun validateCondition(node: ConditionNode, depth: Int, counter: PredicateCounter) {
-    if (depth > MAX_DEPTH) throw InvalidRequestException("Work item query is too deeply nested.")
+    if (depth > MAX_DEPTH) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_TOO_DEEPLY_NESTED)
+    }
     when (node) {
       is ConditionNode.And -> validateLogical(node.args, depth, counter)
       is ConditionNode.Or -> validateLogical(node.args, depth, counter)
@@ -33,7 +42,7 @@ class WorkItemQueryValidator(
 
   private fun validateLogical(args: List<ConditionNode>, depth: Int, counter: PredicateCounter) {
     if (args.isEmpty()) {
-      throw InvalidRequestException("Logical query nodes must contain at least one child.")
+      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_LOGICAL_EMPTY)
     }
     args.forEach { validateCondition(it, depth + 1, counter) }
   }
@@ -43,7 +52,8 @@ class WorkItemQueryValidator(
     val field = fieldResolver.resolve(predicate.field)
     if (predicate.op !in field.type.supportedOperators) {
       throw InvalidRequestException(
-        "Operator ${predicate.op.wireName} is not supported by field ${predicate.field.canonicalName}."
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_UNSUPPORTED_FOR_FIELD,
+        "Operator ${predicate.op.wireName} is not supported by field ${predicate.field.canonicalName}.",
       )
     }
     WorkItemQueryValueValidators.validateValueShape(field.type, predicate.op, predicate.value)
@@ -52,7 +62,10 @@ class WorkItemQueryValidator(
   private fun validateSort(sort: SortTerm) {
     val field = fieldResolver.resolve(sort.field)
     if (!field.sortable) {
-      throw InvalidRequestException("Field ${sort.field.canonicalName} is not sortable.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_NOT_SORTABLE,
+        "Field ${sort.field.canonicalName} is not sortable.",
+      )
     }
   }
 
@@ -62,7 +75,7 @@ class WorkItemQueryValidator(
     fun increment() {
       count += 1
       if (count > MAX_PREDICATES) {
-        throw InvalidRequestException("Work item query has too many predicates.")
+        throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_TOO_MANY_PREDICATES)
       }
     }
   }

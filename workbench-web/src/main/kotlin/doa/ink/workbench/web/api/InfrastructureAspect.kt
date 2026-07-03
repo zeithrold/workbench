@@ -6,6 +6,7 @@ import doa.ink.workbench.core.common.context.ScopedRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
@@ -83,16 +84,17 @@ class InfrastructureAspect(
         request.tenantId,
         decision.reason.code,
       )
-      throw PermissionDeniedException(decision.reason.message)
+      throw PermissionDeniedException(
+        WorkbenchErrorCode.fromAuthorizationReason(decision.reason.code),
+        decision.reason.message,
+      )
     }
     return joinPoint.proceed()
   }
 
   @Around("@annotation(doa.ink.workbench.web.api.RequirePermission)")
   fun rejectLegacyPermission(): Any? {
-    throw PermissionDeniedException(
-      "Legacy @RequirePermission is disabled. Use the unified authorization model."
-    )
+    throw PermissionDeniedException(WorkbenchErrorCode.AUTH_PERMISSION_LEGACY_DISABLED)
   }
 
   private fun elapsedMillis(started: Long): Long = (System.nanoTime() - started) / 1_000_000
@@ -109,11 +111,11 @@ class InfrastructureAspect(
       when {
         tenantContext != null || projectContext != null -> AuthorizationScope.TENANT
         instanceContext != null -> AuthorizationScope.INSTANCE
-        else -> throw PermissionDeniedException("Request context is required for authorization.")
+        else -> throw PermissionDeniedException(WorkbenchErrorCode.AUTH_PERMISSION_CONTEXT_REQUIRED)
       }
     val scopedContext =
       joinPoint.args.filterIsInstance<ScopedRequestContext>().firstOrNull()
-        ?: throw PermissionDeniedException("Request context is required for authorization.")
+        ?: throw PermissionDeniedException(WorkbenchErrorCode.AUTH_PERMISSION_CONTEXT_REQUIRED)
     val resourceId = annotatedArgument<String>(joinPoint, ResourceId::class.java)
     val annotatedProjectId = annotatedArgument<UUID>(joinPoint, ResourceProjectId::class.java)
     val tenantId = tenantContext?.tenant?.id ?: projectContext?.tenant?.id
@@ -149,7 +151,7 @@ class InfrastructureAspect(
 
   private fun currentPrincipal(): AuthenticatedPrincipal =
     SecurityContextHolder.getContext().authentication?.principal as? AuthenticatedPrincipal
-      ?: throw AuthenticationFailedException("Authentication required.")
+      ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_AUTHENTICATION_REQUIRED)
 
   private inline fun <reified T> annotatedArgument(
     joinPoint: ProceedingJoinPoint,

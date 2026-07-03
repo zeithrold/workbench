@@ -2,6 +2,7 @@ package doa.ink.workbench.agile.project
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.UserRepository
@@ -44,7 +45,7 @@ class ProjectMemberService(
       .map { (userId, memberBindings) ->
         val user =
           users.findById(userId)?.let(UserSummary::from)
-            ?: throw ResourceNotFoundException("User not found.")
+            ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
         ProjectMemberView(
           user = user,
           policies =
@@ -53,7 +54,9 @@ class ProjectMemberService(
               .map { binding ->
                 val policy =
                   policies.findById(tenantId, binding.policyId)
-                    ?: throw ResourceNotFoundException("Permission policy not found.")
+                    ?: throw ResourceNotFoundException(
+                      WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND
+                    )
                 ProjectMemberPolicyView(
                   bindingId = binding.apiId.value,
                   policy = ProjectPermissionPolicySummary.from(policy),
@@ -107,7 +110,7 @@ class ProjectMemberService(
   ): Boolean {
     val binding =
       bindings.findByApiId(tenantId, bindingPublicId)
-        ?: throw ResourceNotFoundException("Permission binding not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
     return bindings.expire(tenantId, binding.id, OffsetDateTime.now(clock))
   }
 
@@ -120,14 +123,16 @@ class ProjectMemberService(
   ): ProjectMemberView {
     val project =
       projects.findById(tenantId, projectId)
-        ?: throw ResourceNotFoundException("Project not found.")
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     if (project.nonMemberJoinPolicy != NonMemberJoinPolicy.OPEN) {
-      throw InvalidRequestException("This project does not allow self-join.")
+      throw InvalidRequestException(WorkbenchErrorCode.PROJECT_SELF_JOIN_DISABLED)
     }
     val user = requireActiveTenantMember(tenantId, userId)
     val memberPolicy =
       policies.findByCode(tenantId, "project-member")
-        ?: throw ResourceNotFoundException("Built-in project-member policy is not configured.")
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_PROJECT_MEMBER_POLICY_NOT_FOUND
+        )
     bindings.create(
       CreatePermissionBindingCommand(
         tenantId = tenantId,
@@ -150,10 +155,11 @@ class ProjectMemberService(
         it.status == TenantMemberStatus.ACTIVE
       }
       ?.let { users.findById(userId) }
-      ?: throw InvalidRequestException("User is not an active tenant member.")
+      ?: throw InvalidRequestException(WorkbenchErrorCode.PROJECT_MEMBER_INACTIVE_TENANT_MEMBER)
 
   private suspend fun requireUser(userPublicId: String) =
-    users.findByApiId(userPublicId) ?: throw ResourceNotFoundException("User not found.")
+    users.findByApiId(userPublicId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
 
   private suspend fun resolvePolicy(
     tenantId: UUID,
@@ -163,15 +169,23 @@ class ProjectMemberService(
     when {
       policyPublicId != null ->
         policies.findByApiId(tenantId, policyPublicId)
-          ?: throw ResourceNotFoundException("Permission policy not found.")
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND
+          )
       role != null -> {
         val code =
           BUILTIN_ROLE_CODES[role.lowercase()]
-            ?: throw InvalidRequestException("Unknown role: $role")
+            ?: throw InvalidRequestException(
+              WorkbenchErrorCode.PROJECT_MEMBER_UNKNOWN_ROLE,
+              "Unknown role: $role",
+            )
         policies.findByCode(tenantId, code)
-          ?: throw ResourceNotFoundException("Permission policy not found.")
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND
+          )
       }
-      else -> throw InvalidRequestException("Either policyId or role is required.")
+      else ->
+        throw InvalidRequestException(WorkbenchErrorCode.PROJECT_MEMBER_POLICY_OR_ROLE_REQUIRED)
     }
 }
 

@@ -6,6 +6,8 @@ import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.errors.TenantDestroyingException
+import doa.ink.workbench.core.common.errors.TenantNotSelectedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.TenantSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.TenantMemberRepository
@@ -33,7 +35,8 @@ class SessionService(
   suspend fun getCurrent(principal: AuthenticatedPrincipal): SessionView {
     val sessionId = sessionUuid(principal)
     val session =
-      sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
+      sessions.findById(sessionId)
+        ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_ACTIVE_NOT_FOUND)
     val activeTenant = session.activeTenantId?.let { tenants.findById(it) }
     return SessionView(
       user = UserSummary.from(principal.user),
@@ -57,13 +60,13 @@ class SessionService(
         ensureTenantOperational(tenant.id)
         val membership = tenantMembers.findByTenantAndUser(tenant.id, principal.user.id)
         if (membership?.status != TenantMemberStatus.ACTIVE) {
-          throw PermissionDeniedException("You are not an active member of this tenant.")
+          throw PermissionDeniedException(WorkbenchErrorCode.AUTH_TENANT_MEMBERSHIP_REQUIRED)
         }
         tenant.id
       }
     val updated = sessions.updateActiveTenant(sessionId, resolvedTenantId, now)
     if (!updated) {
-      throw InvalidRequestException("Unable to update session tenant.")
+      throw InvalidRequestException(WorkbenchErrorCode.SESSION_TENANT_UPDATE_FAILED)
     }
     return getCurrent(principal)
   }
@@ -72,22 +75,19 @@ class SessionService(
     principal.tenantId?.let { activeTenantId ->
       val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
       if (membership?.status != TenantMemberStatus.ACTIVE) {
-        throw PermissionDeniedException("You are not an active member of the selected tenant.")
+        throw PermissionDeniedException(WorkbenchErrorCode.AUTH_SELECTED_TENANT_MEMBERSHIP_REQUIRED)
       }
       ensureTenantOperational(activeTenantId)
       return activeTenantId
     }
     val sessionId = sessionUuid(principal)
     val session =
-      sessions.findById(sessionId) ?: throw InvalidRequestException("Active session not found.")
-    val activeTenantId =
-      session.activeTenantId
-        ?: throw doa.ink.workbench.core.common.errors.TenantNotSelectedException(
-          "Select a tenant via PATCH /api/session before calling tenant-scoped APIs."
-        )
+      sessions.findById(sessionId)
+        ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_ACTIVE_NOT_FOUND)
+    val activeTenantId = session.activeTenantId ?: throw TenantNotSelectedException()
     val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
     if (membership?.status != TenantMemberStatus.ACTIVE) {
-      throw PermissionDeniedException("You are not an active member of the selected tenant.")
+      throw PermissionDeniedException(WorkbenchErrorCode.AUTH_SELECTED_TENANT_MEMBERSHIP_REQUIRED)
     }
     ensureTenantOperational(activeTenantId)
     return activeTenantId
@@ -97,22 +97,24 @@ class SessionService(
     val tenantId = requireActiveTenantId(principal)
     val tenant =
       tenants.findById(tenantId)
-        ?: throw InvalidRequestException("Selected tenant no longer exists.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_SELECTED_TENANT_MISSING)
     ensureTenantOperational(tenant.id)
     return tenant
   }
 
   private suspend fun ensureTenantOperational(tenantId: UUID) {
-    val tenant = tenants.findById(tenantId) ?: throw ResourceNotFoundException("Tenant not found.")
+    val tenant =
+      tenants.findById(tenantId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
     if (tenant.status == TenantStatus.DESTROYING) {
-      throw TenantDestroyingException("Tenant is being destroyed.")
+      throw TenantDestroyingException()
     }
   }
 
   private fun sessionUuid(principal: AuthenticatedPrincipal): UUID {
     val sessionId =
       principal.sessionId
-        ?: throw InvalidRequestException("Session context is required for tenant switching.")
+        ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_CONTEXT_REQUIRED)
     return UUID.fromString(sessionId)
   }
 }

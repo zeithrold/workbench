@@ -22,7 +22,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/validation-failed",
       "title": "Validation Failed",
       "status": 400,
-      "detail": "identifier: must match \"^[A-Z][A-Z0-9]{1,9}$\""
+      "detail": "identifier: must match \"^[A-Z][A-Z0-9]{1,9}$\"",
+      "code": "request.validation_failed"
     }
     """
 
@@ -32,7 +33,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/invalid-request",
       "title": "Invalid Request",
       "status": 400,
-      "detail": "Project identifier is already in use."
+      "detail": "Project identifier is already in use.",
+      "code": "project.identifier.in_use"
     }
     """
 
@@ -42,7 +44,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/authentication-failed",
       "title": "Authentication Failed",
       "status": 401,
-      "detail": "Invalid credentials."
+      "detail": "Invalid credentials.",
+      "code": "auth.invalid_credentials"
     }
     """
 
@@ -52,7 +55,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/permission-denied",
       "title": "Permission Denied",
       "status": 403,
-      "detail": "Actor lacks permission.project.create on project."
+      "detail": "Actor lacks permission.project.create on project.",
+      "code": "auth.permission.no_matching_binding"
     }
     """
 
@@ -62,7 +66,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/resource-not-found",
       "title": "Resource Not Found",
       "status": 404,
-      "detail": "Project not found."
+      "detail": "Project not found.",
+      "code": "resource.project.not_found"
     }
     """
 
@@ -72,7 +77,8 @@ object OpenApiExamples {
       "type": "https://api.doa.ink/workbench/problems/tenant-not-selected",
       "title": "Tenant Not Selected",
       "status": 409,
-      "detail": "User is not a member of the requested tenant."
+      "detail": "Select a tenant via PATCH /api/session before using tenant-scoped APIs.",
+      "code": "tenant.not_selected"
     }
     """
 

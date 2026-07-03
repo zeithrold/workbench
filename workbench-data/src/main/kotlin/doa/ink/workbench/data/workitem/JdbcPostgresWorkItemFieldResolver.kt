@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.workitem
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.workitem.query.QueryField
 import doa.ink.workbench.core.workitem.query.WorkItemQueryFieldType
 import java.util.UUID
@@ -22,7 +23,10 @@ class JdbcPostgresWorkItemFieldResolver(
           *propertyLookupParams(property).toTypedArray(),
         )
         .singleOrNull()
-        ?: throw InvalidRequestException("Unknown work item query property: ${field.canonicalName}")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_UNKNOWN,
+          "Unknown work item query property: ${field.canonicalName}",
+        )
     val type = dataType.toWorkItemFieldType()
     return StaticPostgresWorkItemFieldResolver(
         mapOf((property.apiId ?: property.code).orEmpty() to type)
@@ -65,5 +69,9 @@ internal fun String.toWorkItemFieldType(): WorkItemQueryFieldType =
     "issue" -> WorkItemQueryFieldType.ISSUE
     "url" -> WorkItemQueryFieldType.TEXT
     "json" -> WorkItemQueryFieldType.JSON
-    else -> throw InvalidRequestException("Unsupported work item property type: $this")
+    else ->
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_TYPE_UNSUPPORTED,
+        "Unsupported work item property type: $this",
+      )
   }

@@ -5,6 +5,8 @@ import doa.ink.workbench.agile.project.ProjectMemberService
 import doa.ink.workbench.agile.project.ProjectMemberView
 import doa.ink.workbench.agile.project.ProjectPermissionPolicySummary
 import doa.ink.workbench.core.common.context.ProjectRequestContext
+import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
@@ -99,7 +101,8 @@ class ProjectMemberController(private val service: ProjectMemberService) {
   @Operation(summary = "Join an open project")
   suspend fun join(projectContext: ProjectRequestContext): ProjectMemberResponse {
     val actorUserId =
-      projectContext.actor?.id ?: throw IllegalStateException("Authenticated user is required.")
+      projectContext.actor?.id
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return ProjectMemberResponse.from(
       service.join(
         tenantId = projectContext.tenant.id,

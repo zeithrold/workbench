@@ -1,6 +1,7 @@
 package doa.ink.workbench.data.workitem
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.workitem.query.QueryField
 import doa.ink.workbench.core.workitem.query.WorkItemFieldDefinition
 import doa.ink.workbench.core.workitem.query.WorkItemQueryFieldResolver
@@ -24,7 +25,10 @@ class StaticPostgresWorkItemFieldResolver(
 
   private fun systemField(field: QueryField.System): PostgresWorkItemField.System =
     SYSTEM_FIELDS[field.canonicalName]
-      ?: throw InvalidRequestException("Unknown work item query field: ${field.canonicalName}")
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_UNKNOWN,
+        "Unknown work item query field: ${field.canonicalName}",
+      )
 
   private fun propertyField(
     field: QueryField.Property,

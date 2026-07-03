@@ -3,6 +3,7 @@
 package doa.ink.workbench.core.workitem.query
 
 import doa.ink.workbench.core.common.errors.InvalidRequestException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,12 +35,18 @@ internal object WorkItemQueryValueValidators {
   ) {
     if (op in unaryOperators) {
       if (value != null) {
-        throw InvalidRequestException("Operator ${op.wireName} does not accept a value.")
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_VALUE_FORBIDDEN,
+          "Operator ${op.wireName} does not accept a value.",
+        )
       }
       return
     }
     if (value == null) {
-      throw InvalidRequestException("Operator ${op.wireName} requires a value.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_VALUE_REQUIRED,
+        "Operator ${op.wireName} requires a value.",
+      )
     }
     when (op) {
       QueryOperator.IN,
@@ -61,33 +68,53 @@ internal object WorkItemQueryValueValidators {
   private fun requireNonEmptyArray(op: QueryOperator, value: QueryValue) {
     val literal =
       value as? QueryValue.Literal
-        ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_ARRAY_REQUIRED,
+          "Operator ${op.wireName} requires an array value.",
+        )
     val array =
       literal.value as? JsonArray
-        ?: throw InvalidRequestException("Operator ${op.wireName} requires an array value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_ARRAY_REQUIRED,
+          "Operator ${op.wireName} requires an array value.",
+        )
     if (array.isEmpty()) {
-      throw InvalidRequestException("Operator ${op.wireName} requires a non-empty array value.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_ARRAY_NOT_EMPTY_REQUIRED,
+        "Operator ${op.wireName} requires a non-empty array value.",
+      )
     }
   }
 
   private fun requireBetween(value: QueryValue) {
     val range =
       value as? QueryValue.Between
-        ?: throw InvalidRequestException("Operator between requires an object value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_BETWEEN_OBJECT_REQUIRED
+        )
     if (range.from == null && range.to == null) {
-      throw InvalidRequestException("Operator between requires from or to.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_BETWEEN_BOUND_REQUIRED
+      )
     }
   }
 
   private fun requireRelativeDate(value: QueryValue) {
     val relative =
       value as? QueryValue.RelativeDate
-        ?: throw InvalidRequestException("Operator within requires a relativeDate value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_RELATIVE_DATE_REQUIRED
+        )
     if (relative.amount <= 0) {
-      throw InvalidRequestException("Relative date amount must be positive.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_AMOUNT_POSITIVE
+      )
     }
     if (relative.anchor !in dateVariableTypes.keys) {
-      throw InvalidRequestException("Unknown relative date anchor: ${relative.anchor}")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_ANCHOR_UNKNOWN,
+        "Unknown relative date anchor: ${relative.anchor}",
+      )
     }
   }
 
@@ -106,12 +133,21 @@ internal object WorkItemQueryValueValidators {
   private fun requireStringValue(op: QueryOperator, value: QueryValue) {
     val literal =
       value as? QueryValue.Literal
-        ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_STRING_REQUIRED,
+          "Operator ${op.wireName} requires a string value.",
+        )
     val primitive =
       literal.value as? JsonPrimitive
-        ?: throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_STRING_REQUIRED,
+          "Operator ${op.wireName} requires a string value.",
+        )
     if (!primitive.isString) {
-      throw InvalidRequestException("Operator ${op.wireName} requires a string value.")
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_STRING_REQUIRED,
+        "Operator ${op.wireName} requires a string value.",
+      )
     }
   }
 
@@ -119,17 +155,26 @@ internal object WorkItemQueryValueValidators {
     when (value) {
       is QueryValue.Variable -> {
         if (value.name !in variableTypes) {
-          throw InvalidRequestException("Unknown work item query variable: ${value.name}")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_VARIABLE_UNKNOWN,
+            "Unknown work item query variable: ${value.name}",
+          )
         }
       }
       is QueryValue.Literal -> {
         if (value.value is JsonArray || value.value is JsonNull) {
-          throw InvalidRequestException("Operator ${op.wireName} requires a single value.")
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_SINGLE_VALUE_REQUIRED,
+            "Operator ${op.wireName} requires a single value.",
+          )
         }
       }
       is QueryValue.Between,
       is QueryValue.RelativeDate -> {
-        throw InvalidRequestException("Operator ${op.wireName} requires a single value.")
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_SINGLE_VALUE_REQUIRED,
+          "Operator ${op.wireName} requires a single value.",
+        )
       }
     }
   }

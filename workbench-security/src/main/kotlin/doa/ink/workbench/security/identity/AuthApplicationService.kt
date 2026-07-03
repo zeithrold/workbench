@@ -1,6 +1,7 @@
 package doa.ink.workbench.security.identity
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
+import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.core.identity.model.LoginCommand
@@ -49,7 +50,8 @@ class AuthApplicationService(
     client: ClientContext,
   ): IssuedTokenView {
     val loginAccountId =
-      principal.loginAccountId ?: throw AuthenticationFailedException("Authentication required.")
+      principal.loginAccountId
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_AUTHENTICATION_REQUIRED)
     val resolvedTenantId =
       tenantId?.let { publicIds.resolveTenant(it).id }
         ?: sessionService.requireActiveTenantId(principal)
