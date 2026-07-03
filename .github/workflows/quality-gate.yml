@@ -37,7 +37,6 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-          cache: gradle
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -51,8 +50,11 @@ jobs:
           cache: pnpm
           cache-dependency-path: workbench-frontend/pnpm-lock.yaml
 
-      - name: Grant Gradle wrapper execute permission
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+          cache-provider: basic
 
       - name: Static checks, tests, and coverage gate
         run: ./gradlew check --no-daemon
