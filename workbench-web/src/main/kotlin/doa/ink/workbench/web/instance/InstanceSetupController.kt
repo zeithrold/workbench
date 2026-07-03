@@ -1,6 +1,6 @@
 package doa.ink.workbench.web.instance
 
-import doa.ink.workbench.service.instance.InstanceSetupService
+import doa.ink.workbench.service.instance.InstanceSetupApplicationService
 import doa.ink.workbench.web.api.StandardErrorResponses
 import doa.ink.workbench.web.api.http.HttpClientContext
 import doa.ink.workbench.web.api.http.SessionCookieWriter
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController
 )
 @StandardErrorResponses
 class InstanceSetupController(
-  private val service: InstanceSetupService,
+  private val service: InstanceSetupApplicationService,
   private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @GetMapping("/setup-status")

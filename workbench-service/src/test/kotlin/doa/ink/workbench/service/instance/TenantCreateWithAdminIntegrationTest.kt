@@ -20,6 +20,8 @@ import doa.ink.workbench.data.permission.ExposedAccessGrantRepository
 import doa.ink.workbench.data.permission.ExposedAdminUserCommandRepository
 import doa.ink.workbench.data.permission.ExposedAdminUserQueryRepository
 import doa.ink.workbench.security.common.PublicIdResolver
+import doa.ink.workbench.security.identity.TenantLoginMethodService
+import doa.ink.workbench.security.identity.UserLookupService
 import doa.ink.workbench.security.identity.auth.SecureRandomCredentialSecretGenerator
 import doa.ink.workbench.security.identity.auth.Sha256CredentialHasher
 import doa.ink.workbench.security.identity.auth.support.AuthIntegrationFixtures
@@ -29,6 +31,7 @@ import doa.ink.workbench.security.invitation.InvitationService
 import doa.ink.workbench.security.permission.AdminUserService
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
+import doa.ink.workbench.tenant.tenant.TenantService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -50,7 +53,7 @@ class TenantCreateWithAdminIntegrationTest :
   StringSpec({
     val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
     lateinit var database: Database
-    lateinit var tenantService: TenantManagementService
+    lateinit var tenantService: TenantManagementApplicationService
     lateinit var invitationService: InvitationService
     lateinit var users: ExposedUserRepository
     lateinit var tenantMembers: ExposedTenantMemberRepository
@@ -118,12 +121,10 @@ class TenantCreateWithAdminIntegrationTest :
           clock = clock,
         )
       tenantService =
-        TenantManagementService(
-          tenants = tenants,
-          users = users,
-          loginMethods = loginMethods,
-          tenantLoginSettings = tenantLoginSettings,
-          publicIds = publicIds,
+        TenantManagementApplicationService(
+          tenants = TenantService(tenants),
+          tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+          userLookupService = UserLookupService(users),
           adminUserService = adminUserService,
           invitationService = invitationService,
           domainEventPublisher = RecordingDomainEventPublisher(),

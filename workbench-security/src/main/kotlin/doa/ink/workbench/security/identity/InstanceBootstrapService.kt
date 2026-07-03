@@ -1,11 +1,8 @@
-package doa.ink.workbench.service.instance
+package doa.ink.workbench.security.identity
 
 import doa.ink.workbench.core.common.errors.InstanceAlreadyInitializedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
-import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
 import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
-import doa.ink.workbench.core.common.summary.LoginMethodSummary
-import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.identity.LoginAccountStore
 import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.UserLoginAccountRepository
@@ -16,9 +13,9 @@ import doa.ink.workbench.core.identity.model.CreateLoginAccountCommand
 import doa.ink.workbench.core.identity.model.CreateUserCommand
 import doa.ink.workbench.core.identity.model.LinkUserLoginAccountCommand
 import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
-import doa.ink.workbench.core.identity.model.LoginCommand
-import doa.ink.workbench.core.identity.model.LoginMethodKind
+import doa.ink.workbench.core.identity.model.LoginMethodDefinitionRecord
 import doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
+import doa.ink.workbench.core.identity.model.UserRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
 import doa.ink.workbench.core.permission.AdminScope
 import doa.ink.workbench.core.permission.AdminUserCommandRepository
@@ -27,10 +24,7 @@ import doa.ink.workbench.core.permission.CreateAccessGrantCommand
 import doa.ink.workbench.core.permission.CreateAdminUserCommand
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.AuthorizationAction
-import doa.ink.workbench.security.identity.AuthApplicationService
-import doa.ink.workbench.security.identity.LoginView
 import doa.ink.workbench.security.identity.auth.normalizeSubject
-import doa.ink.workbench.tenant.instance.InstanceProperties
 import java.time.Clock
 import java.time.OffsetDateTime
 import org.springframework.stereotype.Service
@@ -46,7 +40,7 @@ private val DEFAULT_INSTANCE_GRANTS =
   )
 
 @Service
-class InstanceSetupService(
+class InstanceBootstrapService(
   private val users: UserRepository,
   private val loginMethods: LoginMethodRepository,
   private val loginAccounts: LoginAccountStore,
@@ -55,17 +49,13 @@ class InstanceSetupService(
   private val adminUserQueries: AdminUserQueryRepository,
   private val accessGrants: AccessGrantRepository,
   private val passwordHasher: PasswordHasher,
-  private val instanceProperties: InstanceProperties,
-  private val authApplicationService: AuthApplicationService,
   private val clock: Clock,
 ) {
-  suspend fun setupStatus(): InstanceSetupStatusView =
-    InstanceSetupStatusView(initialized = adminUserQueries.existsActiveInstanceAdmin())
+  suspend fun isInitialized(): Boolean = adminUserQueries.existsActiveInstanceAdmin()
 
   @Suppress("LongMethod")
-  suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapView {
-    validateSetupToken(command.setupToken)
-    if (adminUserQueries.existsActiveInstanceAdmin()) {
+  suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapResult {
+    if (isInitialized()) {
       throw InstanceAlreadyInitializedException()
     }
 
@@ -129,40 +119,11 @@ class InstanceSetupService(
       )
     }
 
-    val loginView =
-      authApplicationService.login(
-        LoginCommand(
-          method = LoginMethodKind.PASSWORD,
-          loginMethodId = instancePasswordMethod.apiId.value,
-          subject = command.email.trim(),
-          password = command.password,
-          ipAddress = command.ipAddress,
-          userAgent = command.userAgent,
-        )
-      )
-
-    return InstanceBootstrapView(
-      user = UserSummary.from(user),
-      loginMethod = LoginMethodSummary.from(instancePasswordMethod),
-      session = loginView,
-    )
-  }
-
-  private fun validateSetupToken(provided: String?) {
-    val configured = instanceProperties.setupToken
-    if (configured.isNullOrBlank()) {
-      return
-    }
-    if (provided.isNullOrBlank() || provided != configured) {
-      throw SetupTokenInvalidException()
-    }
+    return InstanceBootstrapResult(user = user, loginMethod = instancePasswordMethod)
   }
 }
 
-data class InstanceSetupStatusView(val initialized: Boolean)
-
-data class InstanceBootstrapView(
-  val user: UserSummary,
-  val loginMethod: LoginMethodSummary,
-  val session: LoginView,
+data class InstanceBootstrapResult(
+  val user: UserRecord,
+  val loginMethod: LoginMethodDefinitionRecord,
 )

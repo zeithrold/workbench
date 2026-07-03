@@ -4,7 +4,7 @@ import doa.ink.workbench.core.common.context.InstanceRequestContext
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.WorkbenchErrorCode
 import doa.ink.workbench.security.common.PublicIdResolver
-import doa.ink.workbench.service.instance.TenantManagementService
+import doa.ink.workbench.service.instance.TenantManagementApplicationService
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.InstanceScoped
@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 @Suppress("UnusedParameter")
 class TenantAdminController(
-  private val service: TenantManagementService,
+  private val service: TenantManagementApplicationService,
   private val publicIds: PublicIdResolver,
 ) {
   @GetMapping

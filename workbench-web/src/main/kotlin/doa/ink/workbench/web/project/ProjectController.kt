@@ -9,7 +9,7 @@ import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.NonMemberJoinPolicy
 import doa.ink.workbench.core.project.model.NonMemberVisibility
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
-import doa.ink.workbench.service.project.ProjectManagementService
+import doa.ink.workbench.service.project.ProjectManagementApplicationService
 import doa.ink.workbench.web.api.Audit
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController
 @SessionSecured
 @StandardErrorResponses
 class ProjectController(
-  private val service: ProjectManagementService,
+  private val service: ProjectManagementApplicationService,
   private val projectOperationalGuard: ProjectOperationalGuard,
 ) {
   @GetMapping
