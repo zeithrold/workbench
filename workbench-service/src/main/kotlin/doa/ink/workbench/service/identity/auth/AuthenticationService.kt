@@ -45,16 +45,17 @@ class AuthenticationService(
   private val defaultBearerTokenTtl = Duration.ofDays(30)
 
   suspend fun login(command: LoginCommand): AuthenticationResult {
-    val identity =
-      try {
-        loginOrchestrator.authenticate(command)
-      } catch (error: AuthenticationFailedException) {
-        recordLoginFailure(command, error.message)
-        throw error
-      }
-
+    val identity = authenticate(command)
     return completeLogin(identity, command.issueBearerToken, command.ipAddress, command.userAgent)
   }
+
+  suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity =
+    try {
+      loginOrchestrator.authenticate(command)
+    } catch (error: AuthenticationFailedException) {
+      recordLoginFailure(command, error.message)
+      throw error
+    }
 
   suspend fun completeLogin(
     identity: AuthenticatedIdentity,
@@ -62,9 +63,10 @@ class AuthenticationService(
     ipAddress: String?,
     userAgent: String?,
     tenantIdForAudit: UUID? = null,
+    activeTenantId: UUID? = null,
   ): AuthenticationResult {
     val now = now()
-    val session = issueSession(identity.user.id, identity.loginAccount.id, now)
+    val session = issueSession(identity.user.id, identity.loginAccount.id, now, activeTenantId)
     val bearerToken =
       if (issueBearerToken) {
         issueBearerToken(
@@ -269,6 +271,7 @@ class AuthenticationService(
     userId: UUID,
     loginAccountId: UUID,
     now: OffsetDateTime,
+    activeTenantId: UUID? = null,
   ): IssuedCredential {
     val secret = secretGenerator.generate()
     val sessionTtl = sessionTtlForUser(userId)
@@ -279,7 +282,7 @@ class AuthenticationService(
           userId = userId,
           loginAccountId = loginAccountId,
           expiresAt = now.plus(sessionTtl),
-          activeTenantId = null,
+          activeTenantId = activeTenantId,
         )
       )
     return IssuedCredential(session.id, null, secret, session.expiresAt)

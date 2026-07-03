@@ -20,6 +20,8 @@ data class SessionResponse(
   val activeTenant: doa.ink.workbench.core.common.summary.TenantSummary?,
   @field:Schema(description = "When the session expires.", example = "2026-07-02T12:00:00+00:00")
   val sessionExpiresAt: java.time.OffsetDateTime,
+  @field:Schema(description = "Administrator scopes available to the user.")
+  val adminScopes: List<String> = emptyList(),
 ) {
   companion object {
     fun from(view: doa.ink.workbench.service.identity.SessionView): SessionResponse =
@@ -27,6 +29,7 @@ data class SessionResponse(
         user = view.user,
         activeTenant = view.activeTenant,
         sessionExpiresAt = view.sessionExpiresAt,
+        adminScopes = view.adminScopes,
       )
   }
 }

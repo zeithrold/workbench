@@ -14,6 +14,7 @@ import doa.ink.workbench.core.identity.model.LoginMethodKind
 import java.time.Clock
 import java.time.Duration
 import java.time.OffsetDateTime
+import java.util.UUID
 import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Service
 
@@ -83,7 +84,7 @@ class FederatedAuthService(
     code: String,
     state: String,
     redirectUri: String,
-  ): AuthenticatedIdentity {
+  ): FederatedLoginResult {
     val now = OffsetDateTime.now(clock)
     val loginState =
       loginStates.findActiveByStateHash(credentialHasher.hash(state), now)
@@ -106,10 +107,13 @@ class FederatedAuthService(
         loginState.pkceVerifier,
       )
     val subject = oauthClient.resolveSubject(config, tokenResponse, methodRecord.kind)
-    return resolveIdentity(methodRecord.code, subject, "federated")
+    return FederatedLoginResult(
+      identity = resolveIdentity(methodRecord.code, subject, "federated"),
+      tenantId = loginState.tenantId,
+    )
   }
 
-  suspend fun completeSamlAcs(samlResponse: String, relayState: String): AuthenticatedIdentity {
+  suspend fun completeSamlAcs(samlResponse: String, relayState: String): FederatedLoginResult {
     val now = OffsetDateTime.now(clock)
     val loginState =
       loginStates.findActiveByStateHash(credentialHasher.hash(relayState), now)
@@ -119,7 +123,10 @@ class FederatedAuthService(
       loginAccounts.findLoginMethodById(loginState.loginMethodId)
         ?: throw InvalidRequestException("Login method no longer exists.")
     val subject = SamlResponseParser.parseNameId(samlResponse)
-    return resolveIdentity(methodRecord.code, subject, "SAML")
+    return FederatedLoginResult(
+      identity = resolveIdentity(methodRecord.code, subject, "SAML"),
+      tenantId = loginState.tenantId,
+    )
   }
 
   private suspend fun resolveIdentity(
@@ -138,3 +145,8 @@ class FederatedAuthService(
 }
 
 data class FederatedAuthorizeResult(val authorizationUrl: String, val state: String)
+
+data class FederatedLoginResult(
+  val identity: AuthenticatedIdentity,
+  val tenantId: UUID,
+)

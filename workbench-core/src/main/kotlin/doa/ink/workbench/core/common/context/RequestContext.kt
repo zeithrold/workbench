@@ -18,6 +18,8 @@ data class TenantRequestContext(
   val tenantPublicId: PublicId,
 )
 
+data class InstanceRequestContext(val base: RequestContext)
+
 @JvmInline
 value class ApiVersion(val value: String) {
   init {

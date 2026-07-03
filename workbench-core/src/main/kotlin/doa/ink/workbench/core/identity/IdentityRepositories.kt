@@ -29,8 +29,6 @@ interface UserRepository {
   suspend fun findByApiId(apiId: String): UserRecord?
 
   suspend fun findByPrimaryEmail(primaryEmail: String): UserRecord?
-
-  suspend fun existsSystemUser(): Boolean
 }
 
 interface TenantMemberRepository {

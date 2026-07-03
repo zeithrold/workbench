@@ -45,11 +45,13 @@ class RequestContextResolver(private val clock: Clock) : HandlerMethodArgumentRe
 class WebMvcContextConfiguration(
   private val requestContextResolver: RequestContextResolver,
   private val tenantRequestContextResolver: TenantRequestContextResolver,
+  private val instanceRequestContextResolver: InstanceRequestContextResolver,
   private val authenticatedPrincipalResolver: AuthenticatedPrincipalResolver,
 ) : WebMvcConfigurer {
   override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
     resolvers.add(requestContextResolver)
     resolvers.add(tenantRequestContextResolver)
+    resolvers.add(instanceRequestContextResolver)
     resolvers.add(authenticatedPrincipalResolver)
   }
 }

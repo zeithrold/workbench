@@ -1,5 +1,6 @@
 package doa.ink.workbench.web.api
 
+import doa.ink.workbench.core.common.context.InstanceRequestContext
 import doa.ink.workbench.core.common.context.RequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
@@ -10,6 +11,7 @@ import doa.ink.workbench.core.permission.model.AuthorizationDecision
 import doa.ink.workbench.core.permission.model.AuthorizationEnvironment
 import doa.ink.workbench.core.permission.model.AuthorizationRequest
 import doa.ink.workbench.core.permission.model.AuthorizationResource
+import doa.ink.workbench.core.permission.model.AuthorizationScope
 import doa.ink.workbench.core.permission.model.AuthorizationSubject
 import doa.ink.workbench.core.permission.model.PermissionService
 import java.time.Clock
@@ -63,10 +65,11 @@ class InfrastructureAspect(
     val decision = runBlocking { permissionService.decide(request) }
     if (decision is AuthorizationDecision.Deny) {
       logger.warn(
-        "authorization_denied method={} action={} resource={} tenantId={} reason={}",
+        "authorization_denied method={} action={} resource={} scope={} tenantId={} reason={}",
         joinPoint.signature.toShortString(),
         request.action.code,
         request.resource.canonical,
+        request.scope,
         request.tenantId,
         decision.reason.code,
       )
@@ -82,15 +85,6 @@ class InfrastructureAspect(
     )
   }
 
-  @Around("@annotation(doa.ink.workbench.web.api.InstanceAdmin)")
-  fun instanceAdmin(joinPoint: ProceedingJoinPoint): Any? {
-    val principal = currentPrincipal()
-    if (!principal.user.isSystem) {
-      throw PermissionDeniedException("Instance administrator access is required.")
-    }
-    return joinPoint.proceed()
-  }
-
   private fun elapsedMillis(started: Long): Long = (System.nanoTime() - started) / 1_000_000
 
   private fun authorizationRequest(
@@ -98,30 +92,40 @@ class InfrastructureAspect(
     authorize: Authorize,
   ): AuthorizationRequest {
     val principal = currentPrincipal()
-    val tenantContext =
-      joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()
-        ?: throw PermissionDeniedException("Tenant context is required for authorization.")
+    val tenantContext = joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()
+    val instanceContext = joinPoint.args.filterIsInstance<InstanceRequestContext>().firstOrNull()
+    val scope =
+      when {
+        tenantContext != null -> AuthorizationScope.TENANT
+        instanceContext != null -> AuthorizationScope.INSTANCE
+        else -> throw PermissionDeniedException("Request context is required for authorization.")
+      }
     val baseContext =
-      joinPoint.args.filterIsInstance<RequestContext>().firstOrNull() ?: tenantContext.base
+      joinPoint.args.filterIsInstance<RequestContext>().firstOrNull()
+        ?: tenantContext?.base
+        ?: instanceContext?.base
+        ?: throw PermissionDeniedException("Request context is required for authorization.")
     val resourceId = annotatedArgument<String>(joinPoint, ResourceId::class.java)
     val projectId = annotatedArgument<UUID>(joinPoint, ResourceProjectId::class.java)
+    val tenantId = tenantContext?.tenantId
     return AuthorizationRequest(
+      scope = scope,
       subject =
         AuthorizationSubject(
           userId = principal.user.id,
           loginAccountId = principal.loginAccountId,
           credentialType = principal.credentialType,
           credentialId = principal.bearerTokenId ?: principal.sessionId,
-          credentialTenantId = principal.tenantId ?: tenantContext.tenantId,
+          credentialTenantId = principal.tenantId ?: tenantId,
           credentialScopes = principal.credentialScopes,
         ),
-      tenantId = tenantContext.tenantId,
+      tenantId = tenantId,
       action = AuthorizationAction(authorize.action),
       resource =
         AuthorizationResource(
           type = authorize.resource,
           id = resourceId,
-          tenantId = tenantContext.tenantId,
+          tenantId = tenantId,
           projectId = projectId,
         ),
       environment =

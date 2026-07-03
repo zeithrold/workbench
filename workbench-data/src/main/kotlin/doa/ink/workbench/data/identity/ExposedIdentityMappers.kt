@@ -30,7 +30,6 @@ internal fun ResultRow.toUserRecord() =
     avatarUrl = this[UsersTable.avatarUrl],
     timezone = this[UsersTable.timezone],
     locale = this[UsersTable.locale],
-    isSystem = this[UsersTable.isSystem],
     createdAt = this[UsersTable.createdAt],
     updatedAt = this[UsersTable.updatedAt],
   )

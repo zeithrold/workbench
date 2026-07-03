@@ -184,7 +184,6 @@ data class CreateUserCommand(
   val avatarUrl: String? = null,
   val timezone: String? = null,
   val locale: String? = null,
-  val isSystem: Boolean = false,
 )
 
 data class CreateTenantMemberCommand(

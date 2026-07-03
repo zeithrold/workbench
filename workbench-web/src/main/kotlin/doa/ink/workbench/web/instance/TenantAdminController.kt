@@ -1,8 +1,10 @@
 package doa.ink.workbench.web.instance
 
+import doa.ink.workbench.core.common.context.InstanceRequestContext
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.Authenticated
-import doa.ink.workbench.web.api.InstanceAdmin
+import doa.ink.workbench.web.api.Authorize
+import doa.ink.workbench.web.api.InstanceScoped
 import doa.ink.workbench.web.api.SessionSecured
 import doa.ink.workbench.web.api.StandardErrorResponses
 import io.swagger.v3.oas.annotations.Operation
@@ -34,10 +36,12 @@ import org.springframework.web.bind.annotation.RestController
 )
 @SessionSecured
 @StandardErrorResponses
+@Suppress("UnusedParameter")
 class TenantAdminController(private val service: TenantManagementService) {
   @GetMapping
   @Authenticated
-  @InstanceAdmin
+  @InstanceScoped
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(
     summary = "List tenants",
     description = "Returns all tenants. Optionally filter by slug.",
@@ -59,12 +63,14 @@ class TenantAdminController(private val service: TenantManagementService) {
   suspend fun list(
     @Parameter(description = "Filter by exact tenant slug.", example = "acme")
     @RequestParam(required = false)
-    slug: String?
+    slug: String?,
+    instanceContext: InstanceRequestContext,
   ): List<TenantResponse> = service.list(slug).map { TenantResponse.from(it) }
 
   @PostMapping
   @Authenticated
-  @InstanceAdmin
+  @InstanceScoped
+  @Authorize(action = "tenant.create", resource = "tenant")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(
     summary = "Create a tenant",
@@ -96,7 +102,8 @@ class TenantAdminController(private val service: TenantManagementService) {
       ],
   )
   suspend fun create(
-    @Valid @RequestBody request: CreateTenantRequest
+    @Valid @RequestBody request: CreateTenantRequest,
+    instanceContext: InstanceRequestContext,
   ): ResponseEntity<TenantResponse> {
     val tenant = service.create(request.toCommand())
     val response = TenantResponse.from(tenant)
@@ -105,7 +112,8 @@ class TenantAdminController(private val service: TenantManagementService) {
 
   @GetMapping("/{id}")
   @Authenticated
-  @InstanceAdmin
+  @InstanceScoped
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(
     summary = "Get a tenant",
     responses =
@@ -123,11 +131,15 @@ class TenantAdminController(private val service: TenantManagementService) {
         )
       ],
   )
-  suspend fun get(@PathVariable id: String): TenantResponse = TenantResponse.from(service.get(id))
+  suspend fun get(
+    @PathVariable id: String,
+    instanceContext: InstanceRequestContext,
+  ): TenantResponse = TenantResponse.from(service.get(id))
 
   @PatchMapping("/{id}")
   @Authenticated
-  @InstanceAdmin
+  @InstanceScoped
+  @Authorize(action = "tenant.update", resource = "tenant")
   @Operation(
     summary = "Update a tenant",
     responses =
@@ -148,6 +160,7 @@ class TenantAdminController(private val service: TenantManagementService) {
   suspend fun patch(
     @PathVariable id: String,
     @Valid @RequestBody request: PatchTenantRequest,
+    instanceContext: InstanceRequestContext,
   ): TenantResponse =
     TenantResponse.from(
       service.update(

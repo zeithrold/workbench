@@ -4,6 +4,9 @@ import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UserRecord
+import doa.ink.workbench.core.permission.model.AuthorizationDecision
+import doa.ink.workbench.core.permission.model.AuthorizationScope
+import doa.ink.workbench.core.permission.model.DecisionReason
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
@@ -11,6 +14,8 @@ import doa.ink.workbench.service.identity.SessionService
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.GlobalExceptionHandler
 import doa.ink.workbench.web.api.InfrastructureAspect
+import doa.ink.workbench.web.api.InstanceRequestContextResolver
+import doa.ink.workbench.web.api.RequestContextResolver
 import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
@@ -39,6 +44,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   WorkbenchAuthenticationFilter::class,
   AopAutoConfiguration::class,
   InfrastructureAspect::class,
+  RequestContextResolver::class,
+  InstanceRequestContextResolver::class,
   GlobalExceptionHandler::class,
   TenantAdminControllerSecurityTest.TestBeans::class,
 )
@@ -49,7 +56,7 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
   }
 
   @Test
-  fun `tenant admin endpoints reject non-system users`() {
+  fun `tenant admin endpoints reject users without instance grants`() {
     val result =
       mockMvc
         .perform(
@@ -62,7 +69,7 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
   }
 
   @Test
-  fun `system administrator can list tenants`() {
+  fun `instance administrator can list tenants`() {
     val result =
       mockMvc
         .perform(
@@ -78,7 +85,7 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
   }
 
   @Test
-  fun `system administrator can create tenant`() {
+  fun `instance administrator can create tenant`() {
     val result =
       mockMvc
         .perform(
@@ -127,7 +134,18 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
 
     @Bean
     fun permissionService(): doa.ink.workbench.core.permission.model.PermissionService =
-      mockk(relaxed = true)
+      object : doa.ink.workbench.core.permission.model.PermissionService {
+        override suspend fun decide(
+          request: doa.ink.workbench.core.permission.model.AuthorizationRequest
+        ): doa.ink.workbench.core.permission.model.AuthorizationDecision =
+          if (
+            request.scope == AuthorizationScope.INSTANCE && request.subject.userId == ADMIN_USER_ID
+          ) {
+            AuthorizationDecision.Allow(DecisionReason("grant_allowed", "allowed"))
+          } else {
+            AuthorizationDecision.Deny(DecisionReason("grant_denied", "denied"))
+          }
+      }
 
     @Bean
     fun clock(): java.time.Clock =
@@ -150,7 +168,8 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
   private companion object {
     const val ADMIN_SESSION = "admin-session"
     const val REGULAR_SESSION = "regular-session"
-    val USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+    val ADMIN_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000001")
+    val REGULAR_USER_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000099")
     val SAMPLE_TENANT =
       TenantRecord(
         id = UUID.fromString("00000000-0000-0000-0000-000000000010"),
@@ -166,11 +185,10 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
       AuthenticatedPrincipal(
         user =
           UserRecord(
-            id = USER_ID,
+            id = ADMIN_USER_ID,
             apiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
             displayName = "Admin",
             primaryEmail = "admin@example.test",
-            isSystem = true,
           ),
         loginAccountId = UUID.fromString("00000000-0000-0000-0000-000000000002"),
         sessionId = "session-id",
@@ -180,11 +198,10 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
       AuthenticatedPrincipal(
         user =
           UserRecord(
-            id = USER_ID,
+            id = REGULAR_USER_ID,
             apiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ2"),
             displayName = "User",
             primaryEmail = "user@example.test",
-            isSystem = false,
           ),
         loginAccountId = UUID.fromString("00000000-0000-0000-0000-000000000003"),
         sessionId = "session-id",

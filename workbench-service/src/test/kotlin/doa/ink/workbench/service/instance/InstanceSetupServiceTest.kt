@@ -11,6 +11,12 @@ import doa.ink.workbench.core.identity.model.BootstrapInstanceAdminCommand
 import doa.ink.workbench.core.identity.model.LoginMethodDefinitionRecord
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.identity.model.UserRecord
+import doa.ink.workbench.core.permission.AccessGrantRecord
+import doa.ink.workbench.core.permission.AccessGrantRepository
+import doa.ink.workbench.core.permission.AdminScope
+import doa.ink.workbench.core.permission.AdminUserRecord
+import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserStatus
 import doa.ink.workbench.service.identity.AuthApplicationService
 import doa.ink.workbench.service.identity.LoginView
 import io.kotest.assertions.throwables.shouldThrow
@@ -19,6 +25,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -27,18 +34,18 @@ import kotlinx.serialization.json.JsonObject
 
 class InstanceSetupServiceTest :
   StringSpec({
-    "setup status reflects whether a system user exists" {
-      val users = mockk<UserRepository>()
-      coEvery { users.existsSystemUser() } returns false
-      val service = service(users = users)
+    "setup status reflects whether an instance admin exists" {
+      val adminUsers = mockk<AdminUserRepository>()
+      coEvery { adminUsers.existsActiveInstanceAdmin() } returns false
+      val service = service(adminUsers = adminUsers)
 
       runBlocking { service.setupStatus().initialized } shouldBe false
     }
 
     "bootstrap rejects when instance is already initialized" {
-      val users = mockk<UserRepository>()
-      coEvery { users.existsSystemUser() } returns true
-      val service = service(users = users)
+      val adminUsers = mockk<AdminUserRepository>()
+      coEvery { adminUsers.existsActiveInstanceAdmin() } returns true
+      val service = service(adminUsers = adminUsers)
 
       shouldThrow<InstanceAlreadyInitializedException> {
         runBlocking {
@@ -54,11 +61,11 @@ class InstanceSetupServiceTest :
     }
 
     "bootstrap requires setup token when configured" {
-      val users = mockk<UserRepository>()
-      coEvery { users.existsSystemUser() } returns false
+      val adminUsers = mockk<AdminUserRepository>()
+      coEvery { adminUsers.existsActiveInstanceAdmin() } returns false
       val service =
         service(
-          users = users,
+          adminUsers = adminUsers,
           instanceProperties = InstanceProperties(setupToken = "expected-token"),
         )
 
@@ -75,18 +82,20 @@ class InstanceSetupServiceTest :
       }
     }
 
-    "bootstrap creates system user and signs in" {
+    "bootstrap creates instance admin and signs in" {
       val users = mockk<UserRepository>()
       val loginAccounts = mockk<LoginAccountRepository>()
+      val adminUsers = mockk<AdminUserRepository>()
+      val accessGrants = mockk<AccessGrantRepository>()
       val authApplicationService = mockk<AuthApplicationService>()
       val passwordHasher = mockk<PasswordHasher>()
-      val passwordMethod =
+      val instancePasswordMethod =
         LoginMethodDefinitionRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("lmg"),
-          code = "password",
+          code = "instance_password",
           kind = LoginMethodKind.PASSWORD,
-          name = "Password",
+          name = "Workbench Admin",
           isBuiltin = true,
           isEnabledGlobally = true,
           configSchema = JsonObject(emptyMap()),
@@ -99,7 +108,6 @@ class InstanceSetupServiceTest :
           apiId = PublicId.new("usr"),
           displayName = "Admin",
           primaryEmail = "admin@example.test",
-          isSystem = true,
         )
       val loginView =
         LoginView(
@@ -108,20 +116,39 @@ class InstanceSetupServiceTest :
           sessionSecret = "session-secret",
           bearerToken = null,
         )
+      val adminRecord =
+        AdminUserRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("adu"),
+          userId = createdUser.id,
+          scope = AdminScope.INSTANCE,
+          tenantId = null,
+          status = AdminUserStatus.ACTIVE,
+          grantedBy = createdUser.id,
+          validFrom = OffsetDateTime.now(ZoneOffset.UTC),
+          validTo = null,
+          createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+          updatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+        )
 
-      coEvery { users.existsSystemUser() } returns false
-      coEvery { loginAccounts.findLoginMethodByCode("password") } returns passwordMethod
+      coEvery { adminUsers.existsActiveInstanceAdmin() } returns false
+      coEvery { loginAccounts.findLoginMethodByCode("instance_password") } returns
+        instancePasswordMethod
       coEvery { users.create(any()) } returns createdUser
       coEvery { loginAccounts.createLoginAccount(any()) } returns mockk(relaxed = true)
       coEvery { passwordHasher.hash("secure-password-1") } returns "bcrypt-hash"
       coEvery { loginAccounts.upsertParameter(any()) } returns mockk(relaxed = true)
       coEvery { loginAccounts.linkUser(any()) } returns mockk(relaxed = true)
+      coEvery { adminUsers.create(any()) } returns adminRecord
+      coEvery { accessGrants.create(any()) } returns mockk<AccessGrantRecord>(relaxed = true)
       coEvery { authApplicationService.login(any()) } returns loginView
 
       val service =
         service(
           users = users,
           loginAccounts = loginAccounts,
+          adminUsers = adminUsers,
+          accessGrants = accessGrants,
           passwordHasher = passwordHasher,
           authApplicationService = authApplicationService,
         )
@@ -137,15 +164,18 @@ class InstanceSetupServiceTest :
       }
 
       result.user.id shouldBe createdUser.apiId.value
-      result.loginMethod.id shouldBe passwordMethod.apiId.value
+      result.loginMethod.id shouldBe instancePasswordMethod.apiId.value
       result.session.sessionSecret shouldBe "session-secret"
-      coVerify(exactly = 1) { users.create(match { it.isSystem }) }
+      coVerify(exactly = 1) { adminUsers.create(any()) }
+      coVerify(exactly = 3) { accessGrants.create(any()) }
     }
   })
 
 private fun service(
   users: UserRepository = mockk(),
   loginAccounts: LoginAccountRepository = mockk(),
+  adminUsers: AdminUserRepository = mockk(),
+  accessGrants: AccessGrantRepository = mockk(),
   passwordHasher: PasswordHasher = mockk(),
   instanceProperties: InstanceProperties = InstanceProperties(),
   authApplicationService: AuthApplicationService = mockk(),
@@ -153,7 +183,10 @@ private fun service(
   InstanceSetupService(
     users = users,
     loginAccounts = loginAccounts,
+    adminUsers = adminUsers,
+    accessGrants = accessGrants,
     passwordHasher = passwordHasher,
     instanceProperties = instanceProperties,
     authApplicationService = authApplicationService,
+    clock = Clock.systemUTC(),
   )

@@ -24,6 +24,7 @@ class SessionService(
   private val tenantMembers: TenantMemberRepository,
   private val tenants: TenantRepository,
   private val publicIds: PublicIdResolver,
+  private val loginCompletionService: LoginCompletionService,
   private val clock: Clock,
 ) {
   suspend fun getCurrent(principal: AuthenticatedPrincipal): SessionView {
@@ -35,8 +36,12 @@ class SessionService(
       user = UserSummary.from(principal.user),
       activeTenant = activeTenant?.let { TenantSummary.from(it) },
       sessionExpiresAt = session.expiresAt,
+      adminScopes = loginCompletionService.adminScopes(principal.user.id),
     )
   }
+
+  suspend fun tenantSummary(tenantId: UUID): TenantSummary? =
+    tenants.findById(tenantId)?.let { TenantSummary.from(it) }
 
   suspend fun switchTenant(principal: AuthenticatedPrincipal, tenantId: String?): SessionView {
     val sessionId = sessionUuid(principal)

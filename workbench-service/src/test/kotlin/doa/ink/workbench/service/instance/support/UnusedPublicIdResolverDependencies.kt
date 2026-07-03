@@ -3,9 +3,8 @@ package doa.ink.workbench.service.instance.support
 import doa.ink.workbench.core.identity.LoginAccountRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.auth.BearerTokenRepository
-import doa.ink.workbench.core.permission.PermissionPolicyRepository
-import doa.ink.workbench.core.permission.RoleAssignmentRepository
-import doa.ink.workbench.core.permission.RoleRepository
+import doa.ink.workbench.core.permission.AccessGrantRepository
+import doa.ink.workbench.core.permission.AdminUserRepository
 import doa.ink.workbench.core.project.ProjectRepository
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -22,8 +21,6 @@ class UnusedPublicIdResolverDependencies(val loginAccounts: LoginAccountReposito
       override suspend fun findByApiId(apiId: String) = null
 
       override suspend fun findByPrimaryEmail(primaryEmail: String) = null
-
-      override suspend fun existsSystemUser(): Boolean = false
     }
 
   val bearerTokens: BearerTokenRepository =
@@ -43,59 +40,75 @@ class UnusedPublicIdResolverDependencies(val loginAccounts: LoginAccountReposito
       override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
     }
 
-  val roles: RoleRepository =
-    object : RoleRepository {
-      override suspend fun create(command: doa.ink.workbench.core.permission.CreateRoleCommand) =
-        error("unused")
+  val adminUsers: AdminUserRepository =
+    object : AdminUserRepository {
+      override suspend fun create(
+        command: doa.ink.workbench.core.permission.CreateAdminUserCommand
+      ) = error("unused")
 
       override suspend fun findById(id: UUID) = null
 
-      override suspend fun findByApiId(tenantId: UUID?, apiId: String) = null
+      override suspend fun findByApiId(apiId: String) = null
 
-      override suspend fun findByCode(tenantId: UUID?, code: String) = null
+      override suspend fun findActiveInstanceAdmin(userId: UUID, at: OffsetDateTime) = null
 
-      override suspend fun list(tenantId: UUID?) =
-        emptyList<doa.ink.workbench.core.permission.RoleRecord>()
-    }
-
-  val policies: PermissionPolicyRepository =
-    object : PermissionPolicyRepository {
-      override suspend fun create(
-        command: doa.ink.workbench.core.permission.CreatePermissionPolicyCommand
-      ) = error("unused")
-
-      override suspend fun listByTenant(tenantId: UUID) =
-        emptyList<doa.ink.workbench.core.permission.PermissionPolicyRecord>()
-
-      override suspend fun findByApiId(tenantId: UUID, apiId: String) = null
-
-      override suspend fun listActiveByRoles(
-        tenantId: UUID,
-        roleIds: Collection<UUID>,
-        at: OffsetDateTime,
-      ) = emptyList<doa.ink.workbench.core.permission.PermissionPolicyRecord>()
-
-      override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
-    }
-
-  val assignments: RoleAssignmentRepository =
-    object : RoleAssignmentRepository {
-      override suspend fun assign(command: doa.ink.workbench.core.permission.AssignRoleCommand) =
-        error("unused")
-
-      override suspend fun listByTenant(tenantId: UUID) =
-        emptyList<doa.ink.workbench.core.permission.RoleAssignmentRecord>()
-
-      override suspend fun findByApiId(tenantId: UUID, apiId: String) = null
-
-      override suspend fun listActiveByUser(
+      override suspend fun findActiveTenantAdmin(
         tenantId: UUID,
         userId: UUID,
-        projectId: UUID?,
         at: OffsetDateTime,
-      ) = emptyList<doa.ink.workbench.core.permission.RoleAssignmentRecord>()
+      ) = null
+
+      override suspend fun existsActiveInstanceAdmin() = false
+
+      override suspend fun isActiveInstanceAdmin(userId: UUID, at: OffsetDateTime) = false
+
+      override suspend fun isActiveTenantAdmin(tenantId: UUID, userId: UUID, at: OffsetDateTime) =
+        false
+
+      override suspend fun listByUser(userId: UUID) =
+        emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
+
+      override suspend fun listInstanceAdmins() =
+        emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
+
+      override suspend fun listTenantAdmins(tenantId: UUID) =
+        emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
 
       override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
+    }
+
+  val accessGrants: AccessGrantRepository =
+    object : AccessGrantRepository {
+      override suspend fun create(
+        command: doa.ink.workbench.core.permission.CreateAccessGrantCommand
+      ) = error("unused")
+
+      override suspend fun findById(id: UUID) = null
+
+      override suspend fun findByApiId(apiId: String) = null
+
+      override suspend fun listBySubject(
+        subjectUserId: UUID,
+        scope: doa.ink.workbench.core.permission.GrantScope?,
+        tenantId: UUID?,
+        projectId: UUID?,
+      ) = emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+      override suspend fun listActiveForSubject(
+        subjectUserId: UUID,
+        scope: doa.ink.workbench.core.permission.GrantScope,
+        tenantId: UUID?,
+        projectId: UUID?,
+        at: OffsetDateTime,
+      ) = emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+      override suspend fun listByTenant(tenantId: UUID) =
+        emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+      override suspend fun listInstanceGrants() =
+        emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+      override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
     }
 
   val projects: ProjectRepository =
