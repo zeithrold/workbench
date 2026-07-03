@@ -195,3 +195,9 @@ fun PatchTenantRequest.toCommand(tenantId: java.util.UUID): UpdateTenantCommand 
     timezone = timezone,
     locale = locale,
   )
+
+@Schema(description = "Optional reason recorded when destroying a tenant.")
+data class DestroyTenantRequest(
+  @field:Schema(description = "Human-readable reason for tenant destruction.")
+  val deleteReason: String? = null
+)

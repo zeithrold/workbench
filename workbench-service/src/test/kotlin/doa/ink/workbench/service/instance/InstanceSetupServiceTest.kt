@@ -176,7 +176,7 @@ class InstanceSetupServiceTest :
       result.loginMethod.id shouldBe instancePasswordMethod.apiId.value
       result.session.sessionSecret shouldBe "session-secret"
       coVerify(exactly = 1) { adminUserCommands.create(any()) }
-      coVerify(exactly = 3) { accessGrants.create(any()) }
+      coVerify(exactly = 4) { accessGrants.create(any()) }
     }
   })
 

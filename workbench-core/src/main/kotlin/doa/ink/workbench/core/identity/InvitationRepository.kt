@@ -10,4 +10,6 @@ interface InvitationRepository {
   suspend fun findActiveByHash(tokenHash: String, now: OffsetDateTime): InvitationRecord?
 
   suspend fun consume(id: java.util.UUID, consumedAt: OffsetDateTime): Boolean
+
+  suspend fun cancelPendingByTenant(tenantId: java.util.UUID, cancelledAt: OffsetDateTime): Int
 }

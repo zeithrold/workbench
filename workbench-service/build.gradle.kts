@@ -22,6 +22,12 @@ dependencies {
   testFixturesImplementation(libs.testcontainers.junit)
   testFixturesImplementation(libs.testcontainers.postgresql)
   testFixturesImplementation(libs.testcontainers.keycloak)
+  testFixturesImplementation(
+    platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
+  )
+  testFixturesImplementation(libs.kotlinx.coroutines.core)
+  testFixturesImplementation(libs.testcontainers.kafka)
+  testFixturesImplementation("org.springframework.kafka:spring-kafka")
 }
 
 sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))

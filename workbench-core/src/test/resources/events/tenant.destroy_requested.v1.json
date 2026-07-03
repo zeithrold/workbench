@@ -1,0 +1,14 @@
+{
+  "eventId": "evt_destroy_sample",
+  "type": "tenant.destroy_requested",
+  "version": 1,
+  "occurredAt": "2026-07-03T00:00:00Z",
+  "traceId": "trace-destroy-1",
+  "tenantId": "ten_sample123",
+  "payload": {
+    "tenantId": "ten_sample123",
+    "requestedBy": "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+    "deleteReason": "Customer churned",
+    "requestedAt": "2026-07-03T00:00:00Z"
+  }
+}

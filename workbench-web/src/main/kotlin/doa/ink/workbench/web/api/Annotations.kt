@@ -50,4 +50,5 @@ annotation class Audit(val action: String)
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
+@Deprecated("Use DomainEventPublisher.publish(spec, payload) explicitly in services.")
 annotation class PublishEvent(val topic: String)

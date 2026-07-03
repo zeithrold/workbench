@@ -139,4 +139,14 @@ class ExposedAccessGrantRepository(private val database: Database) : AccessGrant
         it[AccessGrantsTable.validTo] = validTo
       } > 0
     }
+
+  override suspend fun expireByTenant(tenantId: UUID, expiredAt: OffsetDateTime): Int =
+    suspendTransaction(db = database) {
+      AccessGrantsTable.update({
+        (AccessGrantsTable.tenantId eq tenantId.toKotlinUuid()) and
+          AccessGrantsTable.validTo.isNull()
+      }) {
+        it[AccessGrantsTable.validTo] = expiredAt
+      }
+    }
 }

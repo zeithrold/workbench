@@ -17,6 +17,7 @@ dependencies {
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.kafka)
+  testImplementation(testFixtures(project(":workbench-service")))
 }
 
 springBoot {

@@ -5,16 +5,20 @@ import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.model.CreateTenantCommand
+import doa.ink.workbench.core.identity.model.FinalizeTenantDestroyCommand
 import doa.ink.workbench.core.identity.model.TenantRecord
+import doa.ink.workbench.core.identity.model.TenantStatus
 import doa.ink.workbench.core.identity.model.UpdateTenantCommand
 import doa.ink.workbench.data.persistence.TenantsTable
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -23,12 +27,13 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
+@Suppress("TooManyFunctions")
 class ExposedTenantRepository(private val database: Database) : TenantRepository {
   override suspend fun create(command: CreateTenantCommand): TenantRecord =
     suspendTransaction(db = database) {
       if (
         TenantsTable.selectAll()
-          .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.slug eq command.slug) }
+          .where { operationalTenantFilter() and (TenantsTable.slug eq command.slug) }
           .any()
       ) {
         throw ResourceConflictException("Tenant slug is already in use.")
@@ -48,7 +53,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
         it[updatedAt] = now
       }
       TenantsTable.selectAll()
-        .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq id.toKotlinUuid()) }
+        .where { operationalTenantFilter() and (TenantsTable.id eq id.toKotlinUuid()) }
         .single()
         .toTenantRecord()
     }
@@ -58,15 +63,14 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
       val existing =
         TenantsTable.selectAll()
           .where {
-            (TenantsTable.deletedAt.isNull()) and
-              (TenantsTable.id eq command.tenantId.toKotlinUuid())
+            operationalTenantFilter() and (TenantsTable.id eq command.tenantId.toKotlinUuid())
           }
           .singleOrNull() ?: throw ResourceNotFoundException("Tenant not found.")
       command.slug?.let { slug ->
         if (
           slug != existing[TenantsTable.slug] &&
             TenantsTable.selectAll()
-              .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.slug eq slug) }
+              .where { operationalTenantFilter() and (TenantsTable.slug eq slug) }
               .any()
         ) {
           throw ResourceConflictException("Tenant slug is already in use.")
@@ -83,13 +87,70 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
       }
       TenantsTable.selectAll()
         .where {
-          (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq command.tenantId.toKotlinUuid())
+          operationalTenantFilter() and (TenantsTable.id eq command.tenantId.toKotlinUuid())
         }
         .single()
         .toTenantRecord()
     }
 
+  override suspend fun markDestroying(tenantId: UUID): TenantRecord =
+    suspendTransaction(db = database) {
+      val existing =
+        TenantsTable.selectAll()
+          .where {
+            (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
+          }
+          .singleOrNull() ?: throw ResourceNotFoundException("Tenant not found.")
+      val currentStatus = tenantStatusOf(existing[TenantsTable.status])
+      when (currentStatus) {
+        TenantStatus.DESTROYING ->
+          throw ResourceConflictException("Tenant is already being destroyed.")
+        TenantStatus.ACTIVE,
+        TenantStatus.PENDING_ACTIVATION -> Unit
+      }
+      val now = nowUtc()
+      TenantsTable.update({ TenantsTable.id eq tenantId.toKotlinUuid() }) {
+        it[status] = TenantStatus.DESTROYING.dbValue
+        it[updatedAt] = now
+      }
+      TenantsTable.selectAll()
+        .where {
+          (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
+        }
+        .single()
+        .toTenantRecord()
+    }
+
+  override suspend fun finalizeDestroy(command: FinalizeTenantDestroyCommand): Boolean =
+    suspendTransaction(db = database) {
+      val existing =
+        TenantsTable.selectAll()
+          .where {
+            (TenantsTable.deletedAt.isNull()) and
+              (TenantsTable.id eq command.tenantId.toKotlinUuid())
+          }
+          .singleOrNull() ?: return@suspendTransaction false
+      if (existing[TenantsTable.deletedAt] != null) {
+        return@suspendTransaction false
+      }
+      val now = nowUtc()
+      TenantsTable.update({ TenantsTable.id eq command.tenantId.toKotlinUuid() }) {
+        it[deletedAt] = now
+        it[deletedBy] = command.deletedBy.toKotlinUuid()
+        it[deleteReason] = command.deleteReason
+        it[updatedAt] = now
+      } > 0
+    }
+
   override suspend fun findById(id: UUID): TenantRecord? =
+    suspendTransaction(db = database) {
+      TenantsTable.selectAll()
+        .where { operationalTenantFilter() and (TenantsTable.id eq id.toKotlinUuid()) }
+        .singleOrNull()
+        ?.toTenantRecord()
+    }
+
+  override suspend fun findByIdForDestruction(id: UUID): TenantRecord? =
     suspendTransaction(db = database) {
       TenantsTable.selectAll()
         .where {
@@ -102,6 +163,14 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
   override suspend fun findByApiId(apiId: String): TenantRecord? =
     suspendTransaction(db = database) {
       TenantsTable.selectAll()
+        .where { operationalTenantFilter() and (TenantsTable.apiId eq apiId) }
+        .singleOrNull()
+        ?.toTenantRecord()
+    }
+
+  override suspend fun findByApiIdForAdmin(apiId: String): TenantRecord? =
+    suspendTransaction(db = database) {
+      TenantsTable.selectAll()
         .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.apiId eq apiId) }
         .singleOrNull()
         ?.toTenantRecord()
@@ -110,7 +179,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
   override suspend fun findBySlug(slug: String): TenantRecord? =
     suspendTransaction(db = database) {
       TenantsTable.selectAll()
-        .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.slug eq slug) }
+        .where { operationalTenantFilter() and (TenantsTable.slug eq slug) }
         .singleOrNull()
         ?.toTenantRecord()
     }
@@ -118,7 +187,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
   override suspend fun existsBySlug(slug: String): Boolean =
     suspendTransaction(db = database) {
       TenantsTable.selectAll()
-        .where { (TenantsTable.deletedAt.isNull()) and (TenantsTable.slug eq slug) }
+        .where { operationalTenantFilter() and (TenantsTable.slug eq slug) }
         .any()
     }
 
@@ -129,8 +198,7 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
       suspendTransaction(db = database) {
         TenantsTable.selectAll()
           .where {
-            (TenantsTable.deletedAt.isNull()) and
-              (TenantsTable.id inList ids.map { it.toKotlinUuid() })
+            operationalTenantFilter() and (TenantsTable.id inList ids.map { it.toKotlinUuid() })
           }
           .map { it.toTenantRecord() }
       }
@@ -140,12 +208,27 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
     suspendTransaction(db = database) {
       val query =
         if (slug == null) {
-          TenantsTable.selectAll().where { TenantsTable.deletedAt.isNull() }
+          TenantsTable.selectAll().where { operationalTenantFilter() }
         } else {
           TenantsTable.selectAll().where {
-            (TenantsTable.deletedAt.isNull()) and (TenantsTable.slug eq slug)
+            operationalTenantFilter() and (TenantsTable.slug eq slug)
           }
         }
       query.orderBy(TenantsTable.createdAt to SortOrder.ASC).map { it.toTenantRecord() }
     }
+
+  override suspend fun listForAdmin(slug: String?): List<TenantRecord> =
+    suspendTransaction(db = database) {
+      val baseFilter = TenantsTable.deletedAt.isNull()
+      val query =
+        if (slug == null) {
+          TenantsTable.selectAll().where { baseFilter }
+        } else {
+          TenantsTable.selectAll().where { baseFilter and (TenantsTable.slug eq slug) }
+        }
+      query.orderBy(TenantsTable.createdAt to SortOrder.ASC).map { it.toTenantRecord() }
+    }
+
+  private fun operationalTenantFilter(): Op<Boolean> =
+    TenantsTable.deletedAt.isNull() and (TenantsTable.status neq TenantStatus.DESTROYING.dbValue)
 }

@@ -13,6 +13,7 @@ import doa.ink.workbench.core.identity.model.AuthenticatedPrincipal
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.service.common.PublicIdResolver
+import doa.ink.workbench.service.tenant.TenantOperationalGuard
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -25,6 +26,7 @@ class SessionService(
   private val tenants: TenantRepository,
   private val publicIds: PublicIdResolver,
   private val loginCompletionService: LoginCompletionService,
+  private val tenantOperationalGuard: TenantOperationalGuard,
   private val clock: Clock,
 ) {
   suspend fun getCurrent(principal: AuthenticatedPrincipal): SessionView {
@@ -51,6 +53,7 @@ class SessionService(
         null
       } else {
         val tenant = publicIds.resolveTenant(tenantId)
+        tenantOperationalGuard.ensureOperational(tenant.id)
         val membership = tenantMembers.findByTenantAndUser(tenant.id, principal.user.id)
         if (membership?.status != TenantMemberStatus.ACTIVE) {
           throw PermissionDeniedException("You are not an active member of this tenant.")
@@ -70,6 +73,7 @@ class SessionService(
       if (membership?.status != TenantMemberStatus.ACTIVE) {
         throw PermissionDeniedException("You are not an active member of the selected tenant.")
       }
+      tenantOperationalGuard.ensureOperational(activeTenantId)
       return activeTenantId
     }
     val sessionId = sessionUuid(principal)
@@ -84,13 +88,17 @@ class SessionService(
     if (membership?.status != TenantMemberStatus.ACTIVE) {
       throw PermissionDeniedException("You are not an active member of the selected tenant.")
     }
+    tenantOperationalGuard.ensureOperational(activeTenantId)
     return activeTenantId
   }
 
   suspend fun requireActiveTenant(principal: AuthenticatedPrincipal): TenantRecord {
     val tenantId = requireActiveTenantId(principal)
-    return tenants.findById(tenantId)
-      ?: throw InvalidRequestException("Selected tenant no longer exists.")
+    val tenant =
+      tenants.findById(tenantId)
+        ?: throw InvalidRequestException("Selected tenant no longer exists.")
+    tenantOperationalGuard.ensureOperational(tenant.id)
+    return tenant
   }
 
   private fun sessionUuid(principal: AuthenticatedPrincipal): UUID {

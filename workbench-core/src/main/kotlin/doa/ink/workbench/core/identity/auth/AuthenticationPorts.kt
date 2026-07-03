@@ -47,6 +47,8 @@ interface AuthSessionRepository {
 
   suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean
 
+  suspend fun revokeByActiveTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int
+
   suspend fun touch(id: UUID, usedAt: OffsetDateTime): Boolean
 }
 
@@ -60,6 +62,8 @@ interface BearerTokenRepository {
   suspend fun findActiveByHash(tokenHash: String, now: OffsetDateTime): BearerTokenRecord?
 
   suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean
+
+  suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int
 
   suspend fun touch(id: UUID, usedAt: OffsetDateTime): Boolean
 }

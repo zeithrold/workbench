@@ -31,6 +31,9 @@ class PublicIdResolver(
   suspend fun resolveTenant(publicId: String): TenantRecord =
     tenants.findByApiId(publicId) ?: throw ResourceNotFoundException("Tenant not found.")
 
+  suspend fun resolveTenantForAdmin(publicId: String): TenantRecord =
+    tenants.findByApiIdForAdmin(publicId) ?: throw ResourceNotFoundException("Tenant not found.")
+
   suspend fun resolveUser(publicId: String): UserRecord =
     users.findByApiId(publicId) ?: throw ResourceNotFoundException("User not found.")
 

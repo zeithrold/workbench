@@ -21,6 +21,7 @@ import java.net.URI
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -184,4 +185,45 @@ class TenantAdminController(
         locale = request.locale,
       )
     )
+
+  @DeleteMapping("/{id}")
+  @Authenticated
+  @InstanceScoped
+  @Authorize(action = "tenant.delete", resource = "tenant")
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  @Operation(
+    summary = "Destroy a tenant",
+    description =
+      "Marks the tenant as destroying and schedules asynchronous cleanup. Returns 202 when accepted.",
+    responses =
+      [
+        ApiResponse(responseCode = "202", description = "Tenant destruction accepted"),
+        ApiResponse(
+          responseCode = "409",
+          description = "Tenant is already being destroyed",
+          content =
+            [
+              Content(
+                mediaType = "application/problem+json",
+                schema = Schema(implementation = ProblemDetail::class),
+              )
+            ],
+        ),
+      ],
+  )
+  suspend fun destroy(
+    @PathVariable id: String,
+    @Valid @RequestBody(required = false) request: DestroyTenantRequest?,
+    instanceContext: InstanceRequestContext,
+  ) {
+    service.requestDestroy(
+      tenantPublicId = id,
+      actorUserId =
+        instanceContext.base.actorUserId
+          ?: throw doa.ink.workbench.core.common.errors.InvalidRequestException(
+            "Authenticated user is required."
+          ),
+      deleteReason = request?.deleteReason,
+    )
+  }
 }

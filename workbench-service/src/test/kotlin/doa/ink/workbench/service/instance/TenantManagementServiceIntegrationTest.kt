@@ -8,12 +8,16 @@ import doa.ink.workbench.data.identity.ExposedTenantRepository
 import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.instance.support.UnusedPublicIdResolverDependencies
+import doa.ink.workbench.service.messaging.support.RecordingDomainEventPublisher
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.mockk
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -36,9 +40,11 @@ class TenantManagementServiceIntegrationTest :
       loginMethods = ExposedLoginMethodRepository(database)
       tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
       val deps = UnusedPublicIdResolverDependencies(loginMethods = loginMethods)
+      val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
       service =
         TenantManagementService(
           tenants = tenants,
+          users = deps.users,
           loginMethods = loginMethods,
           tenantLoginSettings = tenantLoginSettings,
           publicIds =
@@ -53,6 +59,8 @@ class TenantManagementServiceIntegrationTest :
             ),
           adminUserService = mockk(relaxed = true),
           invitationService = mockk(relaxed = true),
+          domainEventPublisher = RecordingDomainEventPublisher(),
+          clock = clock,
         )
     }
 

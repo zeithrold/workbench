@@ -25,6 +25,7 @@ import doa.ink.workbench.security.WorkbenchAuthenticationFilter
 import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.LoginCompletionService
 import doa.ink.workbench.service.identity.SessionService
+import doa.ink.workbench.service.tenant.TenantOperationalGuard
 import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
@@ -103,10 +104,15 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       }
 
     @Bean
+    fun tenantOperationalGuard(): TenantOperationalGuard =
+      TenantOperationalGuard(tenants = TestTenants)
+
+    @Bean
     fun sessionService(
       clock: Clock,
       publicIdResolver: PublicIdResolver,
       loginCompletionService: LoginCompletionService,
+      tenantOperationalGuard: TenantOperationalGuard,
     ): SessionService =
       SessionService(
         sessions = TestAuthSessions,
@@ -114,6 +120,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
         tenants = TestTenants,
         publicIds = publicIdResolver,
         loginCompletionService = loginCompletionService,
+        tenantOperationalGuard = tenantOperationalGuard,
         clock = clock,
       )
   }
@@ -153,6 +160,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
     override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime): Boolean = false
 
+    override suspend fun revokeByActiveTenant(tenantId: UUID, revokedAt: OffsetDateTime): Int = 0
+
     override suspend fun touch(id: UUID, usedAt: OffsetDateTime): Boolean = false
   }
 
@@ -175,9 +184,19 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       command: doa.ink.workbench.core.identity.model.UpdateTenantCommand
     ) = error("unused")
 
+    override suspend fun markDestroying(tenantId: UUID) = error("unused")
+
+    override suspend fun finalizeDestroy(
+      command: doa.ink.workbench.core.identity.model.FinalizeTenantDestroyCommand
+    ) = false
+
     override suspend fun findById(id: UUID): TenantRecord? = null
 
+    override suspend fun findByIdForDestruction(id: UUID): TenantRecord? = null
+
     override suspend fun findByApiId(apiId: String): TenantRecord? = null
+
+    override suspend fun findByApiIdForAdmin(apiId: String): TenantRecord? = null
 
     override suspend fun findBySlug(slug: String): TenantRecord? = null
 
@@ -186,6 +205,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findByIds(ids: Collection<UUID>): List<TenantRecord> = emptyList()
 
     override suspend fun list(slug: String?): List<TenantRecord> = emptyList()
+
+    override suspend fun listForAdmin(slug: String?): List<TenantRecord> = emptyList()
   }
 
   private object UnusedUserRepository : UserRepository {
@@ -223,6 +244,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findActiveByHash(tokenHash: String, now: OffsetDateTime) = null
 
     override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
+
+    override suspend fun revokeByTenant(tenantId: UUID, revokedAt: OffsetDateTime) = 0
 
     override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
   }
@@ -285,6 +308,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
 
     override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
+
+    override suspend fun expireByTenant(tenantId: UUID, expiredAt: OffsetDateTime) = 0
   }
 
   private object UnusedProjectRepository : ProjectRepository {

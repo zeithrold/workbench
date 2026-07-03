@@ -211,6 +211,18 @@ data class UpdateTenantCommand(
   val status: TenantStatus? = null,
 )
 
+data class RequestTenantDestroyCommand(
+  val tenantId: UUID,
+  val requestedBy: UUID,
+  val deleteReason: String? = null,
+)
+
+data class FinalizeTenantDestroyCommand(
+  val tenantId: UUID,
+  val deletedBy: UUID,
+  val deleteReason: String?,
+)
+
 data class BootstrapInstanceAdminCommand(
   val displayName: String,
   val email: String,

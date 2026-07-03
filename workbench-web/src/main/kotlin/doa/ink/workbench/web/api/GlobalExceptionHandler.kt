@@ -8,6 +8,7 @@ import doa.ink.workbench.core.common.errors.PermissionDeniedException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
+import doa.ink.workbench.core.common.errors.TenantDestroyingException
 import doa.ink.workbench.core.common.errors.TenantNotSelectedException
 import doa.ink.workbench.core.common.errors.WorkbenchException
 import java.net.URI
@@ -31,6 +32,7 @@ class GlobalExceptionHandler {
   @ExceptionHandler(
     ResourceConflictException::class,
     InstanceAlreadyInitializedException::class,
+    TenantDestroyingException::class,
   )
   fun conflict(error: WorkbenchException): ProblemDetail =
     problem(HttpStatus.CONFLICT, "Conflict", error.message.orEmpty())
