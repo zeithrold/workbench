@@ -37,7 +37,7 @@ dependencies {
 sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))
 
 springBoot {
-  mainClass.set("doa.ink.workbench.web.WorkbenchApplicationKt")
+  mainClass.set("ink.doa.workbench.web.WorkbenchApplicationKt")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

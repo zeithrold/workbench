@@ -16,7 +16,7 @@
 <main class='min-h-screen bg-background p-6 text-foreground md:p-10'>
   <section class='mx-auto grid max-w-5xl gap-6'>
     <div class='space-y-3'>
-      <Badge variant='secondary'>doa.ink.workbench</Badge>
+      <Badge variant='secondary'>ink.doa.workbench</Badge>
       <div class='space-y-2'>
         <h1 class='text-3xl font-semibold tracking-normal'>Workbench</h1>
         <p class='max-w-2xl text-sm leading-6 text-muted-foreground'>

@@ -252,7 +252,7 @@ Example validation error:
 
 ```json
 {
-  "type": "https://api.doa.ink/workbench/problems/validation-failed",
+  "type": "https://api.ink.doa/workbench/problems/validation-failed",
   "title": "Validation Failed",
   "status": 400,
   "detail": "identifier: must match \"^[A-Z][A-Z0-9]{1,9}$\""

@@ -14,7 +14,7 @@ plugins {
     alias(libs.plugins.node) apply false
 }
 
-group = "doa.ink.workbench"
+group = "ink.doa.workbench"
 version = "0.1.0-SNAPSHOT"
 
 val detektToolVersion = libs.versions.detekt.get()
@@ -226,7 +226,7 @@ configure(backendProjects) {
             }
         } else {
             val moduleSuffix = name.removePrefix("workbench-")
-            val packageGlob = "doa.ink.workbench.$moduleSuffix.*"
+            val packageGlob = "ink.doa.workbench.$moduleSuffix.*"
 
             extensions.configure<info.solidsoft.gradle.pitest.PitestPluginExtension>("pitest") {
                 junit5PluginVersion.set(pitestProperty("junit5PluginVersion"))

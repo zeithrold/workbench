@@ -1,6 +1,6 @@
 # Workbench
 
-Workbench is a multi-module Spring Boot 4 and SvelteKit monolith for `doa.ink.workbench`.
+Workbench is a multi-module Spring Boot 4 and SvelteKit monolith for `ink.doa.workbench`.
 
 ## Baseline
 
