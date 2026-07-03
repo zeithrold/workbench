@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController
     "Authentication and session protocol. Public endpoints establish sessions; secured endpoints require WORKBENCH_SESSION.",
 )
 @StandardErrorResponses
+@Suppress("TooManyFunctions")
 class AuthController(
   private val authApplicationService: AuthApplicationService,
   private val sessionCookieWriter: SessionCookieWriter,
@@ -210,6 +211,20 @@ class AuthController(
     identifier: String
   ): List<LoginOptionResponse> =
     authApplicationService.listLoginOptions(identifier).map { LoginOptionResponse.from(it) }
+
+  @GetMapping("/login-discovery")
+  @Operation(
+    summary = "Discover login flow",
+    description =
+      "Wizard-oriented login discovery for an identifier. Returns flow type, instance password " +
+        "method, or grouped tenant login methods with supported tenants.",
+  )
+  suspend fun loginDiscovery(
+    @Parameter(description = "User identifier such as email.", example = "user@example.com")
+    @RequestParam
+    identifier: String
+  ): LoginDiscoveryResponse =
+    LoginDiscoveryResponse.from(authApplicationService.discoverLogin(identifier))
 
   @PostMapping("/tokens")
   @SessionSecured

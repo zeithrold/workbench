@@ -5,6 +5,9 @@ import doa.ink.workbench.core.common.summary.TenantSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.service.identity.FederatedAuthorizeView
 import doa.ink.workbench.service.identity.IssuedTokenView
+import doa.ink.workbench.service.identity.LoginDiscoveryView
+import doa.ink.workbench.service.identity.LoginFlow
+import doa.ink.workbench.service.identity.LoginMethodChoiceView
 import doa.ink.workbench.service.identity.LoginOptionView
 import doa.ink.workbench.service.identity.LoginView
 import doa.ink.workbench.service.identity.TenantMembershipView
@@ -19,6 +22,12 @@ data class LoginResponse(
   val sessionExpiresAt: OffsetDateTime,
   @field:Schema(description = "Optional long-lived bearer token when requested at login.")
   val bearerToken: IssuedTokenResponse?,
+  @field:Schema(description = "Login context after authentication.", example = "TENANT")
+  val loginContext: String? = null,
+  @field:Schema(description = "Active tenant when auto-bound at login.")
+  val activeTenant: TenantSummary? = null,
+  @field:Schema(description = "Tenants the user may select when multiple are eligible.")
+  val eligibleTenants: List<TenantSummary> = emptyList(),
 ) {
   companion object {
     fun from(view: LoginView): LoginResponse =
@@ -33,6 +42,9 @@ data class LoginResponse(
               expiresAt = it.expiresAt,
             )
           },
+        loginContext = view.loginContext.name,
+        activeTenant = view.activeTenant,
+        eligibleTenants = view.eligibleTenants,
       )
   }
 }
@@ -57,10 +69,47 @@ data class MembershipResponse(
   @field:Schema(description = "Public membership id.", example = OpenApiExamples.MEMBERSHIP_ID)
   val id: String,
   @field:Schema(description = "Tenant the user belongs to.") val tenant: TenantSummary,
+  @field:Schema(description = "Whether the user is a tenant administrator.")
+  val isTenantAdmin: Boolean = false,
 ) {
   companion object {
     fun from(view: TenantMembershipView): MembershipResponse =
-      MembershipResponse(id = view.id, tenant = view.tenant)
+      MembershipResponse(
+        id = view.id,
+        tenant = view.tenant,
+        isTenantAdmin = view.isTenantAdmin,
+      )
+  }
+}
+
+@Schema(description = "Wizard-oriented login discovery for an identifier.")
+data class LoginDiscoveryResponse(
+  val identifierRecognized: Boolean,
+  val flow: LoginFlow,
+  val instancePasswordMethod: LoginMethodSummary?,
+  val tenantMethods: List<LoginMethodChoiceResponse>,
+) {
+  companion object {
+    fun from(view: LoginDiscoveryView): LoginDiscoveryResponse =
+      LoginDiscoveryResponse(
+        identifierRecognized = view.identifierRecognized,
+        flow = view.flow,
+        instancePasswordMethod = view.instancePasswordMethod,
+        tenantMethods = view.tenantMethods.map { LoginMethodChoiceResponse.from(it) },
+      )
+  }
+}
+
+data class LoginMethodChoiceResponse(
+  val loginMethod: LoginMethodSummary,
+  val supportedTenants: List<TenantSummary>,
+) {
+  companion object {
+    fun from(view: LoginMethodChoiceView): LoginMethodChoiceResponse =
+      LoginMethodChoiceResponse(
+        loginMethod = view.loginMethod,
+        supportedTenants = view.supportedTenants,
+      )
   }
 }
 

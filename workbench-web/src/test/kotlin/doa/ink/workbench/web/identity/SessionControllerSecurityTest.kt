@@ -16,15 +16,17 @@ import doa.ink.workbench.core.identity.model.CreateTenantMemberCommand
 import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UserRecord
-import doa.ink.workbench.core.permission.PermissionPolicyRepository
-import doa.ink.workbench.core.permission.RoleAssignmentRepository
-import doa.ink.workbench.core.permission.RoleRepository
+import doa.ink.workbench.core.permission.AccessGrantRepository
+import doa.ink.workbench.core.permission.AdminUserRepository
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
 import doa.ink.workbench.service.common.PublicIdResolver
+import doa.ink.workbench.service.identity.LoginCompletionService
 import doa.ink.workbench.service.identity.SessionService
+import io.mockk.coEvery
+import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import java.time.Clock
 import java.time.Instant
@@ -89,19 +91,29 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
         users = UnusedUserRepository,
         loginAccounts = UnusedLoginAccountRepository,
         bearerTokens = UnusedBearerTokenRepository,
-        roles = UnusedRoleRepository,
-        policies = UnusedPolicyRepository,
-        assignments = UnusedAssignmentRepository,
+        adminUsers = UnusedAdminUserRepository,
+        accessGrants = UnusedAccessGrantRepository,
         projects = UnusedProjectRepository,
       )
 
     @Bean
-    fun sessionService(clock: Clock, publicIdResolver: PublicIdResolver): SessionService =
+    fun loginCompletionService(): LoginCompletionService =
+      mockk<LoginCompletionService>(relaxed = true).also {
+        coEvery { it.adminScopes(any()) } returns emptyList()
+      }
+
+    @Bean
+    fun sessionService(
+      clock: Clock,
+      publicIdResolver: PublicIdResolver,
+      loginCompletionService: LoginCompletionService,
+    ): SessionService =
       SessionService(
         sessions = TestAuthSessions,
         tenantMembers = TestTenantMembers,
         tenants = TestTenants,
         publicIds = publicIdResolver,
+        loginCompletionService = loginCompletionService,
         clock = clock,
       )
   }
@@ -185,8 +197,6 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findByApiId(apiId: String) = null
 
     override suspend fun findByPrimaryEmail(primaryEmail: String) = null
-
-    override suspend fun existsSystemUser(): Boolean = false
   }
 
   private object UnusedLoginAccountRepository : LoginAccountRepository {
@@ -265,56 +275,69 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
   }
 
-  private object UnusedRoleRepository : RoleRepository {
-    override suspend fun create(command: doa.ink.workbench.core.permission.CreateRoleCommand) =
+  private object UnusedAdminUserRepository : AdminUserRepository {
+    override suspend fun create(command: doa.ink.workbench.core.permission.CreateAdminUserCommand) =
       error("unused")
 
     override suspend fun findById(id: UUID) = null
 
-    override suspend fun findByApiId(tenantId: UUID?, apiId: String) = null
+    override suspend fun findByApiId(apiId: String) = null
 
-    override suspend fun findByCode(tenantId: UUID?, code: String) = null
+    override suspend fun findActiveInstanceAdmin(userId: UUID, at: OffsetDateTime) = null
 
-    override suspend fun list(tenantId: UUID?) =
-      emptyList<doa.ink.workbench.core.permission.RoleRecord>()
-  }
+    override suspend fun findActiveTenantAdmin(tenantId: UUID, userId: UUID, at: OffsetDateTime) =
+      null
 
-  private object UnusedPolicyRepository : PermissionPolicyRepository {
-    override suspend fun create(
-      command: doa.ink.workbench.core.permission.CreatePermissionPolicyCommand
-    ) = error("unused")
+    override suspend fun existsActiveInstanceAdmin() = false
 
-    override suspend fun listByTenant(tenantId: UUID) =
-      emptyList<doa.ink.workbench.core.permission.PermissionPolicyRecord>()
+    override suspend fun isActiveInstanceAdmin(userId: UUID, at: OffsetDateTime) = false
 
-    override suspend fun findByApiId(tenantId: UUID, apiId: String) = null
+    override suspend fun isActiveTenantAdmin(tenantId: UUID, userId: UUID, at: OffsetDateTime) =
+      false
 
-    override suspend fun listActiveByRoles(
-      tenantId: UUID,
-      roleIds: Collection<UUID>,
-      at: OffsetDateTime,
-    ) = emptyList<doa.ink.workbench.core.permission.PermissionPolicyRecord>()
+    override suspend fun listByUser(userId: UUID) =
+      emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
 
-    override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
-  }
+    override suspend fun listInstanceAdmins() =
+      emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
 
-  private object UnusedAssignmentRepository : RoleAssignmentRepository {
-    override suspend fun assign(command: doa.ink.workbench.core.permission.AssignRoleCommand) =
-      error("unused")
-
-    override suspend fun listByTenant(tenantId: UUID) =
-      emptyList<doa.ink.workbench.core.permission.RoleAssignmentRecord>()
-
-    override suspend fun findByApiId(tenantId: UUID, apiId: String) = null
-
-    override suspend fun listActiveByUser(
-      tenantId: UUID,
-      userId: UUID,
-      projectId: UUID?,
-      at: OffsetDateTime,
-    ) = emptyList<doa.ink.workbench.core.permission.RoleAssignmentRecord>()
+    override suspend fun listTenantAdmins(tenantId: UUID) =
+      emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
 
     override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
+  }
+
+  private object UnusedAccessGrantRepository : AccessGrantRepository {
+    override suspend fun create(
+      command: doa.ink.workbench.core.permission.CreateAccessGrantCommand
+    ) = error("unused")
+
+    override suspend fun findById(id: UUID) = null
+
+    override suspend fun findByApiId(apiId: String) = null
+
+    override suspend fun listBySubject(
+      subjectUserId: UUID,
+      scope: doa.ink.workbench.core.permission.GrantScope?,
+      tenantId: UUID?,
+      projectId: UUID?,
+    ) = emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+    override suspend fun listActiveForSubject(
+      subjectUserId: UUID,
+      scope: doa.ink.workbench.core.permission.GrantScope,
+      tenantId: UUID?,
+      projectId: UUID?,
+      at: OffsetDateTime,
+    ) = emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+    override suspend fun listByTenant(tenantId: UUID) =
+      emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+    override suspend fun listInstanceGrants() =
+      emptyList<doa.ink.workbench.core.permission.AccessGrantRecord>()
+
+    override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
   }
 
   private object UnusedProjectRepository : ProjectRepository {

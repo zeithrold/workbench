@@ -28,8 +28,12 @@ class PasswordLoginAuthenticator(
     val password =
       command.password ?: throw InvalidRequestException("password is required for password login.")
     val normalizedSubject = normalizeSubject(subject)
+    val methodCode =
+      command.loginMethodId?.let { apiId ->
+        loginAccounts.findLoginMethodByApiId(apiId)?.code
+      } ?: PASSWORD_METHOD_CODE
     val account =
-      loginAccounts.findLoginAccountByMethodAndSubject(PASSWORD_METHOD_CODE, normalizedSubject)
+      loginAccounts.findLoginAccountByMethodAndSubject(methodCode, normalizedSubject)
         ?: throw AuthenticationFailedException("Invalid credentials.")
 
     val passwordHash =

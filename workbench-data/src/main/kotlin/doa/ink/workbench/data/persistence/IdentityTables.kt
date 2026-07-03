@@ -31,7 +31,6 @@ object UsersTable : Table("users") {
   val avatarUrl = text("avatar_url").nullable()
   val timezone = text("timezone").nullable()
   val locale = text("locale").nullable()
-  val isSystem = bool("is_system")
   val archivedAt = timestampWithTimeZone("archived_at").nullable()
   val archivedBy = uuid("archived_by").references(id).nullable()
   val deletedAt = timestampWithTimeZone("deleted_at").nullable()

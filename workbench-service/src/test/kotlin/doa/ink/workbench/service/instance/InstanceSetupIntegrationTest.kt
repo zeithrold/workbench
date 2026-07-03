@@ -9,8 +9,12 @@ import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
 import doa.ink.workbench.data.identity.ExposedTenantMemberRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
 import doa.ink.workbench.data.identity.ExposedUserRepository
+import doa.ink.workbench.data.permission.ExposedAccessGrantRepository
+import doa.ink.workbench.data.permission.ExposedAdminUserRepository
 import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.AuthApplicationService
+import doa.ink.workbench.service.identity.LoginCompletionService
+import doa.ink.workbench.service.identity.LoginDiscoveryService
 import doa.ink.workbench.service.identity.MembershipService
 import doa.ink.workbench.service.identity.SessionService
 import doa.ink.workbench.service.identity.auth.AuthenticationService
@@ -56,18 +60,9 @@ class InstanceSetupIntegrationTest :
         }
       val tenants = ExposedTenantRepository(database)
       val deps = UnusedPublicIdResolverDependencies(loginAccounts = loginAccounts)
-      val publicIds =
-        PublicIdResolver(
-          tenants = tenants,
-          users = users,
-          loginAccounts = loginAccounts,
-          bearerTokens = ExposedBearerTokenRepository(database),
-          roles = deps.roles,
-          policies = deps.policies,
-          assignments = deps.assignments,
-          projects = deps.projects,
-        )
       val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
+      val adminUsers = ExposedAdminUserRepository(database)
+      val accessGrants = ExposedAccessGrantRepository(database)
       val authenticationService =
         AuthenticationService(
           users = users,
@@ -88,6 +83,24 @@ class InstanceSetupIntegrationTest :
           credentialHasher = Sha256CredentialHasher(),
           clock = clock,
         )
+      val publicIds =
+        PublicIdResolver(
+          tenants = tenants,
+          users = users,
+          loginAccounts = loginAccounts,
+          bearerTokens = ExposedBearerTokenRepository(database),
+          adminUsers = adminUsers,
+          accessGrants = accessGrants,
+          projects = deps.projects,
+        )
+      val loginCompletionService =
+        LoginCompletionService(
+          loginAccounts = loginAccounts,
+          tenantMembers = ExposedTenantMemberRepository(database),
+          tenants = tenants,
+          adminUsers = adminUsers,
+          clock = clock,
+        )
       val authApplicationService =
         AuthApplicationService(
           authenticationService = authenticationService,
@@ -97,14 +110,26 @@ class InstanceSetupIntegrationTest :
               tenantMembers = ExposedTenantMemberRepository(database),
               tenants = tenants,
               publicIds = publicIds,
+              loginCompletionService = loginCompletionService,
               clock = clock,
             ),
           membershipService =
             MembershipService(
               tenantMembers = ExposedTenantMemberRepository(database),
               tenants = tenants,
+              adminUsers = adminUsers,
+              clock = clock,
             ),
           loginAccounts = loginAccounts,
+          loginDiscoveryService =
+            LoginDiscoveryService(
+              users = users,
+              loginAccounts = loginAccounts,
+              tenantMembers = ExposedTenantMemberRepository(database),
+              adminUsers = adminUsers,
+              clock = clock,
+            ),
+          loginCompletionService = loginCompletionService,
           federatedAuthService = mockk<FederatedAuthService>(relaxed = true),
           magicLinkAuthService = mockk<MagicLinkAuthService>(relaxed = true),
           publicIds = publicIds,
@@ -113,9 +138,12 @@ class InstanceSetupIntegrationTest :
         InstanceSetupService(
           users = users,
           loginAccounts = loginAccounts,
+          adminUsers = adminUsers,
+          accessGrants = accessGrants,
           passwordHasher = passwordHasher,
           instanceProperties = InstanceProperties(),
           authApplicationService = authApplicationService,
+          clock = clock,
         )
     }
 
@@ -135,7 +163,7 @@ class InstanceSetupIntegrationTest :
             )
           )
         result.user.displayName shouldBe "Admin"
-        result.loginMethod.code shouldBe "password"
+        result.loginMethod.code shouldBe "instance_password"
         result.session.sessionSecret.shouldNotBeBlank()
         service.setupStatus().initialized shouldBe true
       }

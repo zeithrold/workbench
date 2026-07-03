@@ -10,11 +10,13 @@ data class SessionView(
   val user: UserSummary,
   val activeTenant: TenantSummary?,
   val sessionExpiresAt: OffsetDateTime,
+  val adminScopes: List<String> = emptyList(),
 )
 
 data class TenantMembershipView(
   val id: String,
   val tenant: TenantSummary,
+  val isTenantAdmin: Boolean = false,
 )
 
 data class LoginOptionView(
@@ -38,6 +40,9 @@ data class LoginView(
   val sessionExpiresAt: OffsetDateTime,
   val sessionSecret: String,
   val bearerToken: IssuedTokenView?,
+  val loginContext: LoginContext = LoginContext.TENANT,
+  val activeTenant: TenantSummary? = null,
+  val eligibleTenants: List<TenantSummary> = emptyList(),
 )
 
 data class FederatedAuthorizeView(

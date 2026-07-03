@@ -16,33 +16,53 @@ import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
 import doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
+import doa.ink.workbench.core.permission.AccessGrantRepository
+import doa.ink.workbench.core.permission.AdminScope
+import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.CreateAccessGrantCommand
+import doa.ink.workbench.core.permission.CreateAdminUserCommand
+import doa.ink.workbench.core.permission.GrantScope
+import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.service.identity.AuthApplicationService
 import doa.ink.workbench.service.identity.LoginView
 import doa.ink.workbench.service.identity.auth.normalizeSubject
+import java.time.Clock
+import java.time.OffsetDateTime
 import org.springframework.stereotype.Service
 
-private const val PASSWORD_METHOD_CODE = "password"
+private const val INSTANCE_PASSWORD_METHOD_CODE = "instance_password"
+
+private val DEFAULT_INSTANCE_GRANTS =
+  listOf(
+    AuthorizationAction("tenant.create") to "tenant:*",
+    AuthorizationAction("tenant.read") to "tenant:*",
+    AuthorizationAction("tenant.update") to "tenant:*",
+  )
 
 @Service
 class InstanceSetupService(
   private val users: UserRepository,
   private val loginAccounts: LoginAccountRepository,
+  private val adminUsers: AdminUserRepository,
+  private val accessGrants: AccessGrantRepository,
   private val passwordHasher: PasswordHasher,
   private val instanceProperties: InstanceProperties,
   private val authApplicationService: AuthApplicationService,
+  private val clock: Clock,
 ) {
   suspend fun setupStatus(): InstanceSetupStatusView =
-    InstanceSetupStatusView(initialized = users.existsSystemUser())
+    InstanceSetupStatusView(initialized = adminUsers.existsActiveInstanceAdmin())
 
+  @Suppress("LongMethod")
   suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapView {
     validateSetupToken(command.setupToken)
-    if (users.existsSystemUser()) {
+    if (adminUsers.existsActiveInstanceAdmin()) {
       throw InstanceAlreadyInitializedException("Instance is already initialized.")
     }
 
-    val passwordMethod =
-      loginAccounts.findLoginMethodByCode(PASSWORD_METHOD_CODE)
-        ?: throw InvalidRequestException("Password login method is not configured.")
+    val instancePasswordMethod =
+      loginAccounts.findLoginMethodByCode(INSTANCE_PASSWORD_METHOD_CODE)
+        ?: throw InvalidRequestException("Instance password login method is not configured.")
 
     val normalizedEmail = normalizeSubject(command.email)
     val user =
@@ -50,13 +70,12 @@ class InstanceSetupService(
         CreateUserCommand(
           displayName = command.displayName,
           primaryEmail = normalizedEmail,
-          isSystem = true,
         )
       )
     val loginAccount =
       loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
-          loginMethodId = passwordMethod.id,
+          loginMethodId = instancePasswordMethod.id,
           subject = command.email.trim(),
           normalizedSubject = normalizedEmail,
           displayName = command.displayName,
@@ -77,11 +96,33 @@ class InstanceSetupService(
       )
     )
 
+    val now = OffsetDateTime.now(clock)
+    adminUsers.create(
+      CreateAdminUserCommand(
+        userId = user.id,
+        scope = AdminScope.INSTANCE,
+        grantedBy = user.id,
+        validFrom = now,
+      )
+    )
+    DEFAULT_INSTANCE_GRANTS.forEach { (action, pattern) ->
+      accessGrants.create(
+        CreateAccessGrantCommand(
+          scope = GrantScope.INSTANCE,
+          subjectUserId = user.id,
+          action = action,
+          resourcePattern = pattern,
+          validFrom = now,
+          grantedBy = user.id,
+        )
+      )
+    }
+
     val loginView =
       authApplicationService.login(
         LoginCommand(
           method = LoginMethodKind.PASSWORD,
-          loginMethodId = passwordMethod.apiId.value,
+          loginMethodId = instancePasswordMethod.apiId.value,
           subject = command.email.trim(),
           password = command.password,
           ipAddress = command.ipAddress,
@@ -91,7 +132,7 @@ class InstanceSetupService(
 
     return InstanceBootstrapView(
       user = UserSummary.from(user),
-      loginMethod = LoginMethodSummary.from(passwordMethod),
+      loginMethod = LoginMethodSummary.from(instancePasswordMethod),
       session = loginView,
     )
   }

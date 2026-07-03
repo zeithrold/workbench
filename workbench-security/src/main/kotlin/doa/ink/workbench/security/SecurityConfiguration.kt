@@ -29,6 +29,7 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
           .requestMatchers(
             "/api/auth/login",
             "/api/auth/login-options",
+            "/api/auth/login-discovery",
             "/api/auth/federated/**",
             "/api/auth/oauth2/callback",
             "/api/auth/saml2/**",

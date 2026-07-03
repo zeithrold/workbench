@@ -4,9 +4,15 @@ import doa.ink.workbench.core.identity.model.CredentialType
 import java.time.Instant
 import java.util.UUID
 
+enum class AuthorizationScope {
+  INSTANCE,
+  TENANT,
+}
+
 data class AuthorizationRequest(
+  val scope: AuthorizationScope,
   val subject: AuthorizationSubject,
-  val tenantId: UUID,
+  val tenantId: UUID?,
   val action: AuthorizationAction,
   val resource: AuthorizationResource,
   val environment: AuthorizationEnvironment,
@@ -33,7 +39,7 @@ value class AuthorizationAction(val code: String) {
 data class AuthorizationResource(
   val type: String,
   val id: String? = null,
-  val tenantId: UUID,
+  val tenantId: UUID? = null,
   val projectId: UUID? = null,
   val attributes: Map<String, String> = emptyMap(),
 ) {
@@ -58,6 +64,5 @@ sealed interface AuthorizationDecision {
 data class DecisionReason(
   val code: String,
   val message: String,
-  val policyId: UUID? = null,
-  val roleId: UUID? = null,
+  val grantId: UUID? = null,
 )

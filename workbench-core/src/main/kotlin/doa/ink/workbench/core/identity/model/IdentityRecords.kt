@@ -23,7 +23,6 @@ data class UserRecord(
   val avatarUrl: String? = null,
   val timezone: String? = null,
   val locale: String? = null,
-  val isSystem: Boolean = false,
   val createdAt: OffsetDateTime? = null,
   val updatedAt: OffsetDateTime? = null,
 )

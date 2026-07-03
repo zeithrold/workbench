@@ -65,7 +65,6 @@ class ExposedUserRepository(private val database: Database) : UserRepository {
         it[UsersTable.avatarUrl] = command.avatarUrl
         it[UsersTable.timezone] = command.timezone
         it[UsersTable.locale] = command.locale
-        it[UsersTable.isSystem] = command.isSystem
         it[UsersTable.createdAt] = now
         it[UsersTable.updatedAt] = now
       }
@@ -97,14 +96,6 @@ class ExposedUserRepository(private val database: Database) : UserRepository {
         .where { (UsersTable.deletedAt.isNull()) and (UsersTable.primaryEmail eq primaryEmail) }
         .singleOrNull()
         ?.toUserRecord()
-    }
-
-  override suspend fun existsSystemUser(): Boolean =
-    suspendTransaction(db = database) {
-      UsersTable.selectAll()
-        .where { (UsersTable.deletedAt.isNull()) and (UsersTable.isSystem eq true) }
-        .limit(1)
-        .any()
     }
 }
 

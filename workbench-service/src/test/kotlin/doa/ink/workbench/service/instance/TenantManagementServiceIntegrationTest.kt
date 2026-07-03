@@ -42,9 +42,8 @@ class TenantManagementServiceIntegrationTest :
               users = deps.users,
               loginAccounts = loginAccounts,
               bearerTokens = deps.bearerTokens,
-              roles = deps.roles,
-              policies = deps.policies,
-              assignments = deps.assignments,
+              adminUsers = deps.adminUsers,
+              accessGrants = deps.accessGrants,
               projects = deps.projects,
             ),
         )

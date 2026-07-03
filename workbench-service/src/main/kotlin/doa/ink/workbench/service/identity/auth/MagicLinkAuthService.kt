@@ -87,7 +87,11 @@ class MagicLinkAuthService(
     val user =
       loginAccounts.findLinkedUser(account.id)
         ?: throw InvalidRequestException("No user is linked to this magic link.")
-    return MagicLinkIdentity(user = user, loginAccount = account)
+    return MagicLinkIdentity(
+      user = user,
+      loginAccount = account,
+      tenantId = record.tenantId,
+    )
   }
 
   private fun buildMailSender(config: MailSmtpTenantConfig): JavaMailSenderImpl {
@@ -107,4 +111,5 @@ class MagicLinkAuthService(
 data class MagicLinkIdentity(
   val user: doa.ink.workbench.core.identity.model.UserRecord,
   val loginAccount: doa.ink.workbench.core.identity.model.LoginAccountRecord,
+  val tenantId: java.util.UUID,
 )

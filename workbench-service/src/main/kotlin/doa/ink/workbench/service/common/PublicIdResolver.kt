@@ -9,12 +9,10 @@ import doa.ink.workbench.core.identity.model.BearerTokenRecord
 import doa.ink.workbench.core.identity.model.LoginMethodDefinitionRecord
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UserRecord
-import doa.ink.workbench.core.permission.PermissionPolicyRecord
-import doa.ink.workbench.core.permission.PermissionPolicyRepository
-import doa.ink.workbench.core.permission.RoleAssignmentRecord
-import doa.ink.workbench.core.permission.RoleAssignmentRepository
-import doa.ink.workbench.core.permission.RoleRecord
-import doa.ink.workbench.core.permission.RoleRepository
+import doa.ink.workbench.core.permission.AccessGrantRecord
+import doa.ink.workbench.core.permission.AccessGrantRepository
+import doa.ink.workbench.core.permission.AdminUserRecord
+import doa.ink.workbench.core.permission.AdminUserRepository
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.model.ProjectRecord
 import java.util.UUID
@@ -26,9 +24,8 @@ class PublicIdResolver(
   private val users: UserRepository,
   private val loginAccounts: LoginAccountRepository,
   private val bearerTokens: BearerTokenRepository,
-  private val roles: RoleRepository,
-  private val policies: PermissionPolicyRepository,
-  private val assignments: RoleAssignmentRepository,
+  private val adminUsers: AdminUserRepository,
+  private val accessGrants: AccessGrantRepository,
   private val projects: ProjectRepository,
 ) {
   suspend fun resolveTenant(publicId: String): TenantRecord =
@@ -44,16 +41,11 @@ class PublicIdResolver(
   suspend fun resolveBearerToken(publicId: String): BearerTokenRecord =
     bearerTokens.findByApiId(publicId) ?: throw ResourceNotFoundException("Bearer token not found.")
 
-  suspend fun resolveRole(tenantId: UUID, publicId: String): RoleRecord =
-    roles.findByApiId(tenantId, publicId) ?: throw ResourceNotFoundException("Role not found.")
+  suspend fun resolveAdminUser(publicId: String): AdminUserRecord =
+    adminUsers.findByApiId(publicId) ?: throw ResourceNotFoundException("Admin user not found.")
 
-  suspend fun resolvePolicy(tenantId: UUID, publicId: String): PermissionPolicyRecord =
-    policies.findByApiId(tenantId, publicId)
-      ?: throw ResourceNotFoundException("Permission policy not found.")
-
-  suspend fun resolveAssignment(tenantId: UUID, publicId: String): RoleAssignmentRecord =
-    assignments.findByApiId(tenantId, publicId)
-      ?: throw ResourceNotFoundException("Role assignment not found.")
+  suspend fun resolveAccessGrant(publicId: String): AccessGrantRecord =
+    accessGrants.findByApiId(publicId) ?: throw ResourceNotFoundException("Access grant not found.")
 
   suspend fun resolveProject(tenantId: UUID, publicId: String): ProjectRecord =
     projects.findByApiId(tenantId, publicId)

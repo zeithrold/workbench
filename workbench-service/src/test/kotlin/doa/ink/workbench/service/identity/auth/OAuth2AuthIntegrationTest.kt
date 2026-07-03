@@ -79,13 +79,13 @@ class OAuth2AuthIntegrationTest :
             password = KeycloakTestContainer.OAUTH2_PASSWORD,
             redirectUri = KeycloakTestContainer.REDIRECT_URI,
           )
-        val identity =
+        val result =
           federatedAuthService.completeOAuthCallback(
             code = code,
             state = authorize.state,
             redirectUri = KeycloakTestContainer.REDIRECT_URI,
           )
-        identity.user.id shouldBe fixture.oauth2UserId
+        result.identity.user.id shouldBe fixture.oauth2UserId
       }
     }
   })

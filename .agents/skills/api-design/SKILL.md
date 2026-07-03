@@ -355,5 +355,6 @@ See [reference.md](reference.md) for full spec.
 
 ## Additional Resources
 
+- [workbench-development](../workbench-development/SKILL.md) — end-to-end dev workflow, verification, PR/CI
 - [reference.md](reference.md) — REST deep-dive, status codes, pagination, migration, OpenAPI templates
 - [examples.md](examples.md) — CRUD patterns, Ref/Embed JSON, before/after migrations

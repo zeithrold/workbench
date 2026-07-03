@@ -1,5 +1,3 @@
-@file:Suppress("TooManyFunctions")
-
 package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
@@ -15,17 +13,35 @@ import doa.ink.workbench.service.identity.auth.normalizeSubject
 import org.springframework.stereotype.Service
 
 @Service
+@Suppress("TooManyFunctions")
 class AuthApplicationService(
   private val authenticationService: AuthenticationService,
   private val sessionService: SessionService,
   private val membershipService: MembershipService,
   private val loginAccounts: LoginAccountRepository,
+  private val loginDiscoveryService: LoginDiscoveryService,
+  private val loginCompletionService: LoginCompletionService,
   private val federatedAuthService: FederatedAuthService,
   private val magicLinkAuthService: MagicLinkAuthService,
   private val publicIds: PublicIdResolver,
 ) {
-  suspend fun login(command: LoginCommand): LoginView =
-    toLoginView(authenticationService.login(command))
+  suspend fun login(command: LoginCommand): LoginView {
+    val identity = authenticationService.authenticate(command)
+    val completion = loginCompletionService.resolve(identity, command)
+    val result =
+      authenticationService.completeLogin(
+        identity = identity,
+        issueBearerToken = command.issueBearerToken,
+        ipAddress = command.ipAddress,
+        userAgent = command.userAgent,
+        tenantIdForAudit = completion.activeTenantId,
+        activeTenantId = completion.activeTenantId,
+      )
+    return toLoginView(result, completion)
+  }
+
+  suspend fun discoverLogin(identifier: String): LoginDiscoveryView =
+    loginDiscoveryService.discover(identifier)
 
   suspend fun logout(client: ClientContext, sessionSecret: String?, bearerToken: String?) {
     sessionSecret?.let {
@@ -111,15 +127,8 @@ class AuthApplicationService(
     redirectUri: String,
     client: ClientContext,
   ): LoginView {
-    val identity = federatedAuthService.completeOAuthCallback(code, state, redirectUri)
-    return toLoginView(
-      authenticationService.completeLogin(
-        identity = identity,
-        issueBearerToken = false,
-        ipAddress = client.ipAddress,
-        userAgent = client.userAgent,
-      )
-    )
+    val federated = federatedAuthService.completeOAuthCallback(code, state, redirectUri)
+    return completeFederatedLogin(federated, client)
   }
 
   suspend fun completeSamlLogin(
@@ -127,15 +136,8 @@ class AuthApplicationService(
     relayState: String,
     client: ClientContext,
   ): LoginView {
-    val identity = federatedAuthService.completeSamlAcs(samlResponse, relayState)
-    return toLoginView(
-      authenticationService.completeLogin(
-        identity = identity,
-        issueBearerToken = false,
-        ipAddress = client.ipAddress,
-        userAgent = client.userAgent,
-      )
-    )
+    val federated = federatedAuthService.completeSamlAcs(samlResponse, relayState)
+    return completeFederatedLogin(federated, client)
   }
 
   suspend fun requestMagicLink(email: String, tenantId: String, loginMethodId: String) {
@@ -148,23 +150,46 @@ class AuthApplicationService(
 
   suspend fun verifyMagicLink(token: String, client: ClientContext): LoginView {
     val identity = magicLinkAuthService.resolveToken(token)
-    return toLoginView(
-      authenticationService.completeLogin(
+    return completeFederatedLogin(
+      doa.ink.workbench.service.identity.auth.FederatedLoginResult(
         identity =
           doa.ink.workbench.core.identity.model.AuthenticatedIdentity(
             user = identity.user,
             loginAccount = identity.loginAccount,
           ),
-        issueBearerToken = false,
-        ipAddress = client.ipAddress,
-        userAgent = client.userAgent,
-        tenantIdForAudit = null,
-      )
+        tenantId = identity.tenantId,
+      ),
+      client,
     )
   }
 
+  private suspend fun completeFederatedLogin(
+    federated: doa.ink.workbench.service.identity.auth.FederatedLoginResult,
+    client: ClientContext,
+  ): LoginView {
+    val tenantId = federated.tenantId
+    val result =
+      authenticationService.completeLogin(
+        identity = federated.identity,
+        issueBearerToken = false,
+        ipAddress = client.ipAddress,
+        userAgent = client.userAgent,
+        tenantIdForAudit = tenantId,
+        activeTenantId = tenantId,
+      )
+    val completion =
+      LoginCompletion(
+        loginContext = LoginContext.TENANT,
+        activeTenantId = tenantId,
+        activeTenant = sessionService.tenantSummary(tenantId),
+        eligibleTenants = emptyList(),
+      )
+    return toLoginView(result, completion)
+  }
+
   private fun toLoginView(
-    result: doa.ink.workbench.core.identity.model.AuthenticationResult
+    result: doa.ink.workbench.core.identity.model.AuthenticationResult,
+    completion: LoginCompletion,
   ): LoginView =
     LoginView(
       user = UserSummary.from(result.principal.user),
@@ -178,5 +203,8 @@ class AuthApplicationService(
             expiresAt = it.expiresAt,
           )
         },
+      loginContext = completion.loginContext,
+      activeTenant = completion.activeTenant,
+      eligibleTenants = completion.eligibleTenants,
     )
 }
