@@ -243,17 +243,27 @@ class FederatedAuthService(
     tokenResponse: JsonObject,
     kind: LoginMethodKind,
   ): String {
-    tokenResponse.stringValue("id_token")?.let { idToken ->
-      val payload = idToken.split(".").getOrNull(1) ?: return@let null
-      val decoded = String(Base64.getUrlDecoder().decode(payload), StandardCharsets.UTF_8)
-      val claims = json.parseToJsonElement(decoded).jsonObject
-      claims.stringValue("email")?.let {
-        return it
-      }
-      claims.stringValue("sub")?.let {
+    if (kind != LoginMethodKind.OAUTH2) {
+      subjectFromIdToken(tokenResponse)?.let {
         return it
       }
     }
+    return subjectFromUserInfo(config, tokenResponse, kind)
+  }
+
+  private fun subjectFromIdToken(tokenResponse: JsonObject): String? {
+    val idToken = tokenResponse.stringValue("id_token") ?: return null
+    val payload = idToken.split(".").getOrNull(1) ?: return null
+    val decoded = String(Base64.getUrlDecoder().decode(payload), StandardCharsets.UTF_8)
+    val claims = json.parseToJsonElement(decoded).jsonObject
+    return claims.stringValue("email") ?: claims.stringValue("sub")
+  }
+
+  private fun subjectFromUserInfo(
+    config: JsonObject,
+    tokenResponse: JsonObject,
+    kind: LoginMethodKind,
+  ): String {
     val accessToken =
       tokenResponse.stringValue("access_token")
         ?: throw InvalidRequestException("access_token missing.")
@@ -262,22 +272,24 @@ class FederatedAuthService(
         ?: config.stringValue("issuer")?.let {
           if (kind == LoginMethodKind.OIDC) "$it/oidc/userinfo" else null
         }
-    if (userInfoEndpoint != null) {
-      val request =
-        HttpRequest.newBuilder()
-          .uri(URI.create(userInfoEndpoint))
-          .header("Authorization", "Bearer $accessToken")
-          .GET()
-          .build()
-      val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-      if (response.statusCode() in 200..299) {
-        val body = json.parseToJsonElement(response.body()).jsonObject
-        body.stringValue("email")?.let {
-          return it
-        }
-        body.stringValue("sub")?.let {
-          return it
-        }
+        ?: throw InvalidRequestException("userinfo_endpoint missing.")
+    val request =
+      HttpRequest.newBuilder()
+        .uri(URI.create(userInfoEndpoint))
+        .header("Authorization", "Bearer $accessToken")
+        .GET()
+        .build()
+    val response = http.send(request, HttpResponse.BodyHandlers.ofString())
+    if (response.statusCode() in 200..299) {
+      val body = json.parseToJsonElement(response.body()).jsonObject
+      body.stringValue("email")?.let {
+        return it
+      }
+      body.stringValue("preferred_username")?.let {
+        return it
+      }
+      body.stringValue("sub")?.let {
+        return it
       }
     }
     throw InvalidRequestException("Unable to resolve federated subject.")

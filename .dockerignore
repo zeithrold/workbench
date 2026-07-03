@@ -1,0 +1,4 @@
+**
+!docker/jvm-entrypoint.sh
+!workbench-web/build/libs/workbench-web.jar
+!workbench-worker/build/libs/workbench-worker.jar

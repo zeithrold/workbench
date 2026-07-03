@@ -1,0 +1,87 @@
+{
+  "realm": "workbench-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "clients": [
+    {
+      "clientId": "workbench-oidc",
+      "name": "Workbench OIDC Test Client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "oidc-client-secret",
+      "redirectUris": [
+        "http://localhost/api/auth/oauth2/callback",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["profile", "email", "roles"]
+    },
+    {
+      "clientId": "workbench-oauth2",
+      "name": "Workbench OAuth2 Test Client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "oauth2-client-secret",
+      "redirectUris": [
+        "http://localhost/api/auth/oauth2/callback",
+        "http://localhost:*/*",
+        "http://127.0.0.1:*/*"
+      ],
+      "webOrigins": ["+"],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": ["profile", "email"]
+    }
+  ],
+  "users": [
+    {
+      "username": "oidc-user@example.test",
+      "email": "oidc-user@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Oidc",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "oidc-test-pass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "oauth-user@example.test",
+      "email": "oauth-user@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "OAuth",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "oauth-test-pass",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
