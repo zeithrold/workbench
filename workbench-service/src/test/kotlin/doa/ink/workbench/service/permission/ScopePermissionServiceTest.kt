@@ -9,6 +9,8 @@ import doa.ink.workbench.core.permission.AccessGrantRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
 import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.GrantScope
+import doa.ink.workbench.core.permission.PermissionBindingRepository
+import doa.ink.workbench.core.permission.ResolvedPermissionRule
 import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
 import doa.ink.workbench.core.permission.model.AuthorizationEnvironment
@@ -39,11 +41,13 @@ class ScopePermissionServiceTest :
     val tenantMembers = mockk<TenantMemberRepository>()
     val adminUserQueries = mockk<AdminUserQueryRepository>()
     val accessGrants = mockk<AccessGrantRepository>()
+    val permissionBindings = mockk<PermissionBindingRepository>()
 
     val service =
       ScopePermissionService(
         adminUserQueries = adminUserQueries,
         accessGrants = accessGrants,
+        permissionBindings = permissionBindings,
         tenantMembers = tenantMembers,
         clock = clock,
       )
@@ -102,20 +106,15 @@ class ScopePermissionServiceTest :
       coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
         membership(TenantMemberStatus.ACTIVE)
       coEvery {
-        accessGrants.listActiveForSubject(userId, GrantScope.TENANT, tenantId, null, now)
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
       } returns
         listOf(
-          grant(
-            scope = GrantScope.TENANT,
-            tenantId = tenantId,
+          rule(
             action = "project.read",
             pattern = "project:*",
             effect = PermissionEffect.ALLOW,
           )
         )
-      coEvery {
-        accessGrants.listActiveForSubject(userId, GrantScope.PROJECT, tenantId, projectId, now)
-      } returns emptyList()
 
       val decision = service.decide(request(AuthorizationScope.TENANT, projectId))
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
@@ -156,4 +155,16 @@ private fun grant(
     validTo = null,
     grantedBy = null,
     createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+  )
+
+private fun rule(
+  action: String,
+  pattern: String,
+  effect: PermissionEffect,
+): ResolvedPermissionRule =
+  ResolvedPermissionRule(
+    bindingId = UUID.randomUUID(),
+    action = AuthorizationAction(action),
+    resourcePattern = pattern,
+    effect = effect,
   )

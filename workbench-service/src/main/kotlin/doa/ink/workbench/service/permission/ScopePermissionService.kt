@@ -7,6 +7,8 @@ import doa.ink.workbench.core.permission.AccessGrantRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
 import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.GrantScope
+import doa.ink.workbench.core.permission.PermissionBindingRepository
+import doa.ink.workbench.core.permission.ResolvedPermissionRule
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
 import doa.ink.workbench.core.permission.model.AuthorizationRequest
 import doa.ink.workbench.core.permission.model.AuthorizationScope
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service
 class ScopePermissionService(
   private val adminUserQueries: AdminUserQueryRepository,
   private val accessGrants: AccessGrantRepository,
+  private val permissionBindings: PermissionBindingRepository,
   private val tenantMembers: TenantMemberRepository,
   private val clock: Clock,
 ) : PermissionService {
@@ -74,27 +77,14 @@ class ScopePermissionService(
       return deny("token_scope_denied", "The credential does not allow this action.")
     }
 
-    val tenantGrants =
-      accessGrants.listActiveForSubject(
+    val rules =
+      permissionBindings.listActiveRulesForSubject(
         subjectUserId = request.subject.userId,
-        scope = GrantScope.TENANT,
         tenantId = tenantId,
-        projectId = null,
+        projectId = request.resource.projectId,
         at = at,
       )
-    val projectGrants =
-      if (request.resource.projectId != null) {
-        accessGrants.listActiveForSubject(
-          subjectUserId = request.subject.userId,
-          scope = GrantScope.PROJECT,
-          tenantId = tenantId,
-          projectId = request.resource.projectId,
-          at = at,
-        )
-      } else {
-        emptyList()
-      }
-    return decideFromGrants(tenantGrants + projectGrants, request)
+    return decideFromRules(rules, request)
   }
 
   @Suppress("ReturnCount")
@@ -141,6 +131,41 @@ class ScopePermissionService(
   }
 
   private fun AccessGrantRecord.matches(request: AuthorizationRequest): Boolean =
+    action.code == request.action.code &&
+      resourceMatches(resourcePattern, request.resource.canonical)
+
+  @Suppress("ReturnCount")
+  private fun decideFromRules(
+    rules: List<ResolvedPermissionRule>,
+    request: AuthorizationRequest,
+  ): AuthorizationDecision {
+    val matching = rules.filter { it.matches(request) }
+    matching
+      .firstOrNull { it.effect == PermissionEffect.DENY }
+      ?.let {
+        return AuthorizationDecision.Deny(
+          DecisionReason(
+            code = "binding_denied",
+            message = "A matching policy binding denied the request.",
+            grantId = it.bindingId,
+          )
+        )
+      }
+    matching
+      .firstOrNull { it.effect == PermissionEffect.ALLOW }
+      ?.let {
+        return AuthorizationDecision.Allow(
+          DecisionReason(
+            code = "binding_allowed",
+            message = "A matching policy binding allowed the request.",
+            grantId = it.bindingId,
+          )
+        )
+      }
+    return deny("no_matching_binding", "No active policy binding allows this request.")
+  }
+
+  private fun ResolvedPermissionRule.matches(request: AuthorizationRequest): Boolean =
     action.code == request.action.code &&
       resourceMatches(resourcePattern, request.resource.canonical)
 
