@@ -4,8 +4,12 @@ import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.ids.PublicId
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.model.CreateProjectCommand
+import doa.ink.workbench.core.project.model.NonMemberJoinPolicy
+import doa.ink.workbench.core.project.model.NonMemberVisibility
 import doa.ink.workbench.core.project.model.ProjectRecord
+import doa.ink.workbench.core.project.model.ProjectStatus
 import doa.ink.workbench.core.project.model.UpdateProjectCommand
+import doa.ink.workbench.data.persistence.ProjectIdentifierAliasesTable
 import doa.ink.workbench.data.persistence.ProjectsTable
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -15,6 +19,7 @@ import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -36,18 +41,29 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
         it[ProjectsTable.name] = command.name
         it[ProjectsTable.identifier] = command.identifier
         it[ProjectsTable.description] = command.description
+        it[ProjectsTable.status] = ProjectStatus.ACTIVE.dbValue
+        it[ProjectsTable.nonMemberVisibility] = NonMemberVisibility.INVISIBLE.dbValue
+        it[ProjectsTable.nonMemberJoinPolicy] = NonMemberJoinPolicy.ADMIN_ONLY.dbValue
+        it[ProjectsTable.leadUserId] = command.leadUserId.toKotlinUuid()
+        it[ProjectsTable.createdBy] = command.createdBy.toKotlinUuid()
         it[ProjectsTable.nextIssueSequence] = 1
         it[ProjectsTable.createdAt] = now
         it[ProjectsTable.updatedAt] = now
       }
-      toRecord(
-        id,
-        apiId,
-        command.tenantId,
-        command.identifier,
-        command.name,
-        command.description,
-      )
+      ProjectIdentifierAliasesTable.insert {
+        it[ProjectIdentifierAliasesTable.id] = UUID.randomUUID().toKotlinUuid()
+        it[ProjectIdentifierAliasesTable.tenantId] = command.tenantId.toKotlinUuid()
+        it[ProjectIdentifierAliasesTable.projectId] = id.toKotlinUuid()
+        it[ProjectIdentifierAliasesTable.identifier] = command.identifier
+        it[ProjectIdentifierAliasesTable.isCurrent] = true
+        it[ProjectIdentifierAliasesTable.validFrom] = now
+        it[ProjectIdentifierAliasesTable.createdBy] = command.createdBy.toKotlinUuid()
+        it[ProjectIdentifierAliasesTable.createdAt] = now
+      }
+      ProjectsTable.selectAll()
+        .where { ProjectsTable.id eq id.toKotlinUuid() }
+        .single()
+        .toProjectRecord()
     }
 
   override suspend fun findByApiId(tenantId: UUID, apiId: String): ProjectRecord? =
@@ -77,7 +93,9 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
   override suspend fun list(tenantId: UUID, identifier: String?): List<ProjectRecord> =
     suspendTransaction(db = database) {
       var condition =
-        (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and ProjectsTable.deletedAt.isNull()
+        (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+          ProjectsTable.deletedAt.isNull() and
+          (ProjectsTable.status neq ProjectStatus.DESTROYING.dbValue)
       if (identifier != null) {
         condition = condition and (ProjectsTable.identifier eq identifier)
       }
@@ -95,28 +113,153 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
           }
           .singleOrNull() ?: throw ResourceNotFoundException("Project not found.")
       val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val previousIdentifier = existing[ProjectsTable.identifier]
       ProjectsTable.update({ ProjectsTable.id eq command.projectId.toKotlinUuid() }) {
         command.identifier?.let { value -> it[ProjectsTable.identifier] = value }
         command.name?.let { value -> it[ProjectsTable.name] = value }
-        command.description?.let { value -> it[ProjectsTable.description] = value }
+        if (command.description != null) {
+          it[ProjectsTable.description] = command.description
+        }
+        command.nonMemberVisibility?.let { value ->
+          it[ProjectsTable.nonMemberVisibility] = value.dbValue
+        }
+        command.nonMemberJoinPolicy?.let { value ->
+          it[ProjectsTable.nonMemberJoinPolicy] = value.dbValue
+        }
         it[ProjectsTable.updatedAt] = now
       }
+      command.identifier
+        ?.takeIf { it != previousIdentifier }
+        ?.let { newIdentifier ->
+          ProjectIdentifierAliasesTable.update({
+            (ProjectIdentifierAliasesTable.projectId eq command.projectId.toKotlinUuid()) and
+              (ProjectIdentifierAliasesTable.isCurrent eq true)
+          }) {
+            it[ProjectIdentifierAliasesTable.isCurrent] = false
+            it[ProjectIdentifierAliasesTable.validTo] = now
+          }
+          ProjectIdentifierAliasesTable.insert {
+            it[ProjectIdentifierAliasesTable.id] = UUID.randomUUID().toKotlinUuid()
+            it[ProjectIdentifierAliasesTable.tenantId] = command.tenantId.toKotlinUuid()
+            it[ProjectIdentifierAliasesTable.projectId] = command.projectId.toKotlinUuid()
+            it[ProjectIdentifierAliasesTable.identifier] = newIdentifier
+            it[ProjectIdentifierAliasesTable.isCurrent] = true
+            it[ProjectIdentifierAliasesTable.validFrom] = now
+            it[ProjectIdentifierAliasesTable.createdBy] = command.updatedBy?.toKotlinUuid()
+            it[ProjectIdentifierAliasesTable.createdAt] = now
+          }
+        }
       ProjectsTable.selectAll()
         .where { ProjectsTable.id eq command.projectId.toKotlinUuid() }
         .single()
         .toProjectRecord()
     }
 
-  override suspend fun delete(tenantId: UUID, projectId: UUID): Boolean =
+  override suspend fun markArchived(
+    tenantId: UUID,
+    projectId: UUID,
+    archivedAt: OffsetDateTime,
+    archivedBy: UUID,
+  ): ProjectRecord =
+    suspendTransaction(db = database) {
+      val updated =
+        ProjectsTable.update({
+          (ProjectsTable.id eq projectId.toKotlinUuid()) and
+            (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+            ProjectsTable.deletedAt.isNull()
+        }) {
+          it[ProjectsTable.status] = ProjectStatus.ARCHIVED.dbValue
+          it[ProjectsTable.archivedAt] = archivedAt
+          it[ProjectsTable.archivedBy] = archivedBy.toKotlinUuid()
+          it[ProjectsTable.updatedAt] = archivedAt
+        }
+      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      ProjectsTable.selectAll()
+        .where { ProjectsTable.id eq projectId.toKotlinUuid() }
+        .single()
+        .toProjectRecord()
+    }
+
+  override suspend fun markActive(tenantId: UUID, projectId: UUID): ProjectRecord =
     suspendTransaction(db = database) {
       val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val updated =
+        ProjectsTable.update({
+          (ProjectsTable.id eq projectId.toKotlinUuid()) and
+            (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+            ProjectsTable.deletedAt.isNull()
+        }) {
+          it[ProjectsTable.status] = ProjectStatus.ACTIVE.dbValue
+          it[ProjectsTable.archivedAt] = null
+          it[ProjectsTable.archivedBy] = null
+          it[ProjectsTable.updatedAt] = now
+        }
+      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      ProjectsTable.selectAll()
+        .where { ProjectsTable.id eq projectId.toKotlinUuid() }
+        .single()
+        .toProjectRecord()
+    }
+
+  override suspend fun markDestroying(
+    tenantId: UUID,
+    projectId: UUID,
+    deletedBy: UUID,
+    deleteReason: String?,
+  ): ProjectRecord =
+    suspendTransaction(db = database) {
+      val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val updated =
+        ProjectsTable.update({
+          (ProjectsTable.id eq projectId.toKotlinUuid()) and
+            (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+            ProjectsTable.deletedAt.isNull()
+        }) {
+          it[ProjectsTable.status] = ProjectStatus.DESTROYING.dbValue
+          it[ProjectsTable.deletedBy] = deletedBy.toKotlinUuid()
+          it[ProjectsTable.deleteReason] = deleteReason
+          it[ProjectsTable.updatedAt] = now
+        }
+      if (updated == 0) throw ResourceNotFoundException("Project not found.")
+      ProjectsTable.selectAll()
+        .where { ProjectsTable.id eq projectId.toKotlinUuid() }
+        .single()
+        .toProjectRecord()
+    }
+
+  override suspend fun finalizeDestroy(
+    tenantId: UUID,
+    projectId: UUID,
+    deletedAt: OffsetDateTime,
+    deletedBy: UUID,
+    deleteReason: String?,
+  ): Boolean =
+    suspendTransaction(db = database) {
       ProjectsTable.update({
         (ProjectsTable.id eq projectId.toKotlinUuid()) and
           (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+          (ProjectsTable.status eq ProjectStatus.DESTROYING.dbValue) and
           ProjectsTable.deletedAt.isNull()
       }) {
-        it[ProjectsTable.deletedAt] = now
-        it[ProjectsTable.updatedAt] = now
+        it[ProjectsTable.deletedAt] = deletedAt
+        it[ProjectsTable.deletedBy] = deletedBy.toKotlinUuid()
+        it[ProjectsTable.deleteReason] = deleteReason
+        it[ProjectsTable.updatedAt] = deletedAt
+      } > 0
+    }
+
+  override suspend fun updateStatus(
+    tenantId: UUID,
+    projectId: UUID,
+    status: ProjectStatus,
+  ): Boolean =
+    suspendTransaction(db = database) {
+      ProjectsTable.update({
+        (ProjectsTable.id eq projectId.toKotlinUuid()) and
+          (ProjectsTable.tenantId eq tenantId.toKotlinUuid())
+      }) {
+        it[ProjectsTable.status] = status.dbValue
+        it[ProjectsTable.updatedAt] = OffsetDateTime.now(ZoneOffset.UTC)
       } > 0
     }
 
@@ -128,22 +271,22 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
       identifier = this[ProjectsTable.identifier],
       name = this[ProjectsTable.name],
       description = this[ProjectsTable.description],
-    )
-
-  private fun toRecord(
-    id: UUID,
-    apiId: PublicId,
-    tenantId: UUID,
-    identifier: String,
-    name: String,
-    description: String?,
-  ): ProjectRecord =
-    ProjectRecord(
-      id = id,
-      apiId = apiId,
-      tenantId = tenantId,
-      identifier = identifier,
-      name = name,
-      description = description,
+      status = projectStatusOf(this[ProjectsTable.status]),
+      nonMemberVisibility = nonMemberVisibilityOf(this[ProjectsTable.nonMemberVisibility]),
+      nonMemberJoinPolicy = nonMemberJoinPolicyOf(this[ProjectsTable.nonMemberJoinPolicy]),
+      leadUserId = this[ProjectsTable.leadUserId]?.toJavaUuid(),
+      createdBy = this[ProjectsTable.createdBy]?.toJavaUuid(),
+      archivedAt = this[ProjectsTable.archivedAt],
+      archivedBy = this[ProjectsTable.archivedBy]?.toJavaUuid(),
+      deletedAt = this[ProjectsTable.deletedAt],
     )
 }
+
+internal fun projectStatusOf(value: String): ProjectStatus =
+  ProjectStatus.entries.single { it.dbValue == value }
+
+internal fun nonMemberVisibilityOf(value: String): NonMemberVisibility =
+  NonMemberVisibility.entries.single { it.dbValue == value }
+
+internal fun nonMemberJoinPolicyOf(value: String): NonMemberJoinPolicy =
+  NonMemberJoinPolicy.entries.single { it.dbValue == value }

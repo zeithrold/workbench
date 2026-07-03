@@ -117,7 +117,7 @@ class TenantAdminController(
     val view =
       service.createWithAdmin(
         command = request.toCommand { publicIds.resolveUser(it).id },
-        actorUserId = instanceContext.base.actorUserId,
+        actorUserId = instanceContext.actor?.id,
         requestHost = requestHost,
       )
     val response = TenantResponse.from(view)
@@ -219,7 +219,7 @@ class TenantAdminController(
     service.requestDestroy(
       tenantPublicId = id,
       actorUserId =
-        instanceContext.base.actorUserId
+        instanceContext.actor?.id
           ?: throw doa.ink.workbench.core.common.errors.InvalidRequestException(
             "Authenticated user is required."
           ),

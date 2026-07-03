@@ -8,6 +8,8 @@ import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.permission.AddGroupMemberCommand
 import doa.ink.workbench.core.permission.CreatePermissionBindingCommand
 import doa.ink.workbench.core.permission.CreatePermissionGroupCommand
+import doa.ink.workbench.core.permission.CreatePermissionPolicyCommand
+import doa.ink.workbench.core.permission.CreatePermissionPolicyRuleCommand
 import doa.ink.workbench.core.permission.PermissionBindingRecord
 import doa.ink.workbench.core.permission.PermissionBindingRepository
 import doa.ink.workbench.core.permission.PermissionGroupRecord
@@ -17,6 +19,8 @@ import doa.ink.workbench.core.permission.PermissionPolicyRepository
 import doa.ink.workbench.core.permission.PermissionPolicyRuleRecord
 import doa.ink.workbench.core.permission.PermissionPrincipalType
 import doa.ink.workbench.core.permission.UpdatePermissionGroupCommand
+import doa.ink.workbench.core.permission.UpdatePermissionPolicyCommand
+import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.core.permission.model.PermissionEffect
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.service.common.PublicIdResolver
@@ -120,6 +124,77 @@ class PermissionManagementService(
 
   suspend fun getPolicy(tenantId: UUID, publicId: String): PermissionPolicyView {
     val policy = requirePolicy(tenantId, publicId)
+    return PermissionPolicyView.from(policy, policies.listRules(policy.id))
+  }
+
+  suspend fun createPolicy(
+    tenantId: UUID,
+    code: String,
+    name: String,
+    description: String?,
+  ): PermissionPolicyView {
+    if (policies.findByCode(tenantId, code) != null) {
+      throw InvalidRequestException("Policy code is already in use.")
+    }
+    val policy =
+      policies.create(
+        CreatePermissionPolicyCommand(
+          tenantId = tenantId,
+          code = code,
+          name = name,
+          description = description,
+          builtin = false,
+        )
+      )
+    return PermissionPolicyView.from(policy, emptyList())
+  }
+
+  suspend fun updatePolicy(
+    tenantId: UUID,
+    publicId: String,
+    name: String?,
+    description: String?,
+  ): PermissionPolicyView {
+    val policy = requirePolicy(tenantId, publicId)
+    if (policy.builtin) {
+      throw InvalidRequestException("Built-in policies cannot be updated.")
+    }
+    return PermissionPolicyView.from(
+      policies.update(UpdatePermissionPolicyCommand(policy.id, name, description)),
+      policies.listRules(policy.id),
+    )
+  }
+
+  suspend fun deletePolicy(tenantId: UUID, publicId: String): Boolean {
+    val policy = requirePolicy(tenantId, publicId)
+    if (policy.builtin) {
+      throw InvalidRequestException("Built-in policies cannot be deleted.")
+    }
+    if (policies.hasActiveBindings(policy.id, OffsetDateTime.now(clock))) {
+      throw InvalidRequestException("Policy has active bindings.")
+    }
+    return policies.delete(tenantId, policy.id)
+  }
+
+  suspend fun addPolicyRule(
+    tenantId: UUID,
+    policyPublicId: String,
+    action: String,
+    resourcePattern: String,
+    effect: PermissionEffect,
+  ): PermissionPolicyView {
+    val policy = requirePolicy(tenantId, policyPublicId)
+    if (policy.builtin) {
+      throw InvalidRequestException("Built-in policy rules cannot be changed.")
+    }
+    policies.addRule(
+      CreatePermissionPolicyRuleCommand(
+        policyId = policy.id,
+        action = AuthorizationAction(action),
+        resourcePattern = resourcePattern,
+        effect = effect,
+      )
+    )
     return PermissionPolicyView.from(policy, policies.listRules(policy.id))
   }
 

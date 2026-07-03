@@ -1,6 +1,5 @@
 package doa.ink.workbench.agile.project
 
-import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.core.project.model.CreateProjectCommand
 import doa.ink.workbench.core.project.model.ProjectRecord
@@ -23,11 +22,4 @@ class ProjectService(
     publicIds.resolveProject(tenantId, projectPublicId)
 
   suspend fun update(command: UpdateProjectCommand): ProjectRecord = repository.update(command)
-
-  suspend fun delete(tenantId: UUID, projectPublicId: String) {
-    val project = publicIds.resolveProject(tenantId, projectPublicId)
-    if (!repository.delete(tenantId, project.id)) {
-      throw ResourceNotFoundException("Project not found.")
-    }
-  }
 }

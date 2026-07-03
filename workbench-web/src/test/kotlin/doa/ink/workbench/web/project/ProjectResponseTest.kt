@@ -1,27 +1,29 @@
 package doa.ink.workbench.web.project
 
-import doa.ink.workbench.core.common.ids.PublicId
-import doa.ink.workbench.core.project.model.ProjectRecord
+import doa.ink.workbench.service.project.ProjectView
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import java.util.UUID
 
 class ProjectResponseTest :
   StringSpec({
-    "project response uses public API id" {
-      val record =
-        ProjectRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("prj"),
-          tenantId = UUID.randomUUID(),
+    "project response maps view fields" {
+      val view =
+        ProjectView(
+          id = "prj_01EXAMPLE",
           identifier = "CORE",
           name = "Core Platform",
           description = "Platform work",
+          status = "active",
+          nonMemberVisibility = "invisible",
+          nonMemberJoinPolicy = "admin_only",
+          lead = null,
+          archivedAt = null,
         )
 
-      val response = ProjectResponse.from(record)
+      val response = ProjectResponse.from(view)
 
-      response.id shouldBe record.apiId.value
+      response.id shouldBe "prj_01EXAMPLE"
       response.identifier shouldBe "CORE"
+      response.status shouldBe "active"
     }
   })

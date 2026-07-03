@@ -37,6 +37,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
+  doa.ink.workbench.web.support.ContextWebMvcSupport::class,
+  doa.ink.workbench.web.support.ProjectWebMvcSupport::class,
   InstanceSetupControllerTest.TestBeans::class,
 )
 class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
@@ -102,6 +104,10 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun sessionCookieWriter(clock: Clock): SessionCookieWriter = SessionCookieWriter(clock)
 
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
+
+    @Bean
+    fun publicIdResolver(): doa.ink.workbench.service.common.PublicIdResolver =
+      mockk(relaxed = true)
 
     @Bean
     fun instanceSetupService(): InstanceSetupService = mockk {

@@ -5,6 +5,8 @@ import doa.ink.workbench.core.common.errors.InfrastructureUnavailableException
 import doa.ink.workbench.core.common.errors.InstanceAlreadyInitializedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
+import doa.ink.workbench.core.common.errors.ProjectArchivedException
+import doa.ink.workbench.core.common.errors.ProjectDestroyingException
 import doa.ink.workbench.core.common.errors.ResourceConflictException
 import doa.ink.workbench.core.common.errors.ResourceNotFoundException
 import doa.ink.workbench.core.common.errors.SetupTokenInvalidException
@@ -33,6 +35,8 @@ class GlobalExceptionHandler {
     ResourceConflictException::class,
     InstanceAlreadyInitializedException::class,
     TenantDestroyingException::class,
+    ProjectDestroyingException::class,
+    ProjectArchivedException::class,
   )
   fun conflict(error: WorkbenchException): ProblemDetail =
     problem(HttpStatus.CONFLICT, "Conflict", error.message.orEmpty())

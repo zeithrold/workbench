@@ -49,6 +49,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   InfrastructureAspect::class,
   RequestContextResolver::class,
   InstanceRequestContextResolver::class,
+  doa.ink.workbench.web.support.ContextWebMvcSupport::class,
+  doa.ink.workbench.web.support.ProjectWebMvcSupport::class,
   GlobalExceptionHandler::class,
   TenantAdminControllerSecurityTest.TestBeans::class,
 )

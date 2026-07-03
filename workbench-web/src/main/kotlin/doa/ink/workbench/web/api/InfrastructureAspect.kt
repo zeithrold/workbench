@@ -1,7 +1,8 @@
 package doa.ink.workbench.web.api
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
-import doa.ink.workbench.core.common.context.RequestContext
+import doa.ink.workbench.core.common.context.ProjectRequestContext
+import doa.ink.workbench.core.common.context.ScopedRequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.PermissionDeniedException
@@ -64,8 +65,11 @@ class InfrastructureAspect(
 
   @Around("@annotation(authorize)")
   fun authorize(joinPoint: ProceedingJoinPoint, authorize: Authorize): Any? {
-    joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()?.let { tenantContext ->
-      runBlocking { tenantOperationalGuard.ensureOperational(tenantContext.tenantId) }
+    val projectContext = joinPoint.args.filterIsInstance<ProjectRequestContext>().firstOrNull()
+    val tenantContext = joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()
+    val tenantId = tenantContext?.tenant?.id ?: projectContext?.tenant?.id
+    tenantId?.let { id ->
+      runBlocking { tenantOperationalGuard.ensureOperational(id) }
     }
     val request = authorizationRequest(joinPoint, authorize)
     val decision = runBlocking { permissionService.decide(request) }
@@ -98,22 +102,23 @@ class InfrastructureAspect(
     authorize: Authorize,
   ): AuthorizationRequest {
     val principal = currentPrincipal()
+    val projectContext = joinPoint.args.filterIsInstance<ProjectRequestContext>().firstOrNull()
     val tenantContext = joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()
     val instanceContext = joinPoint.args.filterIsInstance<InstanceRequestContext>().firstOrNull()
     val scope =
       when {
-        tenantContext != null -> AuthorizationScope.TENANT
+        tenantContext != null || projectContext != null -> AuthorizationScope.TENANT
         instanceContext != null -> AuthorizationScope.INSTANCE
         else -> throw PermissionDeniedException("Request context is required for authorization.")
       }
-    val baseContext =
-      joinPoint.args.filterIsInstance<RequestContext>().firstOrNull()
-        ?: tenantContext?.base
-        ?: instanceContext?.base
+    val scopedContext =
+      joinPoint.args.filterIsInstance<ScopedRequestContext>().firstOrNull()
         ?: throw PermissionDeniedException("Request context is required for authorization.")
     val resourceId = annotatedArgument<String>(joinPoint, ResourceId::class.java)
-    val projectId = annotatedArgument<UUID>(joinPoint, ResourceProjectId::class.java)
-    val tenantId = tenantContext?.tenantId
+    val annotatedProjectId = annotatedArgument<UUID>(joinPoint, ResourceProjectId::class.java)
+    val tenantId = tenantContext?.tenant?.id ?: projectContext?.tenant?.id
+    val projectId = projectContext?.project?.id ?: annotatedProjectId
+    val resourcePublicId = resourceId ?: projectContext?.project?.publicId?.value
     return AuthorizationRequest(
       scope = scope,
       subject =
@@ -130,13 +135,13 @@ class InfrastructureAspect(
       resource =
         AuthorizationResource(
           type = authorize.resource,
-          id = resourceId,
+          id = resourcePublicId,
           tenantId = tenantId,
           projectId = projectId,
         ),
       environment =
         AuthorizationEnvironment(
-          requestId = baseContext.requestId,
+          requestId = scopedContext.requestId,
           occurredAt = clock.instant(),
         ),
     )

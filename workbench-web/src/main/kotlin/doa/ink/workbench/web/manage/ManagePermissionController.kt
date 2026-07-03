@@ -1,10 +1,10 @@
 package doa.ink.workbench.web.manage
 
-import doa.ink.workbench.core.common.context.RequestContext
 import doa.ink.workbench.core.common.context.TenantRequestContext
 import doa.ink.workbench.core.common.summary.ProjectSummary
 import doa.ink.workbench.core.common.summary.UserSummary
 import doa.ink.workbench.core.permission.PermissionPrincipalType
+import doa.ink.workbench.core.permission.model.PermissionEffect
 import doa.ink.workbench.service.permission.GroupMemberView
 import doa.ink.workbench.service.permission.PermissionBindingView
 import doa.ink.workbench.service.permission.PermissionGroupView
@@ -47,7 +47,7 @@ class ManagePermissionController(
   @Authorize(action = "permission.group.manage", resource = "permission")
   @Operation(summary = "List permission groups")
   suspend fun listGroups(tenantContext: TenantRequestContext): List<PermissionGroupResponse> =
-    permissionManagementService.listGroups(tenantContext.tenantId).map {
+    permissionManagementService.listGroups(tenantContext.tenant.id).map {
       PermissionGroupResponse.from(it)
     }
 
@@ -61,7 +61,7 @@ class ManagePermissionController(
   ): PermissionGroupResponse =
     PermissionGroupResponse.from(
       permissionManagementService.createGroup(
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         code = request.code,
         name = request.name,
         description = request.description,
@@ -75,7 +75,7 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ): PermissionGroupResponse =
-    PermissionGroupResponse.from(permissionManagementService.getGroup(tenantContext.tenantId, id))
+    PermissionGroupResponse.from(permissionManagementService.getGroup(tenantContext.tenant.id, id))
 
   @PatchMapping("/groups/{id}")
   @Authorize(action = "permission.group.manage", resource = "permission")
@@ -87,7 +87,7 @@ class ManagePermissionController(
   ): PermissionGroupResponse =
     PermissionGroupResponse.from(
       permissionManagementService.updateGroup(
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         publicId = id,
         name = request.name,
         description = request.description,
@@ -102,7 +102,7 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ) {
-    permissionManagementService.deleteGroup(tenantContext.tenantId, id)
+    permissionManagementService.deleteGroup(tenantContext.tenant.id, id)
   }
 
   @GetMapping("/groups/{id}/members")
@@ -112,7 +112,7 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ): List<GroupMemberResponse> =
-    permissionManagementService.listGroupMembers(tenantContext.tenantId, id).map {
+    permissionManagementService.listGroupMembers(tenantContext.tenant.id, id).map {
       GroupMemberResponse.from(it)
     }
 
@@ -127,7 +127,7 @@ class ManagePermissionController(
   ): GroupMemberResponse =
     GroupMemberResponse.from(
       permissionManagementService.addGroupMember(
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         groupPublicId = id,
         userPublicId = request.userId,
       )
@@ -142,14 +142,14 @@ class ManagePermissionController(
     @PathVariable userId: String,
     tenantContext: TenantRequestContext,
   ) {
-    permissionManagementService.removeGroupMember(tenantContext.tenantId, id, userId)
+    permissionManagementService.removeGroupMember(tenantContext.tenant.id, id, userId)
   }
 
   @GetMapping("/permission-policies")
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List permission policies")
   suspend fun listPolicies(tenantContext: TenantRequestContext): List<PermissionPolicyResponse> =
-    permissionManagementService.listPolicies(tenantContext.tenantId).map {
+    permissionManagementService.listPolicies(tenantContext.tenant.id).map {
       PermissionPolicyResponse.from(it)
     }
 
@@ -160,13 +160,79 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ): PermissionPolicyResponse =
-    PermissionPolicyResponse.from(permissionManagementService.getPolicy(tenantContext.tenantId, id))
+    PermissionPolicyResponse.from(permissionManagementService.getPolicy(tenantContext.tenant.id, id))
+
+  @PostMapping("/permission-policies")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Create custom permission policy")
+  suspend fun createPolicy(
+    @Valid @RequestBody request: CreatePermissionPolicyRequest,
+    tenantContext: TenantRequestContext,
+  ): PermissionPolicyResponse =
+    PermissionPolicyResponse.from(
+      permissionManagementService.createPolicy(
+        tenantId = tenantContext.tenant.id,
+        code = request.code,
+        name = request.name,
+        description = request.description,
+      )
+    )
+
+  @PatchMapping("/permission-policies/{id}")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @Operation(summary = "Update custom permission policy")
+  suspend fun updatePolicy(
+    @PathVariable id: String,
+    @Valid @RequestBody request: UpdatePermissionPolicyRequest,
+    tenantContext: TenantRequestContext,
+  ): PermissionPolicyResponse =
+    PermissionPolicyResponse.from(
+      permissionManagementService.updatePolicy(
+        tenantId = tenantContext.tenant.id,
+        publicId = id,
+        name = request.name,
+        description = request.description,
+      )
+    )
+
+  @DeleteMapping("/permission-policies/{id}")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Delete custom permission policy")
+  suspend fun deletePolicy(
+    @PathVariable id: String,
+    tenantContext: TenantRequestContext,
+  ) {
+    permissionManagementService.deletePolicy(tenantContext.tenant.id, id)
+  }
+
+  @PostMapping("/permission-policies/{id}/rules")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Add rule to custom permission policy")
+  suspend fun addPolicyRule(
+    @PathVariable id: String,
+    @Valid @RequestBody request: CreatePermissionPolicyRuleRequest,
+    tenantContext: TenantRequestContext,
+  ): PermissionPolicyResponse =
+    PermissionPolicyResponse.from(
+      permissionManagementService.addPolicyRule(
+        tenantId = tenantContext.tenant.id,
+        policyPublicId = id,
+        action = request.action,
+        resourcePattern = request.resourcePattern,
+        effect =
+          request.effect?.let { PermissionEffect.valueOf(it.uppercase()) }
+            ?: PermissionEffect.ALLOW,
+      )
+    )
 
   @GetMapping("/permission-bindings")
   @Authorize(action = "permission.assignment.manage", resource = "permission")
   @Operation(summary = "List permission bindings")
   suspend fun listBindings(tenantContext: TenantRequestContext): List<PermissionBindingResponse> =
-    permissionManagementService.listBindings(tenantContext.tenantId).map {
+    permissionManagementService.listBindings(tenantContext.tenant.id).map {
       PermissionBindingResponse.from(it)
     }
 
@@ -177,18 +243,17 @@ class ManagePermissionController(
   suspend fun createBinding(
     @Valid @RequestBody request: CreatePermissionBindingRequest,
     tenantContext: TenantRequestContext,
-    requestContext: RequestContext,
   ): PermissionBindingResponse =
     PermissionBindingResponse.from(
       permissionManagementService.createBinding(
-        tenantId = tenantContext.tenantId,
+        tenantId = tenantContext.tenant.id,
         principalType = request.principalType,
         userPublicId = request.userId,
         groupPublicId = request.groupId,
         policyPublicId = request.policyId,
         projectPublicId = request.projectId,
         effect = null,
-        actorUserId = requestContext.actorUserId,
+        actorUserId = tenantContext.actor?.id,
       )
     )
 
@@ -200,7 +265,7 @@ class ManagePermissionController(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
   ) {
-    permissionManagementService.expireBinding(tenantContext.tenantId, id)
+    permissionManagementService.expireBinding(tenantContext.tenant.id, id)
   }
 }
 
@@ -213,6 +278,23 @@ data class CreatePermissionGroupRequest(
 data class UpdatePermissionGroupRequest(
   val name: String?,
   val description: String?,
+)
+
+data class CreatePermissionPolicyRequest(
+  @field:NotBlank val code: String,
+  @field:NotBlank val name: String,
+  val description: String?,
+)
+
+data class UpdatePermissionPolicyRequest(
+  val name: String?,
+  val description: String?,
+)
+
+data class CreatePermissionPolicyRuleRequest(
+  @field:NotBlank val action: String,
+  @field:NotBlank val resourcePattern: String,
+  val effect: String? = null,
 )
 
 data class AddGroupMemberRequest(@field:NotBlank val userId: String)

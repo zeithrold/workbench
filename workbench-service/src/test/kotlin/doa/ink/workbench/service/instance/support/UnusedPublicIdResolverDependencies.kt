@@ -138,6 +138,34 @@ class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository
         command: doa.ink.workbench.core.project.model.UpdateProjectCommand
       ) = error("unused")
 
-      override suspend fun delete(tenantId: UUID, projectId: UUID) = false
+      override suspend fun markArchived(
+        tenantId: UUID,
+        projectId: UUID,
+        archivedAt: OffsetDateTime,
+        archivedBy: UUID,
+      ) = error("unused")
+
+      override suspend fun markActive(tenantId: UUID, projectId: UUID) = error("unused")
+
+      override suspend fun markDestroying(
+        tenantId: UUID,
+        projectId: UUID,
+        deletedBy: UUID,
+        deleteReason: String?,
+      ) = error("unused")
+
+      override suspend fun finalizeDestroy(
+        tenantId: UUID,
+        projectId: UUID,
+        deletedAt: OffsetDateTime,
+        deletedBy: UUID,
+        deleteReason: String?,
+      ) = false
+
+      override suspend fun updateStatus(
+        tenantId: UUID,
+        projectId: UUID,
+        status: doa.ink.workbench.core.project.model.ProjectStatus,
+      ) = false
     }
 }

@@ -8,4 +8,7 @@ data class UpdateProjectCommand(
   val identifier: String?,
   val name: String?,
   val description: String?,
+  val nonMemberVisibility: NonMemberVisibility?,
+  val nonMemberJoinPolicy: NonMemberJoinPolicy?,
+  val updatedBy: UUID?,
 )

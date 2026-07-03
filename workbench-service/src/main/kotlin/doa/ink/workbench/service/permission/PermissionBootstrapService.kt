@@ -31,6 +31,7 @@ private val TENANT_ADMIN_RULES =
     "project.update" to "project:*",
     "project.delete" to "project:*",
     "project.manage" to "project:*",
+    "project.archive" to "project:*",
     "permission.group.manage" to "permission:*",
     "permission.assignment.manage" to "permission:*",
     "permission.policy.manage" to "permission:*",
@@ -48,6 +49,7 @@ private val BUILTIN_POLICY_TEMPLATES =
           "project.update" to "project:*",
           "project.delete" to "project:*",
           "project.manage" to "project:*",
+          "project.archive" to "project:*",
         ),
     ),
     BuiltinPolicyTemplate(
@@ -122,6 +124,29 @@ class PermissionBootstrapService(
         )
       )
     }
+  }
+
+  suspend fun provisionProjectCreator(
+    tenantId: UUID,
+    projectId: UUID,
+    userId: UUID,
+    actorUserId: UUID?,
+  ) {
+    val adminPolicy =
+      policies.findByCode(tenantId, "project-admin")
+        ?: error("Built-in project-admin policy is not configured.")
+    bindings.create(
+      CreatePermissionBindingCommand(
+        tenantId = tenantId,
+        projectId = projectId,
+        principalType = PermissionPrincipalType.USER,
+        principalUserId = userId,
+        principalGroupId = null,
+        policyId = adminPolicy.id,
+        validFrom = OffsetDateTime.now(clock),
+        createdBy = actorUserId,
+      )
+    )
   }
 
   private suspend fun createTenantAdminPolicy(tenantId: UUID): PermissionPolicyRecord {
