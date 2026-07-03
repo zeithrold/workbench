@@ -40,6 +40,7 @@ class AdminUserService(
   private val tenantMembers: TenantMemberRepository,
   private val publicIds: PublicIdResolver,
   private val clock: Clock,
+  private val permissionBootstrapService: PermissionBootstrapService? = null,
 ) {
   suspend fun listInstanceAdmins(): List<AdminUserView> =
     adminUserQueries.listInstanceAdmins().map { AdminUserView.from(it, requireUser(it.userId)) }
@@ -124,6 +125,11 @@ class AdminUserService(
         )
       )
     }
+    permissionBootstrapService?.provisionTenantAdmin(
+      tenantId = tenantId,
+      userId = userId,
+      actorUserId = actorUserId,
+    )
     return AdminUserView.from(record, user)
   }
 
