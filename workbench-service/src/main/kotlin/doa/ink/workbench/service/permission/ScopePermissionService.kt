@@ -5,7 +5,7 @@ import doa.ink.workbench.core.identity.model.CredentialType
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
 import doa.ink.workbench.core.permission.AccessGrantRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
 import doa.ink.workbench.core.permission.model.AuthorizationRequest
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ScopePermissionService(
-  private val adminUsers: AdminUserRepository,
+  private val adminUserQueries: AdminUserQueryRepository,
   private val accessGrants: AccessGrantRepository,
   private val tenantMembers: TenantMemberRepository,
   private val clock: Clock,
@@ -39,7 +39,7 @@ class ScopePermissionService(
     request: AuthorizationRequest,
     at: OffsetDateTime,
   ): AuthorizationDecision {
-    if (!adminUsers.isActiveInstanceAdmin(request.subject.userId, at)) {
+    if (!adminUserQueries.isActiveInstanceAdmin(request.subject.userId, at)) {
       return deny("missing_instance_admin", "Instance administrator access is required.")
     }
     if (!credentialAllows(request)) {

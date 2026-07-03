@@ -4,8 +4,11 @@ package doa.ink.workbench.service.identity.auth
 
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.common.errors.InvalidRequestException
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginAccountStore
+import doa.ink.workbench.core.identity.LoginMethodRepository
+import doa.ink.workbench.core.identity.TenantLoginMethodSettingRepository
 import doa.ink.workbench.core.identity.TenantRepository
+import doa.ink.workbench.core.identity.UserLoginAccountRepository
 import doa.ink.workbench.core.identity.auth.PasswordVerifier
 import doa.ink.workbench.core.identity.model.AuthenticatedIdentity
 import doa.ink.workbench.core.identity.model.LoginAccountParameterKey
@@ -17,7 +20,9 @@ private const val PASSWORD_METHOD_CODE = "password"
 
 @Component
 class PasswordLoginAuthenticator(
-  private val loginAccounts: LoginAccountRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val loginAccounts: LoginAccountStore,
+  private val userLoginAccounts: UserLoginAccountRepository,
   private val passwordVerifier: PasswordVerifier,
 ) : LoginAuthenticator {
   override val kind: LoginMethodKind = LoginMethodKind.PASSWORD
@@ -30,7 +35,7 @@ class PasswordLoginAuthenticator(
     val normalizedSubject = normalizeSubject(subject)
     val methodCode =
       command.loginMethodId?.let { apiId ->
-        loginAccounts.findLoginMethodByApiId(apiId)?.code
+        loginMethods.findLoginMethodByApiId(apiId)?.code
       } ?: PASSWORD_METHOD_CODE
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(methodCode, normalizedSubject)
@@ -45,7 +50,7 @@ class PasswordLoginAuthenticator(
     }
 
     val user =
-      loginAccounts.findLinkedUser(account.id)
+      userLoginAccounts.findLinkedUser(account.id)
         ?: throw AuthenticationFailedException("Invalid credentials.")
 
     return AuthenticatedIdentity(user = user, loginAccount = account)
@@ -54,7 +59,9 @@ class PasswordLoginAuthenticator(
 
 @Component
 class ApiTokenLoginAuthenticator(
-  private val loginAccounts: LoginAccountRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val loginAccounts: LoginAccountStore,
+  private val userLoginAccounts: UserLoginAccountRepository,
   private val credentialHasher: doa.ink.workbench.core.identity.auth.CredentialHasher,
 ) : LoginAuthenticator {
   override val kind: LoginMethodKind = LoginMethodKind.API_TOKEN
@@ -63,7 +70,7 @@ class ApiTokenLoginAuthenticator(
     val token =
       command.token ?: throw InvalidRequestException("token is required for api_token login.")
     val methodCode =
-      command.loginMethodId?.let { loginAccounts.findLoginMethodByApiId(it)?.code } ?: "api_token"
+      command.loginMethodId?.let { loginMethods.findLoginMethodByApiId(it)?.code } ?: "api_token"
     val tokenHash = credentialHasher.hash(token)
 
     val account =
@@ -74,7 +81,7 @@ class ApiTokenLoginAuthenticator(
       ) ?: throw AuthenticationFailedException("Invalid credentials.")
 
     val user =
-      loginAccounts.findLinkedUser(account.id)
+      userLoginAccounts.findLinkedUser(account.id)
         ?: throw AuthenticationFailedException("Invalid credentials.")
 
     return AuthenticatedIdentity(user = user, loginAccount = account)
@@ -83,7 +90,10 @@ class ApiTokenLoginAuthenticator(
 
 @Component
 class LdapLoginAuthenticator(
-  private val loginAccounts: LoginAccountRepository,
+  private val loginMethods: LoginMethodRepository,
+  private val tenantLoginSettings: TenantLoginMethodSettingRepository,
+  private val loginAccounts: LoginAccountStore,
+  private val userLoginAccounts: UserLoginAccountRepository,
   private val tenants: TenantRepository,
   private val ldapClient: LdapAuthClient,
 ) : LoginAuthenticator {
@@ -103,12 +113,12 @@ class LdapLoginAuthenticator(
     val tenant =
       tenants.findByApiId(tenantId) ?: throw AuthenticationFailedException("Invalid credentials.")
     val method =
-      loginAccounts.findLoginMethodByApiId(loginMethodId)
+      loginMethods.findLoginMethodByApiId(loginMethodId)
         ?: throw AuthenticationFailedException("Invalid credentials.")
     if (method.kind != LoginMethodKind.LDAP) {
       throw InvalidRequestException("Login method $loginMethodId is not LDAP.")
     }
-    val setting = loginAccounts.findTenantSetting(tenant.id, method.id)
+    val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     if (setting?.isEnabled != true) {
       throw AuthenticationFailedException("Invalid credentials.")
     }
@@ -118,7 +128,7 @@ class LdapLoginAuthenticator(
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
         ?: throw AuthenticationFailedException("Invalid credentials.")
     val user =
-      loginAccounts.findLinkedUser(account.id)
+      userLoginAccounts.findLinkedUser(account.id)
         ?: throw AuthenticationFailedException("Invalid credentials.")
 
     return AuthenticatedIdentity(user = user, loginAccount = account)

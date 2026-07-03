@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 class MembershipService(
   private val tenantMembers: TenantMemberRepository,
   private val tenants: TenantRepository,
-  private val adminUsers: doa.ink.workbench.core.permission.AdminUserRepository,
+  private val adminUserQueries: doa.ink.workbench.core.permission.AdminUserQueryRepository,
   private val clock: java.time.Clock,
 ) {
   suspend fun listActiveMemberships(userId: UUID): List<TenantMembershipView> {
@@ -24,7 +24,7 @@ class MembershipService(
         TenantMembershipView(
           id = membership.apiId.value,
           tenant = TenantSummary.from(tenant),
-          isTenantAdmin = adminUsers.isActiveTenantAdmin(membership.tenantId, userId, at),
+          isTenantAdmin = adminUserQueries.isActiveTenantAdmin(membership.tenantId, userId, at),
         )
       }
     }

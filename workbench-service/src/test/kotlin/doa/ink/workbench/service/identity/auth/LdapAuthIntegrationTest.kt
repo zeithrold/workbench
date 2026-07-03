@@ -3,8 +3,11 @@ package doa.ink.workbench.service.identity.auth
 import doa.ink.workbench.core.common.errors.AuthenticationFailedException
 import doa.ink.workbench.core.identity.model.LoginCommand
 import doa.ink.workbench.core.identity.model.LoginMethodKind
-import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
+import doa.ink.workbench.data.identity.ExposedLoginAccountStore
+import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
+import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
+import doa.ink.workbench.data.identity.ExposedUserLoginAccountRepository
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.identity.auth.support.LdapAuthFixture
 import doa.ink.workbench.service.identity.auth.support.LdapTestContainer
@@ -37,9 +40,10 @@ class LdapAuthIntegrationTest :
     }
 
     "LdapAuthClient authenticates valid credentials against OpenLDAP" {
-      val accounts = ExposedLoginAccountRepository(database)
-      val method = accounts.findLoginMethodByApiId(fixture.loginMethodApiId)!!
-      val setting = accounts.findTenantSetting(fixture.tenant.tenantId, method.id)!!
+      val loginMethods = ExposedLoginMethodRepository(database)
+      val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+      val method = loginMethods.findLoginMethodByApiId(fixture.loginMethodApiId)!!
+      val setting = tenantLoginSettings.findTenantSetting(fixture.tenant.tenantId, method.id)!!
       val subject =
         LdapAuthClient()
           .authenticate(setting, LdapTestContainer.TEST_USER, LdapTestContainer.TEST_PASSWORD)
@@ -47,9 +51,10 @@ class LdapAuthIntegrationTest :
     }
 
     "LdapAuthClient rejects invalid credentials" {
-      val accounts = ExposedLoginAccountRepository(database)
-      val method = accounts.findLoginMethodByApiId(fixture.loginMethodApiId)!!
-      val setting = accounts.findTenantSetting(fixture.tenant.tenantId, method.id)!!
+      val loginMethods = ExposedLoginMethodRepository(database)
+      val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+      val method = loginMethods.findLoginMethodByApiId(fixture.loginMethodApiId)!!
+      val setting = tenantLoginSettings.findTenantSetting(fixture.tenant.tenantId, method.id)!!
       shouldThrow<AuthenticationFailedException> {
         LdapAuthClient().authenticate(setting, LdapTestContainer.TEST_USER, "wrong-password")
       }
@@ -57,9 +62,16 @@ class LdapAuthIntegrationTest :
 
     "LdapLoginAuthenticator completes login for a linked account" {
       runBlocking {
+        val loginMethods = ExposedLoginMethodRepository(database)
+        val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+        val loginAccounts = ExposedLoginAccountStore(database)
+        val userLoginAccounts = ExposedUserLoginAccountRepository(database)
         val authenticator =
           LdapLoginAuthenticator(
-            loginAccounts = ExposedLoginAccountRepository(database),
+            loginMethods = loginMethods,
+            tenantLoginSettings = tenantLoginSettings,
+            loginAccounts = loginAccounts,
+            userLoginAccounts = userLoginAccounts,
             tenants = ExposedTenantRepository(database),
             ldapClient = LdapAuthClient(),
           )
@@ -79,9 +91,16 @@ class LdapAuthIntegrationTest :
 
     "LdapLoginAuthenticator rejects LDAP bind when account is not linked" {
       runBlocking {
+        val loginMethods = ExposedLoginMethodRepository(database)
+        val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+        val loginAccounts = ExposedLoginAccountStore(database)
+        val userLoginAccounts = ExposedUserLoginAccountRepository(database)
         val authenticator =
           LdapLoginAuthenticator(
-            loginAccounts = ExposedLoginAccountRepository(database),
+            loginMethods = loginMethods,
+            tenantLoginSettings = tenantLoginSettings,
+            loginAccounts = loginAccounts,
+            userLoginAccounts = userLoginAccounts,
             tenants = ExposedTenantRepository(database),
             ldapClient = LdapAuthClient(),
           )

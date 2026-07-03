@@ -1,7 +1,7 @@
 package doa.ink.workbench.web.identity
 
 import doa.ink.workbench.core.common.ids.PublicId
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.TenantRepository
 import doa.ink.workbench.core.identity.UserRepository
@@ -17,7 +17,7 @@ import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.TenantRecord
 import doa.ink.workbench.core.identity.model.UserRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.project.ProjectRepository
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
@@ -89,9 +89,9 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       PublicIdResolver(
         tenants = TestTenants,
         users = UnusedUserRepository,
-        loginAccounts = UnusedLoginAccountRepository,
+        loginMethods = UnusedLoginMethodRepository,
         bearerTokens = UnusedBearerTokenRepository,
-        adminUsers = UnusedAdminUserRepository,
+        adminUserQueries = UnusedAdminUserQueryRepository,
         accessGrants = UnusedAccessGrantRepository,
         projects = UnusedProjectRepository,
       )
@@ -199,64 +199,16 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findByPrimaryEmail(primaryEmail: String) = null
   }
 
-  private object UnusedLoginAccountRepository : LoginAccountRepository {
+  private object UnusedLoginMethodRepository : LoginMethodRepository {
     override suspend fun createLoginMethod(
       command: doa.ink.workbench.core.identity.model.CreateLoginMethodDefinitionCommand
     ) = error("unused")
-
-    override suspend fun createTenantSetting(
-      command: doa.ink.workbench.core.identity.model.CreateTenantLoginMethodSettingCommand
-    ) = error("unused")
-
-    override suspend fun findTenantSetting(tenantId: UUID, loginMethodId: UUID) = null
-
-    override suspend fun createLoginAccount(
-      command: doa.ink.workbench.core.identity.model.CreateLoginAccountCommand
-    ) = error("unused")
-
-    override suspend fun upsertParameter(
-      command: doa.ink.workbench.core.identity.model.UpsertLoginAccountParameterCommand
-    ) = error("unused")
-
-    override suspend fun findParameter(
-      loginAccountId: UUID,
-      parameterKey: doa.ink.workbench.core.identity.model.LoginAccountParameterKey,
-    ) = null
-
-    override suspend fun linkUser(
-      command: doa.ink.workbench.core.identity.model.LinkUserLoginAccountCommand
-    ) = error("unused")
-
-    override suspend fun unlink(loginAccountId: UUID, unlinkedAt: OffsetDateTime) = false
-
-    override suspend fun findLinkedUser(loginAccountId: UUID) = null
-
-    override suspend fun findLoginAccountByMethodAndSubject(
-      loginMethodCode: String,
-      normalizedSubject: String,
-    ) = null
 
     override suspend fun findLoginMethodByCode(code: String) = null
 
     override suspend fun findLoginMethodByApiId(apiId: String) = null
 
     override suspend fun findLoginMethodById(id: UUID) = null
-
-    override suspend fun findLoginAccountByParameterValue(
-      loginMethodCode: String,
-      parameterKey: doa.ink.workbench.core.identity.model.LoginAccountParameterKey,
-      parameterValue: String,
-    ) = null
-
-    override suspend fun listLoginOptionsForIdentifier(normalizedIdentifier: String) =
-      emptyList<doa.ink.workbench.core.identity.model.TenantLoginOption>()
-
-    override suspend fun findUserByMethodAndSubject(
-      loginMethodCode: String,
-      normalizedSubject: String,
-    ) = null
-
-    override suspend fun touchLastUsed(loginAccountId: UUID, usedAt: OffsetDateTime) = false
   }
 
   private object UnusedBearerTokenRepository : BearerTokenRepository {
@@ -275,10 +227,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
   }
 
-  private object UnusedAdminUserRepository : AdminUserRepository {
-    override suspend fun create(command: doa.ink.workbench.core.permission.CreateAdminUserCommand) =
-      error("unused")
-
+  private object UnusedAdminUserQueryRepository : AdminUserQueryRepository {
     override suspend fun findById(id: UUID) = null
 
     override suspend fun findByApiId(apiId: String) = null
@@ -303,8 +252,6 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
     override suspend fun listTenantAdmins(tenantId: UUID) =
       emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
-
-    override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
   }
 
   private object UnusedAccessGrantRepository : AccessGrantRepository {

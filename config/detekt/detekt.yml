@@ -1,6 +1,15 @@
 config:
   validation: true
 
+complexity:
+  TooManyFunctions:
+    active: true
+    allowedFunctionsPerFile: 11
+    allowedFunctionsPerClass: 11
+    ignoreDeprecated: true
+    ignorePrivate: false
+    ignoreOverridden: false
+
 style:
   MagicNumber:
     active: false

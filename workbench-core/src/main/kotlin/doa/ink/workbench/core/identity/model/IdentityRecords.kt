@@ -11,6 +11,7 @@ data class TenantRecord(
   val name: String,
   val timezone: String = "UTC",
   val locale: String = "en-US",
+  val status: TenantStatus = TenantStatus.ACTIVE,
   val createdAt: OffsetDateTime? = null,
   val updatedAt: OffsetDateTime? = null,
 )
@@ -48,6 +49,16 @@ enum class TenantMemberStatus(val dbValue: String) {
   INVITED("invited"),
   SUSPENDED("suspended"),
   REMOVED("removed"),
+}
+
+enum class TenantStatus(val dbValue: String) {
+  ACTIVE("active"),
+  PENDING_ACTIVATION("pending_activation"),
+}
+
+enum class InvitationType(val dbValue: String) {
+  TENANT_ADMIN("tenant_admin"),
+  TENANT_MEMBER("tenant_member"),
 }
 
 enum class LoginMethodKind(val dbValue: String) {

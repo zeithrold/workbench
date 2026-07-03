@@ -7,7 +7,7 @@ import doa.ink.workbench.core.identity.model.TenantMemberRecord
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
 import doa.ink.workbench.core.permission.AccessGrantRecord
 import doa.ink.workbench.core.permission.AccessGrantRepository
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.permission.GrantScope
 import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.core.permission.model.AuthorizationDecision
@@ -37,12 +37,12 @@ class ScopePermissionServiceTest :
     val clock = Clock.fixed(now.toInstant(), ZoneOffset.UTC)
 
     val tenantMembers = mockk<TenantMemberRepository>()
-    val adminUsers = mockk<AdminUserRepository>()
+    val adminUserQueries = mockk<AdminUserQueryRepository>()
     val accessGrants = mockk<AccessGrantRepository>()
 
     val service =
       ScopePermissionService(
-        adminUsers = adminUsers,
+        adminUserQueries = adminUserQueries,
         accessGrants = accessGrants,
         tenantMembers = tenantMembers,
         clock = clock,
@@ -73,7 +73,7 @@ class ScopePermissionServiceTest :
       )
 
     test("instance scope allows matching grant for active instance admin") {
-      coEvery { adminUsers.isActiveInstanceAdmin(userId, now) } returns true
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns true
       coEvery {
         accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
       } returns

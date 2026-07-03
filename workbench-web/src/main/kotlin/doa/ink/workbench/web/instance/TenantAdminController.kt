@@ -1,18 +1,21 @@
 package doa.ink.workbench.web.instance
 
 import doa.ink.workbench.core.common.context.InstanceRequestContext
+import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.Authenticated
 import doa.ink.workbench.web.api.Authorize
 import doa.ink.workbench.web.api.InstanceScoped
 import doa.ink.workbench.web.api.SessionSecured
 import doa.ink.workbench.web.api.StandardErrorResponses
+import doa.ink.workbench.web.api.http.HttpClientContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import java.net.URI
 import org.springframework.http.HttpStatus
@@ -37,7 +40,10 @@ import org.springframework.web.bind.annotation.RestController
 @SessionSecured
 @StandardErrorResponses
 @Suppress("UnusedParameter")
-class TenantAdminController(private val service: TenantManagementService) {
+class TenantAdminController(
+  private val service: TenantManagementService,
+  private val publicIds: PublicIdResolver,
+) {
   @GetMapping
   @Authenticated
   @InstanceScoped
@@ -104,9 +110,16 @@ class TenantAdminController(private val service: TenantManagementService) {
   suspend fun create(
     @Valid @RequestBody request: CreateTenantRequest,
     instanceContext: InstanceRequestContext,
+    httpRequest: HttpServletRequest,
   ): ResponseEntity<TenantResponse> {
-    val tenant = service.create(request.toCommand())
-    val response = TenantResponse.from(tenant)
+    val requestHost = HttpClientContext.resolveRequestHost(httpRequest)
+    val view =
+      service.createWithAdmin(
+        command = request.toCommand { publicIds.resolveUser(it).id },
+        actorUserId = instanceContext.base.actorUserId,
+        requestHost = requestHost,
+      )
+    val response = TenantResponse.from(view)
     return ResponseEntity.created(URI.create("/api/admin/tenants/${response.id}")).body(response)
   }
 

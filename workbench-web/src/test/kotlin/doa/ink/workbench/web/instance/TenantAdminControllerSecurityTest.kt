@@ -10,7 +10,9 @@ import doa.ink.workbench.core.permission.model.DecisionReason
 import doa.ink.workbench.security.SecurityConfiguration
 import doa.ink.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import doa.ink.workbench.security.WorkbenchAuthenticationFilter
+import doa.ink.workbench.service.common.PublicIdResolver
 import doa.ink.workbench.service.identity.SessionService
+import doa.ink.workbench.service.instance.CreateTenantView
 import doa.ink.workbench.service.instance.TenantManagementService
 import doa.ink.workbench.web.api.GlobalExceptionHandler
 import doa.ink.workbench.web.api.InfrastructureAspect
@@ -98,7 +100,10 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
                 "name": "Acme",
                 "slug": "acme-new",
                 "timezone": "UTC",
-                "locale": "en-US"
+                "locale": "en-US",
+                "adminAssignment": {
+                  "mode": "SELF"
+                }
               }
               """
                 .trimIndent()
@@ -153,12 +158,16 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
 
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 
+    @Bean fun publicIdResolver(): PublicIdResolver = mockk(relaxed = true)
+
     @Bean
     fun tenantManagementService(): TenantManagementService {
       val service = mockk<TenantManagementService>()
       coEvery { service.list(null) } returns listOf(SAMPLE_TENANT)
       coEvery { service.list("acme") } returns listOf(SAMPLE_TENANT)
       coEvery { service.create(any()) } returns SAMPLE_TENANT
+      coEvery { service.createWithAdmin(any(), any(), any()) } returns
+        CreateTenantView(tenant = SAMPLE_TENANT, admin = null, invitationLink = null)
       coEvery { service.get(any()) } returns SAMPLE_TENANT
       coEvery { service.update(any(), any(), any(), any(), any()) } returns SAMPLE_TENANT
       return service

@@ -199,6 +199,7 @@ data class CreateTenantCommand(
   val slug: String,
   val timezone: String = "UTC",
   val locale: String = "en-US",
+  val status: TenantStatus = TenantStatus.ACTIVE,
 )
 
 data class UpdateTenantCommand(
@@ -207,6 +208,7 @@ data class UpdateTenantCommand(
   val slug: String? = null,
   val timezone: String? = null,
   val locale: String? = null,
+  val status: TenantStatus? = null,
 )
 
 data class BootstrapInstanceAdminCommand(

@@ -36,6 +36,7 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
             "/api/auth/magic-link/**",
             "/api/instance/setup-status",
             "/api/instance/setup",
+            "/api/invitations/**",
           )
           .permitAll()
         it.anyRequest().authenticated()

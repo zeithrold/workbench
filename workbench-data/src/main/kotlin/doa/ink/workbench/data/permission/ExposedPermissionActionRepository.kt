@@ -5,8 +5,6 @@ import doa.ink.workbench.core.permission.PermissionActionRecord
 import doa.ink.workbench.core.permission.PermissionActionRepository
 import doa.ink.workbench.core.permission.model.AuthorizationAction
 import doa.ink.workbench.data.persistence.PermissionActionsTable
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -32,7 +30,7 @@ class ExposedPermissionActionRepository(private val database: Database) :
         existing.toPermissionActionRecord()
       } else {
         val id = UUID.randomUUID()
-        val now = nowUtc()
+        val now = AdminRepositoryMappers.nowUtc()
         PermissionActionsTable.insert {
           it[PermissionActionsTable.id] = id.toKotlinUuid()
           it[code] = command.code.code
@@ -69,5 +67,3 @@ private fun ResultRow.toPermissionActionRecord() =
     description = this[PermissionActionsTable.description],
     createdAt = this[PermissionActionsTable.createdAt],
   )
-
-private fun nowUtc(): OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)

@@ -2,12 +2,13 @@ package doa.ink.workbench.service.identity
 
 import doa.ink.workbench.core.common.summary.LoginMethodSummary
 import doa.ink.workbench.core.common.summary.TenantSummary
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginDiscoveryRepository
+import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.TenantMemberRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.model.TenantLoginOption
 import doa.ink.workbench.core.identity.model.TenantMemberStatus
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.service.identity.auth.normalizeSubject
 import java.time.Clock
 import java.time.OffsetDateTime
@@ -33,9 +34,10 @@ data class LoginDiscoveryView(
 @Service
 class LoginDiscoveryService(
   private val users: UserRepository,
-  private val loginAccounts: LoginAccountRepository,
+  private val loginDiscovery: LoginDiscoveryRepository,
+  private val loginMethods: LoginMethodRepository,
   private val tenantMembers: TenantMemberRepository,
-  private val adminUsers: AdminUserRepository,
+  private val adminUserQueries: AdminUserQueryRepository,
   private val clock: Clock,
 ) {
   @Suppress("ReturnCount")
@@ -43,8 +45,8 @@ class LoginDiscoveryService(
     val normalized = normalizeSubject(identifier)
     val user =
       users.findByPrimaryEmail(normalized)
-        ?: loginAccounts.findUserByMethodAndSubject("password", normalized)
-        ?: loginAccounts.findUserByMethodAndSubject("instance_password", normalized)
+        ?: loginDiscovery.findUserByMethodAndSubject("password", normalized)
+        ?: loginDiscovery.findUserByMethodAndSubject("instance_password", normalized)
 
     if (user == null) {
       return LoginDiscoveryView(
@@ -58,11 +60,11 @@ class LoginDiscoveryService(
     val at = OffsetDateTime.now(clock)
     val activeMemberships =
       tenantMembers.listByUser(user.id).filter { it.status == TenantMemberStatus.ACTIVE }
-    val isInstanceAdmin = adminUsers.isActiveInstanceAdmin(user.id, at)
+    val isInstanceAdmin = adminUserQueries.isActiveInstanceAdmin(user.id, at)
 
     if (activeMemberships.isEmpty() && isInstanceAdmin) {
       val instanceMethod =
-        loginAccounts.findLoginMethodByCode("instance_password")
+        loginMethods.findLoginMethodByCode("instance_password")
           ?: return LoginDiscoveryView(
             identifierRecognized = true,
             flow = LoginFlow.INSTANCE_ONLY,
@@ -77,7 +79,7 @@ class LoginDiscoveryService(
       )
     }
 
-    val tenantOptions = loginAccounts.listLoginOptionsForIdentifier(normalized)
+    val tenantOptions = loginDiscovery.listLoginOptionsForIdentifier(normalized)
     return LoginDiscoveryView(
       identifierRecognized = true,
       flow = LoginFlow.TENANT,

@@ -1,15 +1,16 @@
 package doa.ink.workbench.service.instance.support
 
-import doa.ink.workbench.core.identity.LoginAccountRepository
+import doa.ink.workbench.core.identity.LoginMethodRepository
 import doa.ink.workbench.core.identity.UserRepository
 import doa.ink.workbench.core.identity.auth.BearerTokenRepository
 import doa.ink.workbench.core.permission.AccessGrantRepository
-import doa.ink.workbench.core.permission.AdminUserRepository
+import doa.ink.workbench.core.permission.AdminUserCommandRepository
+import doa.ink.workbench.core.permission.AdminUserQueryRepository
 import doa.ink.workbench.core.project.ProjectRepository
 import java.time.OffsetDateTime
 import java.util.UUID
 
-class UnusedPublicIdResolverDependencies(val loginAccounts: LoginAccountRepository) {
+class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository) {
   val users: UserRepository =
     object : UserRepository {
       override suspend fun create(
@@ -40,12 +41,8 @@ class UnusedPublicIdResolverDependencies(val loginAccounts: LoginAccountReposito
       override suspend fun touch(id: UUID, usedAt: OffsetDateTime) = false
     }
 
-  val adminUsers: AdminUserRepository =
-    object : AdminUserRepository {
-      override suspend fun create(
-        command: doa.ink.workbench.core.permission.CreateAdminUserCommand
-      ) = error("unused")
-
+  val adminUserQueries: AdminUserQueryRepository =
+    object : AdminUserQueryRepository {
       override suspend fun findById(id: UUID) = null
 
       override suspend fun findByApiId(apiId: String) = null
@@ -73,6 +70,13 @@ class UnusedPublicIdResolverDependencies(val loginAccounts: LoginAccountReposito
 
       override suspend fun listTenantAdmins(tenantId: UUID) =
         emptyList<doa.ink.workbench.core.permission.AdminUserRecord>()
+    }
+
+  val adminUserCommands: AdminUserCommandRepository =
+    object : AdminUserCommandRepository {
+      override suspend fun create(
+        command: doa.ink.workbench.core.permission.CreateAdminUserCommand
+      ) = error("unused")
 
       override suspend fun revoke(id: UUID, revokedAt: OffsetDateTime) = false
     }

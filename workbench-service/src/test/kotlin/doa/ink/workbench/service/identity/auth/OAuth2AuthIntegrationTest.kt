@@ -2,8 +2,11 @@ package doa.ink.workbench.service.identity.auth
 
 import dasniko.testcontainers.keycloak.KeycloakContainer
 import doa.ink.workbench.data.identity.ExposedAuthLoginStateRepository
-import doa.ink.workbench.data.identity.ExposedLoginAccountRepository
+import doa.ink.workbench.data.identity.ExposedLoginAccountStore
+import doa.ink.workbench.data.identity.ExposedLoginMethodRepository
+import doa.ink.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
 import doa.ink.workbench.data.identity.ExposedTenantRepository
+import doa.ink.workbench.data.identity.ExposedUserLoginAccountRepository
 import doa.ink.workbench.service.identity.auth.support.AuthIntegrationFixtures
 import doa.ink.workbench.service.identity.auth.support.FederatedAuthFixture
 import doa.ink.workbench.service.identity.auth.support.KeycloakTestContainer
@@ -31,9 +34,16 @@ class OAuth2AuthIntegrationTest :
       database = AuthIntegrationFixtures.connectDatabase(postgres)
       fixture = runBlocking { AuthIntegrationFixtures.seedFederatedFixture(database, keycloak) }
       val secretResolver = MapSecretResolver(AuthIntegrationFixtures.keycloakSecrets())
+      val loginMethods = ExposedLoginMethodRepository(database)
+      val tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
+      val loginAccounts = ExposedLoginAccountStore(database)
+      val userLoginAccounts = ExposedUserLoginAccountRepository(database)
       federatedAuthService =
         FederatedAuthService(
-          loginAccounts = ExposedLoginAccountRepository(database),
+          loginMethods = loginMethods,
+          tenantLoginSettings = tenantLoginSettings,
+          loginAccounts = loginAccounts,
+          userLoginAccounts = userLoginAccounts,
           tenants = ExposedTenantRepository(database),
           loginStates = ExposedAuthLoginStateRepository(database),
           secretGenerator = SecureRandomCredentialSecretGenerator(),
