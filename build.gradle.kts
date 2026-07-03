@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.spotless) apply false
-    alias(libs.plugins.kover) apply false
+    alias(libs.plugins.kover)
     alias(libs.plugins.pitest) apply false
     alias(libs.plugins.node) apply false
 }
@@ -59,6 +59,35 @@ val backendProjects = listOf(
     project(":workbench-worker"),
 )
 
+val koverExcludedClasses =
+  arrayOf(
+      "*.WorkbenchApplication*",
+      "*.WorkbenchWorkerApplication*",
+      "*.api.*Configuration",
+      "*.security.*Configuration",
+      "*.infrastructure.persistence.*Configuration",
+      "*.data.persistence.*Configuration",
+  )
+
+dependencies {
+    backendProjects.forEach { kover(it) }
+}
+
+extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
+    reports {
+        total {
+            xml {
+                onCheck = true
+            }
+        }
+        filters {
+            excludes {
+                classes(*koverExcludedClasses)
+            }
+        }
+    }
+}
+
 fun pitestEnabledProjects(): List<org.gradle.api.Project> =
     backendProjects.filter { project ->
         val hasKotlinTests =
@@ -106,16 +135,14 @@ configure(backendProjects) {
 
     extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
         reports {
+            total {
+                xml {
+                    onCheck = true
+                }
+            }
             filters {
                 excludes {
-                    classes(
-                        "*.WorkbenchApplication*",
-                        "*.WorkbenchWorkerApplication*",
-                        "*.api.*Configuration",
-                        "*.security.*Configuration",
-                        "*.infrastructure.persistence.*Configuration",
-                        "*.data.persistence.*Configuration",
-                    )
+                    classes(*koverExcludedClasses)
                 }
             }
             verify {

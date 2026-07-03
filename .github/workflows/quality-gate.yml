@@ -113,3 +113,23 @@ jobs:
       - name: Mutation tests
         if: inputs.extended-tests
         run: ./gradlew mutationTest --no-daemon --no-parallel --no-configuration-cache
+
+      - name: Generate Kover XML report
+        if: success() || failure()
+        run: ./gradlew koverXmlReport --no-daemon
+
+      - name: Publish quality gate report
+        if: always()
+        env:
+          EXTENDED_TESTS: ${{ inputs.extended-tests }}
+        run: python3 scripts/ci/render-quality-summary.py >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-reports-${{ github.run_id }}
+          path: |
+            build/reports/kover/
+            build/reports/pitest/
+          retention-days: 14
