@@ -492,6 +492,7 @@ enum class WorkbenchErrorCode(
     "resource.work_item_type_config.not_found",
     "Work item type config not found.",
   ),
+  RESOURCE_WORK_ITEM_NOT_FOUND("resource.work_item.not_found", "Work item not found."),
   WORK_ITEM_CONFIG_SCOPE_UNKNOWN(
     "work_item.config.scope_unknown",
     "Unknown work item config scope.",
@@ -535,6 +536,34 @@ enum class WorkbenchErrorCode(
   WORKFLOW_TRANSITION_STATUS_UNAVAILABLE(
     "workflow.transition.status_unavailable",
     "Transition status is not available in the effective type config.",
+  ),
+  WORK_ITEM_PROPERTY_REQUIRED(
+    "work_item.property.required",
+    "Required work item property is missing.",
+  ),
+  WORK_ITEM_PROPERTY_UNAVAILABLE(
+    "work_item.property.unavailable",
+    "Property is not available for this work item type config.",
+  ),
+  WORK_ITEM_PROPERTY_VALUE_INVALID(
+    "work_item.property.value_invalid",
+    "Work item property value is invalid.",
+  ),
+  WORK_ITEM_TRANSITION_STATUS_MISMATCH(
+    "work_item.transition.status_mismatch",
+    "Transition is not valid from the current status.",
+  ),
+  WORK_ITEM_TRANSITION_PERMISSION_DENIED(
+    "work_item.transition.permission_denied",
+    "Transition permission condition denied the request.",
+  ),
+  WORK_ITEM_TRANSITION_PRECONDITION_FAILED(
+    "work_item.transition.precondition_failed",
+    "Transition precondition is not satisfied.",
+  ),
+  WORK_ITEM_CONDITION_UNSUPPORTED(
+    "work_item.condition.unsupported",
+    "Unsupported work item condition expression.",
   ),
   DOMAIN_EVENT_ENVELOPE_INVALID_JSON(
     "domain_event.envelope.invalid_json",
