@@ -1,6 +1,7 @@
 package ink.doa.workbench.security.invitation
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
@@ -16,13 +17,22 @@ import ink.doa.workbench.core.identity.auth.PasswordHasher
 import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
 import ink.doa.workbench.core.identity.model.InvitationRecord
 import ink.doa.workbench.core.identity.model.InvitationType
+import ink.doa.workbench.core.identity.model.LoginAccountParameterKey
+import ink.doa.workbench.core.identity.model.LoginAccountParameterRecord
+import ink.doa.workbench.core.identity.model.LoginAccountRecord
+import ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord
+import ink.doa.workbench.core.identity.model.LoginMethodKind
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
+import ink.doa.workbench.core.identity.model.UserLoginAccountRecord
+import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.security.permission.AdminUserService
+import ink.doa.workbench.security.permission.AdminUserView
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -30,6 +40,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
 
 class InvitationServiceTest :
   StringSpec({
@@ -134,6 +145,154 @@ class InvitationServiceTest :
 
       shouldThrow<ResourceNotFoundException> { runBlocking { service.preview("token") } }
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND
+    }
+
+    "accept provisions tenant admin and activates tenant" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_ADMIN)
+      val tenant = sampleTenant(invitation.tenantId)
+      val passwordMethodId = UUID.randomUUID()
+      val userId = UUID.randomUUID()
+      val loginAccountId = UUID.randomUUID()
+      val activatedTenant = tenant.copy(status = TenantStatus.ACTIVE)
+      val user =
+        UserRecord(
+          id = userId,
+          apiId = PublicId.new("usr"),
+          displayName = "Admin",
+          primaryEmail = invitation.normalizedEmail,
+        )
+      val loginAccount =
+        LoginAccountRecord(
+          id = loginAccountId,
+          apiId = PublicId.new("lac"),
+          loginMethodId = passwordMethodId,
+          subject = invitation.email,
+          normalizedSubject = invitation.normalizedEmail,
+          displayName = "Admin",
+          lastUsedAt = null,
+          disabledAt = null,
+          disabledBy = null,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+      coEvery { tenants.findById(invitation.tenantId) } returns tenant
+      coEvery { users.findByPrimaryEmail(invitation.normalizedEmail) } returns null
+      coEvery { loginMethods.findLoginMethodByCode("password") } returns
+        LoginMethodDefinitionRecord(
+          id = passwordMethodId,
+          apiId = PublicId.new("lmd"),
+          code = "password",
+          kind = LoginMethodKind.PASSWORD,
+          name = "Password",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { users.create(any()) } returns user
+      coEvery { loginAccounts.createLoginAccount(any()) } returns loginAccount
+      coEvery { passwordHasher.hash("secret") } returns "hashed-password"
+      coEvery { loginAccounts.upsertParameter(any()) } returns
+        LoginAccountParameterRecord(
+          id = UUID.randomUUID(),
+          loginAccountId = loginAccountId,
+          parameterKey = LoginAccountParameterKey.PasswordHash,
+          parameterValue = "hashed-password",
+          secretRef = null,
+          metadata = JsonObject(emptyMap()),
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { userLoginAccounts.linkUser(any()) } returns
+        UserLoginAccountRecord(
+          id = UUID.randomUUID(),
+          userId = userId,
+          loginAccountId = loginAccountId,
+          linkedBy = userId,
+          linkedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          unlinkedAt = null,
+        )
+      coEvery {
+        adminUserService.provisionTenantAdmin(tenant.id, user.id, invitation.invitedBy)
+      } returns
+        AdminUserView(
+          id = PublicId.new("adm").value,
+          userId = user.apiId.value,
+          scope = ink.doa.workbench.core.permission.AdminScope.TENANT,
+          tenantId = tenant.id.toString(),
+          status = "active",
+          validFrom = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          validTo = null,
+        )
+      coEvery { tenants.update(any()) } returns activatedTenant
+      coEvery { invitations.consume(invitation.id, any()) } returns true
+
+      val accepted = runBlocking {
+        service.accept(
+          AcceptInvitationCommand(
+            token = "token",
+            displayName = "Admin",
+            password = "secret",
+          )
+        )
+      }
+
+      accepted.type shouldBe InvitationType.TENANT_ADMIN
+      accepted.tenant.name shouldBe activatedTenant.name
+      accepted.user.displayName shouldBe "Admin"
+      coVerify { adminUserService.provisionTenantAdmin(tenant.id, user.id, invitation.invitedBy) }
+    }
+
+    "accept rejects when tenant is not pending activation" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_ADMIN)
+      val tenant = sampleTenant(invitation.tenantId).copy(status = TenantStatus.ACTIVE)
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+      coEvery { tenants.findById(invitation.tenantId) } returns tenant
+
+      shouldThrow<InvalidRequestException> {
+          runBlocking {
+            service.accept(
+              AcceptInvitationCommand(
+                token = "token",
+                displayName = "Admin",
+                password = "secret",
+              )
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.TENANT_PENDING_ACTIVATION_REQUIRED
+    }
+
+    "accept rejects when email already exists" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_ADMIN)
+      val tenant = sampleTenant(invitation.tenantId)
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+      coEvery { tenants.findById(invitation.tenantId) } returns tenant
+      coEvery { users.findByPrimaryEmail(invitation.normalizedEmail) } returns
+        UserRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("usr"),
+          displayName = "Existing",
+          primaryEmail = invitation.normalizedEmail,
+        )
+
+      shouldThrow<ResourceConflictException> {
+          runBlocking {
+            service.accept(
+              AcceptInvitationCommand(
+                token = "token",
+                displayName = "Admin",
+                password = "secret",
+              )
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.USER_EMAIL_ALREADY_EXISTS
     }
   })
 

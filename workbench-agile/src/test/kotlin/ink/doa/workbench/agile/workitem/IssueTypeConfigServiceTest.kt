@@ -7,10 +7,15 @@ import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -114,6 +119,93 @@ class IssueTypeConfigServiceTest :
       shouldThrow<ResourceNotFoundException> {
         service.resolveEffective(tenantId, projectId, "task")
       }
+    }
+
+    "create validates bindings and persists config" {
+      val tenantId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>()
+      val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val issueType =
+        IssueTypeRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("typ"),
+          tenantId = tenantId,
+          projectId = null,
+          scope = WorkItemConfigScope.TENANT,
+          code = "task",
+          name = "Task",
+          description = null,
+          icon = null,
+          color = null,
+          rank = 1,
+          isActive = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      val workflow =
+        WorkflowRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("wfl"),
+          tenantId = tenantId,
+          code = "default",
+          name = "Default",
+          description = null,
+          version = 1,
+          isActive = true,
+          publishedAt = null,
+          createdBy = UUID.randomUUID(),
+          createdAt = now,
+          updatedAt = now,
+        )
+      val status =
+        IssueStatusRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("sts"),
+          tenantId = tenantId,
+          code = "todo",
+          name = "To Do",
+          statusGroup = WorkItemStatusGroup.TODO,
+          rank = 1,
+          color = null,
+          isTerminal = false,
+          isActive = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      val command =
+        CreateIssueTypeConfigCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          issueTypeApiId = issueType.apiId.value,
+          workflowApiId = workflow.apiId.value,
+          createFields = createFields.jsonObject,
+          statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
+        )
+      val created = sampleConfigDetails(tenantId)
+
+      coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
+      coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+      coEvery { configs.createConfig(command) } returns created
+      coEvery { workflows.listTransitions(tenantId, created.config.workflowId) } returns emptyList()
+
+      IssueTypeConfigService(configs, catalog, workflows).create(command) shouldBe created
+      coVerify { configs.createConfig(command) }
+    }
+
+    "resolveEffective returns effective config" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val effective =
+        EffectiveIssueTypeConfig(sampleConfigDetails(tenantId), WorkItemConfigScope.TENANT)
+      coEvery { configs.resolveEffective(tenantId, projectId, "task") } returns effective
+      val service = IssueTypeConfigService(configs, mockk(relaxed = true), mockk(relaxed = true))
+
+      service.resolveEffective(tenantId, projectId, "task") shouldBe effective
     }
   })
 

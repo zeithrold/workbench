@@ -141,6 +141,47 @@ class WorkItemConditionJsonTest :
       WorkItemConditionJson.canonicalize(emptyCondition) shouldBe JsonObject(emptyMap())
     }
 
+    "parse converts legacy equality and inequality operators" {
+      val legacy =
+        json
+          .parseToJsonElement(
+            """
+            { "field": "statusGroup", "op": "==", "value": "todo" }
+            """
+              .trimIndent()
+          )
+          .jsonObject
+
+      val parsed = WorkItemConditionJson.parse(legacy)
+
+      parsed shouldBe
+        ConditionNode.Predicate(
+          field = QueryField.System("statusGroup"),
+          op = QueryOperator.EQ,
+          value = QueryValue.Literal(JsonPrimitive("todo")),
+        )
+    }
+
+    "parse converts legacy variable primitive to canonical variable object" {
+      val legacy =
+        JsonObject(
+          mapOf(
+            "field" to JsonPrimitive("assignee"),
+            "op" to JsonPrimitive("eq"),
+            "value" to JsonPrimitive("user.currentUser"),
+          )
+        )
+
+      val parsed = WorkItemConditionJson.parse(legacy)
+
+      parsed shouldBe
+        ConditionNode.Predicate(
+          field = QueryField.System("assignee"),
+          op = QueryOperator.EQ,
+          value = QueryValue.Variable("user.currentUser"),
+        )
+    }
+
     "parse handles legacy variable in array values" {
       val legacy =
         JsonObject(

@@ -1,8 +1,12 @@
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
+import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.support.seedUser
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -59,6 +63,81 @@ class ExposedWorkflowConfigurationRepositoryIntegrationTest :
         repository.findWorkflow(tenantId, "support")?.name shouldBe "Support Workflow"
       }
     }
+
+    "publishWorkflow sets publishedAt" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val repository = ExposedWorkflowConfigurationRepository(database, catalog)
+        val workflow =
+          repository.createWorkflow(
+            CreateWorkflowCommand(tenantId = tenantId, code = "default", name = "Default")
+          )
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+
+        repository.publishWorkflow(tenantId, workflow.id, now).publishedAt shouldBe now
+      }
+    }
+
+    "createTransition persists transition between statuses" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val repository = ExposedWorkflowConfigurationRepository(database, catalog)
+        val workflow =
+          repository.createWorkflow(
+            CreateWorkflowCommand(tenantId = tenantId, code = "default", name = "Default")
+          )
+        val todo =
+          catalog.createStatus(
+            CreateIssueStatusCommand(
+              tenantId = tenantId,
+              code = "todo",
+              name = "To Do",
+              statusGroup = WorkItemStatusGroup.TODO,
+            )
+          )
+        val done =
+          catalog.createStatus(
+            CreateIssueStatusCommand(
+              tenantId = tenantId,
+              code = "done",
+              name = "Done",
+              statusGroup = WorkItemStatusGroup.DONE,
+              isTerminal = true,
+            )
+          )
+
+        val transition =
+          repository.createTransition(
+            CreateWorkflowTransitionCommand(
+              tenantId = tenantId,
+              workflowApiId = workflow.apiId.value,
+              name = "Complete",
+              fromStatusApiId = todo.apiId.value,
+              toStatusApiId = done.apiId.value,
+            )
+          )
+
+        repository.listTransitions(tenantId, workflow.id).single().id shouldBe transition.id
+      }
+    }
+
+    "deactivateWorkflow marks workflow inactive" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val repository = ExposedWorkflowConfigurationRepository(database, catalog)
+        val workflow =
+          repository.createWorkflow(
+            CreateWorkflowCommand(tenantId = tenantId, code = "legacy", name = "Legacy")
+          )
+
+        repository.deactivateWorkflow(tenantId, workflow.apiId.value, actorId).isActive shouldBe
+          false
+      }
+    }
   })
 
 private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
@@ -66,7 +145,7 @@ private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
     postgres.start()
     Flyway.configure()
       .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
+      .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
       .load()
       .migrate()
     val database =

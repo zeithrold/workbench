@@ -54,4 +54,30 @@ class WorkItemValueTemplateParserTest :
         }
         .message shouldBe "Unsupported work item value template version: 2"
     }
+
+    "parses create target templates" {
+      val template =
+        parser.parse(
+          """
+          {
+            "version": 1,
+            "resource": "work_item",
+            "target": "create",
+            "values": {
+              "title": { "var": "user.currentUser" }
+            }
+          }
+          """
+            .trimIndent()
+        )
+      template.target shouldBe WorkItemValueTemplateTarget.CREATE
+    }
+
+    "rejects unsupported resource" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse(
+          """{ "version": 1, "resource": "project", "target": "create", "values": {} }"""
+        )
+      }
+    }
   })

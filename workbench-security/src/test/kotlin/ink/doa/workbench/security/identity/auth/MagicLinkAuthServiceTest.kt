@@ -119,4 +119,63 @@ class MagicLinkAuthServiceTest :
       identity.user.id shouldBe user.id
       identity.tenantId shouldBe tenantId
     }
+
+    "resolveToken throws when login method is missing" {
+      val tokenRecord =
+        ink.doa.workbench.core.identity.model.MagicLinkTokenRecord(
+          id = java.util.UUID.randomUUID(),
+          tokenHash = "hashed-valid",
+          loginMethodId = java.util.UUID.randomUUID(),
+          tenantId = java.util.UUID.randomUUID(),
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(10),
+          consumedAt = null,
+          createdAt = now,
+        )
+      coEvery { credentialHasher.hash("valid-token") } returns "hashed-valid"
+      coEvery { magicLinkTokens.findActiveByHash("hashed-valid", now) } returns tokenRecord
+      coEvery { magicLinkTokens.consume(tokenRecord.id, now) } returns true
+      coEvery { loginMethods.findLoginMethodById(tokenRecord.loginMethodId) } returns null
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.resolveToken("valid-token") }
+      }
+    }
+
+    "resolveToken throws when login account is missing" {
+      val loginMethodId = java.util.UUID.randomUUID()
+      val tokenRecord =
+        ink.doa.workbench.core.identity.model.MagicLinkTokenRecord(
+          id = java.util.UUID.randomUUID(),
+          tokenHash = "hashed-valid",
+          loginMethodId = loginMethodId,
+          tenantId = java.util.UUID.randomUUID(),
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(10),
+          consumedAt = null,
+          createdAt = now,
+        )
+      coEvery { credentialHasher.hash("valid-token") } returns "hashed-valid"
+      coEvery { magicLinkTokens.findActiveByHash("hashed-valid", now) } returns tokenRecord
+      coEvery { magicLinkTokens.consume(tokenRecord.id, now) } returns true
+      coEvery { loginMethods.findLoginMethodById(loginMethodId) } returns
+        ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord(
+          id = loginMethodId,
+          apiId = ink.doa.workbench.core.common.ids.PublicId.new("lmd"),
+          code = "magic_link",
+          kind = ink.doa.workbench.core.identity.model.LoginMethodKind.EMAIL_MAGIC_LINK,
+          name = "Magic Link",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery {
+        loginAccounts.findLoginAccountByMethodAndSubject("magic_link", "ada@example.test")
+      } returns null
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.resolveToken("valid-token") }
+      }
+    }
   })
