@@ -123,7 +123,6 @@ class BearerCredentialService(
     return revokeBearerTokenById(token.id, actorUserId, ipAddress, userAgent)
   }
 
-  @Suppress("ReturnCount")
   suspend fun revokeBearerTokenById(
     tokenId: UUID,
     actorUserId: UUID,

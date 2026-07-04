@@ -1,5 +1,3 @@
-@file:Suppress("ThrowsCount")
-
 package ink.doa.workbench.security.identity
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -73,11 +71,7 @@ class SessionService(
 
   suspend fun requireActiveTenantId(principal: AuthenticatedPrincipal): UUID {
     principal.tenantId?.let { activeTenantId ->
-      val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
-      if (membership?.status != TenantMemberStatus.ACTIVE) {
-        throw PermissionDeniedException(WorkbenchErrorCode.AUTH_SELECTED_TENANT_MEMBERSHIP_REQUIRED)
-      }
-      ensureTenantOperational(activeTenantId)
+      ensureActiveMembership(activeTenantId, principal.user.id)
       return activeTenantId
     }
     val sessionId = sessionUuid(principal)
@@ -85,12 +79,16 @@ class SessionService(
       sessions.findById(sessionId)
         ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_ACTIVE_NOT_FOUND)
     val activeTenantId = session.activeTenantId ?: throw TenantNotSelectedException()
-    val membership = tenantMembers.findByTenantAndUser(activeTenantId, principal.user.id)
+    ensureActiveMembership(activeTenantId, principal.user.id)
+    return activeTenantId
+  }
+
+  private suspend fun ensureActiveMembership(tenantId: UUID, userId: UUID) {
+    val membership = tenantMembers.findByTenantAndUser(tenantId, userId)
     if (membership?.status != TenantMemberStatus.ACTIVE) {
       throw PermissionDeniedException(WorkbenchErrorCode.AUTH_SELECTED_TENANT_MEMBERSHIP_REQUIRED)
     }
-    ensureTenantOperational(activeTenantId)
-    return activeTenantId
+    ensureTenantOperational(tenantId)
   }
 
   suspend fun requireActiveTenant(principal: AuthenticatedPrincipal): TenantRecord {

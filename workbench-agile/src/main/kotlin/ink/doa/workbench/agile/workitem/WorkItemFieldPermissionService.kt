@@ -32,7 +32,6 @@ class WorkItemFieldPermissionService(
   private val bindings: PermissionBindingRepository,
   private val clock: Clock,
 ) {
-  @Suppress("ReturnCount")
   suspend fun canWriteField(
     context: WorkItemFieldPermissionContext,
     field: TemplateField,

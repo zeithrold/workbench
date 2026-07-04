@@ -2,7 +2,6 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemQueryService
 import ink.doa.workbench.agile.workitem.WorkItemService
 import ink.doa.workbench.core.common.context.ProjectRequestContext
@@ -11,14 +10,10 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
 import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentFormMeta
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
@@ -38,10 +33,8 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.net.URI
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -60,10 +53,8 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Project Work Items", description = "Project-scoped work item runtime APIs.")
 @SessionSecured
 @StandardErrorResponses
-@Suppress("TooManyFunctions")
 class ProjectWorkItemController(
   private val service: WorkItemService,
-  private val commentService: WorkItemCommentService,
   private val queryService: WorkItemQueryService,
 ) {
   private val objectMapper = ObjectMapper()
@@ -225,102 +216,6 @@ class ProjectWorkItemController(
         .transition(request.toCommand(projectContext, workItemId, actorUserId(projectContext)))
         .workItem
     )
-
-  @GetMapping("/{workItemId}/comments")
-  @Authenticated
-  @TenantScoped
-  @ProjectScoped
-  @Authorize(action = "issue.view", resource = "issue")
-  @Operation(summary = "List work item comments")
-  suspend fun listComments(
-    @PathVariable @ResourceId workItemId: String,
-    @RequestParam(defaultValue = "50") limit: Int,
-    @RequestParam(defaultValue = "0") offset: Long,
-    projectContext: ProjectRequestContext,
-  ): List<WorkItemCommentResponse> =
-    commentService
-      .list(projectContext.tenant.id, projectContext.project.id, workItemId, limit, offset)
-      .map(WorkItemCommentResponse::from)
-
-  @PostMapping("/{workItemId}/comments")
-  @Authenticated
-  @TenantScoped
-  @ProjectScoped
-  @Authorize(action = "issue.comment.create", resource = "issue")
-  @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Create a work item comment")
-  suspend fun createComment(
-    @PathVariable @ResourceId workItemId: String,
-    @Valid @RequestBody request: CreateWorkItemCommentRequest,
-    projectContext: ProjectRequestContext,
-  ): ResponseEntity<WorkItemCommentResponse> {
-    val actorUserId = actorUserId(projectContext)
-    val comment =
-      commentService.create(
-        CreateWorkItemCommentCommand(
-          tenantId = projectContext.tenant.id,
-          projectId = projectContext.project.id,
-          workItemApiId = workItemId,
-          authorId = actorUserId,
-          body = request.body,
-        )
-      )
-    val response = WorkItemCommentResponse.from(comment)
-    return ResponseEntity.created(
-        URI.create(
-          "/api/projects/${projectContext.project.publicId.value}/work-items/$workItemId/comments/${response.id}"
-        )
-      )
-      .body(response)
-  }
-
-  @PatchMapping("/{workItemId}/comments/{commentId}")
-  @Authenticated
-  @TenantScoped
-  @ProjectScoped
-  @Authorize(action = "issue.comment.update", resource = "issue")
-  @Operation(summary = "Update a work item comment")
-  suspend fun updateComment(
-    @PathVariable @ResourceId workItemId: String,
-    @PathVariable @ResourceId commentId: String,
-    @Valid @RequestBody request: UpdateWorkItemCommentRequest,
-    projectContext: ProjectRequestContext,
-  ): WorkItemCommentResponse =
-    WorkItemCommentResponse.from(
-      commentService.update(
-        UpdateWorkItemCommentCommand(
-          tenantId = projectContext.tenant.id,
-          projectId = projectContext.project.id,
-          workItemApiId = workItemId,
-          commentApiId = commentId,
-          actorUserId = actorUserId(projectContext),
-          body = request.body,
-        )
-      )
-    )
-
-  @DeleteMapping("/{workItemId}/comments/{commentId}")
-  @Authenticated
-  @TenantScoped
-  @ProjectScoped
-  @Authorize(action = "issue.comment.delete", resource = "issue")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(summary = "Delete a work item comment")
-  suspend fun deleteComment(
-    @PathVariable @ResourceId workItemId: String,
-    @PathVariable @ResourceId commentId: String,
-    projectContext: ProjectRequestContext,
-  ) {
-    commentService.delete(
-      DeleteWorkItemCommentCommand(
-        tenantId = projectContext.tenant.id,
-        projectId = projectContext.project.id,
-        workItemApiId = workItemId,
-        commentApiId = commentId,
-        actorUserId = actorUserId(projectContext),
-      )
-    )
-  }
 
   private fun actorUserId(projectContext: ProjectRequestContext) =
     projectContext.actor?.id
@@ -536,39 +431,3 @@ data class WorkItemCommentFormMetaResponse(
       )
   }
 }
-
-data class CreateWorkItemCommentRequest(@field:NotBlank val body: String)
-
-data class UpdateWorkItemCommentRequest(@field:NotBlank val body: String)
-
-data class WorkItemCommentResponse(
-  val id: String,
-  val body: String,
-  val authorId: String,
-  val createdAt: String,
-  val updatedAt: String,
-  val editedAt: String?,
-) {
-  companion object {
-    fun from(record: WorkItemCommentRecord): WorkItemCommentResponse =
-      WorkItemCommentResponse(
-        id = record.apiId.value,
-        body = record.body,
-        authorId = record.authorApiId.value,
-        createdAt = record.createdAt.toString(),
-        updatedAt = record.updatedAt.toString(),
-        editedAt = record.editedAt?.toString(),
-      )
-  }
-}
-
-private val JsonFormat = Json { ignoreUnknownKeys = false }
-
-private fun JsonNode?.toJsonElement(objectMapper: ObjectMapper = ObjectMapper()): JsonElement =
-  this?.let { JsonFormat.parseToJsonElement(objectMapper.writeValueAsString(it)) }
-    ?: JsonObject(emptyMap())
-
-private fun JsonNode?.toJsonObject(objectMapper: ObjectMapper = ObjectMapper()): JsonObject =
-  toJsonElement(objectMapper).jsonObject
-
-private fun JsonObject.toMap(): Map<String, JsonElement> = entries.associate { it.key to it.value }

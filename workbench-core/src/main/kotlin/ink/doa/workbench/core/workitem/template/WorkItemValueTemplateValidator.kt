@@ -2,6 +2,7 @@ package ink.doa.workbench.core.workitem.template
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
@@ -19,24 +20,24 @@ object WorkItemValueTemplateValidator {
       "date.endOfWeek",
     )
   private val dateAnchors = setOf("date.now", "date.today", "date.startOfWeek", "date.endOfWeek")
+  private val dateLikePropertyTypes =
+    setOf(WorkItemPropertyDataType.DATE, WorkItemPropertyDataType.DATETIME)
 
-  @Suppress("ThrowsCount")
   fun validateEnvelope(template: WorkItemValueTemplate) {
-    if (template.version != WorkItemValueTemplate.CURRENT_VERSION) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VERSION_UNSUPPORTED,
-        "Unsupported work item value template version: ${template.version}",
-      )
-    }
-    if (template.resource != WorkItemValueTemplate.RESOURCE) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RESOURCE_UNSUPPORTED,
-        "Unsupported work item value template resource: ${template.resource}",
-      )
-    }
-    if (template.values.size > MAX_VALUES) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TEMPLATE_TOO_MANY_VALUES)
-    }
+    requireValid(
+      template.version == WorkItemValueTemplate.CURRENT_VERSION,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VERSION_UNSUPPORTED,
+      "Unsupported work item value template version: ${template.version}",
+    )
+    requireValid(
+      template.resource == WorkItemValueTemplate.RESOURCE,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RESOURCE_UNSUPPORTED,
+      "Unsupported work item value template resource: ${template.resource}",
+    )
+    requireValid(
+      template.values.size <= MAX_VALUES,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_TOO_MANY_VALUES,
+    )
   }
 
   fun validate(template: WorkItemValueTemplate, config: IssueTypeConfigDetails) {
@@ -68,12 +69,11 @@ object WorkItemValueTemplateValidator {
   ): IssueTypeConfigPropertyRecord? =
     when (field) {
       is TemplateField.System -> {
-        if (field.canonicalName !in writableSystemFields) {
-          throw InvalidRequestException(
-            WorkbenchErrorCode.WORK_ITEM_TEMPLATE_FIELD_NOT_WRITABLE,
-            "Field is not writable by work item value templates: ${field.canonicalName}",
-          )
-        }
+        requireValid(
+          field.canonicalName in writableSystemFields,
+          WorkbenchErrorCode.WORK_ITEM_TEMPLATE_FIELD_NOT_WRITABLE,
+          "Field is not writable by work item value templates: ${field.canonicalName}",
+        )
         null
       }
       is TemplateField.Property -> resolveProperty(field, config)
@@ -107,32 +107,24 @@ object WorkItemValueTemplateValidator {
     )
   }
 
-  @Suppress("ThrowsCount")
   private fun validateRelativeDate(
     expression: TemplateValueExpression.RelativeDate,
     targetProperty: IssueTypeConfigPropertyRecord?,
   ) {
-    if (expression.amount <= 0) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE
-      )
-    }
-    if (expression.anchor !in dateAnchors) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_ANCHOR_UNKNOWN,
-        "Unknown relative date anchor: ${expression.anchor}",
-      )
-    }
-    if (
-      targetProperty != null &&
-        targetProperty.dataType !in
-          setOf(WorkItemPropertyDataType.DATE, WorkItemPropertyDataType.DATETIME)
-    ) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VALUE_TYPE_INVALID,
-        "Relative date template requires a date-like property: ${targetProperty.code}",
-      )
-    }
+    requireValid(
+      expression.amount > 0,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE,
+    )
+    requireValid(
+      expression.anchor in dateAnchors,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_ANCHOR_UNKNOWN,
+      "Unknown relative date anchor: ${expression.anchor}",
+    )
+    requireValid(
+      targetProperty == null || targetProperty.dataType in dateLikePropertyTypes,
+      WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VALUE_TYPE_INVALID,
+      targetProperty?.let { "Relative date template requires a date-like property: ${it.code}" },
+    )
   }
 
   private const val MAX_VALUES = 64
