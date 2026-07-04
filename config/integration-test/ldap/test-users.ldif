@@ -1,3 +1,8 @@
+dn: dc=example,dc=org
+objectClass: top
+objectClass: domain
+dc: example
+
 dn: ou=users,dc=example,dc=org
 objectClass: organizationalUnit
 ou: users

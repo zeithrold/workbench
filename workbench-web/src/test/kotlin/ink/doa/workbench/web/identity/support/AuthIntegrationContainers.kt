@@ -4,8 +4,8 @@ import dasniko.testcontainers.keycloak.KeycloakContainer
 import ink.doa.workbench.core.identity.auth.SecretResolver
 import ink.doa.workbench.core.port.locking.DistributedLockService
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
+import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer
-import ink.doa.workbench.security.identity.auth.support.LdapTestContainer
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
 import io.mockk.mockk
 import java.time.Duration
@@ -15,7 +15,6 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.test.context.DynamicPropertyRegistry
-import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 
 object AuthIntegrationContainers {
@@ -38,8 +37,7 @@ object AuthIntegrationContainers {
       start()
     }
 
-  val ldap: GenericContainer<*> =
-    LdapTestContainer.create().apply { LdapTestContainer.startAndBootstrap(this) }
+  val ldap: InMemoryLdapTestServer = InMemoryLdapTestServer.start()
 
   fun registerDataSourceProperties(registry: DynamicPropertyRegistry) {
     registry.add("spring.datasource.url") { postgres.jdbcUrl }

@@ -31,6 +31,7 @@ dependencies {
     platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
   )
   testFixturesImplementation(libs.kotlinx.coroutines.core)
+  testFixturesImplementation(libs.unboundid.ldapsdk)
 }
 
 sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))
