@@ -31,7 +31,7 @@ class WorkItemStatusController(private val catalog: WorkItemCatalogService) {
   @GetMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List work item statuses")
   suspend fun list(tenantContext: TenantRequestContext): List<IssueStatusResponse> =
     catalog.listStatuses(tenantContext.tenant.id).map(IssueStatusResponse::from)
@@ -39,7 +39,7 @@ class WorkItemStatusController(private val catalog: WorkItemCatalogService) {
   @PostMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Create work item status")
   suspend fun create(
@@ -63,7 +63,7 @@ class WorkItemStatusController(private val catalog: WorkItemCatalogService) {
   @PatchMapping("/{statusId}/deactivate")
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @Operation(summary = "Deactivate work item status")
   suspend fun deactivate(
     @PathVariable statusId: String,

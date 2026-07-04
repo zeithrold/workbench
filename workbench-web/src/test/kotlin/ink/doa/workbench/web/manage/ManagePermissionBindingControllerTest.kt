@@ -1,12 +1,14 @@
-package ink.doa.workbench.web.workitem
+package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.security.permission.PermissionBindingManagementService
+import ink.doa.workbench.security.permission.PermissionBindingView
+import ink.doa.workbench.security.permission.PermissionPolicySummary
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.RequestContextResolver
@@ -14,9 +16,9 @@ import ink.doa.workbench.web.api.TenantRequestContextResolver
 import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
 import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.mockk.coEvery
+import io.mockk.coJustRun
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
-import java.time.OffsetDateTime
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
@@ -27,13 +29,14 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(WorkflowController::class)
+@WebMvcTest(ManagePermissionBindingController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -45,20 +48,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  WorkflowControllerTest.TestBeans::class,
+  ManagePermissionBindingControllerTest.TestBeans::class,
 )
-class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ManagePermissionBindingControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+  fun `list bindings rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/manage/permission-bindings")).andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list workflows returns workflows for authenticated tenant user`() {
+  fun `list bindings returns bindings for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get("/api/manage/permission-bindings")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -67,22 +70,23 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("default"))
+      .andExpect(jsonPath("$[0].policy.code").value("member"))
   }
 
   @Test
-  fun `create workflow returns created workflow for authenticated tenant user`() {
+  fun `create binding returns created binding for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows")
+          post("/api/manage/permission-bindings")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
               """
               {
-                "code": "support",
-                "name": "Support Workflow"
+                "principalType": "USER",
+                "userId": "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+                "policyId": "pol_01JABCDEFGHJKMNPQRSTVWXYZ0"
               }
               """
                 .trimIndent()
@@ -94,7 +98,21 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("support"))
+      .andExpect(jsonPath("$.principalType").value("USER"))
+  }
+
+  @Test
+  fun `expire binding returns no content for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete("/api/manage/permission-bindings/bnd_01JABCDEFGHJKMNPQRSTVWXYZ0")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
   }
 
   @TestConfiguration
@@ -117,33 +135,39 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
 
-    @Bean fun workflowConfigurationService(): WorkflowConfigurationService = mockk(relaxed = true)
+    @Bean
+    fun permissionBindingManagementService(): PermissionBindingManagementService =
+      mockk(relaxed = true)
 
     @Bean
-    fun workflowConfigurationServiceSetup(service: WorkflowConfigurationService): Boolean {
-      coEvery { service.listWorkflows(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(SAMPLE_WORKFLOW)
-      coEvery { service.createWorkflow(any()) } returns
-        SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+    fun permissionBindingManagementServiceSetup(
+      service: PermissionBindingManagementService
+    ): Boolean {
+      val sampleBinding =
+        PermissionBindingView(
+          id = "bnd_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          principalType = PermissionPrincipalType.USER.name,
+          user =
+            UserSummary(
+              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              displayName = "Ada",
+              primaryEmail = "ada@example.test",
+            ),
+          group = null,
+          policy =
+            PermissionPolicySummary(
+              id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              code = "member",
+              name = "Member",
+            ),
+          project = null,
+        )
+      coEvery { service.listBindings(TenantWebMvcFixtures.TENANT_ID) } returns listOf(sampleBinding)
+      coEvery { service.createBinding(any()) } returns sampleBinding
+      coJustRun {
+        service.expireBinding(TenantWebMvcFixtures.TENANT_ID, "bnd_01JABCDEFGHJKMNPQRSTVWXYZ0")
+      }
       return true
     }
-  }
-
-  private companion object {
-    val SAMPLE_WORKFLOW =
-      WorkflowRecord(
-        id = java.util.UUID.randomUUID(),
-        apiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
-        tenantId = TenantWebMvcFixtures.TENANT_ID,
-        code = "default",
-        name = "Default Workflow",
-        description = "Primary workflow",
-        version = 1,
-        isActive = true,
-        publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        createdBy = TenantWebMvcFixtures.USER_ID,
-        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-      )
   }
 }

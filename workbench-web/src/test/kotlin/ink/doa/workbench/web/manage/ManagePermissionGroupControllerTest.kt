@@ -1,12 +1,11 @@
-package ink.doa.workbench.web.workitem
+package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.security.permission.PermissionGroupManagementService
+import ink.doa.workbench.security.permission.PermissionGroupView
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.RequestContextResolver
@@ -16,7 +15,6 @@ import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
-import java.time.OffsetDateTime
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
@@ -33,7 +31,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(WorkflowController::class)
+@WebMvcTest(ManagePermissionGroupController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -45,20 +43,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  WorkflowControllerTest.TestBeans::class,
+  ManagePermissionGroupControllerTest.TestBeans::class,
 )
-class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ManagePermissionGroupControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+  fun `list groups rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/manage/groups")).andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list workflows returns workflows for authenticated tenant user`() {
+  fun `list groups returns groups for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get("/api/manage/groups")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -67,22 +65,23 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("default"))
+      .andExpect(jsonPath("$[0].code").value("developers"))
   }
 
   @Test
-  fun `create workflow returns created workflow for authenticated tenant user`() {
+  fun `create group returns created group for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows")
+          post("/api/manage/groups")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
               """
               {
-                "code": "support",
-                "name": "Support Workflow"
+                "code": "qa",
+                "name": "QA",
+                "description": "Quality assurance"
               }
               """
                 .trimIndent()
@@ -94,7 +93,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("support"))
+      .andExpect(jsonPath("$.code").value("qa"))
   }
 
   @TestConfiguration
@@ -117,33 +116,37 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
 
-    @Bean fun workflowConfigurationService(): WorkflowConfigurationService = mockk(relaxed = true)
+    @Bean
+    fun permissionGroupManagementService(): PermissionGroupManagementService = mockk(relaxed = true)
 
     @Bean
-    fun workflowConfigurationServiceSetup(service: WorkflowConfigurationService): Boolean {
-      coEvery { service.listWorkflows(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(SAMPLE_WORKFLOW)
-      coEvery { service.createWorkflow(any()) } returns
-        SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+    fun permissionGroupManagementServiceSetup(service: PermissionGroupManagementService): Boolean {
+      coEvery { service.listGroups(TenantWebMvcFixtures.TENANT_ID) } returns
+        listOf(
+          PermissionGroupView(
+            id = "grp_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            code = "developers",
+            name = "Developers",
+            description = "Engineering",
+            builtin = false,
+          )
+        )
+      coEvery {
+        service.createGroup(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          code = "qa",
+          name = "QA",
+          description = "Quality assurance",
+        )
+      } returns
+        PermissionGroupView(
+          id = "grp_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          code = "qa",
+          name = "QA",
+          description = "Quality assurance",
+          builtin = false,
+        )
       return true
     }
-  }
-
-  private companion object {
-    val SAMPLE_WORKFLOW =
-      WorkflowRecord(
-        id = java.util.UUID.randomUUID(),
-        apiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
-        tenantId = TenantWebMvcFixtures.TENANT_ID,
-        code = "default",
-        name = "Default Workflow",
-        description = "Primary workflow",
-        version = 1,
-        isActive = true,
-        publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        createdBy = TenantWebMvcFixtures.USER_ID,
-        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-      )
   }
 }

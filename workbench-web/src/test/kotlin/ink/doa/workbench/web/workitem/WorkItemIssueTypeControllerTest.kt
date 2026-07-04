@@ -1,8 +1,10 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
+import ink.doa.workbench.agile.project.ProjectService
+import ink.doa.workbench.agile.workitem.WorkItemCatalogService
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.workitem.model.IssueTypeRecord
+import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
@@ -33,7 +35,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(WorkflowController::class)
+@WebMvcTest(WorkItemIssueTypeController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -45,20 +47,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  WorkflowControllerTest.TestBeans::class,
+  WorkItemIssueTypeControllerTest.TestBeans::class,
 )
-class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
+class WorkItemIssueTypeControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+  fun `list issue types rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/work-item/types")).andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list workflows returns workflows for authenticated tenant user`() {
+  fun `list issue types returns types for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get("/api/work-item/types")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -67,22 +69,23 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("default"))
+      .andExpect(jsonPath("$[0].code").value("bug"))
   }
 
   @Test
-  fun `create workflow returns created workflow for authenticated tenant user`() {
+  fun `create issue type returns created type for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows")
+          post("/api/work-item/types")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
               """
               {
-                "code": "support",
-                "name": "Support Workflow"
+                "scope": "tenant",
+                "code": "task",
+                "name": "Task"
               }
               """
                 .trimIndent()
@@ -94,7 +97,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("support"))
+      .andExpect(jsonPath("$.code").value("task"))
   }
 
   @TestConfiguration
@@ -117,31 +120,34 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
 
-    @Bean fun workflowConfigurationService(): WorkflowConfigurationService = mockk(relaxed = true)
+    @Bean fun workItemCatalogService(): WorkItemCatalogService = mockk(relaxed = true)
+
+    @Bean fun projectService(): ProjectService = mockk(relaxed = true)
 
     @Bean
-    fun workflowConfigurationServiceSetup(service: WorkflowConfigurationService): Boolean {
-      coEvery { service.listWorkflows(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(SAMPLE_WORKFLOW)
-      coEvery { service.createWorkflow(any()) } returns
-        SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+    fun workItemCatalogServiceSetup(catalog: WorkItemCatalogService): Boolean {
+      coEvery { catalog.listIssueTypes(TenantWebMvcFixtures.TENANT_ID) } returns listOf(SAMPLE_TYPE)
+      coEvery { catalog.createIssueType(any()) } returns
+        SAMPLE_TYPE.copy(code = "task", name = "Task")
       return true
     }
   }
 
   private companion object {
-    val SAMPLE_WORKFLOW =
-      WorkflowRecord(
+    val SAMPLE_TYPE =
+      IssueTypeRecord(
         id = java.util.UUID.randomUUID(),
-        apiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        apiId = PublicId("typ_01JABCDEFGHJKMNPQRSTVWXYZ0"),
         tenantId = TenantWebMvcFixtures.TENANT_ID,
-        code = "default",
-        name = "Default Workflow",
-        description = "Primary workflow",
-        version = 1,
+        scope = WorkItemConfigScope.TENANT,
+        projectId = null,
+        code = "bug",
+        name = "Bug",
+        description = null,
+        icon = null,
+        color = null,
+        rank = 100,
         isActive = true,
-        publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        createdBy = TenantWebMvcFixtures.USER_ID,
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
       )

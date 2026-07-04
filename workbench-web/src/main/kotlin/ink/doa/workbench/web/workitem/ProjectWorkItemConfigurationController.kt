@@ -25,7 +25,7 @@ class ProjectWorkItemConfigurationController(private val configs: IssueTypeConfi
   @Authenticated
   @TenantScoped
   @ProjectScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "Resolve effective work item type config")
   suspend fun effective(
     @PathVariable issueTypeId: String,

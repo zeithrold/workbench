@@ -34,7 +34,7 @@ class WorkItemPropertyController(private val catalog: WorkItemCatalogService) {
   @GetMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List work item properties")
   suspend fun list(tenantContext: TenantRequestContext): List<PropertyDefinitionResponse> =
     catalog.listProperties(tenantContext.tenant.id).map(PropertyDefinitionResponse::from)
@@ -42,7 +42,7 @@ class WorkItemPropertyController(private val catalog: WorkItemCatalogService) {
   @PostMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Create work item property")
   suspend fun create(
@@ -67,7 +67,7 @@ class WorkItemPropertyController(private val catalog: WorkItemCatalogService) {
   @PatchMapping("/{propertyId}/deactivate")
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @Operation(summary = "Deactivate work item property")
   suspend fun deactivate(
     @PathVariable propertyId: String,

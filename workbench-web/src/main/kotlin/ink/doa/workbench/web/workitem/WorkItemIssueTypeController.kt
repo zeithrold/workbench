@@ -35,7 +35,7 @@ class WorkItemIssueTypeController(
   @GetMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List work item types")
   suspend fun list(tenantContext: TenantRequestContext): List<IssueTypeResponse> =
     catalog.listIssueTypes(tenantContext.tenant.id).map(IssueTypeResponse::from)
@@ -43,7 +43,7 @@ class WorkItemIssueTypeController(
   @PostMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Create work item type")
   suspend fun create(
@@ -72,7 +72,7 @@ class WorkItemIssueTypeController(
   @PatchMapping("/{typeId}/deactivate")
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @Operation(summary = "Deactivate work item type")
   suspend fun deactivate(
     @PathVariable typeId: String,

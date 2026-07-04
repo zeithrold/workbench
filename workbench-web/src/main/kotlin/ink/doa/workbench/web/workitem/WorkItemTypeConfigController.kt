@@ -38,7 +38,7 @@ class WorkItemTypeConfigController(
   @GetMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List work item type configs")
   suspend fun list(tenantContext: TenantRequestContext): List<IssueTypeConfigResponse> =
     configs.list(tenantContext.tenant.id).map(IssueTypeConfigResponse::from)
@@ -46,7 +46,7 @@ class WorkItemTypeConfigController(
   @PostMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(summary = "Create work item type config")
   suspend fun create(

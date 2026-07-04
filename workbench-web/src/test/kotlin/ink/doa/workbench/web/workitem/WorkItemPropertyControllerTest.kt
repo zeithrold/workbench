@@ -1,8 +1,9 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
+import ink.doa.workbench.agile.workitem.WorkItemCatalogService
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
@@ -17,6 +18,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import java.time.OffsetDateTime
+import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
@@ -33,7 +35,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(WorkflowController::class)
+@WebMvcTest(WorkItemPropertyController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -45,20 +47,20 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  WorkflowControllerTest.TestBeans::class,
+  WorkItemPropertyControllerTest.TestBeans::class,
 )
-class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
+class WorkItemPropertyControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+  fun `list properties rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/work-item/properties")).andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list workflows returns workflows for authenticated tenant user`() {
+  fun `list properties returns definitions for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get("/api/work-item/properties")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -67,22 +69,23 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("default"))
+      .andExpect(jsonPath("$[0].code").value("points"))
   }
 
   @Test
-  fun `create workflow returns created workflow for authenticated tenant user`() {
+  fun `create property returns created definition for authenticated tenant user`() {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows")
+          post("/api/work-item/properties")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
               """
               {
-                "code": "support",
-                "name": "Support Workflow"
+                "code": "priority_score",
+                "name": "Priority Score",
+                "dataType": "number"
               }
               """
                 .trimIndent()
@@ -94,7 +97,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("support"))
+      .andExpect(jsonPath("$.code").value("priority_score"))
   }
 
   @TestConfiguration
@@ -117,31 +120,33 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
 
-    @Bean fun workflowConfigurationService(): WorkflowConfigurationService = mockk(relaxed = true)
+    @Bean fun workItemCatalogService(): WorkItemCatalogService = mockk(relaxed = true)
 
     @Bean
-    fun workflowConfigurationServiceSetup(service: WorkflowConfigurationService): Boolean {
-      coEvery { service.listWorkflows(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(SAMPLE_WORKFLOW)
-      coEvery { service.createWorkflow(any()) } returns
-        SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+    fun workItemCatalogServiceSetup(catalog: WorkItemCatalogService): Boolean {
+      coEvery { catalog.listProperties(TenantWebMvcFixtures.TENANT_ID) } returns
+        listOf(SAMPLE_PROPERTY)
+      coEvery { catalog.createProperty(any()) } returns
+        SAMPLE_PROPERTY.copy(code = "priority_score", name = "Priority Score")
       return true
     }
   }
 
   private companion object {
-    val SAMPLE_WORKFLOW =
-      WorkflowRecord(
+    val SAMPLE_PROPERTY =
+      PropertyDefinitionRecord(
         id = java.util.UUID.randomUUID(),
-        apiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        apiId = PublicId("fld_01JABCDEFGHJKMNPQRSTVWXYZ0"),
         tenantId = TenantWebMvcFixtures.TENANT_ID,
-        code = "default",
-        name = "Default Workflow",
-        description = "Primary workflow",
-        version = 1,
+        code = "points",
+        name = "Points",
+        description = null,
+        dataType = WorkItemPropertyDataType.NUMBER,
+        isSystem = false,
+        isArray = false,
+        validationSchema = JsonObject(emptyMap()),
+        searchConfig = JsonObject(emptyMap()),
         isActive = true,
-        publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        createdBy = TenantWebMvcFixtures.USER_ID,
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
       )

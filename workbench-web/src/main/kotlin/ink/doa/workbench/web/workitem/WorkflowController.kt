@@ -31,7 +31,7 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
   @GetMapping
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List workflows")
   suspend fun list(tenantContext: TenantRequestContext): List<WorkflowResponse> =
     workflows.listWorkflows(tenantContext.tenant.id).map(WorkflowResponse::from)
@@ -89,7 +89,7 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
   @GetMapping("/{id}/transitions")
   @Authenticated
   @TenantScoped
-  @Authorize(action = "work_item_config.read", resource = "work_item_config")
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
   @Operation(summary = "List workflow transitions")
   suspend fun listTransitions(
     @PathVariable id: String,
