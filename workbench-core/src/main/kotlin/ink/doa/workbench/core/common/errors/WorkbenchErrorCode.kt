@@ -471,6 +471,78 @@ enum class WorkbenchErrorCode(
     "work_item.query.variable.trusted_context_required",
     "Variable requires trusted request context binding.",
   ),
+  WORK_ITEM_TEMPLATE_INVALID_JSON(
+    "work_item.template.parse.invalid_json",
+    "Invalid work item value template JSON.",
+  ),
+  WORK_ITEM_TEMPLATE_OBJECT_REQUIRED(
+    "work_item.template.parse.object_required",
+    "Work item value template value must be an object.",
+  ),
+  WORK_ITEM_TEMPLATE_STRING_REQUIRED(
+    "work_item.template.parse.string_required",
+    "Work item value template value must be a string.",
+  ),
+  WORK_ITEM_TEMPLATE_INTEGER_REQUIRED(
+    "work_item.template.parse.integer_required",
+    "Work item value template field must be an integer.",
+  ),
+  WORK_ITEM_TEMPLATE_FIELD_REQUIRED(
+    "work_item.template.parse.field_required",
+    "Work item value template missing required field.",
+  ),
+  WORK_ITEM_TEMPLATE_TARGET_UNKNOWN(
+    "work_item.template.target_unknown",
+    "Unknown work item value template target.",
+  ),
+  WORK_ITEM_TEMPLATE_VERSION_UNSUPPORTED(
+    "work_item.template.version_unsupported",
+    "Unsupported work item value template version.",
+  ),
+  WORK_ITEM_TEMPLATE_RESOURCE_UNSUPPORTED(
+    "work_item.template.resource_unsupported",
+    "Unsupported work item value template resource.",
+  ),
+  WORK_ITEM_TEMPLATE_PROPERTY_IDENTITY_REQUIRED(
+    "work_item.template.field.property_identity_required",
+    "Property template field must include an identity.",
+  ),
+  WORK_ITEM_TEMPLATE_FIELD_NOT_WRITABLE(
+    "work_item.template.field.not_writable",
+    "Field is not writable by work item value templates.",
+  ),
+  WORK_ITEM_TEMPLATE_VARIABLE_UNKNOWN(
+    "work_item.template.variable.unknown",
+    "Unknown work item value template variable.",
+  ),
+  WORK_ITEM_TEMPLATE_RELATIVE_DATE_UNIT_UNKNOWN(
+    "work_item.template.relative_date.unit_unknown",
+    "Unknown relative date unit.",
+  ),
+  WORK_ITEM_TEMPLATE_RELATIVE_DATE_DIRECTION_UNKNOWN(
+    "work_item.template.relative_date.direction_unknown",
+    "Unknown relative date direction.",
+  ),
+  WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE(
+    "work_item.template.relative_date.amount_positive",
+    "Relative date amount must be positive.",
+  ),
+  WORK_ITEM_TEMPLATE_RELATIVE_DATE_ANCHOR_UNKNOWN(
+    "work_item.template.relative_date.anchor_unknown",
+    "Unknown relative date anchor.",
+  ),
+  WORK_ITEM_TEMPLATE_CLEAR_REQUIRED_FIELD(
+    "work_item.template.clear_required_field",
+    "Required field cannot be cleared by a work item value template.",
+  ),
+  WORK_ITEM_TEMPLATE_VALUE_TYPE_INVALID(
+    "work_item.template.value_type_invalid",
+    "Work item value template expression is not compatible with the target field.",
+  ),
+  WORK_ITEM_TEMPLATE_TOO_MANY_VALUES(
+    "work_item.template.too_many_values",
+    "Work item value template has too many values.",
+  ),
   RESOURCE_WORK_ITEM_STATUS_NOT_FOUND(
     "resource.work_item_status.not_found",
     "Work item status not found.",

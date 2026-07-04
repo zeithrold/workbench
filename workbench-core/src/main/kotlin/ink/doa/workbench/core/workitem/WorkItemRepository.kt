@@ -1,5 +1,6 @@
 package ink.doa.workbench.core.workitem
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
@@ -58,6 +59,10 @@ interface WorkItemRepository {
     issueId: UUID,
     terminalGroups: Set<String>,
   ): Long
+
+  suspend fun resolveUserApiId(userId: UUID): PublicId?
+
+  suspend fun resolveProjectApiId(tenantId: UUID, projectId: UUID): PublicId?
 }
 
 interface WorkItemQueryRepository {

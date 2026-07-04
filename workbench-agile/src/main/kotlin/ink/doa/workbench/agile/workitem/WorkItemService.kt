@@ -20,6 +20,10 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateEvaluator
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateParser
+import java.time.Clock
 import java.util.UUID
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -39,8 +43,11 @@ class WorkItemService(
   private val configs: IssueTypeConfigRepository,
   private val workflows: WorkflowConfigurationRepository,
   private val events: DomainEventPublisher,
+  private val clock: Clock = Clock.systemUTC(),
 ) {
   private val conditions = WorkItemConditionEvaluator()
+  private val templateParser = WorkItemValueTemplateParser()
+  private val templates = WorkItemValueTemplateEvaluator(clock)
 
   suspend fun create(command: CreateWorkItemCommand): WorkItemMutationResult {
     val config =
@@ -53,10 +60,26 @@ class WorkItemService(
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED
         )
-    val values = normalizeProperties(config.config, command.properties, includeDefaults = true)
+    val context =
+      templateContext(
+        tenantId = command.tenantId,
+        projectId = command.projectId,
+        actorUserId = command.actorUserId,
+        reporterUserId = command.reporterId,
+      )
+    val defaults = evaluateCreateDefaults(config.config, context)
+    val submitted = defaults + command.properties
+    val effectiveCommand = applyCreateSystemDefaults(command, defaults)
+    val values =
+      normalizeProperties(
+        config = config.config,
+        input = submitted.filterPropertyInputs(),
+        includeDefaults = false,
+        requireRequired = true,
+      )
     return repository
       .create(
-        command = command,
+        command = effectiveCommand,
         issueTypeId = config.config.config.issueTypeId,
         issueTypeConfigId = config.config.config.id,
         initialStatusId = initial.statusId,
@@ -148,13 +171,27 @@ class WorkItemService(
       throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED)
     }
 
-    val defaults = transition.propertyDefaults.toMap()
-    val submitted = defaults + command.properties
+    val templateDefaults =
+      evaluateTransitionDefaults(
+        config = config,
+        defaults = transition.propertyDefaults,
+        context =
+          templateContext(
+            tenantId = command.tenantId,
+            projectId = command.projectId,
+            actorUserId = command.actorUserId,
+            workItem = issue,
+            currentProperties = currentProperties,
+          ),
+      )
+    val submitted = templateDefaults + command.properties
+    val effectiveCommand = applyTransitionSystemDefaults(command, templateDefaults)
     val missing =
       transition.requiredProperties.propertyKeys().firstOrNull { key ->
         val code =
           config.properties.find { it.code == key || it.propertyApiId.value == key }?.code ?: key
-        key !in submitted && code !in submitted && code !in currentProperties
+        !hasNonNullValue(key, submitted, currentProperties) &&
+          !hasNonNullValue(code, submitted, currentProperties)
       }
     if (missing != null) {
       throw InvalidRequestException(
@@ -162,10 +199,10 @@ class WorkItemService(
         "Required transition property is missing: $missing",
       )
     }
-    val values = normalizeProperties(config, submitted, includeDefaults = false)
+    val values = normalizeProperties(config, submitted.filterPropertyInputs(), includeDefaults = false)
     return repository
       .transition(
-        command = command,
+        command = effectiveCommand,
         fromStatusId = issue.statusId,
         toStatusId = transition.toStatusId,
         transitionId = transition.id,
@@ -215,6 +252,7 @@ class WorkItemService(
     config: IssueTypeConfigDetails,
     input: Map<String, JsonElement>,
     includeDefaults: Boolean,
+    requireRequired: Boolean = includeDefaults,
   ): List<WorkItemPropertyValue> {
     val byKey =
       config.properties
@@ -231,9 +269,13 @@ class WorkItemService(
         input
       }
     val requiredMissing =
-      if (includeDefaults) {
-        config.properties.firstOrNull {
-          it.isRequired && it.code !in values && it.propertyApiId.value !in values
+      if (requireRequired) {
+        config.properties.firstOrNull { property ->
+          val codeValue = values[property.code]
+          val apiValue = values[property.propertyApiId.value]
+          property.isRequired &&
+            (codeValue == null || codeValue is JsonNull) &&
+            (apiValue == null || apiValue is JsonNull)
         }
       } else {
         null
@@ -294,10 +336,115 @@ class WorkItemService(
     it.key to it.value
   }
 
+  private suspend fun templateContext(
+    tenantId: UUID,
+    projectId: UUID,
+    actorUserId: UUID,
+    reporterUserId: UUID? = null,
+    workItem: WorkItemRecord? = null,
+    currentProperties: Map<String, JsonElement> = emptyMap(),
+  ): WorkItemValueTemplateContext {
+    val currentUserApiId =
+      repository.resolveUserApiId(actorUserId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
+    val currentProjectApiId =
+      repository.resolveProjectApiId(tenantId, projectId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+    return WorkItemValueTemplateContext(
+      tenantId = tenantId,
+      projectId = projectId,
+      currentUserApiId = currentUserApiId.value,
+      currentProjectApiId = currentProjectApiId.value,
+      actorUserId = actorUserId,
+      reporterUserId = reporterUserId,
+      workItem = workItem,
+      currentProperties = currentProperties,
+    )
+  }
+
+  private fun evaluateCreateDefaults(
+    config: IssueTypeConfigDetails,
+    context: WorkItemValueTemplateContext,
+  ): Map<String, JsonElement> =
+    config.properties
+      .mapNotNull { property ->
+        property.defaultValue?.let {
+          val expression = templateParser.parseExpression(it)
+          property.code to templates.evaluatePropertyDefault(property, expression, config, context)
+        }
+      }
+      .toMap()
+
+  private fun evaluateTransitionDefaults(
+    config: IssueTypeConfigDetails,
+    defaults: JsonObject,
+    context: WorkItemValueTemplateContext,
+  ): Map<String, JsonElement> {
+    if (defaults.isEmpty()) return emptyMap()
+    return if ("version" in defaults && "resource" in defaults && "values" in defaults) {
+      templates.evaluate(templateParser.parse(defaults), config, context)
+    } else {
+      defaults.map { (key, value) ->
+        val property =
+          config.properties.find { it.code == key || it.propertyApiId.value == key }
+            ?: throw InvalidRequestException(
+              WorkbenchErrorCode.WORK_ITEM_PROPERTY_UNAVAILABLE,
+              "Property is not available in this config: $key",
+            )
+        val expression = templateParser.parseExpression(value)
+        property.code to templates.evaluatePropertyDefault(property, expression, config, context)
+      }
+        .toMap()
+    }
+  }
+
+  private fun applyCreateSystemDefaults(
+    command: CreateWorkItemCommand,
+    defaults: Map<String, JsonElement>,
+  ): CreateWorkItemCommand =
+    command.copy(
+      description = command.description ?: defaults.stringOrNull("description"),
+      assigneeApiId = command.assigneeApiId ?: defaults.stringOrNull("assignee"),
+      priorityApiId = command.priorityApiId ?: defaults.stringOrNull("priority"),
+      sprintApiId = command.sprintApiId ?: defaults.stringOrNull("sprint"),
+    )
+
+  private fun applyTransitionSystemDefaults(
+    command: TransitionWorkItemCommand,
+    defaults: Map<String, JsonElement>,
+  ): TransitionWorkItemCommand =
+    command.copy(
+      title = command.title ?: defaults.stringOrNull("title"),
+      description = command.description ?: defaults.stringOrNull("description"),
+      assigneeApiId = command.assigneeApiId ?: defaults.stringOrNull("assignee"),
+      priorityApiId = command.priorityApiId ?: defaults.stringOrNull("priority"),
+      sprintApiId = command.sprintApiId ?: defaults.stringOrNull("sprint"),
+    )
+
+  private fun Map<String, JsonElement>.filterPropertyInputs(): Map<String, JsonElement> =
+    filterKeys { it !in systemTemplateFields }
+
+  private fun Map<String, JsonElement>.stringOrNull(key: String): String? =
+    (this[key] as? JsonPrimitive)?.contentOrNull
+
+  private fun hasNonNullValue(
+    key: String,
+    submitted: Map<String, JsonElement>,
+    currentProperties: Map<String, JsonElement>,
+  ): Boolean {
+    val submittedValue = submitted[key]
+    if (submittedValue != null) return submittedValue !is JsonNull
+    return currentProperties[key]?.let { it !is JsonNull } == true
+  }
+
   private fun JsonElement.propertyKeys(): Set<String> =
     when (this) {
       is JsonArray -> mapNotNull { it.jsonPrimitive.contentOrNull }.toSet()
       is JsonObject -> keys
       else -> emptySet()
     }
+
+  private companion object {
+    val systemTemplateFields = setOf("title", "description", "assignee", "priority", "sprint")
+  }
 }
