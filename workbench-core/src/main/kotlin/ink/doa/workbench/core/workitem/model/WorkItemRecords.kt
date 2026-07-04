@@ -88,9 +88,17 @@ data class WorkItemPropertyValue(
 data class WorkItemTransitionOption(
   val id: PublicId,
   val name: String,
+  val fromStatusId: PublicId?,
   val toStatusId: PublicId,
   val enabled: Boolean,
   val reason: String? = null,
+  val fields: JsonObject,
+  val editableFields: List<String> = emptyList(),
+)
+
+data class WorkItemCreateFormOption(
+  val issueTypeId: PublicId,
+  val initialStatusId: PublicId,
   val fields: JsonObject,
   val editableFields: List<String> = emptyList(),
 )

@@ -1,13 +1,11 @@
 package ink.doa.workbench.core.workitem.template
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.Clock
@@ -72,17 +70,6 @@ class WorkItemValueTemplateEvaluatorTest :
           "optionalText" to JsonNull,
         )
     }
-
-    "rejects clearing required properties" {
-      shouldThrow<InvalidRequestException> {
-        evaluator.evaluatePropertyDefault(
-          property = config.properties.first { it.code == "requiredText" },
-          expression = TemplateValueExpression.Clear,
-          config = config,
-          context = context,
-        )
-      }
-    }
   })
 
 private fun config(): IssueTypeConfigDetails {
@@ -110,6 +97,7 @@ private fun config(): IssueTypeConfigDetails {
         createdBy = null,
         createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+        createFields = kotlinx.serialization.json.JsonObject(emptyMap()),
       ),
     statuses = emptyList(),
     properties =
@@ -119,7 +107,7 @@ private fun config(): IssueTypeConfigDetails {
         property(configId, "resolution", WorkItemPropertyDataType.TEXT),
         property(configId, "copyOfResolution", WorkItemPropertyDataType.TEXT),
         property(configId, "optionalText", WorkItemPropertyDataType.TEXT),
-        property(configId, "requiredText", WorkItemPropertyDataType.TEXT, isRequired = true),
+        property(configId, "requiredText", WorkItemPropertyDataType.TEXT),
       ),
   )
 }
@@ -128,7 +116,6 @@ private fun property(
   configId: UUID,
   code: String,
   dataType: WorkItemPropertyDataType,
-  isRequired: Boolean = false,
 ): IssueTypeConfigPropertyRecord =
   IssueTypeConfigPropertyRecord(
     id = UUID.randomUUID(),
@@ -139,8 +126,6 @@ private fun property(
     code = code,
     name = code,
     dataType = dataType,
-    isRequired = isRequired,
-    defaultValue = null,
     validationOverride = kotlinx.serialization.json.JsonObject(emptyMap()),
     rank = 100,
     displayConfig = kotlinx.serialization.json.JsonObject(emptyMap()),

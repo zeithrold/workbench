@@ -4,7 +4,10 @@ import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.ResolvedPermissionRule
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.core.workitem.template.FieldParticipation
+import ink.doa.workbench.core.workitem.template.FieldWriteGrant
 import ink.doa.workbench.core.workitem.template.TemplateField
+import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
 import ink.doa.workbench.core.workitem.template.toPermissionResourceId
 import java.time.Clock
 import java.time.OffsetDateTime
@@ -54,14 +57,27 @@ class WorkItemFieldPermissionService(
   suspend fun isFieldEditableInTransition(
     context: WorkItemFieldPermissionContext,
     field: TemplateField,
-    writeGrant: ink.doa.workbench.core.workitem.template.FieldWriteGrant,
+    writeGrant: FieldWriteGrant,
+  ): Boolean = isFieldEditable(context, field, writeGrant)
+
+  suspend fun isFormFieldEditable(
+    context: WorkItemFieldPermissionContext,
+    field: TemplateField,
+    spec: TransitionFieldSpec,
+  ): Boolean =
+    spec.participation != FieldParticipation.AUTOMATIC &&
+      isFieldEditable(context, field, spec.writeGrant)
+
+  suspend fun isFieldEditable(
+    context: WorkItemFieldPermissionContext,
+    field: TemplateField,
+    writeGrant: FieldWriteGrant,
   ): Boolean =
     when (writeGrant) {
-      ink.doa.workbench.core.workitem.template.FieldWriteGrant.IMMUTABLE,
-      ink.doa.workbench.core.workitem.template.FieldWriteGrant.SYSTEM_ONLY -> false
-      ink.doa.workbench.core.workitem.template.FieldWriteGrant.TRANSITION_WRITABLE -> true
-      ink.doa.workbench.core.workitem.template.FieldWriteGrant.INHERIT ->
-        canWriteField(context.copy(operation = FieldPermissionOperation.UPDATE), field)
+      FieldWriteGrant.IMMUTABLE,
+      FieldWriteGrant.SYSTEM_ONLY -> false
+      FieldWriteGrant.TRANSITION_WRITABLE -> true
+      FieldWriteGrant.INHERIT -> canWriteField(context, field)
     }
 
   private fun ResolvedPermissionRule.matchesFieldWrite(fieldResource: String): Boolean =

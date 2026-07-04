@@ -205,6 +205,7 @@ class WorkItemConfigurationController(
           colorOverride = request.colorOverride,
           rank = request.rank ?: 100,
           createdBy = actorUserId,
+          createFields = request.createFields.toJsonObject(objectMapper),
           statuses =
             request.statuses.map {
               IssueTypeConfigStatusInput(
@@ -218,8 +219,6 @@ class WorkItemConfigurationController(
             request.properties.orEmpty().map {
               IssueTypeConfigPropertyInput(
                 propertyApiId = it.propertyId,
-                isRequired = it.isRequired ?: false,
-                defaultValue = it.defaultValue.toJsonElement(objectMapper),
                 validationOverride = it.validationOverride.toJsonObject(objectMapper),
                 rank = it.rank ?: 100,
                 displayConfig = it.displayConfig.toJsonObject(objectMapper),
@@ -384,7 +383,7 @@ data class CreateWorkflowRequest(
 
 data class CreateWorkflowTransitionRequest(
   @field:NotBlank val name: String,
-  @field:NotBlank val fromStatusId: String,
+  val fromStatusId: String? = null,
   @field:NotBlank val toStatusId: String,
   val rank: Int? = null,
   val permissionCondition: JsonNode? = null,
@@ -401,6 +400,7 @@ data class CreateIssueTypeConfigRequest(
   val iconOverride: String? = null,
   val colorOverride: String? = null,
   val rank: Int? = null,
+  val createFields: JsonNode,
   val statuses: List<TypeConfigStatusRequest>,
   val properties: List<TypeConfigPropertyRequest>? = null,
 )
@@ -414,8 +414,6 @@ data class TypeConfigStatusRequest(
 
 data class TypeConfigPropertyRequest(
   @field:NotBlank val propertyId: String,
-  val isRequired: Boolean? = null,
-  val defaultValue: JsonNode? = null,
   val validationOverride: JsonNode? = null,
   val rank: Int? = null,
   val displayConfig: JsonNode? = null,
@@ -550,6 +548,7 @@ data class IssueTypeConfigResponse(
   val iconOverride: String?,
   val colorOverride: String?,
   val rank: Int,
+  val createFields: JsonObject,
   val statuses: List<IssueTypeConfigStatusResponse>,
   val properties: List<IssueTypeConfigPropertyResponse>,
 ) {
@@ -565,6 +564,7 @@ data class IssueTypeConfigResponse(
         iconOverride = details.config.iconOverride,
         colorOverride = details.config.colorOverride,
         rank = details.config.rank,
+        createFields = details.config.createFields,
         statuses = details.statuses.map(IssueTypeConfigStatusResponse::from),
         properties = details.properties.map(IssueTypeConfigPropertyResponse::from),
       )
@@ -599,8 +599,6 @@ data class IssueTypeConfigPropertyResponse(
   val code: String,
   val name: String,
   val dataType: String,
-  val isRequired: Boolean,
-  val defaultValue: JsonElement?,
   val validationOverride: JsonObject,
   val rank: Int,
   val displayConfig: JsonObject,
@@ -612,8 +610,6 @@ data class IssueTypeConfigPropertyResponse(
         code = record.code,
         name = record.name,
         dataType = record.dataType.dbValue,
-        isRequired = record.isRequired,
-        defaultValue = record.defaultValue,
         validationOverride = record.validationOverride,
         rank = record.rank,
         displayConfig = record.displayConfig,

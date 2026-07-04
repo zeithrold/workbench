@@ -15,16 +15,14 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
-import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateEvaluator
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateParser
 import ink.doa.workbench.core.workitem.template.toWirePath
 import java.time.Clock
 import java.util.UUID
@@ -50,9 +48,7 @@ class WorkItemService(
   private val clock: Clock = Clock.systemUTC(),
 ) {
   private val conditions = WorkItemConditionEvaluator()
-  private val templateParser = WorkItemValueTemplateParser()
   private val transitionFieldsParser = TransitionFieldsParser()
-  private val templates = WorkItemValueTemplateEvaluator(clock)
 
   suspend fun create(command: CreateWorkItemCommand): WorkItemMutationResult {
     val config =
@@ -72,37 +68,24 @@ class WorkItemService(
         command.actorUserId,
         FieldPermissionOperation.CREATE,
       )
-    fieldMutationReconciler.assertWritableProperties(
-      permissionContext,
-      config.config,
-      command.properties.filterPropertyInputs(),
-    )
-    fieldMutationReconciler.assertWritableSystemFields(
-      permissionContext,
-      mapOf(
-        "description" to command.description,
-        "assignee" to command.assigneeApiId,
-        "priority" to command.priorityApiId,
-        "sprint" to command.sprintApiId,
-      ),
-    )
-    val context =
+    val templateContext =
       templateContext(
         tenantId = command.tenantId,
         projectId = command.projectId,
         actorUserId = command.actorUserId,
         reporterUserId = command.reporterId,
       )
-    val defaults = evaluateCreateDefaults(config.config, context)
-    val submitted = defaults + command.properties
-    val effectiveCommand = applyCreateSystemDefaults(command, defaults)
-    val values =
-      normalizeProperties(
+    val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
+    val reconciled =
+      fieldMutationReconciler.reconcileCreate(
+        template = fieldsTemplate,
         config = config.config,
-        input = submitted.filterPropertyInputs(),
-        includeDefaults = false,
-        requireRequired = true,
+        templateContext = templateContext,
+        userProperties = createFieldInputs(command),
+        permissionContext = permissionContext,
       )
+    val effectiveCommand = applyCreateSystemFields(command, reconciled.systemFields)
+    val values = normalizeProperties(config.config, reconciled.propertyValues)
     return repository
       .create(
         command = effectiveCommand,
@@ -112,6 +95,39 @@ class WorkItemService(
         propertyValues = values,
       )
       .also { publish(it) }
+  }
+
+  suspend fun availableCreateForm(
+    tenantId: UUID,
+    projectId: UUID,
+    issueTypeApiId: String,
+    actorUserId: UUID,
+  ): WorkItemCreateFormOption {
+    val config =
+      configs.resolveEffective(tenantId, projectId, issueTypeApiId)
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
+        )
+    val initial =
+      config.config.statuses.singleOrNull { it.isInitial }
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED
+        )
+    val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
+    val permissionContext =
+      fieldPermissionContext(tenantId, projectId, actorUserId, FieldPermissionOperation.CREATE)
+    val editableFields =
+      fieldsTemplate.fields
+        .filter { (field, spec) ->
+          fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
+        }
+        .map { (field, _) -> field.toWirePath() }
+    return WorkItemCreateFormOption(
+      issueTypeId = config.config.config.issueTypeApiId,
+      initialStatusId = initial.statusApiId,
+      fields = config.config.config.createFields,
+      editableFields = editableFields,
+    )
   }
 
   suspend fun get(
@@ -154,12 +170,7 @@ class WorkItemService(
         "sprint" to command.sprintApiId,
       ),
     )
-    val values =
-      normalizeProperties(
-        config,
-        command.properties.filterPropertyInputs(),
-        includeDefaults = false,
-      )
+    val values = normalizeProperties(config, command.properties.filterPropertyInputs())
     return repository.update(command, values).also { publish(it) }
   }
 
@@ -177,7 +188,7 @@ class WorkItemService(
       fieldPermissionContext(tenantId, projectId, actorUserId, FieldPermissionOperation.UPDATE)
     return workflows
       .listTransitions(tenantId, config.config.workflowId)
-      .filter { it.fromStatusId == issue.statusId }
+      .filter { it.fromStatusId == null || it.fromStatusId == issue.statusId }
       .map { transition ->
         val fieldsTemplate = transitionFieldsParser.parse(transition.fields)
         val enabled =
@@ -187,17 +198,13 @@ class WorkItemService(
         val editableFields =
           fieldsTemplate.fields
             .filter { (field, spec) ->
-              spec.participation != FieldParticipation.AUTOMATIC &&
-                fieldPermissions.isFieldEditableInTransition(
-                  permissionContext,
-                  field,
-                  spec.writeGrant,
-                )
+              fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
             }
             .map { (field, _) -> field.toWirePath() }
         WorkItemTransitionOption(
           id = transition.apiId,
           name = transition.name,
+          fromStatusId = transition.fromStatusApiId,
           toStatusId =
             transition.toStatusApiId
               ?: throw ResourceNotFoundException(
@@ -221,7 +228,8 @@ class WorkItemService(
           WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
         )
     if (
-      transition.workflowId != config.config.workflowId || transition.fromStatusId != issue.statusId
+      transition.workflowId != config.config.workflowId ||
+        (transition.fromStatusId != null && transition.fromStatusId != issue.statusId)
     ) {
       throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_STATUS_MISMATCH)
     }
@@ -264,7 +272,7 @@ class WorkItemService(
         permissionContext = permissionContext,
       )
     val effectiveCommand = applyTransitionSystemFields(command, reconciled.systemFields)
-    val values = normalizeProperties(config, reconciled.propertyValues, includeDefaults = false)
+    val values = normalizeProperties(config, reconciled.propertyValues)
     return repository
       .transition(
         command = effectiveCommand,
@@ -316,42 +324,15 @@ class WorkItemService(
   private fun normalizeProperties(
     config: IssueTypeConfigDetails,
     input: Map<String, JsonElement>,
-    includeDefaults: Boolean,
-    requireRequired: Boolean = includeDefaults,
   ): List<WorkItemPropertyValue> {
+    if (input.isEmpty()) return emptyList()
     val byKey =
       config.properties
         .flatMap { property ->
           listOf(property.propertyApiId.value to property, property.code to property)
         }
         .toMap()
-    val values =
-      if (includeDefaults) {
-        config.properties
-          .mapNotNull { property -> property.defaultValue?.let { property.code to it } }
-          .toMap() + input
-      } else {
-        input
-      }
-    val requiredMissing =
-      if (requireRequired) {
-        config.properties.firstOrNull { property ->
-          val codeValue = values[property.code]
-          val apiValue = values[property.propertyApiId.value]
-          property.isRequired &&
-            (codeValue == null || codeValue is JsonNull) &&
-            (apiValue == null || apiValue is JsonNull)
-        }
-      } else {
-        null
-      }
-    if (requiredMissing != null) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_PROPERTY_REQUIRED,
-        "Required property is missing: ${requiredMissing.code}",
-      )
-    }
-    return values.map { (key, value) ->
+    return input.map { (key, value) ->
       val property =
         byKey[key]
           ?: throw InvalidRequestException(
@@ -423,28 +404,16 @@ class WorkItemService(
     )
   }
 
-  private fun evaluateCreateDefaults(
-    config: IssueTypeConfigDetails,
-    context: WorkItemValueTemplateContext,
-  ): Map<String, JsonElement> =
-    config.properties
-      .mapNotNull { property ->
-        property.defaultValue?.let {
-          val expression = templateParser.parseExpression(it)
-          property.code to templates.evaluatePropertyDefault(property, expression, config, context)
-        }
-      }
-      .toMap()
-
-  private fun applyCreateSystemDefaults(
+  private fun applyCreateSystemFields(
     command: CreateWorkItemCommand,
-    defaults: Map<String, JsonElement>,
+    systemFields: Map<String, String?>,
   ): CreateWorkItemCommand =
     command.copy(
-      description = command.description ?: defaults.stringOrNull("description"),
-      assigneeApiId = command.assigneeApiId ?: defaults.stringOrNull("assignee"),
-      priorityApiId = command.priorityApiId ?: defaults.stringOrNull("priority"),
-      sprintApiId = command.sprintApiId ?: defaults.stringOrNull("sprint"),
+      title = systemFields["title"] ?: command.title,
+      description = systemFields["description"] ?: command.description,
+      assigneeApiId = systemFields["assignee"] ?: command.assigneeApiId,
+      priorityApiId = systemFields["priority"] ?: command.priorityApiId,
+      sprintApiId = systemFields["sprint"] ?: command.sprintApiId,
     )
 
   private fun applyTransitionSystemFields(
@@ -458,6 +427,16 @@ class WorkItemService(
       priorityApiId = command.priorityApiId ?: systemFields["priority"],
       sprintApiId = command.sprintApiId ?: systemFields["sprint"],
     )
+
+  private fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {
+    val inputs = mutableMapOf<String, JsonElement>("title" to JsonPrimitive(command.title))
+    command.description?.let { inputs["description"] = JsonPrimitive(it) }
+    command.assigneeApiId?.let { inputs["assignee"] = JsonPrimitive(it) }
+    command.priorityApiId?.let { inputs["priority"] = JsonPrimitive(it) }
+    command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
+    inputs.putAll(command.properties)
+    return inputs
+  }
 
   private fun fieldPermissionContext(
     tenantId: UUID,
@@ -476,9 +455,6 @@ class WorkItemService(
     filterKeys {
       it !in systemTemplateFields
     }
-
-  private fun Map<String, JsonElement>.stringOrNull(key: String): String? =
-    (this[key] as? JsonPrimitive)?.contentOrNull
 
   private companion object {
     val systemTemplateFields = setOf("title", "description", "assignee", "priority", "sprint")

@@ -135,6 +135,7 @@ object IssueTypeConfigsTable : Table("issue_type_configs") {
   val createdBy = uuid("created_by").references(UsersTable.id).nullable()
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
+  val createFields = jsonb("create_fields", Json.Default, JsonElement.serializer())
   override val primaryKey = PrimaryKey(id)
 }
 
@@ -154,8 +155,6 @@ object IssueTypeConfigPropertiesTable : Table("issue_type_config_properties") {
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
   val issueTypeConfigId = uuid("issue_type_config_id").references(IssueTypeConfigsTable.id)
   val propertyId = uuid("property_id").references(PropertyDefinitionsTable.id)
-  val isRequired = bool("is_required")
-  val defaultValue = jsonb("default_value", Json.Default, JsonElement.serializer()).nullable()
   val validationOverride = jsonb("validation_override", Json.Default, JsonElement.serializer())
   val rank = integer("rank")
   val displayConfig = jsonb("display_config", Json.Default, JsonElement.serializer())
@@ -184,7 +183,7 @@ object WorkflowTransitionsTable : Table("workflow_transitions") {
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
   val workflowId = uuid("workflow_id").references(WorkflowsTable.id)
   val name = text("name")
-  val fromStatusId = uuid("from_status_id").references(IssueStatusesTable.id)
+  val fromStatusId = uuid("from_status_id").references(IssueStatusesTable.id).nullable()
   val toStatusId = uuid("to_status_id").references(IssueStatusesTable.id)
   val rank = integer("rank")
   val permissionCondition = jsonb("permission_condition", Json.Default, JsonElement.serializer())

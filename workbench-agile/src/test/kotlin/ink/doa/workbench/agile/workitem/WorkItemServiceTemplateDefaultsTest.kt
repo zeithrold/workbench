@@ -1,5 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.core.common.errors.PermissionDeniedException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
@@ -19,7 +21,11 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.core.workitem.template.CreateFieldsLegacyMigrator
+import ink.doa.workbench.core.workitem.template.CreateFieldsPropertyMigrationRow
+import ink.doa.workbench.core.workitem.template.TemplateField
 import ink.doa.workbench.core.workitem.template.TransitionFieldsLegacyMigrator
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -42,7 +48,7 @@ class WorkItemServiceTemplateDefaultsTest :
   StringSpec({
     val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
 
-    "applies create property template defaults before repository create" {
+    "applies create fields template defaults before repository create" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
       val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
@@ -133,6 +139,119 @@ class WorkItemServiceTemplateDefaultsTest :
         ("resolvedAt" to JsonPrimitive("2026-07-04T10:15:30Z"))
       coVerify(exactly = 1) { repository.transition(any(), any(), any(), any(), any()) }
     }
+
+    "applies automatic create default when field write permission is denied and user omits field" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
+      val events = mockk<DomainEventPublisher>()
+      justRun { events.publish<Any>(any(), any(), any(), any()) }
+
+      val actorId = UUID.randomUUID()
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val userApiId = PublicId.new("usr")
+      val projectApiId = PublicId.new("prj")
+      val config = config(defaultDueDate = true)
+      val values = slot<List<WorkItemPropertyValue>>()
+      val created = workItem(tenantId, projectId, config)
+      val fieldPermissions = mockk<WorkItemFieldPermissionService>()
+
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.resolveUserApiId(actorId) } returns userApiId
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
+      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
+        {
+          secondArg<TemplateField>() is TemplateField.System
+        }
+      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+        {
+          val field = secondArg<TemplateField>()
+          field is TemplateField.System && field.canonicalName == "title"
+        }
+      coEvery {
+        repository.create(any(), any(), any(), any(), capture(values))
+      } returns WorkItemMutationResult(created, "work_item.created")
+
+      WorkItemService(
+          repository,
+          configs,
+          workflows,
+          events,
+          WorkItemFieldMutationReconciler(fieldPermissions, clock),
+          fieldPermissions,
+          clock,
+        )
+        .create(
+          CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+          )
+        )
+
+      values.captured.map { it.code to it.value } shouldContain
+        ("dueDate" to JsonPrimitive("2026-07-07"))
+    }
+
+    "rejects create when automatic default field is submitted explicitly without permission" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
+      val events = mockk<DomainEventPublisher>()
+      val fieldPermissions = mockk<WorkItemFieldPermissionService>()
+
+      val actorId = UUID.randomUUID()
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val userApiId = PublicId.new("usr")
+      val projectApiId = PublicId.new("prj")
+      val config = config(defaultDueDate = true)
+
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.resolveUserApiId(actorId) } returns userApiId
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
+      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
+        {
+          secondArg<TemplateField>() is TemplateField.System
+        }
+      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+        {
+          val field = secondArg<TemplateField>()
+          field is TemplateField.System && field.canonicalName == "title"
+        }
+
+      shouldThrow<PermissionDeniedException> {
+          WorkItemService(
+              repository,
+              configs,
+              workflows,
+              events,
+              WorkItemFieldMutationReconciler(fieldPermissions, clock),
+              fieldPermissions,
+              clock,
+            )
+            .create(
+              CreateWorkItemCommand(
+                tenantId = tenantId,
+                projectId = projectId,
+                issueTypeApiId = "typ_task",
+                title = "Task",
+                description = null,
+                reporterId = actorId,
+                actorUserId = actorId,
+                properties = mapOf("dueDate" to JsonPrimitive("2026-07-10")),
+              )
+            )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+    }
   })
 
 private fun config(defaultDueDate: Boolean): IssueTypeConfigDetails {
@@ -142,58 +261,111 @@ private fun config(defaultDueDate: Boolean): IssueTypeConfigDetails {
   val workflowId = UUID.randomUUID()
   return IssueTypeConfigDetails(
     config =
-      IssueTypeConfigRecord(
-        id = configId,
-        apiId = PublicId.new("itc"),
+      templateDefaultsIssueTypeConfig(
         tenantId = tenantId,
-        scope = WorkItemConfigScope.TENANT,
-        projectId = null,
-        issueTypeId = UUID.randomUUID(),
-        issueTypeApiId = PublicId.new("typ"),
+        configId = configId,
         workflowId = workflowId,
-        workflowApiId = PublicId.new("wfl"),
-        version = 1,
-        nameOverride = null,
-        iconOverride = null,
-        colorOverride = null,
-        rank = 100,
-        isActive = true,
-        validFrom = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-        validTo = null,
-        createdBy = null,
-        createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+        defaultDueDate = defaultDueDate,
       ),
-    statuses =
-      listOf(
-        IssueTypeConfigStatusRecord(
-          id = UUID.randomUUID(),
-          tenantId = tenantId,
-          issueTypeConfigId = configId,
-          statusId = statusId,
-          statusApiId = PublicId.new("sts"),
-          code = "todo",
-          name = "Todo",
-          statusGroup = WorkItemStatusGroup.TODO,
-          isInitial = true,
-          isTerminal = false,
-          rank = 100,
+    statuses = listOf(templateDefaultsInitialStatus(tenantId, configId, statusId)),
+    properties = templateDefaultsProperties(configId),
+  )
+}
+
+private fun templateDefaultsIssueTypeConfig(
+  tenantId: UUID,
+  configId: UUID,
+  workflowId: UUID,
+  defaultDueDate: Boolean,
+): IssueTypeConfigRecord {
+  val dueDateDefault =
+    Json.parseToJsonElement(
+      """
+      {
+        "relativeDate": {
+          "amount": 3,
+          "unit": "day",
+          "direction": "future",
+          "anchor": "date.today"
+        }
+      }
+      """
+        .trimIndent()
+    )
+  return IssueTypeConfigRecord(
+    id = configId,
+    apiId = PublicId.new("itc"),
+    tenantId = tenantId,
+    scope = WorkItemConfigScope.TENANT,
+    projectId = null,
+    issueTypeId = UUID.randomUUID(),
+    issueTypeApiId = PublicId.new("typ"),
+    workflowId = workflowId,
+    workflowApiId = PublicId.new("wfl"),
+    version = 1,
+    nameOverride = null,
+    iconOverride = null,
+    colorOverride = null,
+    rank = 100,
+    isActive = true,
+    validFrom = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+    validTo = null,
+    createdBy = null,
+    createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+    updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+    createFields =
+      CreateFieldsLegacyMigrator.migrate(
+        listOf(
+          CreateFieldsPropertyMigrationRow(
+            code = "dueDate",
+            isRequired = false,
+            defaultValue = if (defaultDueDate) dueDateDefault else null,
+          ),
+          CreateFieldsPropertyMigrationRow(
+            code = "resolvedAt",
+            isRequired = false,
+            defaultValue = null,
+          ),
+          CreateFieldsPropertyMigrationRow(
+            code = "resolution",
+            isRequired = false,
+            defaultValue = null,
+          ),
         )
-      ),
-    properties =
-      listOf(
-        property(configId, "dueDate", WorkItemPropertyDataType.DATE, defaultDueDate),
-        property(configId, "resolvedAt", WorkItemPropertyDataType.DATETIME),
-        property(configId, "resolution", WorkItemPropertyDataType.TEXT),
       ),
   )
 }
+
+private fun templateDefaultsInitialStatus(
+  tenantId: UUID,
+  configId: UUID,
+  statusId: UUID,
+): IssueTypeConfigStatusRecord =
+  IssueTypeConfigStatusRecord(
+    id = UUID.randomUUID(),
+    tenantId = tenantId,
+    issueTypeConfigId = configId,
+    statusId = statusId,
+    statusApiId = PublicId.new("sts"),
+    code = "todo",
+    name = "Todo",
+    statusGroup = WorkItemStatusGroup.TODO,
+    isInitial = true,
+    isTerminal = false,
+    rank = 100,
+  )
+
+private fun templateDefaultsProperties(configId: UUID): List<IssueTypeConfigPropertyRecord> =
+  listOf(
+    property(configId, "dueDate", WorkItemPropertyDataType.DATE),
+    property(configId, "resolvedAt", WorkItemPropertyDataType.DATETIME),
+    property(configId, "resolution", WorkItemPropertyDataType.TEXT),
+  )
 
 private fun property(
   configId: UUID,
   code: String,
   type: WorkItemPropertyDataType,
-  defaultDueDate: Boolean = false,
 ): IssueTypeConfigPropertyRecord =
   IssueTypeConfigPropertyRecord(
     id = UUID.randomUUID(),
@@ -204,25 +376,6 @@ private fun property(
     code = code,
     name = code,
     dataType = type,
-    isRequired = false,
-    defaultValue =
-      if (defaultDueDate) {
-        Json.parseToJsonElement(
-          """
-          {
-            "relativeDate": {
-              "amount": 3,
-              "unit": "day",
-              "direction": "future",
-              "anchor": "date.today"
-            }
-          }
-          """
-            .trimIndent()
-        )
-      } else {
-        null
-      },
     validationOverride = JsonObject(emptyMap()),
     rank = 100,
     displayConfig = JsonObject(emptyMap()),
@@ -308,6 +461,8 @@ private fun workItemService(
   val fieldPermissions = mockk<WorkItemFieldPermissionService>()
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
   coEvery { fieldPermissions.isFieldEditableInTransition(any(), any(), any()) } returns true
+  coEvery { fieldPermissions.isFieldEditable(any(), any(), any()) } returns true
+  coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
   val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
   return WorkItemService(
     repository,

@@ -595,6 +595,18 @@ enum class WorkbenchErrorCode(
     "work_item.transition_fields.automatic_value_required",
     "Automatic transition field requires a value expression.",
   ),
+  WORK_ITEM_CREATE_FIELDS_REQUIRED(
+    "work_item.create_fields.required",
+    "Create fields template is required and must define at least one field.",
+  ),
+  WORK_ITEM_CREATE_FIELDS_TARGET_INVALID(
+    "work_item.create_fields.target_invalid",
+    "Create fields target must be create.",
+  ),
+  WORKFLOW_TRANSITION_FROM_STATUS_INVALID(
+    "workflow.transition.from_status_invalid",
+    "Workflow transition requires a valid from status unless it is global.",
+  ),
   WORK_ITEM_FIELD_WRITE_DENIED(
     "work_item.field.write_denied",
     "Work item field write permission denied.",
@@ -606,6 +618,14 @@ enum class WorkbenchErrorCode(
   WORK_ITEM_TRANSITION_UNAUTHORIZED_FIELD_MUTATION(
     "work_item.transition.unauthorized_field_mutation",
     "Unauthorized field mutation during transition.",
+  ),
+  WORK_ITEM_MUTATION_UNEXPECTED_FIELD(
+    "work_item.mutation.unexpected_field",
+    "Unexpected field in work item mutation request.",
+  ),
+  WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE(
+    "work_item.mutation.field_not_editable",
+    "Field is not editable in this mutation request.",
   ),
   RESOURCE_WORK_ITEM_STATUS_NOT_FOUND(
     "resource.work_item_status.not_found",

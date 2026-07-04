@@ -5,7 +5,6 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 enum class WorkItemConfigScope(val dbValue: String) {
@@ -133,7 +132,7 @@ data class WorkflowTransitionRecord(
   val tenantId: UUID,
   val workflowId: UUID,
   val name: String,
-  val fromStatusId: UUID,
+  val fromStatusId: UUID?,
   val fromStatusApiId: PublicId?,
   val toStatusId: UUID,
   val toStatusApiId: PublicId?,
@@ -167,6 +166,7 @@ data class IssueTypeConfigRecord(
   val createdBy: UUID?,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
+  val createFields: JsonObject,
 )
 
 data class IssueTypeConfigStatusRecord(
@@ -192,8 +192,6 @@ data class IssueTypeConfigPropertyRecord(
   val code: String,
   val name: String,
   val dataType: WorkItemPropertyDataType,
-  val isRequired: Boolean,
-  val defaultValue: JsonElement?,
   val validationOverride: JsonObject,
   val rank: Int,
   val displayConfig: JsonObject,
@@ -255,7 +253,7 @@ data class CreateWorkflowTransitionCommand(
   val tenantId: UUID,
   val workflowApiId: String,
   val name: String,
-  val fromStatusApiId: String,
+  val fromStatusApiId: String?,
   val toStatusApiId: String,
   val rank: Int = 100,
   val permissionCondition: JsonObject = JsonObject(emptyMap()),
@@ -272,8 +270,6 @@ data class IssueTypeConfigStatusInput(
 
 data class IssueTypeConfigPropertyInput(
   val propertyApiId: String,
-  val isRequired: Boolean = false,
-  val defaultValue: JsonElement? = null,
   val validationOverride: JsonObject = JsonObject(emptyMap()),
   val rank: Int = 100,
   val displayConfig: JsonObject = JsonObject(emptyMap()),
@@ -290,6 +286,7 @@ data class CreateIssueTypeConfigCommand(
   val colorOverride: String? = null,
   val rank: Int = 100,
   val createdBy: UUID? = null,
+  val createFields: JsonObject,
   val statuses: List<IssueTypeConfigStatusInput>,
   val properties: List<IssueTypeConfigPropertyInput> = emptyList(),
 )

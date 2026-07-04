@@ -294,9 +294,13 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       val workflow =
         findWorkflow(command.tenantId, command.workflowApiId)
           ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
-      val fromStatus =
-        findStatus(command.tenantId, command.fromStatusApiId)
-          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+      val fromStatusId =
+        command.fromStatusApiId?.let { fromStatusApiId ->
+          findStatus(command.tenantId, fromStatusApiId)
+            ?: throw ResourceNotFoundException(
+              WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND
+            )
+        }
       val toStatus =
         findStatus(command.tenantId, command.toStatusApiId)
           ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
@@ -308,7 +312,7 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         it[WorkflowTransitionsTable.tenantId] = command.tenantId.toKotlinUuid()
         it[WorkflowTransitionsTable.workflowId] = workflow.id.toKotlinUuid()
         it[WorkflowTransitionsTable.name] = command.name
-        it[WorkflowTransitionsTable.fromStatusId] = fromStatus.id.toKotlinUuid()
+        it[WorkflowTransitionsTable.fromStatusId] = fromStatusId?.id?.toKotlinUuid()
         it[WorkflowTransitionsTable.toStatusId] = toStatus.id.toKotlinUuid()
         it[WorkflowTransitionsTable.rank] = command.rank
         it[WorkflowTransitionsTable.permissionCondition] = command.permissionCondition
@@ -378,6 +382,7 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         it[IssueTypeConfigsTable.createdBy] = command.createdBy?.toKotlinUuid()
         it[IssueTypeConfigsTable.createdAt] = now
         it[IssueTypeConfigsTable.updatedAt] = now
+        it[IssueTypeConfigsTable.createFields] = command.createFields
       }
       command.statuses.forEach { status ->
         val record =
@@ -406,8 +411,6 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
           it[IssueTypeConfigPropertiesTable.tenantId] = command.tenantId.toKotlinUuid()
           it[IssueTypeConfigPropertiesTable.issueTypeConfigId] = id.toKotlinUuid()
           it[IssueTypeConfigPropertiesTable.propertyId] = record.id.toKotlinUuid()
-          it[IssueTypeConfigPropertiesTable.isRequired] = property.isRequired
-          it[IssueTypeConfigPropertiesTable.defaultValue] = property.defaultValue
           it[IssueTypeConfigPropertiesTable.validationOverride] = property.validationOverride
           it[IssueTypeConfigPropertiesTable.rank] = property.rank
           it[IssueTypeConfigPropertiesTable.displayConfig] = property.displayConfig
@@ -668,8 +671,9 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       tenantId = this[WorkflowTransitionsTable.tenantId].toJavaUuid(),
       workflowId = this[WorkflowTransitionsTable.workflowId].toJavaUuid(),
       name = this[WorkflowTransitionsTable.name],
-      fromStatusId = this[WorkflowTransitionsTable.fromStatusId].toJavaUuid(),
-      fromStatusApiId = statusPublicId(this[WorkflowTransitionsTable.fromStatusId].toJavaUuid()),
+      fromStatusId = this[WorkflowTransitionsTable.fromStatusId]?.toJavaUuid(),
+      fromStatusApiId =
+        this[WorkflowTransitionsTable.fromStatusId]?.toJavaUuid()?.let(::statusPublicId),
       toStatusId = this[WorkflowTransitionsTable.toStatusId].toJavaUuid(),
       toStatusApiId = statusPublicId(this[WorkflowTransitionsTable.toStatusId].toJavaUuid()),
       rank = this[WorkflowTransitionsTable.rank],
@@ -711,6 +715,7 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       createdBy = this[IssueTypeConfigsTable.createdBy]?.toJavaUuid(),
       createdAt = this[IssueTypeConfigsTable.createdAt],
       updatedAt = this[IssueTypeConfigsTable.updatedAt],
+      createFields = this[IssueTypeConfigsTable.createFields].asObject(),
     )
   }
 
@@ -739,8 +744,6 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       code = this[PropertyDefinitionsTable.code],
       name = this[PropertyDefinitionsTable.name],
       dataType = WorkItemPropertyDataType.fromDbValue(this[PropertyDefinitionsTable.dataType]),
-      isRequired = this[IssueTypeConfigPropertiesTable.isRequired],
-      defaultValue = this[IssueTypeConfigPropertiesTable.defaultValue],
       validationOverride = this[IssueTypeConfigPropertiesTable.validationOverride].asObject(),
       rank = this[IssueTypeConfigPropertiesTable.rank],
       displayConfig = this[IssueTypeConfigPropertiesTable.displayConfig].asObject(),
