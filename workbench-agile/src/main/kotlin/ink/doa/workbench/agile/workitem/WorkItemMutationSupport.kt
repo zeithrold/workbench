@@ -40,7 +40,9 @@ class WorkItemMutationSupport(
         WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
       )
 
-  suspend fun templateContext(request: WorkItemTemplateContextRequest): WorkItemValueTemplateContext {
+  suspend fun templateContext(
+    request: WorkItemTemplateContextRequest
+  ): WorkItemValueTemplateContext {
     val currentUserApiId =
       repository.resolveUserApiId(request.actorUserId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
