@@ -28,7 +28,6 @@ import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 
 data class TenantSeed(
@@ -105,7 +104,7 @@ object AuthIntegrationFixtures {
 
   suspend fun seedLdapFixture(
     database: Database,
-    ldapContainer: GenericContainer<*>,
+    ldap: InMemoryLdapTestServer,
   ): LdapAuthFixture {
     val tenant = seedTenant(database)
     val methodCode = uniqueMethodCode("ldap")
@@ -136,15 +135,15 @@ object AuthIntegrationFixtures {
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = method.id,
-        config = ldapConfig(ldapContainer),
+        config = ldapConfig(ldap),
       )
     )
     val loginAccount =
       repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = method.id,
-          subject = LdapTestContainer.TEST_USER,
-          normalizedSubject = LdapTestContainer.TEST_USER,
+          subject = InMemoryLdapTestServer.TEST_USER,
+          normalizedSubject = InMemoryLdapTestServer.TEST_USER,
           displayName = "LDAP User",
         )
       )
@@ -252,7 +251,7 @@ object AuthIntegrationFixtures {
 
   suspend fun seedAuthFixture(
     database: Database,
-    ldapContainer: GenericContainer<*>,
+    ldap: InMemoryLdapTestServer,
     keycloakContainer: KeycloakContainer,
   ): AuthIntegrationFixture {
     val tenant = seedTenant(database)
@@ -288,15 +287,15 @@ object AuthIntegrationFixtures {
       CreateTenantLoginMethodSettingCommand(
         tenantId = tenant.tenantId,
         loginMethodId = ldapMethod.id,
-        config = ldapConfig(ldapContainer),
+        config = ldapConfig(ldap),
       )
     )
     val ldapAccount =
       repos.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = ldapMethod.id,
-          subject = LdapTestContainer.TEST_USER,
-          normalizedSubject = LdapTestContainer.TEST_USER,
+          subject = InMemoryLdapTestServer.TEST_USER,
+          normalizedSubject = InMemoryLdapTestServer.TEST_USER,
           displayName = "LDAP User",
         )
       )
@@ -380,12 +379,12 @@ object AuthIntegrationFixtures {
       KeycloakTestContainer.OAUTH2_SECRET_REF to KeycloakTestContainer.OAUTH2_CLIENT_SECRET,
     )
 
-  fun ldapConfig(ldapContainer: GenericContainer<*>): JsonObject =
+  fun ldapConfig(ldap: InMemoryLdapTestServer): JsonObject =
     JsonObject(
       mapOf(
-        "host" to JsonPrimitive(LdapTestContainer.ldapHost(ldapContainer)),
-        "port" to JsonPrimitive(LdapTestContainer.ldapPort(ldapContainer).toString()),
-        "base_dn" to JsonPrimitive(LdapTestContainer.BASE_DN),
+        "host" to JsonPrimitive(ldap.host),
+        "port" to JsonPrimitive(ldap.port.toString()),
+        "base_dn" to JsonPrimitive(InMemoryLdapTestServer.BASE_DN),
       )
     )
 
