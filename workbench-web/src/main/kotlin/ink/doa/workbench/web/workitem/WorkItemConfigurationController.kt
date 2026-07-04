@@ -315,9 +315,7 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
           rank = request.rank ?: 100,
           permissionCondition = request.permissionCondition.toJsonObject(),
           preconditionAst = request.preconditionAst.toJsonObject(),
-          requiredProperties = request.requiredProperties.toJsonElement(),
-          optionalProperties = request.optionalProperties.toJsonElement(),
-          propertyDefaults = request.propertyDefaults.toJsonObject(),
+          fields = request.fields.toJsonObject(),
         )
       )
     )
@@ -391,9 +389,7 @@ data class CreateWorkflowTransitionRequest(
   val rank: Int? = null,
   val permissionCondition: JsonNode? = null,
   val preconditionAst: JsonNode? = null,
-  val requiredProperties: JsonNode? = null,
-  val optionalProperties: JsonNode? = null,
-  val propertyDefaults: JsonNode? = null,
+  val fields: JsonNode? = null,
 )
 
 data class CreateIssueTypeConfigRequest(
@@ -527,9 +523,7 @@ data class WorkflowTransitionResponse(
   val rank: Int,
   val permissionCondition: JsonObject,
   val preconditionAst: JsonObject,
-  val requiredProperties: JsonElement,
-  val optionalProperties: JsonElement,
-  val propertyDefaults: JsonObject,
+  val fields: JsonObject,
 ) {
   companion object {
     fun from(record: WorkflowTransitionRecord) =
@@ -541,9 +535,7 @@ data class WorkflowTransitionResponse(
         rank = record.rank,
         permissionCondition = record.permissionCondition,
         preconditionAst = record.preconditionAst,
-        requiredProperties = record.requiredProperties,
-        optionalProperties = record.optionalProperties,
-        propertyDefaults = record.propertyDefaults,
+        fields = record.fields,
       )
   }
 }

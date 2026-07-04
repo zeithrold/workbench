@@ -543,6 +543,70 @@ enum class WorkbenchErrorCode(
     "work_item.template.too_many_values",
     "Work item value template has too many values.",
   ),
+  WORK_ITEM_TRANSITION_FIELDS_INVALID_JSON(
+    "work_item.transition_fields.invalid_json",
+    "Invalid transition fields JSON.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_OBJECT_REQUIRED(
+    "work_item.transition_fields.object_required",
+    "Transition fields payload must be an object.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_STRING_REQUIRED(
+    "work_item.transition_fields.string_required",
+    "Transition fields value must be a string.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_INTEGER_REQUIRED(
+    "work_item.transition_fields.integer_required",
+    "Transition fields value must be an integer.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_FIELD_REQUIRED(
+    "work_item.transition_fields.field_required",
+    "Transition fields payload is missing a required field.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_VERSION_UNSUPPORTED(
+    "work_item.transition_fields.version_unsupported",
+    "Unsupported transition fields version.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_RESOURCE_UNSUPPORTED(
+    "work_item.transition_fields.resource_unsupported",
+    "Unsupported transition fields resource.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_TARGET_INVALID(
+    "work_item.transition_fields.target_invalid",
+    "Transition fields target must be transition.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_PARTICIPATION_UNKNOWN(
+    "work_item.transition_fields.participation_unknown",
+    "Unknown transition field participation.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_WRITE_GRANT_UNKNOWN(
+    "work_item.transition_fields.write_grant_unknown",
+    "Unknown transition field write grant.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_ON_UNAUTHORIZED_UNKNOWN(
+    "work_item.transition_fields.on_unauthorized_unknown",
+    "Unknown transition field onUnauthorized behavior.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_TOO_MANY(
+    "work_item.transition_fields.too_many",
+    "Transition fields template has too many fields.",
+  ),
+  WORK_ITEM_TRANSITION_FIELDS_AUTOMATIC_VALUE_REQUIRED(
+    "work_item.transition_fields.automatic_value_required",
+    "Automatic transition field requires a value expression.",
+  ),
+  WORK_ITEM_FIELD_WRITE_DENIED(
+    "work_item.field.write_denied",
+    "Work item field write permission denied.",
+  ),
+  WORK_ITEM_TRANSITION_FIELD_IMMUTABLE_BUT_REQUIRED(
+    "work_item.transition.field_immutable_but_required",
+    "Required transition field is immutable and has no value.",
+  ),
+  WORK_ITEM_TRANSITION_UNAUTHORIZED_FIELD_MUTATION(
+    "work_item.transition.unauthorized_field_mutation",
+    "Unauthorized field mutation during transition.",
+  ),
   RESOURCE_WORK_ITEM_STATUS_NOT_FOUND(
     "resource.work_item_status.not_found",
     "Work item status not found.",

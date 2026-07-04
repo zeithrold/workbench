@@ -313,9 +313,7 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         it[WorkflowTransitionsTable.rank] = command.rank
         it[WorkflowTransitionsTable.permissionCondition] = command.permissionCondition
         it[WorkflowTransitionsTable.preconditionAst] = command.preconditionAst
-        it[WorkflowTransitionsTable.requiredProperties] = command.requiredProperties
-        it[WorkflowTransitionsTable.optionalProperties] = command.optionalProperties
-        it[WorkflowTransitionsTable.propertyDefaults] = command.propertyDefaults
+        it[WorkflowTransitionsTable.transitionFields] = command.fields
         it[WorkflowTransitionsTable.isActive] = true
         it[WorkflowTransitionsTable.createdAt] = now
         it[WorkflowTransitionsTable.updatedAt] = now
@@ -677,9 +675,7 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       rank = this[WorkflowTransitionsTable.rank],
       permissionCondition = this[WorkflowTransitionsTable.permissionCondition].asObject(),
       preconditionAst = this[WorkflowTransitionsTable.preconditionAst].asObject(),
-      requiredProperties = this[WorkflowTransitionsTable.requiredProperties],
-      optionalProperties = this[WorkflowTransitionsTable.optionalProperties],
-      propertyDefaults = this[WorkflowTransitionsTable.propertyDefaults].asObject(),
+      fields = this[WorkflowTransitionsTable.transitionFields].asObject(),
       isActive = this[WorkflowTransitionsTable.isActive],
       createdAt = this[WorkflowTransitionsTable.createdAt],
       updatedAt = this[WorkflowTransitionsTable.updatedAt],

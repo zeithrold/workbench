@@ -11,6 +11,7 @@ dependencies {
   implementation(libs.exposed.java.time)
   implementation(libs.postgresql)
   implementation(libs.flyway.postgresql)
+  implementation("org.flywaydb:flyway-core")
   implementation(libs.redisson)
   implementation("org.springframework.boot:spring-boot-starter-jdbc")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")

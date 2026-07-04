@@ -35,7 +35,23 @@ private val TENANT_ADMIN_RULES =
     "permission.group.manage" to "permission:*",
     "permission.assignment.manage" to "permission:*",
     "permission.policy.manage" to "permission:*",
+    "issue.view" to "issue:*",
+    "issue.create" to "issue:*",
+    "issue.update" to "issue:*",
+    "issue.transition" to "issue:*",
+    "issue.field.write" to "issue:field:*",
   )
+
+private val ISSUE_WRITE_RULES =
+  listOf(
+    "issue.view" to "issue:*",
+    "issue.create" to "issue:*",
+    "issue.update" to "issue:*",
+    "issue.transition" to "issue:*",
+    "issue.field.write" to "issue:field:*",
+  )
+
+private val ISSUE_VIEW_RULES = listOf("issue.view" to "issue:*")
 
 private val BUILTIN_POLICY_TEMPLATES =
   listOf(
@@ -50,19 +66,20 @@ private val BUILTIN_POLICY_TEMPLATES =
           "project.delete" to "project:*",
           "project.manage" to "project:*",
           "project.archive" to "project:*",
-        ),
+        ) + ISSUE_WRITE_RULES,
     ),
     BuiltinPolicyTemplate(
       code = "project-member",
       name = "Project Member",
       description = "Work inside assigned projects.",
-      rules = listOf("project.read" to "project:*", "project.update" to "project:*"),
+      rules =
+        listOf("project.read" to "project:*", "project.update" to "project:*") + ISSUE_WRITE_RULES,
     ),
     BuiltinPolicyTemplate(
       code = "project-viewer",
       name = "Project Viewer",
       description = "Read assigned projects.",
-      rules = listOf("project.read" to "project:*"),
+      rules = listOf("project.read" to "project:*") + ISSUE_VIEW_RULES,
     ),
   )
 

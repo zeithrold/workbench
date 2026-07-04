@@ -140,9 +140,7 @@ data class WorkflowTransitionRecord(
   val rank: Int,
   val permissionCondition: JsonObject,
   val preconditionAst: JsonObject,
-  val requiredProperties: JsonElement,
-  val optionalProperties: JsonElement,
-  val propertyDefaults: JsonObject,
+  val fields: JsonObject,
   val isActive: Boolean,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
@@ -262,9 +260,7 @@ data class CreateWorkflowTransitionCommand(
   val rank: Int = 100,
   val permissionCondition: JsonObject = JsonObject(emptyMap()),
   val preconditionAst: JsonObject = JsonObject(emptyMap()),
-  val requiredProperties: JsonElement,
-  val optionalProperties: JsonElement,
-  val propertyDefaults: JsonObject = JsonObject(emptyMap()),
+  val fields: JsonObject = JsonObject(emptyMap()),
 )
 
 data class IssueTypeConfigStatusInput(

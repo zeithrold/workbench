@@ -8,6 +8,7 @@ import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.project.ProjectRepository
 import ink.doa.workbench.core.project.model.NonMemberVisibility
 import ink.doa.workbench.core.project.model.ProjectRecord
+import ink.doa.workbench.core.project.model.ProjectStatus
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -36,6 +37,7 @@ class ProjectAccessServiceTest :
         identifier = "CORE",
         name = "Core",
         description = null,
+        status = ProjectStatus.ACTIVE,
         nonMemberVisibility = NonMemberVisibility.READ_ONLY,
       )
 
@@ -59,6 +61,35 @@ class ProjectAccessServiceTest :
         tenantId,
         projectId,
         AuthorizationAction("project.read"),
+      ) shouldBe true
+    }
+
+    "allowsVisibilityAction grants issue.view for read_only visibility" {
+      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, null, any()) } returns
+        emptyList()
+      coEvery { bindings.listProjectIdsForSubject(tenantId, userId, any()) } returns emptySet()
+      coEvery { projects.findById(tenantId, projectId) } returns openProject
+
+      service.allowsVisibilityAction(
+        userId,
+        tenantId,
+        projectId,
+        AuthorizationAction("issue.view"),
+      ) shouldBe true
+    }
+
+    "allowsVisibilityAction grants issue.update for read_write visibility" {
+      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, null, any()) } returns
+        emptyList()
+      coEvery { bindings.listProjectIdsForSubject(tenantId, userId, any()) } returns emptySet()
+      coEvery { projects.findById(tenantId, projectId) } returns
+        openProject.copy(nonMemberVisibility = NonMemberVisibility.READ_WRITE)
+
+      service.allowsVisibilityAction(
+        userId,
+        tenantId,
+        projectId,
+        AuthorizationAction("issue.update"),
       ) shouldBe true
     }
 

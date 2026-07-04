@@ -91,8 +91,8 @@ data class WorkItemTransitionOption(
   val toStatusId: PublicId,
   val enabled: Boolean,
   val reason: String? = null,
-  val requiredProperties: JsonElement,
-  val optionalProperties: JsonElement,
+  val fields: JsonObject,
+  val editableFields: List<String> = emptyList(),
 )
 
 data class WorkItemMutationResult(
