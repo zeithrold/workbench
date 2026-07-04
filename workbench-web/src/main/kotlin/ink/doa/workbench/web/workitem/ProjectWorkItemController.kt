@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.agile.workitem.WorkItemQueryService
 import ink.doa.workbench.agile.workitem.WorkItemService
+import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -55,6 +56,7 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 class ProjectWorkItemController(
   private val service: WorkItemService,
+  private val transitionService: WorkItemTransitionService,
   private val queryService: WorkItemQueryService,
 ) {
   private val objectMapper = ObjectMapper()
@@ -191,7 +193,7 @@ class ProjectWorkItemController(
     @PathVariable @ResourceId workItemId: String,
     projectContext: ProjectRequestContext,
   ): List<WorkItemTransitionResponse> =
-    service
+    transitionService
       .availableTransitions(
         projectContext.tenant.id,
         projectContext.project.id,
@@ -212,7 +214,7 @@ class ProjectWorkItemController(
     projectContext: ProjectRequestContext,
   ): WorkItemResponse =
     WorkItemResponse.from(
-      service
+      transitionService
         .transition(request.toCommand(projectContext, workItemId, actorUserId(projectContext)))
         .workItem
     )
