@@ -22,9 +22,11 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -66,6 +68,61 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       .andExpect(jsonPath("$[0].code").value("admin"))
   }
 
+  @Test
+  fun `create permission policy returns created policy for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/manage/permission-policies")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "code": "editor",
+                "name": "Editor",
+                "description": "Can edit issues"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.code").value("editor"))
+  }
+
+  @Test
+  fun `add policy rule returns updated policy for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/manage/permission-policies/pol_01JABCDEFGHJKMNPQRSTVWXYZ0/rules")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "action": "issue.update",
+                "resourcePattern": "issue:*"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.rules[0].action").value("issue.update"))
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -94,16 +151,50 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     fun permissionPolicyManagementServiceSetup(
       service: PermissionPolicyManagementService
     ): Boolean {
-      coEvery { service.listPolicies(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(
-          PermissionPolicyView(
-            id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
-            code = "admin",
-            name = "Admin",
-            description = "Full access",
-            builtin = true,
-            rules = emptyList(),
-          )
+      val samplePolicy =
+        PermissionPolicyView(
+          id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          code = "admin",
+          name = "Admin",
+          description = "Full access",
+          builtin = true,
+          rules = emptyList(),
+        )
+      coEvery { service.listPolicies(TenantWebMvcFixtures.TENANT_ID) } returns listOf(samplePolicy)
+      coEvery {
+        service.createPolicy(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          code = "editor",
+          name = "Editor",
+          description = "Can edit issues",
+        )
+      } returns
+        PermissionPolicyView(
+          id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          code = "editor",
+          name = "Editor",
+          description = "Can edit issues",
+          builtin = false,
+          rules = emptyList(),
+        )
+      coEvery {
+        service.addPolicyRule(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          action = "issue.update",
+          resourcePattern = "issue:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+        )
+      } returns
+        samplePolicy.copy(
+          rules =
+            listOf(
+              ink.doa.workbench.security.permission.PermissionPolicyRuleView(
+                action = "issue.update",
+                resourcePattern = "issue:*",
+                effect = "ALLOW",
+              )
+            )
         )
       return true
     }

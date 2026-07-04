@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.workitem
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
@@ -259,5 +260,25 @@ class WorkItemConfigurationResponsesTest :
         )
 
       WorkItemCommentResponse.from(record).body shouldBe "Looks good"
+    }
+
+    "json node helpers convert objects and maps" {
+      val mapper = ObjectMapper()
+      val node = mapper.readTree("""{"points": 3}""")
+      val jsonObject = node.toJsonObject(mapper)
+      jsonObject.toMap().keys shouldBe setOf("points")
+      null.toJsonObject(mapper).toMap() shouldBe emptyMap()
+    }
+
+    "create workflow transition request stores transition fields" {
+      val mapper = ObjectMapper()
+      val request =
+        CreateWorkflowTransitionRequest(
+          name = "Start",
+          toStatusId = "sts_abc",
+          fields = mapper.readTree("""{"title": {"editable": true}}"""),
+        )
+
+      request.fields.toJsonObject(mapper).keys shouldBe setOf("title")
     }
   })

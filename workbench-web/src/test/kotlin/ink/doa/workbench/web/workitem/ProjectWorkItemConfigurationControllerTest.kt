@@ -1,14 +1,18 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
+import ink.doa.workbench.agile.workitem.IssueTypeConfigService
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
+import ink.doa.workbench.web.api.ProjectRequestContextResolver
 import ink.doa.workbench.web.api.RequestContextResolver
 import ink.doa.workbench.web.api.TenantRequestContextResolver
 import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
@@ -17,6 +21,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import java.time.OffsetDateTime
+import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
@@ -24,16 +29,14 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(WorkflowController::class)
+@WebMvcTest(ProjectWorkItemConfigurationController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -41,24 +44,33 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   InfrastructureAspect::class,
   RequestContextResolver::class,
   TenantRequestContextResolver::class,
+  ProjectRequestContextResolver::class,
   ink.doa.workbench.web.support.ContextWebMvcSupport::class,
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  WorkflowControllerTest.TestBeans::class,
+  ProjectWorkItemConfigurationControllerTest.TestBeans::class,
 )
-class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ProjectWorkItemConfigurationControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+  fun `effective config rejects unauthenticated requests`() {
+    mockMvc
+      .perform(
+        get(
+          "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item/type-configs/effective/typ_01JABCDEFGHJKMNPQRSTVWXYZ0"
+        )
+      )
+      .andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list workflows returns workflows for authenticated tenant user`() {
+  fun `effective config returns resolved config for authenticated user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item/type-configs/effective/typ_01JABCDEFGHJKMNPQRSTVWXYZ0"
+            )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -67,34 +79,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("default"))
-  }
-
-  @Test
-  fun `create workflow returns created workflow for authenticated tenant user`() {
-    val result =
-      mockMvc
-        .perform(
-          post("/api/workflows")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(
-              """
-              {
-                "code": "support",
-                "name": "Support Workflow"
-              }
-              """
-                .trimIndent()
-            )
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
-    mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("support"))
+      .andExpect(jsonPath("$.resolvedFrom").value("project"))
   }
 
   @TestConfiguration
@@ -117,33 +102,65 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
 
-    @Bean fun workflowConfigurationService(): WorkflowConfigurationService = mockk(relaxed = true)
+    @Bean
+    fun projectResolverSetup(resolver: ink.doa.workbench.agile.project.ProjectResolver): Boolean {
+      coEvery {
+        resolver.resolveProject(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+        )
+      } returns TenantWebMvcFixtures.PROJECT_RECORD
+      return true
+    }
+
+    @Bean fun issueTypeConfigService(): IssueTypeConfigService = mockk(relaxed = true)
 
     @Bean
-    fun workflowConfigurationServiceSetup(service: WorkflowConfigurationService): Boolean {
-      coEvery { service.listWorkflows(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(SAMPLE_WORKFLOW)
-      coEvery { service.createWorkflow(any()) } returns
-        SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+    fun issueTypeConfigServiceSetup(configs: IssueTypeConfigService): Boolean {
+      coEvery {
+        configs.resolveEffective(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          projectId = TenantWebMvcFixtures.PROJECT_ID,
+          issueTypeApiIdOrCode = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+        )
+      } returns
+        EffectiveIssueTypeConfig(
+          config =
+            IssueTypeConfigDetails(
+              config = SAMPLE_CONFIG,
+              statuses = emptyList(),
+              properties = emptyList(),
+            ),
+          resolvedFrom = WorkItemConfigScope.PROJECT,
+        )
       return true
     }
   }
 
   private companion object {
-    val SAMPLE_WORKFLOW =
-      WorkflowRecord(
+    val SAMPLE_CONFIG =
+      IssueTypeConfigRecord(
         id = java.util.UUID.randomUUID(),
-        apiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        apiId = PublicId("itc_01JABCDEFGHJKMNPQRSTVWXYZ0"),
         tenantId = TenantWebMvcFixtures.TENANT_ID,
-        code = "default",
-        name = "Default Workflow",
-        description = "Primary workflow",
+        scope = WorkItemConfigScope.PROJECT,
+        projectId = TenantWebMvcFixtures.PROJECT_ID,
+        issueTypeId = java.util.UUID.randomUUID(),
+        issueTypeApiId = PublicId("typ_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        workflowId = java.util.UUID.randomUUID(),
+        workflowApiId = PublicId("wfl_01JABCDEFGHJKMNPQRSTVWXYZ0"),
         version = 1,
+        nameOverride = null,
+        iconOverride = null,
+        colorOverride = null,
+        rank = 100,
         isActive = true,
-        publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        validFrom = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        validTo = null,
         createdBy = TenantWebMvcFixtures.USER_ID,
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        createFields = JsonObject(emptyMap()),
       )
   }
 }

@@ -1,6 +1,7 @@
 package ink.doa.workbench.web.project
 
 import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.core.project.ProjectRepository
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
@@ -26,7 +27,9 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
@@ -116,6 +119,76 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(jsonPath("$.identifier").value("CORE"))
   }
 
+  @Test
+  fun `update project returns updated project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          patch("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"name":"Updated Platform"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.name").value("Updated Platform"))
+  }
+
+  @Test
+  fun `archive project returns archived project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/archive")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.status").value("archived"))
+  }
+
+  @Test
+  fun `unarchive project returns active project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/unarchive")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.status").value("active"))
+  }
+
+  @Test
+  fun `delete project returns accepted project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isAccepted())
+      .andExpect(jsonPath("$.status").value("destroying"))
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -148,6 +221,14 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
     }
 
     @Bean
+    fun projectRepositorySetup(repository: ProjectRepository): Boolean {
+      coEvery {
+        repository.findById(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID)
+      } returns TenantWebMvcFixtures.PROJECT_RECORD
+      return true
+    }
+
+    @Bean
     fun projectManagementServiceSetup(service: ProjectManagementApplicationService): Boolean {
       coEvery {
         service.list(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.USER_ID, null)
@@ -165,6 +246,26 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
           TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
         )
       } returns SAMPLE_PROJECT
+      coEvery { service.update(any()) } returns SAMPLE_PROJECT.copy(name = "Updated Platform")
+      coEvery {
+        service.archive(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_ID,
+          TenantWebMvcFixtures.USER_ID,
+        )
+      } returns SAMPLE_PROJECT.copy(status = "archived")
+      coEvery {
+        service.unarchive(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID)
+      } returns SAMPLE_PROJECT
+      coEvery {
+        service.requestDestroy(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          tenantPublicId = TenantWebMvcFixtures.TENANT_RECORD.apiId,
+          projectPublicId = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+          deleteReason = null,
+        )
+      } returns SAMPLE_PROJECT.copy(status = "destroying")
       return true
     }
   }

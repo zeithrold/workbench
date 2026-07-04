@@ -1,6 +1,8 @@
 package ink.doa.workbench.web.project
 
+import ink.doa.workbench.agile.project.ProjectMemberPolicyView
 import ink.doa.workbench.agile.project.ProjectMemberService
+import ink.doa.workbench.agile.project.ProjectPermissionPolicySummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
@@ -14,6 +16,7 @@ import ink.doa.workbench.web.api.TenantRequestContextResolver
 import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
 import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.mockk.coEvery
+import io.mockk.coJustRun
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
@@ -23,9 +26,12 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -70,6 +76,80 @@ class ProjectMemberControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(jsonPath("$[0].user.displayName").value("Ada"))
   }
 
+  @Test
+  fun `add member returns created member for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/members")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"userId":"usr_01JABCDEFGHJKMNPQRSTVWXYZ1"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.user.displayName").value("Ada"))
+  }
+
+  @Test
+  fun `attach policy returns member with policy for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/members/usr_01JABCDEFGHJKMNPQRSTVWXYZ1/policies"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"policyId":"pol_01JABCDEFGHJKMNPQRSTVWXYZ0"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.policies[0].policy.code").value("member"))
+  }
+
+  @Test
+  fun `remove policy returns no content for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/members/" +
+                "usr_01JABCDEFGHJKMNPQRSTVWXYZ1/policies/bnd_01JABCDEFGHJKMNPQRSTVWXYZ0"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
+  }
+
+  @Test
+  fun `join project returns member for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/join")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.user.displayName").value("Ada"))
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -103,20 +183,61 @@ class ProjectMemberControllerTest(@Autowired private val mockMvc: MockMvc) {
 
     @Bean
     fun projectMemberServiceSetup(service: ProjectMemberService): Boolean {
+      val memberView =
+        ink.doa.workbench.agile.project.ProjectMemberView(
+          user =
+            UserSummary(
+              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              displayName = "Ada",
+              primaryEmail = "ada@example.test",
+            ),
+          policies =
+            listOf(
+              ProjectMemberPolicyView(
+                bindingId = "bnd_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                policy =
+                  ProjectPermissionPolicySummary(
+                    id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                    code = "member",
+                    name = "Member",
+                  ),
+              )
+            ),
+        )
       coEvery {
         service.listMembers(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID)
-      } returns
-        listOf(
-          ink.doa.workbench.agile.project.ProjectMemberView(
-            user =
-              UserSummary(
-                id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-                displayName = "Ada",
-                primaryEmail = "ada@example.test",
-              ),
-            policies = emptyList(),
-          )
+      } returns listOf(memberView.copy(policies = emptyList()))
+      coEvery {
+        service.addMember(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          projectId = TenantWebMvcFixtures.PROJECT_ID,
+          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          policyPublicId = null,
+          role = null,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
         )
+      } returns memberView.copy(policies = emptyList())
+      coEvery {
+        service.attachPolicy(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          projectId = TenantWebMvcFixtures.PROJECT_ID,
+          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          role = null,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+        )
+      } returns memberView
+      coJustRun {
+        service.removePolicy(TenantWebMvcFixtures.TENANT_ID, "bnd_01JABCDEFGHJKMNPQRSTVWXYZ0")
+      }
+      coEvery {
+        service.join(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          projectId = TenantWebMvcFixtures.PROJECT_ID,
+          userId = TenantWebMvcFixtures.USER_ID,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+        )
+      } returns memberView.copy(policies = emptyList())
       return true
     }
   }

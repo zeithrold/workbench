@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.security.SecurityConfiguration
+import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
@@ -17,6 +18,7 @@ import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
 import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.mockk.coEvery
 import io.mockk.mockk
+import jakarta.servlet.http.Cookie
 import java.time.OffsetDateTime
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,8 +27,13 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(WorkItemStatusController::class)
@@ -47,6 +54,51 @@ class WorkItemStatusControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list statuses rejects unauthenticated requests`() {
     mockMvc.perform(get("/api/work-item/statuses")).andExpect(status().isUnauthorized())
+  }
+
+  @Test
+  fun `list statuses returns statuses for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/work-item/statuses")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].code").value("todo"))
+  }
+
+  @Test
+  fun `create status returns created status for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/work-item/statuses")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "code": "review",
+                "name": "In Review",
+                "statusGroup": "in_progress"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.code").value("review"))
   }
 
   @TestConfiguration
@@ -74,6 +126,8 @@ class WorkItemStatusControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean
     fun workItemCatalogServiceSetup(service: WorkItemCatalogService): Boolean {
       coEvery { service.listStatuses(TenantWebMvcFixtures.TENANT_ID) } returns listOf(SAMPLE_STATUS)
+      coEvery { service.createStatus(any()) } returns
+        SAMPLE_STATUS.copy(code = "review", name = "In Review")
       return true
     }
   }

@@ -7,8 +7,10 @@ import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
+import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
@@ -32,9 +34,13 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -101,6 +107,110 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   @Test
+  fun `create work item returns created issue for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "issueTypeId": "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                "title": "New issue"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.title").value("New issue"))
+  }
+
+  @Test
+  fun `update work item returns updated issue for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          patch(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/${SAMPLE_WORK_ITEM.apiId.value}"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"title":"Updated title"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.title").value("Updated title"))
+  }
+
+  @Test
+  fun `delete work item returns no content for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/${SAMPLE_WORK_ITEM.apiId.value}"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
+  }
+
+  @Test
+  fun `list transitions returns options for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          get(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/${SAMPLE_WORK_ITEM.apiId.value}/transitions"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].name").value("Start progress"))
+  }
+
+  @Test
+  fun `transition work item returns updated issue for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/${SAMPLE_WORK_ITEM.apiId.value}/transition"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"transitionId":"trn_01JABCDEFGHJKMNPQRSTVWXYZ0"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.statusGroup").value("in_progress"))
+  }
+
+  @Test
   fun `create form returns editable fields for authenticated user`() {
     val result =
       mockMvc
@@ -158,6 +268,13 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
 
     @Bean
     fun workItemServiceSetup(service: WorkItemService): Boolean {
+      val createdWorkItem = SAMPLE_WORK_ITEM.copy(title = "New issue", key = "CORE-2")
+      val updatedWorkItem = SAMPLE_WORK_ITEM.copy(title = "Updated title")
+      val transitionedWorkItem =
+        SAMPLE_WORK_ITEM.copy(
+          title = "Updated title",
+          statusGroup = WorkItemStatusGroup.IN_PROGRESS,
+        )
       coEvery {
         service.list(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID, 50, 0)
       } returns listOf(SAMPLE_WORK_ITEM)
@@ -168,6 +285,12 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
           SAMPLE_WORK_ITEM.apiId.value,
         )
       } returns SAMPLE_WORK_ITEM
+      coEvery { service.create(any()) } returns
+        WorkItemMutationResult(workItem = createdWorkItem, eventType = "work_item.created")
+      coEvery { service.update(any()) } returns
+        WorkItemMutationResult(workItem = updatedWorkItem, eventType = "work_item.updated")
+      coEvery { service.delete(any()) } returns
+        WorkItemMutationResult(workItem = SAMPLE_WORK_ITEM, eventType = "work_item.deleted")
       coEvery {
         service.availableCreateForm(
           TenantWebMvcFixtures.TENANT_ID,
@@ -185,6 +308,38 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
             listOf(
               WorkItemFormFieldMeta(path = "title", editable = true, participation = "required")
             ),
+        )
+      return true
+    }
+
+    @Bean
+    fun workItemTransitionServiceSetup(transitionService: WorkItemTransitionService): Boolean {
+      coEvery {
+        transitionService.availableTransitions(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_ID,
+          SAMPLE_WORK_ITEM.apiId.value,
+          TenantWebMvcFixtures.USER_ID,
+        )
+      } returns
+        listOf(
+          WorkItemTransitionOption(
+            id = PublicId("trn_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+            name = "Start progress",
+            fromStatusId = PublicId("sts_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+            toStatusId = PublicId("sts_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+            enabled = true,
+            fields = JsonObject(emptyMap()),
+          )
+        )
+      coEvery { transitionService.transition(any()) } returns
+        WorkItemMutationResult(
+          workItem =
+            SAMPLE_WORK_ITEM.copy(
+              title = "Updated title",
+              statusGroup = WorkItemStatusGroup.IN_PROGRESS,
+            ),
+          eventType = "work_item.transitioned",
         )
       return true
     }

@@ -59,4 +59,15 @@ class ProjectResponsesTest :
       response.user.displayName shouldBe "Ada"
       response.policies.single().policy.code shouldBe "member"
     }
+
+    "permission policy summary response maps summary fields" {
+      val summary =
+        ProjectPermissionPolicySummary(
+          id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          code = "member",
+          name = "Member",
+        )
+
+      PermissionPolicySummaryResponse.from(summary).name shouldBe "Member"
+    }
   })
