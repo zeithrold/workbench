@@ -96,8 +96,8 @@ class StaticPostgresWorkItemFieldResolver(
         "description" to
           system(
             "description",
-            WorkItemQueryFieldType.LONG_TEXT,
-            "i.description",
+            WorkItemQueryFieldType.TEXT,
+            "i.description_plain_text",
             sortable = false,
           ),
         "status" to

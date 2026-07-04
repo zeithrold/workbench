@@ -41,6 +41,11 @@ class CreateFieldsLegacyMigratorTest :
         .jsonPrimitive
         .content shouldBe "required"
       migrated["fields"]!!
+        .jsonObject["description"]!!
+        .jsonObject["participation"]!!
+        .jsonPrimitive
+        .content shouldBe "optional"
+      migrated["fields"]!!
         .jsonObject["property.summary"]!!
         .jsonObject["participation"]!!
         .jsonPrimitive

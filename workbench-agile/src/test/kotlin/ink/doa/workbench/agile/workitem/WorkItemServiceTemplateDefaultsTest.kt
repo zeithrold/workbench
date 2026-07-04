@@ -181,6 +181,7 @@ class WorkItemServiceTemplateDefaultsTest :
           events,
           WorkItemFieldMutationReconciler(fieldPermissions, clock),
           fieldPermissions,
+          mockk(relaxed = true),
           clock,
         )
         .create(
@@ -235,6 +236,7 @@ class WorkItemServiceTemplateDefaultsTest :
               events,
               WorkItemFieldMutationReconciler(fieldPermissions, clock),
               fieldPermissions,
+              mockk(relaxed = true),
               clock,
             )
             .create(
@@ -471,6 +473,7 @@ private fun workItemService(
     events,
     reconciler,
     fieldPermissions,
+    mockk(relaxed = true),
     clock,
   )
 }

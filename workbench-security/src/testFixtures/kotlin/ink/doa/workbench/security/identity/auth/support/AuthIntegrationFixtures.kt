@@ -86,7 +86,10 @@ object AuthIntegrationFixtures {
     postgres.start()
     Flyway.configure()
       .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
+      .locations(
+        "classpath:db/migration",
+        "classpath:ink/doa/workbench/data/migration",
+      )
       .load()
       .migrate()
     return postgres

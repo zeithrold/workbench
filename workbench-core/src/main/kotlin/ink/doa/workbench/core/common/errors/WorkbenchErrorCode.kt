@@ -595,6 +595,46 @@ enum class WorkbenchErrorCode(
     "work_item.transition_fields.automatic_value_required",
     "Automatic transition field requires a value expression.",
   ),
+  WORK_ITEM_TRANSITION_COMMENT_PARTICIPATION_INVALID(
+    "work_item.transition.comment.participation_invalid",
+    "Transition comment participation is invalid.",
+  ),
+  WORK_ITEM_TRANSITION_COMMENT_TEMPLATE_REQUIRED(
+    "work_item.transition.comment.template_required",
+    "Required transition comment must define a template.",
+  ),
+  WORK_ITEM_TRANSITION_COMMENT_TEMPLATE_MUST_BE_PLAIN_TEXT(
+    "work_item.transition.comment.template_must_be_plain_text",
+    "Transition comment template must be plain text.",
+  ),
+  WORK_ITEM_TRANSITION_COMMENT_REQUIRED(
+    "work_item.transition.comment.required",
+    "Transition comment is required.",
+  ),
+  WORK_ITEM_DESCRIPTION_TEMPLATE_MUST_BE_PLAIN_TEXT(
+    "work_item.description.template_must_be_plain_text",
+    "Description template must be plain text.",
+  ),
+  WORK_ITEM_COMMENT_BODY_REQUIRED(
+    "work_item.comment.body_required",
+    "Comment body is required.",
+  ),
+  WORK_ITEM_COMMENT_BODY_TOO_LONG(
+    "work_item.comment.body_too_long",
+    "Comment body is too long.",
+  ),
+  WORK_ITEM_COMMENT_CREATE_DENIED(
+    "work_item.comment.create_denied",
+    "Work item comment create permission denied.",
+  ),
+  WORK_ITEM_COMMENT_UPDATE_DENIED(
+    "work_item.comment.update_denied",
+    "Work item comment update permission denied.",
+  ),
+  WORK_ITEM_COMMENT_DELETE_DENIED(
+    "work_item.comment.delete_denied",
+    "Work item comment delete permission denied.",
+  ),
   WORK_ITEM_CREATE_FIELDS_REQUIRED(
     "work_item.create_fields.required",
     "Create fields template is required and must define at least one field.",
@@ -649,6 +689,10 @@ enum class WorkbenchErrorCode(
     "Work item type config not found.",
   ),
   RESOURCE_WORK_ITEM_NOT_FOUND("resource.work_item.not_found", "Work item not found."),
+  RESOURCE_WORK_ITEM_COMMENT_NOT_FOUND(
+    "resource.work_item_comment.not_found",
+    "Work item comment not found.",
+  ),
   WORK_ITEM_CONFIG_SCOPE_UNKNOWN(
     "work_item.config.scope_unknown",
     "Unknown work item config scope.",

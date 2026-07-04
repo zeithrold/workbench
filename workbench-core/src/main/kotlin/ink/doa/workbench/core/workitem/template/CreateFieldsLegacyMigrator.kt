@@ -20,6 +20,13 @@ object CreateFieldsLegacyMigrator {
           put("participation", FieldParticipation.REQUIRED.wireName)
         },
       )
+      put(
+        "description",
+        buildJsonObject {
+          put("participation", FieldParticipation.OPTIONAL.wireName)
+          put("writeGrant", FieldWriteGrant.INHERIT.wireName)
+        },
+      )
       properties.forEach { property ->
         val key = "property.${property.code}"
         val participation =

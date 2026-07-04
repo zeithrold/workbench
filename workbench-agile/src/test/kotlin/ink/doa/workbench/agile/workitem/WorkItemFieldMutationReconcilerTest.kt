@@ -1,3 +1,5 @@
+@file:Suppress("LargeClass")
+
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -684,6 +686,79 @@ class WorkItemFieldMutationReconcilerTest :
         )
 
       result.systemFields["assignee"] shouldBe "usr_test"
+    }
+
+    "reconciles title and description together on transition" {
+      val config = configWithProperties(emptyList())
+      val result =
+        reconciler.reconcileTransition(
+          template =
+            template(
+              TemplateField.System("title") to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                ),
+              TemplateField.System("description") to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                ),
+            ),
+          config = config,
+          templateContext = templateContext(),
+          currentProperties = emptyMap(),
+          userProperties =
+            mapOf(
+              "title" to JsonPrimitive("Updated title"),
+              "description" to JsonPrimitive("<p>Updated body</p>"),
+            ),
+          permissionContext = permissionContext(),
+        )
+
+      result.systemFields["title"] shouldBe "Updated title"
+      result.systemFields["description"] shouldBe "<p>Updated body</p>"
+    }
+
+    "reconcileTransitionComment uses template default when user comment absent" {
+      val body =
+        reconciler.reconcileTransitionComment(
+          spec =
+            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+              participation = FieldParticipation.OPTIONAL,
+              template = TemplateValueExpression.Literal(JsonPrimitive("Resolved via transition")),
+            ),
+          templateContext = templateContext(),
+          userComment = null,
+        )
+
+      body shouldBe "Resolved via transition"
+    }
+
+    "reconcileTransitionComment accepts html user comment" {
+      val body =
+        reconciler.reconcileTransitionComment(
+          spec =
+            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+              participation = FieldParticipation.OPTIONAL,
+              template = null,
+            ),
+          templateContext = templateContext(),
+          userComment = "<p>Ship it</p>",
+        )
+
+      body shouldBe "<p>Ship it</p>"
+    }
+
+    "reconcileTransitionComment rejects unexpected comment when disabled" {
+      shouldThrow<InvalidRequestException> {
+          reconciler.reconcileTransitionComment(
+            spec = null,
+            templateContext = templateContext(),
+            userComment = "unexpected",
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
     }
   })
 

@@ -24,7 +24,10 @@ object AuthIntegrationContainers {
       start()
       Flyway.configure()
         .dataSource(jdbcUrl, username, password)
-        .locations("classpath:db/migration")
+        .locations(
+          "classpath:db/migration",
+          "classpath:ink/doa/workbench/data/migration",
+        )
         .load()
         .migrate()
     }
