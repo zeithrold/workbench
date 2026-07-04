@@ -1,10 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
@@ -12,17 +10,14 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.template.TransitionFieldsLegacyMigrator
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
-import io.mockk.justRun
 import io.mockk.mockk
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -83,10 +78,9 @@ class WorkItemTransitionServiceTest :
         emptyList()
       coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
 
-      val options =
-        runBlocking {
-          service.availableTransitions(tenantId, projectId, issue.apiId.value, actorId)
-        }
+      val options = runBlocking {
+        service.availableTransitions(tenantId, projectId, issue.apiId.value, actorId)
+      }
 
       options shouldHaveSize 1
       options.single().id shouldBe transition.apiId
@@ -99,18 +93,18 @@ class WorkItemTransitionServiceTest :
       coEvery { repository.findByApiId(tenantId, projectId, "iss_missing") } returns null
 
       shouldThrow<ResourceNotFoundException> {
-        runBlocking {
-          service.transition(
-            TransitionWorkItemCommand(
-              tenantId = tenantId,
-              projectId = projectId,
-              workItemApiId = "iss_missing",
-              transitionApiId = "trn_done",
-              actorUserId = UUID.randomUUID(),
+          runBlocking {
+            service.transition(
+              TransitionWorkItemCommand(
+                tenantId = tenantId,
+                projectId = projectId,
+                workItemApiId = "iss_missing",
+                transitionApiId = "trn_done",
+                actorUserId = UUID.randomUUID(),
+              )
             )
-          )
+          }
         }
-      }
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
     }
   })

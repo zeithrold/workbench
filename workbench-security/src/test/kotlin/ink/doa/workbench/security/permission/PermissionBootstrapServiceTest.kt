@@ -2,16 +2,11 @@ package ink.doa.workbench.security.permission
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.permission.CreatePermissionBindingCommand
-import ink.doa.workbench.core.permission.CreatePermissionGroupCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
-import ink.doa.workbench.core.permission.PermissionBindingRecord
 import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.PermissionGroupRecord
 import ink.doa.workbench.core.permission.PermissionGroupRepository
 import ink.doa.workbench.core.permission.PermissionPolicyRecord
 import ink.doa.workbench.core.permission.PermissionPolicyRepository
-import ink.doa.workbench.core.permission.PermissionPrincipalType
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery

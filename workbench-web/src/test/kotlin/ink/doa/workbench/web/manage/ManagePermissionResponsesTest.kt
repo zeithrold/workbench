@@ -1,0 +1,71 @@
+package ink.doa.workbench.web.manage
+
+import ink.doa.workbench.core.common.summary.ProjectSummary
+import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.security.permission.GroupMemberView
+import ink.doa.workbench.security.permission.PermissionBindingView
+import ink.doa.workbench.security.permission.PermissionGroupView
+import ink.doa.workbench.security.permission.PermissionPolicyRuleView
+import ink.doa.workbench.security.permission.PermissionPolicySummary
+import ink.doa.workbench.security.permission.PermissionPolicyView
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
+
+class ManagePermissionResponsesTest :
+  StringSpec({
+    "permission group response maps view fields" {
+      val view =
+        PermissionGroupView(
+          id = "pgr_abc",
+          code = "developers",
+          name = "Developers",
+          description = null,
+          builtin = false,
+        )
+
+      PermissionGroupResponse.from(view).code shouldBe "developers"
+    }
+
+    "group member response maps view fields" {
+      val user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = "ada@example.test")
+      val view = GroupMemberView(id = "pgm_abc", user = user)
+
+      GroupMemberResponse.from(view).user.displayName shouldBe "Ada"
+    }
+
+    "permission policy response maps nested rules" {
+      val view =
+        PermissionPolicyView(
+          id = "pol_abc",
+          code = "project-admin",
+          name = "Project Admin",
+          description = null,
+          builtin = true,
+          rules =
+            listOf(
+              PermissionPolicyRuleView(
+                action = "project.manage",
+                resourcePattern = "project:*",
+                effect = "ALLOW",
+              )
+            ),
+        )
+
+      PermissionPolicyResponse.from(view).rules.single().action shouldBe "project.manage"
+    }
+
+    "permission binding response maps nested summaries" {
+      val view =
+        PermissionBindingView(
+          id = "pbd_abc",
+          principalType = "user",
+          user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = null),
+          group = null,
+          policy =
+            PermissionPolicySummary(id = "pol_abc", code = "project-admin", name = "Project Admin"),
+          project = ProjectSummary(id = "prj_abc", identifier = "CORE", name = "Core"),
+        )
+
+      PermissionBindingResponse.from(view).project?.identifier shouldBe "CORE"
+    }
+  })

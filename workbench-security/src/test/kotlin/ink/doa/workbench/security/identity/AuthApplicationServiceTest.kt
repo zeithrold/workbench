@@ -122,13 +122,19 @@ class AuthApplicationServiceTest :
         bearerCredentialService.revokeBearerToken("bearer-token", any(), any())
       } returns true
 
-      runBlocking { service.logout(client, sessionSecret = "session-secret", bearerToken = "bearer-token") }
+      runBlocking {
+        service.logout(client, sessionSecret = "session-secret", bearerToken = "bearer-token")
+      }
 
       coVerify(exactly = 1) {
         authenticationService.logoutSession("session-secret", client.ipAddress, client.userAgent)
       }
       coVerify(exactly = 1) {
-        bearerCredentialService.revokeBearerToken("bearer-token", client.ipAddress, client.userAgent)
+        bearerCredentialService.revokeBearerToken(
+          "bearer-token",
+          client.ipAddress,
+          client.userAgent,
+        )
       }
     }
   })

@@ -65,7 +65,7 @@ class TransitionFieldsValidatorTest :
             mapOf(
               TemplateField.System("assignee") to
                 TransitionFieldSpec(participation = FieldParticipation.AUTOMATIC)
-            ),
+            )
         )
 
       shouldThrow<InvalidRequestException> {
@@ -140,10 +140,9 @@ class TransitionFieldsValidatorTest :
               TemplateField.System("description") to
                 TransitionFieldSpec(
                   participation = FieldParticipation.OPTIONAL,
-                  value =
-                    TemplateValueExpression.Literal(JsonPrimitive("<p>not plain</p>")),
+                  value = TemplateValueExpression.Literal(JsonPrimitive("<p>not plain</p>")),
                 )
-            ),
+            )
         )
 
       shouldThrow<InvalidRequestException> {

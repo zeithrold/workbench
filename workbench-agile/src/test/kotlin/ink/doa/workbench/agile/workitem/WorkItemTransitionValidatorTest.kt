@@ -34,10 +34,9 @@ class WorkItemTransitionValidatorTest :
         repository.countChildrenNotInStatusGroups(issue.tenantId, issue.id, setOf("done"))
       } returns 2
 
-      val context =
-        runBlocking {
-          validator.conditionContext(issue, issue.assigneeId!!, emptyMap())
-        }
+      val context = runBlocking {
+        validator.conditionContext(issue, issue.assigneeId!!, emptyMap())
+      }
 
       context.childIssuesNotDone shouldBe 2
     }
@@ -90,8 +89,8 @@ class WorkItemTransitionValidatorTest :
         )
 
       shouldThrow<InvalidRequestException> {
-        validator.requireTransitionApplicable(issue, config, transition)
-      }
+          validator.requireTransitionApplicable(issue, config, transition)
+        }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_STATUS_MISMATCH
     }
 
@@ -106,8 +105,8 @@ class WorkItemTransitionValidatorTest :
         )
 
       shouldThrow<InvalidRequestException> {
-        validator.requireTransitionApplicable(issue, config, transition)
-      }
+          validator.requireTransitionApplicable(issue, config, transition)
+        }
         .errorCode shouldBe WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE
     }
 
@@ -122,15 +121,15 @@ class WorkItemTransitionValidatorTest :
                 "op" to JsonPrimitive("eq"),
                 "value" to JsonPrimitive("usr_other"),
               )
-            ),
+            )
         )
 
       shouldThrow<PermissionDeniedException> {
-        validator.requireTransitionPermission(
-          transition,
-          WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
-        )
-      }
+          validator.requireTransitionPermission(
+            transition,
+            WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
+          )
+        }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_PERMISSION_DENIED
     }
 
@@ -145,15 +144,15 @@ class WorkItemTransitionValidatorTest :
                 "op" to JsonPrimitive("eq"),
                 "value" to JsonPrimitive("done"),
               )
-            ),
+            )
         )
 
       shouldThrow<InvalidRequestException> {
-        validator.requireTransitionPrecondition(
-          transition,
-          WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
-        )
-      }
+          validator.requireTransitionPrecondition(
+            transition,
+            WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
+          )
+        }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED
     }
   })

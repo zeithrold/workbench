@@ -70,19 +70,8 @@ val koverExcludedClasses =
       "*.data.persistence.*Configuration",
   )
 
-// Kover baseline (2026-07-04): aggregate LINE 52.9% → post-coverage push 57.5%
-fun moduleLineCoverageFloor(moduleName: String): Int =
-    when (moduleName) {
-        "workbench-agile" -> 55
-        "workbench-core" -> 50
-        "workbench-data" -> 30
-        "workbench-security" -> 35
-        "workbench-service" -> 60
-        "workbench-tenant" -> 25
-        "workbench-web" -> 25
-        "workbench-worker" -> 30
-        else -> 25
-    }
+// Kover baseline (2026-07-04): all backend modules target 50% line coverage minimum
+fun moduleLineCoverageFloor(@Suppress("UNUSED_PARAMETER") moduleName: String): Int = 50
 
 dependencies {
     backendProjects.forEach { kover(it) }

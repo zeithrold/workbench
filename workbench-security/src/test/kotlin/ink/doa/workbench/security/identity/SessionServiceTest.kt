@@ -1,6 +1,5 @@
 package ink.doa.workbench.security.identity
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
@@ -109,8 +108,8 @@ class SessionServiceTest :
         )
 
       shouldThrow<PermissionDeniedException> {
-        runBlocking { service.switchTenant(principal, tenant.apiId.value) }
-      }
+          runBlocking { service.switchTenant(principal, tenant.apiId.value) }
+        }
         .errorCode shouldBe WorkbenchErrorCode.AUTH_TENANT_MEMBERSHIP_REQUIRED
     }
   })

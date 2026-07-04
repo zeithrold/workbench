@@ -22,7 +22,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
-import io.mockk.justRun
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -66,21 +65,21 @@ class InvitationServiceTest :
       val invitedBy = UUID.randomUUID()
       coEvery { secretGenerator.generate() } returns "invite-token"
       coEvery { credentialHasher.hash("invite-token") } returns "hash"
-      coEvery { invitations.create(any()) } returns sampleInvitation(type = InvitationType.TENANT_ADMIN)
+      coEvery { invitations.create(any()) } returns
+        sampleInvitation(type = InvitationType.TENANT_ADMIN)
       coEvery { invitationLinkBuilder.buildInvitationLink("invite-token", null) } returns
         "https://workbench.test/invite/invite-token"
 
-      val result =
-        runBlocking {
-          service.create(
-            type = InvitationType.TENANT_ADMIN,
-            tenantId = tenantId,
-            email = "admin@example.test",
-            displayName = "Admin",
-            invitedBy = invitedBy,
-            requestHost = null,
-          )
-        }
+      val result = runBlocking {
+        service.create(
+          type = InvitationType.TENANT_ADMIN,
+          tenantId = tenantId,
+          email = "admin@example.test",
+          displayName = "Admin",
+          invitedBy = invitedBy,
+          requestHost = null,
+        )
+      }
 
       result.token shouldBe "invite-token"
       result.invitationLink shouldBe "https://workbench.test/invite/invite-token"
@@ -92,16 +91,16 @@ class InvitationServiceTest :
       coEvery { credentialHasher.hash("token") } returns "hash"
 
       shouldThrow<InvalidRequestException> {
-        runBlocking {
-          service.accept(
-            AcceptInvitationCommand(
-              token = "token",
-              displayName = "Admin",
-              password = "secret",
+          runBlocking {
+            service.accept(
+              AcceptInvitationCommand(
+                token = "token",
+                displayName = "Admin",
+                password = "secret",
+              )
             )
-          )
+          }
         }
-      }
         .errorCode shouldBe WorkbenchErrorCode.TENANT_MEMBER_INVITATION_UNSUPPORTED
     }
 
