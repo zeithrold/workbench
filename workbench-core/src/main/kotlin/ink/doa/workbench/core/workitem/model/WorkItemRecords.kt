@@ -3,6 +3,7 @@ package ink.doa.workbench.core.workitem.model
 import ink.doa.workbench.core.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 enum class IssueStatusGroup {
@@ -21,16 +22,77 @@ data class WorkItemRecord(
   val key: String,
   val title: String,
   val description: String?,
-  val statusGroup: IssueStatusGroup,
+  val statusId: UUID,
+  val statusApiId: PublicId,
+  val statusGroup: WorkItemStatusGroup,
+  val reporterId: UUID,
+  val assigneeId: UUID?,
+  val priorityApiId: PublicId?,
+  val reporterApiId: PublicId,
+  val assigneeApiId: PublicId?,
+  val sprintApiId: PublicId?,
+  val properties: JsonObject,
+  val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
 )
 
 data class CreateWorkItemCommand(
   val tenantId: UUID,
-  val projectApiId: String,
+  val projectId: UUID,
   val issueTypeApiId: String,
   val title: String,
   val description: String?,
+  val reporterId: UUID,
+  val actorUserId: UUID,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
+  val properties: Map<String, JsonElement> = emptyMap(),
+)
+
+data class UpdateWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val title: String? = null,
+  val description: String? = null,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
+  val properties: Map<String, JsonElement> = emptyMap(),
+  val actorUserId: UUID,
+)
+
+data class TransitionWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val transitionApiId: String,
+  val actorUserId: UUID,
+  val properties: Map<String, JsonElement> = emptyMap(),
+)
+
+data class WorkItemPropertyValue(
+  val propertyId: UUID,
+  val propertyApiId: PublicId,
+  val code: String,
+  val dataType: WorkItemPropertyDataType,
+  val value: JsonElement,
+)
+
+data class WorkItemTransitionOption(
+  val id: PublicId,
+  val name: String,
+  val toStatusId: PublicId,
+  val enabled: Boolean,
+  val reason: String? = null,
+  val requiredProperties: JsonElement,
+  val optionalProperties: JsonElement,
+)
+
+data class WorkItemMutationResult(
+  val workItem: WorkItemRecord,
+  val eventType: String,
 )
 
 data class WorkItemResponse(
@@ -47,7 +109,7 @@ data class WorkItemResponse(
         key = record.key,
         title = record.title,
         description = record.description,
-        statusGroup = record.statusGroup.name.lowercase(),
+        statusGroup = record.statusGroup.dbValue,
       )
   }
 }
