@@ -1,5 +1,3 @@
-@file:Suppress("ReturnCount", "ThrowsCount")
-
 package ink.doa.workbench.security.identity.auth
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException

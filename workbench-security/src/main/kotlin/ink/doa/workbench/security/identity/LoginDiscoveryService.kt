@@ -40,7 +40,6 @@ class LoginDiscoveryService(
   private val adminUserQueries: AdminUserQueryRepository,
   private val clock: Clock,
 ) {
-  @Suppress("ReturnCount")
   suspend fun discover(identifier: String): LoginDiscoveryView {
     val normalized = normalizeSubject(identifier)
     val user =

@@ -1,10 +1,8 @@
-@file:Suppress("SwallowedException")
-
 package ink.doa.workbench.core.workitem.query
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.SerializationParseSupport
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -18,14 +16,15 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = false }) {
   fun parse(payload: String): WorkItemQuery =
-    try {
-      parse(json.parseToJsonElement(payload))
-    } catch (ex: SerializationException) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_QUERY_INVALID_JSON,
-        "Invalid work item query JSON: ${ex.message}",
-      )
-    }
+    SerializationParseSupport.parseOrThrow(
+      { parse(json.parseToJsonElement(payload)) },
+      { ex ->
+        InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_QUERY_INVALID_JSON,
+          "Invalid work item query JSON: ${ex.message}",
+        )
+      },
+    )
 
   fun parse(element: JsonElement): WorkItemQuery {
     val obj = element.asObject("query")

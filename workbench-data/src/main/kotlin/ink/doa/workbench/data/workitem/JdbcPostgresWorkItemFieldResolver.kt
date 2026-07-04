@@ -52,26 +52,27 @@ class JdbcPostgresWorkItemFieldResolver(
       )
 }
 
-@Suppress("CyclomaticComplexMethod")
+private val workItemFieldTypeRegistry: Map<String, WorkItemQueryFieldType> =
+  mapOf(
+    "text" to WorkItemQueryFieldType.TEXT,
+    "long_text" to WorkItemQueryFieldType.LONG_TEXT,
+    "number" to WorkItemQueryFieldType.NUMBER,
+    "boolean" to WorkItemQueryFieldType.BOOLEAN,
+    "date" to WorkItemQueryFieldType.DATE,
+    "datetime" to WorkItemQueryFieldType.DATETIME,
+    "single_select" to WorkItemQueryFieldType.SINGLE_SELECT,
+    "multi_select" to WorkItemQueryFieldType.MULTI_SELECT,
+    "user" to WorkItemQueryFieldType.USER,
+    "multi_user" to WorkItemQueryFieldType.MULTI_USER,
+    "project" to WorkItemQueryFieldType.PROJECT,
+    "issue" to WorkItemQueryFieldType.ISSUE,
+    "url" to WorkItemQueryFieldType.TEXT,
+    "json" to WorkItemQueryFieldType.JSON,
+  )
+
 internal fun String.toWorkItemFieldType(): WorkItemQueryFieldType =
-  when (this) {
-    "text" -> WorkItemQueryFieldType.TEXT
-    "long_text" -> WorkItemQueryFieldType.LONG_TEXT
-    "number" -> WorkItemQueryFieldType.NUMBER
-    "boolean" -> WorkItemQueryFieldType.BOOLEAN
-    "date" -> WorkItemQueryFieldType.DATE
-    "datetime" -> WorkItemQueryFieldType.DATETIME
-    "single_select" -> WorkItemQueryFieldType.SINGLE_SELECT
-    "multi_select" -> WorkItemQueryFieldType.MULTI_SELECT
-    "user" -> WorkItemQueryFieldType.USER
-    "multi_user" -> WorkItemQueryFieldType.MULTI_USER
-    "project" -> WorkItemQueryFieldType.PROJECT
-    "issue" -> WorkItemQueryFieldType.ISSUE
-    "url" -> WorkItemQueryFieldType.TEXT
-    "json" -> WorkItemQueryFieldType.JSON
-    else ->
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_TYPE_UNSUPPORTED,
-        "Unsupported work item property type: $this",
-      )
-  }
+  workItemFieldTypeRegistry[this]
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_TYPE_UNSUPPORTED,
+      "Unsupported work item property type: $this",
+    )

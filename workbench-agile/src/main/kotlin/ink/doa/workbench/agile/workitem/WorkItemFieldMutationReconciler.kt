@@ -161,44 +161,21 @@ class WorkItemFieldMutationReconciler(
     }
   }
 
-  @Suppress("CyclomaticComplexMethod")
   private fun reconcileField(
     spec: TransitionFieldSpec,
     currentValue: JsonElement?,
     templateValue: JsonElement?,
     userValue: JsonElement?,
     canWrite: Boolean,
-  ): JsonElement? {
-    val userSubmitted = userValue != null && userValue !is JsonNull
-    if (
-      spec.participation == FieldParticipation.AUTOMATIC ||
-        spec.writeGrant == FieldWriteGrant.SYSTEM_ONLY
-    ) {
-      return templateValue ?: currentValue
-    }
-    return when (spec.writeGrant) {
-      FieldWriteGrant.IMMUTABLE -> currentValue
-      FieldWriteGrant.SYSTEM_ONLY -> templateValue ?: currentValue
-      FieldWriteGrant.TRANSITION_WRITABLE ->
-        when {
-          userSubmitted -> userValue
-          templateValue != null && templateValue !is JsonNull -> templateValue
-          else -> currentValue
-        }
-      FieldWriteGrant.INHERIT ->
-        if (canWrite) {
-          when {
-            userSubmitted -> userValue
-            templateValue != null && templateValue !is JsonNull -> templateValue
-            else -> currentValue
-          }
-        } else if (userSubmitted) {
-          handleUnauthorized(spec, currentValue, templateValue, userSubmitted = true)
-        } else {
-          templateValue ?: currentValue
-        }
-    }
-  }
+  ): JsonElement? =
+    TransitionFieldReconcileSupport.reconcileField(
+      spec = spec,
+      currentValue = currentValue,
+      templateValue = templateValue,
+      userValue = userValue,
+      canWrite = canWrite,
+      handleUnauthorized = ::handleUnauthorized,
+    )
 
   private suspend fun assertMutationRequestAllowed(
     template: WorkItemTransitionFieldsTemplate,

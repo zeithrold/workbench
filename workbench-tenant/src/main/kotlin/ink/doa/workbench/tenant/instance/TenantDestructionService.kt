@@ -18,7 +18,6 @@ class TenantDestructionService(
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
 
-  @Suppress("ReturnCount")
   suspend fun execute(tenantId: UUID, deletedBy: UUID, deleteReason: String?): Boolean {
     val tenant =
       tenants.findByIdForDestruction(tenantId)

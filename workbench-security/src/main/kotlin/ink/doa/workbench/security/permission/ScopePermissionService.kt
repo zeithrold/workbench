@@ -28,7 +28,6 @@ class ScopePermissionService(
   private val tenantMembers: TenantMemberRepository,
   private val clock: Clock,
 ) : PermissionService {
-  @Suppress("ReturnCount")
   override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision {
     val at = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
     return when (request.scope) {
@@ -37,7 +36,6 @@ class ScopePermissionService(
     }
   }
 
-  @Suppress("ReturnCount")
   private suspend fun decideInstance(
     request: AuthorizationRequest,
     at: OffsetDateTime,
@@ -59,7 +57,6 @@ class ScopePermissionService(
     return decideFromGrants(grants, request)
   }
 
-  @Suppress("ReturnCount")
   private suspend fun decideTenant(
     request: AuthorizationRequest,
     at: OffsetDateTime,
@@ -87,38 +84,36 @@ class ScopePermissionService(
     return decideFromRules(rules, request)
   }
 
-  @Suppress("ReturnCount")
   private fun decideFromGrants(
     grants: List<AccessGrantRecord>,
     request: AuthorizationRequest,
   ): AuthorizationDecision {
     val matching = grants.filter { it.matches(request) }
-    matching
-      .firstOrNull { it.effect == PermissionEffect.DENY }
-      ?.let {
-        return AuthorizationDecision.Deny(
+    return when {
+      matching.any { it.effect == PermissionEffect.DENY } -> {
+        val grant = matching.first { it.effect == PermissionEffect.DENY }
+        AuthorizationDecision.Deny(
           DecisionReason(
             code = "grant_denied",
             message = "A matching deny grant denied the request.",
-            grantId = it.id,
+            grantId = grant.id,
           )
         )
       }
-    matching
-      .firstOrNull { it.effect == PermissionEffect.ALLOW }
-      ?.let {
-        return AuthorizationDecision.Allow(
+      matching.any { it.effect == PermissionEffect.ALLOW } -> {
+        val grant = matching.first { it.effect == PermissionEffect.ALLOW }
+        AuthorizationDecision.Allow(
           DecisionReason(
             code = "grant_allowed",
             message = "A matching allow grant allowed the request.",
-            grantId = it.id,
+            grantId = grant.id,
           )
         )
       }
-    return deny("no_matching_grant", "No active grant allows this request.")
+      else -> deny("no_matching_grant", "No active grant allows this request.")
+    }
   }
 
-  @Suppress("ReturnCount")
   private fun credentialAllows(request: AuthorizationRequest): Boolean {
     if (request.subject.credentialType == CredentialType.SESSION) return true
     val tenantId = request.tenantId ?: return false
@@ -134,35 +129,34 @@ class ScopePermissionService(
     action.code == request.action.code &&
       resourceMatches(resourcePattern, request.resource.canonical)
 
-  @Suppress("ReturnCount")
   private fun decideFromRules(
     rules: List<ResolvedPermissionRule>,
     request: AuthorizationRequest,
   ): AuthorizationDecision {
     val matching = rules.filter { it.matches(request) }
-    matching
-      .firstOrNull { it.effect == PermissionEffect.DENY }
-      ?.let {
-        return AuthorizationDecision.Deny(
+    return when {
+      matching.any { it.effect == PermissionEffect.DENY } -> {
+        val rule = matching.first { it.effect == PermissionEffect.DENY }
+        AuthorizationDecision.Deny(
           DecisionReason(
             code = "binding_denied",
             message = "A matching policy binding denied the request.",
-            grantId = it.bindingId,
+            grantId = rule.bindingId,
           )
         )
       }
-    matching
-      .firstOrNull { it.effect == PermissionEffect.ALLOW }
-      ?.let {
-        return AuthorizationDecision.Allow(
+      matching.any { it.effect == PermissionEffect.ALLOW } -> {
+        val rule = matching.first { it.effect == PermissionEffect.ALLOW }
+        AuthorizationDecision.Allow(
           DecisionReason(
             code = "binding_allowed",
             message = "A matching policy binding allowed the request.",
-            grantId = it.bindingId,
+            grantId = rule.bindingId,
           )
         )
       }
-    return deny("no_matching_binding", "No active policy binding allows this request.")
+      else -> deny("no_matching_binding", "No active policy binding allows this request.")
+    }
   }
 
   private fun ResolvedPermissionRule.matches(request: AuthorizationRequest): Boolean =

@@ -134,6 +134,22 @@ configure(backendProjects) {
         parallel = true
     }
 
+    afterEvaluate {
+        tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+            if (
+                name == "detektTest" ||
+                    name == "detektTestSourceSet" ||
+                    name == "detektTestFixtures" ||
+                    name == "detektTestFixturesSourceSet"
+            ) {
+                config.setFrom(
+                    rootProject.files("config/detekt/detekt.yml", "config/detekt/detekt-test.yml"),
+                )
+                buildUponDefaultConfig = true
+            }
+        }
+    }
+
     extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
         reports {
             total {
