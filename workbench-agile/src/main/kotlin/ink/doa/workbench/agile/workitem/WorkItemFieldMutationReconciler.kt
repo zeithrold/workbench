@@ -4,6 +4,9 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.core.workitem.model.WorkItemCommentFormMeta
+import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
+import ink.doa.workbench.core.workitem.template.CommentFieldSpec
 import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.FieldWriteGrant
 import ink.doa.workbench.core.workitem.template.TemplateField
@@ -343,4 +346,73 @@ class WorkItemFieldMutationReconciler(
     }
 
   private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.content
+
+  fun reconcileTransitionComment(
+    spec: CommentFieldSpec?,
+    templateContext: WorkItemValueTemplateContext,
+    userComment: String?,
+  ): String? {
+    validateTransitionCommentSpec(spec, userComment)
+    if (spec == null) return null
+    val templateComment =
+      spec.template?.let { expression ->
+        templates
+          .evaluateExpression(expression, targetProperty = null, context = templateContext)
+          .stringOrNull()
+      }
+    val effective =
+      userComment?.takeIf { it.isNotBlank() } ?: templateComment?.takeIf { it.isNotBlank() }
+    if (spec.participation == FieldParticipation.REQUIRED && effective.isNullOrBlank()) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_REQUIRED)
+    }
+    return effective?.takeIf { it.isNotBlank() }
+  }
+
+  private fun validateTransitionCommentSpec(spec: CommentFieldSpec?, userComment: String?) {
+    when {
+      spec == null && !userComment.isNullOrBlank() ->
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD,
+          "Unexpected transition comment.",
+        )
+      spec?.participation == FieldParticipation.AUTOMATIC ->
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_PARTICIPATION_INVALID
+        )
+    }
+  }
+
+  suspend fun buildFieldMeta(
+    template: WorkItemTransitionFieldsTemplate,
+    config: IssueTypeConfigDetails,
+    templateContext: WorkItemValueTemplateContext,
+    permissionContext: WorkItemFieldPermissionContext,
+  ): List<WorkItemFormFieldMeta> =
+    template.fields.map { (field, spec) ->
+      val defaultValue = evaluateTemplateValue(field, spec, config, templateContext)
+      WorkItemFormFieldMeta(
+        path = field.toWirePath(),
+        editable = fieldPermissions.isFormFieldEditable(permissionContext, field, spec),
+        participation = spec.participation.wireName,
+        defaultValue = defaultValue,
+      )
+    }
+
+  fun buildCommentMeta(
+    spec: CommentFieldSpec?,
+    templateContext: WorkItemValueTemplateContext,
+  ): WorkItemCommentFormMeta? {
+    if (spec == null) return null
+    val defaultTemplate =
+      spec.template?.let { expression ->
+        templates
+          .evaluateExpression(expression, targetProperty = null, context = templateContext)
+          .stringOrNull()
+      }
+    return WorkItemCommentFormMeta(
+      participation = spec.participation.wireName,
+      editable = spec.participation != FieldParticipation.AUTOMATIC,
+      defaultTemplate = defaultTemplate,
+    )
+  }
 }

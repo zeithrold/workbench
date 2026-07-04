@@ -11,6 +11,7 @@ import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.events.WorkItemDomainEvents
 import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
@@ -21,6 +22,7 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
 import ink.doa.workbench.core.workitem.template.toWirePath
@@ -45,6 +47,7 @@ class WorkItemService(
   private val events: DomainEventPublisher,
   private val fieldMutationReconciler: WorkItemFieldMutationReconciler,
   private val fieldPermissions: WorkItemFieldPermissionService,
+  private val commentService: WorkItemCommentService,
   private val clock: Clock = Clock.systemUTC(),
 ) {
   private val conditions = WorkItemConditionEvaluator()
@@ -116,17 +119,32 @@ class WorkItemService(
     val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
     val permissionContext =
       fieldPermissionContext(tenantId, projectId, actorUserId, FieldPermissionOperation.CREATE)
+    val templateContext =
+      templateContext(
+        tenantId = tenantId,
+        projectId = projectId,
+        actorUserId = actorUserId,
+        reporterUserId = actorUserId,
+      )
     val editableFields =
       fieldsTemplate.fields
         .filter { (field, spec) ->
           fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
         }
         .map { (field, _) -> field.toWirePath() }
+    val fieldMeta =
+      fieldMutationReconciler.buildFieldMeta(
+        template = fieldsTemplate,
+        config = config.config,
+        templateContext = templateContext,
+        permissionContext = permissionContext,
+      )
     return WorkItemCreateFormOption(
       issueTypeId = config.config.config.issueTypeApiId,
       initialStatusId = initial.statusApiId,
       fields = config.config.config.createFields,
       editableFields = editableFields,
+      fieldMeta = fieldMeta,
     )
   }
 
@@ -171,7 +189,8 @@ class WorkItemService(
       ),
     )
     val values = normalizeProperties(config, command.properties.filterPropertyInputs())
-    return repository.update(command, values).also { publish(it) }
+    val effectiveCommand = applyDescriptionProcessing(command)
+    return repository.update(effectiveCommand, values).also { publish(it) }
   }
 
   suspend fun availableTransitions(
@@ -191,6 +210,14 @@ class WorkItemService(
       .filter { it.fromStatusId == null || it.fromStatusId == issue.statusId }
       .map { transition ->
         val fieldsTemplate = transitionFieldsParser.parse(transition.fields)
+        val templateContext =
+          templateContext(
+            tenantId = tenantId,
+            projectId = projectId,
+            actorUserId = actorUserId,
+            workItem = issue,
+            currentProperties = currentProperties,
+          )
         val enabled =
           canUseTransition(transition.permissionCondition, context) &&
             canUseTransition(transition.preconditionAst, context) &&
@@ -201,6 +228,13 @@ class WorkItemService(
               fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
             }
             .map { (field, _) -> field.toWirePath() }
+        val fieldMeta =
+          fieldMutationReconciler.buildFieldMeta(
+            template = fieldsTemplate,
+            config = config,
+            templateContext = templateContext,
+            permissionContext = permissionContext,
+          )
         WorkItemTransitionOption(
           id = transition.apiId,
           name = transition.name,
@@ -214,6 +248,9 @@ class WorkItemService(
           reason = if (enabled) null else "Transition conditions are not satisfied.",
           fields = transition.fields,
           editableFields = editableFields,
+          fieldMeta = fieldMeta,
+          commentMeta =
+            fieldMutationReconciler.buildCommentMeta(fieldsTemplate.comment, templateContext),
         )
       }
   }
@@ -268,20 +305,41 @@ class WorkItemService(
         config = config,
         templateContext = templateContext,
         currentProperties = currentProperties,
-        userProperties = command.properties,
+        userProperties = transitionFieldInputs(command),
         permissionContext = permissionContext,
+      )
+    val commentBody =
+      fieldMutationReconciler.reconcileTransitionComment(
+        spec = fieldsTemplate.comment,
+        templateContext = templateContext,
+        userComment = command.comment,
       )
     val effectiveCommand = applyTransitionSystemFields(command, reconciled.systemFields)
     val values = normalizeProperties(config, reconciled.propertyValues)
-    return repository
-      .transition(
-        command = effectiveCommand,
-        fromStatusId = issue.statusId,
-        toStatusId = transition.toStatusId,
-        transitionId = transition.id,
-        propertyValues = values,
+    val result =
+      repository
+        .transition(
+          command = effectiveCommand,
+          fromStatusId = issue.statusId,
+          toStatusId = transition.toStatusId,
+          transitionId = transition.id,
+          propertyValues = values,
+        )
+        .also { publish(it) }
+    if (commentBody != null) {
+      commentService.create(
+        CreateWorkItemCommentCommand(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          workItemApiId = command.workItemApiId,
+          authorId = command.actorUserId,
+          body = commentBody,
+          transitionId = transition.id,
+          statusHistoryId = result.statusHistoryId,
+        )
       )
-      .also { publish(it) }
+    }
+    return result
   }
 
   private fun publish(result: WorkItemMutationResult) {
@@ -407,26 +465,54 @@ class WorkItemService(
   private fun applyCreateSystemFields(
     command: CreateWorkItemCommand,
     systemFields: Map<String, String?>,
-  ): CreateWorkItemCommand =
-    command.copy(
+  ): CreateWorkItemCommand {
+    val description = systemFields["description"] ?: command.description
+    val processed = RichTextProcessor.processDescriptionInput(description)
+    return command.copy(
       title = systemFields["title"] ?: command.title,
-      description = systemFields["description"] ?: command.description,
+      description = processed?.html,
+      descriptionPlainText = processed?.plainText,
       assigneeApiId = systemFields["assignee"] ?: command.assigneeApiId,
       priorityApiId = systemFields["priority"] ?: command.priorityApiId,
       sprintApiId = systemFields["sprint"] ?: command.sprintApiId,
     )
+  }
 
   private fun applyTransitionSystemFields(
     command: TransitionWorkItemCommand,
     systemFields: Map<String, String?>,
-  ): TransitionWorkItemCommand =
-    command.copy(
+  ): TransitionWorkItemCommand {
+    val description = command.description ?: systemFields["description"]
+    val processed = RichTextProcessor.processDescriptionInput(description)
+    return command.copy(
       title = command.title ?: systemFields["title"],
-      description = command.description ?: systemFields["description"],
+      description = processed?.html,
+      descriptionPlainText = processed?.plainText,
       assigneeApiId = command.assigneeApiId ?: systemFields["assignee"],
       priorityApiId = command.priorityApiId ?: systemFields["priority"],
       sprintApiId = command.sprintApiId ?: systemFields["sprint"],
     )
+  }
+
+  private fun applyDescriptionProcessing(command: UpdateWorkItemCommand): UpdateWorkItemCommand {
+    if (command.description == null) return command
+    val processed = RichTextProcessor.processDescriptionInput(command.description)
+    return command.copy(
+      description = processed?.html,
+      descriptionPlainText = processed?.plainText,
+    )
+  }
+
+  private fun transitionFieldInputs(command: TransitionWorkItemCommand): Map<String, JsonElement> {
+    val inputs = linkedMapOf<String, JsonElement>()
+    command.title?.let { inputs["title"] = JsonPrimitive(it) }
+    command.description?.let { inputs["description"] = JsonPrimitive(it) }
+    command.assigneeApiId?.let { inputs["assignee"] = JsonPrimitive(it) }
+    command.priorityApiId?.let { inputs["priority"] = JsonPrimitive(it) }
+    command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
+    inputs.putAll(command.properties)
+    return inputs
+  }
 
   private fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {
     val inputs = mutableMapOf<String, JsonElement>("title" to JsonPrimitive(command.title))

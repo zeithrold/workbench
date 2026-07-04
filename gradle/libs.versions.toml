@@ -20,6 +20,8 @@ scalar = "0.6.6"
 flyway = "11.10.5"
 redisson = "4.6.1"
 ulid = "5.2.3"
+owasp-html-sanitizer = "20240325.1"
+jsoup = "1.19.1"
 
 [libraries]
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
@@ -40,6 +42,8 @@ springdoc-openapi = { module = "org.springdoc:springdoc-openapi-starter-webmvc-a
 scalar-webmvc = { module = "com.scalar.maven:scalar-webmvc", version.ref = "scalar" }
 redisson = { module = "org.redisson:redisson-spring-boot-starter", version.ref = "redisson" }
 ulid = { module = "com.github.f4b6a3:ulid-creator", version.ref = "ulid" }
+owasp-html-sanitizer = { module = "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer", version.ref = "owasp-html-sanitizer" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }

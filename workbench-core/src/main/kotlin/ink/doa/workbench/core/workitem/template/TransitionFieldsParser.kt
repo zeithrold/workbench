@@ -66,6 +66,7 @@ class TransitionFieldsParser(
             .requiredObject("fields")
             .mapKeys { valueTemplateParser.parseFieldPath(it.key) }
             .mapValues { parseFieldSpec(it.value) },
+        comment = obj["comment"]?.let { parseCommentSpec(it) },
       )
     TransitionFieldsValidator.validateEnvelope(template, expectedTarget)
     return template
@@ -103,6 +104,20 @@ class TransitionFieldsParser(
       writeGrant = writeGrant,
       onUnauthorized = onUnauthorized,
     )
+  }
+
+  private fun parseCommentSpec(element: JsonElement): CommentFieldSpec {
+    val obj = element.asObject("comment spec")
+    val participation =
+      FieldParticipation.fromWireName(obj.optionalString("participation") ?: "optional")
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_PARTICIPATION_UNKNOWN,
+          "Unknown comment participation: ${obj.optionalString("participation")}",
+        )
+    val template =
+      obj["template"]?.let { valueTemplateParser.parseExpression(it) }
+        ?: obj["value"]?.let { valueTemplateParser.parseExpression(it) }
+    return CommentFieldSpec(participation = participation, template = template)
   }
 }
 

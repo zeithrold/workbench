@@ -7,12 +7,18 @@ data class WorkItemTransitionFieldsTemplate(
   val resource: String = RESOURCE,
   val target: WorkItemValueTemplateTarget = WorkItemValueTemplateTarget.TRANSITION,
   val fields: Map<TemplateField, TransitionFieldSpec> = emptyMap(),
+  val comment: CommentFieldSpec? = null,
 ) {
   companion object {
     const val RESOURCE = "work_item"
     const val CURRENT_VERSION = 1
   }
 }
+
+data class CommentFieldSpec(
+  val participation: FieldParticipation = FieldParticipation.OPTIONAL,
+  val template: TemplateValueExpression? = null,
+)
 
 data class TransitionFieldSpec(
   val participation: FieldParticipation = FieldParticipation.OPTIONAL,

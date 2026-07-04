@@ -42,6 +42,7 @@ data class CreateWorkItemCommand(
   val issueTypeApiId: String,
   val title: String,
   val description: String?,
+  val descriptionPlainText: String? = null,
   val reporterId: UUID,
   val actorUserId: UUID,
   val assigneeApiId: String? = null,
@@ -56,6 +57,7 @@ data class UpdateWorkItemCommand(
   val workItemApiId: String,
   val title: String? = null,
   val description: String? = null,
+  val descriptionPlainText: String? = null,
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
   val sprintApiId: String? = null,
@@ -72,6 +74,8 @@ data class TransitionWorkItemCommand(
   val properties: Map<String, JsonElement> = emptyMap(),
   val title: String? = null,
   val description: String? = null,
+  val descriptionPlainText: String? = null,
+  val comment: String? = null,
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
   val sprintApiId: String? = null,
@@ -85,6 +89,19 @@ data class WorkItemPropertyValue(
   val value: JsonElement,
 )
 
+data class WorkItemFormFieldMeta(
+  val path: String,
+  val editable: Boolean,
+  val participation: String,
+  val defaultValue: JsonElement? = null,
+)
+
+data class WorkItemCommentFormMeta(
+  val participation: String,
+  val editable: Boolean,
+  val defaultTemplate: String? = null,
+)
+
 data class WorkItemTransitionOption(
   val id: PublicId,
   val name: String,
@@ -94,6 +111,8 @@ data class WorkItemTransitionOption(
   val reason: String? = null,
   val fields: JsonObject,
   val editableFields: List<String> = emptyList(),
+  val fieldMeta: List<WorkItemFormFieldMeta> = emptyList(),
+  val commentMeta: WorkItemCommentFormMeta? = null,
 )
 
 data class WorkItemCreateFormOption(
@@ -101,11 +120,13 @@ data class WorkItemCreateFormOption(
   val initialStatusId: PublicId,
   val fields: JsonObject,
   val editableFields: List<String> = emptyList(),
+  val fieldMeta: List<WorkItemFormFieldMeta> = emptyList(),
 )
 
 data class WorkItemMutationResult(
   val workItem: WorkItemRecord,
   val eventType: String,
+  val statusHistoryId: UUID? = null,
 )
 
 data class WorkItemResponse(

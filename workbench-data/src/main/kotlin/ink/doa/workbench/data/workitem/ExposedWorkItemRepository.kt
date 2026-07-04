@@ -83,6 +83,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         it[IssuesTable.sequenceNo] = sequence
         it[IssuesTable.title] = command.title
         it[IssuesTable.description] = command.description
+        it[IssuesTable.descriptionPlainText] = command.descriptionPlainText
         it[IssuesTable.statusId] = initialStatusId.toKotlinUuid()
         it[IssuesTable.priorityId] = priorityId?.toKotlinUuid()
         it[IssuesTable.reporterId] = command.reporterId.toKotlinUuid()
@@ -201,6 +202,9 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
       }) {
         command.title?.let { value -> it[IssuesTable.title] = value }
         command.description?.let { value -> it[IssuesTable.description] = value }
+        command.descriptionPlainText?.let { value ->
+          it[IssuesTable.descriptionPlainText] = value
+        }
         command.assigneeApiId?.let { value ->
           it[IssuesTable.assigneeId] = resolveUser(value).toKotlinUuid()
         }
@@ -243,6 +247,9 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         it[IssuesTable.statusId] = toStatusId.toKotlinUuid()
         command.title?.let { value -> it[IssuesTable.title] = value }
         command.description?.let { value -> it[IssuesTable.description] = value }
+        command.descriptionPlainText?.let { value ->
+          it[IssuesTable.descriptionPlainText] = value
+        }
         command.assigneeApiId?.let { value ->
           it[IssuesTable.assigneeId] = resolveUser(value).toKotlinUuid()
         }
@@ -258,18 +265,20 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         it[IssuesTable.updatedAt] = now
       }
       replacePropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
-      insertStatusHistory(
-        tenantId = command.tenantId,
-        issueId = issueId,
-        fromStatusId = fromStatusId,
-        toStatusId = toStatusId,
-        transitionId = transitionId,
-        actorUserId = command.actorUserId,
-        changedAt = now,
-      )
+      val statusHistoryId =
+        insertStatusHistory(
+          tenantId = command.tenantId,
+          issueId = issueId,
+          fromStatusId = fromStatusId,
+          toStatusId = toStatusId,
+          transitionId = transitionId,
+          actorUserId = command.actorUserId,
+          changedAt = now,
+        )
       WorkItemMutationResult(
         workItem = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId),
         eventType = "work_item.transitioned",
+        statusHistoryId = statusHistoryId,
       )
     }
 
@@ -441,9 +450,10 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
     transitionId: UUID?,
     actorUserId: UUID,
     changedAt: OffsetDateTime,
-  ) {
+  ): UUID {
+    val historyId = UUID.randomUUID()
     IssueStatusHistoryTable.insert {
-      it[IssueStatusHistoryTable.id] = UUID.randomUUID().toKotlinUuid()
+      it[IssueStatusHistoryTable.id] = historyId.toKotlinUuid()
       it[IssueStatusHistoryTable.tenantId] = tenantId.toKotlinUuid()
       it[IssueStatusHistoryTable.issueId] = issueId.toKotlinUuid()
       it[IssueStatusHistoryTable.fromStatusId] = fromStatusId?.toKotlinUuid()
@@ -453,6 +463,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
       it[IssueStatusHistoryTable.changedAt] = changedAt
       it[IssueStatusHistoryTable.metadata] = JsonObject(emptyMap())
     }
+    return historyId
   }
 
   private fun ResultRow.toWorkItemRecord(): WorkItemRecord {
