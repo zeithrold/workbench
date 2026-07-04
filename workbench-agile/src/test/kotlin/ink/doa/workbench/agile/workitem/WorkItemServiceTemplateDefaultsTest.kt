@@ -73,7 +73,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.create(any(), any(), any(), any(), capture(values))
       } returns WorkItemMutationResult(created, "work_item.created")
 
-      workItemService(repository, configs, workflows, events, clock)
+      workItemService(repository, configs, events, clock)
         .create(
           CreateWorkItemCommand(
             tenantId = tenantId,
@@ -121,7 +121,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.transition(capture(command), any(), any(), any(), capture(values))
       } returns WorkItemMutationResult(issue, "work_item.transitioned")
 
-      workItemService(repository, configs, workflows, events, clock)
+      workItemTransitionService(repository, configs, workflows, events, clock)
         .transition(
           TransitionWorkItemCommand(
             tenantId = tenantId,
@@ -175,16 +175,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.create(any(), any(), any(), any(), capture(values))
       } returns WorkItemMutationResult(created, "work_item.created")
 
-      WorkItemService(
-          repository,
-          configs,
-          workflows,
-          events,
-          WorkItemFieldMutationReconciler(fieldPermissions, clock),
-          fieldPermissions,
-          mockk(relaxed = true),
-          clock,
-        )
+      workItemService(repository, configs, events, clock, fieldPermissions)
         .create(
           CreateWorkItemCommand(
             tenantId = tenantId,
@@ -230,16 +221,7 @@ class WorkItemServiceTemplateDefaultsTest :
         }
 
       shouldThrow<PermissionDeniedException> {
-          WorkItemService(
-              repository,
-              configs,
-              workflows,
-              events,
-              WorkItemFieldMutationReconciler(fieldPermissions, clock),
-              fieldPermissions,
-              mockk(relaxed = true),
-              clock,
-            )
+          workItemService(repository, configs, events, clock, fieldPermissions)
             .create(
               CreateWorkItemCommand(
                 tenantId = tenantId,
@@ -279,7 +261,7 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { repository.softDelete(command) } returns
         WorkItemMutationResult(issue, "work_item.updated")
 
-      val result = workItemService(repository, configs, workflows, events, clock).delete(command)
+      val result = workItemService(repository, configs, events, clock).delete(command)
 
       result.workItem shouldBe issue
       coVerify(exactly = 1) { repository.softDelete(command) }
@@ -487,24 +469,54 @@ private fun workItem(
 private fun workItemService(
   repository: WorkItemRepository,
   configs: IssueTypeConfigRepository,
+  events: DomainEventPublisher,
+  clock: Clock,
+  fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+): WorkItemService {
+  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+  return WorkItemService(
+    repository,
+    configs,
+    WorkItemMutationSupport(repository, configs, events),
+    reconciler,
+    fieldPermissions,
+  )
+}
+
+private fun workItemTransitionService(
+  repository: WorkItemRepository,
+  configs: IssueTypeConfigRepository,
   workflows: WorkflowConfigurationRepository,
   events: DomainEventPublisher,
   clock: Clock,
-): WorkItemService {
+  fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+): WorkItemTransitionService {
+  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+  val mutationSupport = WorkItemMutationSupport(repository, configs, events)
+  val transitionValidator = WorkItemTransitionValidator(repository)
+  val transitionOptions =
+    WorkItemTransitionOptionBuilder(
+      mutationSupport,
+      reconciler,
+      fieldPermissions,
+      transitionValidator,
+    )
+  val collaborators =
+    WorkItemTransitionCollaborators(
+      mutationSupport,
+      reconciler,
+      mockk(relaxed = true),
+      transitionValidator,
+      transitionOptions,
+    )
+  return WorkItemTransitionService(repository, workflows, collaborators)
+}
+
+private fun mockFieldPermissions(): WorkItemFieldPermissionService {
   val fieldPermissions = mockk<WorkItemFieldPermissionService>()
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
   coEvery { fieldPermissions.isFieldEditableInTransition(any(), any(), any()) } returns true
   coEvery { fieldPermissions.isFieldEditable(any(), any(), any()) } returns true
   coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
-  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
-  return WorkItemService(
-    repository,
-    configs,
-    workflows,
-    events,
-    reconciler,
-    fieldPermissions,
-    mockk(relaxed = true),
-    clock,
-  )
+  return fieldPermissions
 }
