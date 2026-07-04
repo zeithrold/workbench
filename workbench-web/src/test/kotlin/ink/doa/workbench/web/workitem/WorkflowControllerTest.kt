@@ -3,6 +3,7 @@ package ink.doa.workbench.web.workitem
 import ink.doa.workbench.agile.workitem.WorkflowConfigurationService
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
@@ -28,6 +29,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
@@ -97,6 +99,103 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(jsonPath("$.code").value("support"))
   }
 
+  @Test
+  fun `publish workflow returns published workflow for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/publish")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.publishedAt").isNotEmpty())
+  }
+
+  @Test
+  fun `deactivate workflow returns deactivated workflow for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          patch("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/deactivate")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.code").value("default"))
+  }
+
+  @Test
+  fun `list transitions returns transitions for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].name").value("Start"))
+  }
+
+  @Test
+  fun `create transition returns created transition for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "name": "Complete",
+                "toStatusId": "sts_01JABCDEFGHJKMNPQRSTVWXYZ1"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.name").value("Complete"))
+  }
+
+  @Test
+  fun `deactivate transition returns deactivated transition for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          patch(
+              "/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions/${SAMPLE_TRANSITION.apiId.value}/deactivate"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.name").value("Start"))
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -125,6 +224,27 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
         listOf(SAMPLE_WORKFLOW)
       coEvery { service.createWorkflow(any()) } returns
         SAMPLE_WORKFLOW.copy(code = "support", name = "Support Workflow")
+      coEvery {
+        service.publishWorkflow(TenantWebMvcFixtures.TENANT_ID, SAMPLE_WORKFLOW.apiId.value)
+      } returns SAMPLE_WORKFLOW.copy(publishedAt = OffsetDateTime.parse("2026-07-04T12:00:00Z"))
+      coEvery {
+        service.deactivateWorkflow(
+          TenantWebMvcFixtures.TENANT_ID,
+          SAMPLE_WORKFLOW.apiId.value,
+          TenantWebMvcFixtures.USER_ID,
+        )
+      } returns SAMPLE_WORKFLOW.copy(isActive = false)
+      coEvery {
+        service.listTransitions(TenantWebMvcFixtures.TENANT_ID, SAMPLE_WORKFLOW.apiId.value)
+      } returns listOf(SAMPLE_TRANSITION)
+      coEvery { service.createTransition(any()) } returns SAMPLE_TRANSITION.copy(name = "Complete")
+      coEvery {
+        service.deactivateTransition(
+          TenantWebMvcFixtures.TENANT_ID,
+          SAMPLE_WORKFLOW.apiId.value,
+          SAMPLE_TRANSITION.apiId.value,
+        )
+      } returns SAMPLE_TRANSITION.copy(isActive = false)
       return true
     }
   }
@@ -142,6 +262,25 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
         isActive = true,
         publishedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         createdBy = TenantWebMvcFixtures.USER_ID,
+        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+      )
+    val SAMPLE_TRANSITION =
+      WorkflowTransitionRecord(
+        id = java.util.UUID.randomUUID(),
+        apiId = PublicId("wft_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        tenantId = TenantWebMvcFixtures.TENANT_ID,
+        workflowId = java.util.UUID.randomUUID(),
+        name = "Start",
+        fromStatusId = null,
+        fromStatusApiId = null,
+        toStatusId = java.util.UUID.randomUUID(),
+        toStatusApiId = PublicId("sts_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+        rank = 10,
+        permissionCondition = kotlinx.serialization.json.JsonObject(emptyMap()),
+        preconditionAst = kotlinx.serialization.json.JsonObject(emptyMap()),
+        fields = kotlinx.serialization.json.JsonObject(emptyMap()),
+        isActive = true,
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
       )

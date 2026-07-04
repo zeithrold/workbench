@@ -70,13 +70,8 @@ val koverExcludedClasses =
       "*.data.persistence.*Configuration",
   )
 
-// Kover baseline (2026-07-04): all backend modules target 60% line coverage minimum;
-// workbench-web targets 65% as the HTTP adapter layer.
-fun moduleLineCoverageFloor(moduleName: String): Int =
-    when (moduleName) {
-        "workbench-web" -> 65
-        else -> 60
-    }
+// Kover baseline (2026-07-04): all backend modules target 70% line coverage minimum.
+fun moduleLineCoverageFloor(moduleName: String): Int = 70
 
 dependencies {
     backendProjects.forEach { kover(it) }
@@ -96,7 +91,7 @@ extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kov
         }
         verify {
             rule("aggregate line coverage") {
-                minBound(60)
+                minBound(70)
             }
         }
     }

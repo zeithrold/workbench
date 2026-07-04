@@ -94,6 +94,13 @@ class ScopePermissionServiceTest :
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
     }
 
+    test("instance scope denies without active instance admin") {
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns false
+
+      val decision = service.decide(request(AuthorizationScope.INSTANCE))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+    }
+
     test("tenant scope denies without membership") {
       coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns null
 

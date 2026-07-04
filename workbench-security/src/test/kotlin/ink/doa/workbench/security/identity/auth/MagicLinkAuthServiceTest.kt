@@ -12,6 +12,7 @@ import ink.doa.workbench.core.identity.auth.MagicLinkTokenRepository
 import ink.doa.workbench.tenant.tenantconfig.TenantConfigService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.mockk
 import java.time.Clock
@@ -54,5 +55,68 @@ class MagicLinkAuthServiceTest :
       shouldThrow<InvalidRequestException> {
         runBlocking { service.resolveToken("invalid-token") }
       }
+    }
+
+    "resolveToken returns identity for valid token" {
+      val tenantId = java.util.UUID.randomUUID()
+      val loginMethodId = java.util.UUID.randomUUID()
+      val accountId = java.util.UUID.randomUUID()
+      val user =
+        ink.doa.workbench.core.identity.model.UserRecord(
+          id = java.util.UUID.randomUUID(),
+          apiId = ink.doa.workbench.core.common.ids.PublicId.new("usr"),
+          displayName = "Ada",
+          primaryEmail = "ada@example.test",
+        )
+      val account =
+        ink.doa.workbench.core.identity.model.LoginAccountRecord(
+          id = accountId,
+          apiId = ink.doa.workbench.core.common.ids.PublicId.new("lac"),
+          loginMethodId = loginMethodId,
+          subject = "ada@example.test",
+          normalizedSubject = "ada@example.test",
+          displayName = "Ada",
+          lastUsedAt = null,
+          disabledAt = null,
+          disabledBy = null,
+          createdAt = now,
+          updatedAt = now,
+        )
+      val tokenRecord =
+        ink.doa.workbench.core.identity.model.MagicLinkTokenRecord(
+          id = java.util.UUID.randomUUID(),
+          tokenHash = "hashed-valid",
+          loginMethodId = loginMethodId,
+          tenantId = tenantId,
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(10),
+          consumedAt = null,
+          createdAt = now,
+        )
+
+      coEvery { credentialHasher.hash("valid-token") } returns "hashed-valid"
+      coEvery { magicLinkTokens.findActiveByHash("hashed-valid", now) } returns tokenRecord
+      coEvery { magicLinkTokens.consume(tokenRecord.id, now) } returns true
+      coEvery { loginMethods.findLoginMethodById(loginMethodId) } returns
+        ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord(
+          id = loginMethodId,
+          apiId = ink.doa.workbench.core.common.ids.PublicId.new("lmd"),
+          code = "magic_link",
+          kind = ink.doa.workbench.core.identity.model.LoginMethodKind.EMAIL_MAGIC_LINK,
+          name = "Magic Link",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery {
+        loginAccounts.findLoginAccountByMethodAndSubject("magic_link", "ada@example.test")
+      } returns account
+      coEvery { userLoginAccounts.findLinkedUser(accountId) } returns user
+
+      val identity = runBlocking { service.resolveToken("valid-token") }
+
+      identity.user.id shouldBe user.id
+      identity.tenantId shouldBe tenantId
     }
   })

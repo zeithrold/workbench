@@ -7,6 +7,7 @@ import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Tag
@@ -80,6 +81,17 @@ class ExposedIssueTypeConfigRepositoryIntegrationTest :
           )
 
         effective?.resolvedFrom shouldBe WorkItemConfigScope.PROJECT
+      }
+    }
+
+    "findConfig returns null for unknown api id" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val workflows = ExposedWorkflowConfigurationRepository(database, catalog)
+        val repository = ExposedIssueTypeConfigRepository(database, catalog, workflows)
+
+        repository.findConfig(stack.tenantId, "itc_missing").shouldBeNull()
       }
     }
   })

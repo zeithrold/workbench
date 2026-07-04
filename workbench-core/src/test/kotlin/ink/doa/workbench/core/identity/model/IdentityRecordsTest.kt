@@ -51,4 +51,39 @@ class IdentityRecordsTest :
       binding.loginAccountId shouldBe loginAccountId
       binding.unlinkedAt shouldBe null
     }
+
+    "tenant record stores slug and locale metadata" {
+      val tenantId = UUID.randomUUID()
+      val now = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z")
+      val record =
+        TenantRecord(
+          id = tenantId,
+          apiId = PublicId.new("ten"),
+          slug = "acme",
+          name = "Acme",
+          timezone = "UTC",
+          locale = "en-US",
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      record.slug shouldBe "acme"
+      record.locale shouldBe "en-US"
+    }
+
+    "auth command records store bootstrap and login metadata" {
+      CreateTenantCommand(name = "Acme", slug = "acme").status shouldBe TenantStatus.ACTIVE
+      BootstrapInstanceAdminCommand(
+          displayName = "Ada",
+          email = "ada@example.test",
+          password = "SecurePass12345",
+        )
+        .email shouldBe "ada@example.test"
+      CreateLoginAccountCommand(
+          loginMethodId = UUID.randomUUID(),
+          subject = "Ada@Example.Test",
+          normalizedSubject = "ada@example.test",
+        )
+        .normalizedSubject shouldBe "ada@example.test"
+    }
   })
