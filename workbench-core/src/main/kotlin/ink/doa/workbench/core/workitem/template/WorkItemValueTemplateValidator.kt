@@ -55,14 +55,7 @@ object WorkItemValueTemplateValidator {
       is TemplateValueExpression.Copy -> validateCopyField(expression.field, config)
       is TemplateValueExpression.Variable -> validateVariable(expression.name)
       is TemplateValueExpression.RelativeDate -> validateRelativeDate(expression, targetProperty)
-      is TemplateValueExpression.Clear -> {
-        if (targetProperty?.isRequired == true) {
-          throw InvalidRequestException(
-            WorkbenchErrorCode.WORK_ITEM_TEMPLATE_CLEAR_REQUIRED_FIELD,
-            "Required property cannot be cleared by template: ${targetProperty.code}",
-          )
-        }
-      }
+      is TemplateValueExpression.Clear -> Unit
       is TemplateValueExpression.Literal -> Unit
     }
   }

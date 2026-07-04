@@ -12,6 +12,7 @@ import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemSearchPage
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
@@ -103,6 +104,25 @@ class ProjectWorkItemController(
       scope = WorkItemSearchScope(projectContext.tenant.id, projectContext.project.id),
       query = queryParser.parse(request.query.toJsonElement(objectMapper)),
       page = WorkItemSearchPageRequest(request.limit ?: 50, request.offset ?: 0),
+    )
+
+  @GetMapping("/create-form")
+  @Authenticated
+  @TenantScoped
+  @ProjectScoped
+  @Authorize(action = "issue.create", resource = "issue")
+  @Operation(summary = "Get work item create form")
+  suspend fun createForm(
+    @RequestParam issueTypeId: String,
+    projectContext: ProjectRequestContext,
+  ): WorkItemCreateFormResponse =
+    WorkItemCreateFormResponse.from(
+      service.availableCreateForm(
+        projectContext.tenant.id,
+        projectContext.project.id,
+        issueTypeId,
+        actorUserId(projectContext),
+      )
     )
 
   @GetMapping("/{workItemId}")
@@ -302,6 +322,7 @@ data class WorkItemResponse(
 data class WorkItemTransitionResponse(
   val id: String,
   val name: String,
+  val fromStatusId: String?,
   val toStatusId: String,
   val enabled: Boolean,
   val reason: String?,
@@ -313,9 +334,27 @@ data class WorkItemTransitionResponse(
       WorkItemTransitionResponse(
         id = option.id.value,
         name = option.name,
+        fromStatusId = option.fromStatusId?.value,
         toStatusId = option.toStatusId.value,
         enabled = option.enabled,
         reason = option.reason,
+        fields = option.fields,
+        editableFields = option.editableFields,
+      )
+  }
+}
+
+data class WorkItemCreateFormResponse(
+  val issueTypeId: String,
+  val initialStatusId: String,
+  val fields: JsonObject,
+  val editableFields: List<String>,
+) {
+  companion object {
+    fun from(option: WorkItemCreateFormOption): WorkItemCreateFormResponse =
+      WorkItemCreateFormResponse(
+        issueTypeId = option.issueTypeId.value,
+        initialStatusId = option.initialStatusId.value,
         fields = option.fields,
         editableFields = option.editableFields,
       )

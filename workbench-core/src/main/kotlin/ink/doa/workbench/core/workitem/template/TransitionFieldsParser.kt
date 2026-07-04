@@ -28,18 +28,32 @@ class TransitionFieldsParser(
       )
     }
 
-  fun parse(element: JsonElement): WorkItemTransitionFieldsTemplate {
-    val obj = element.asObject("transition fields")
+  fun parse(element: JsonElement): WorkItemTransitionFieldsTemplate =
+    parse(element, WorkItemValueTemplateTarget.TRANSITION)
+
+  fun parseCreateFields(element: JsonElement): WorkItemTransitionFieldsTemplate =
+    parse(element, WorkItemValueTemplateTarget.CREATE)
+
+  fun parse(
+    element: JsonElement,
+    expectedTarget: WorkItemValueTemplateTarget,
+  ): WorkItemTransitionFieldsTemplate {
+    val obj = element.asObject("fields template")
     val target =
       WorkItemValueTemplateTarget.fromWireName(obj.requiredString("target"))
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_TEMPLATE_TARGET_UNKNOWN,
-          "Unknown transition fields target: ${obj.requiredString("target")}",
+          "Unknown fields template target: ${obj.requiredString("target")}",
         )
-    if (target != WorkItemValueTemplateTarget.TRANSITION) {
+    if (target != expectedTarget) {
       throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_TARGET_INVALID,
-        "Transition fields target must be transition.",
+        when (expectedTarget) {
+          WorkItemValueTemplateTarget.CREATE ->
+            WorkbenchErrorCode.WORK_ITEM_CREATE_FIELDS_TARGET_INVALID
+          WorkItemValueTemplateTarget.TRANSITION ->
+            WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_TARGET_INVALID
+        },
+        "Fields template target must be ${expectedTarget.wireName}.",
       )
     }
     val template =
@@ -53,7 +67,7 @@ class TransitionFieldsParser(
             .mapKeys { valueTemplateParser.parseFieldPath(it.key) }
             .mapValues { parseFieldSpec(it.value) },
       )
-    TransitionFieldsValidator.validateEnvelope(template)
+    TransitionFieldsValidator.validateEnvelope(template, expectedTarget)
     return template
   }
 

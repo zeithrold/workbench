@@ -12,9 +12,26 @@ import io.kotest.core.spec.style.StringSpec
 import io.mockk.coVerify
 import io.mockk.mockk
 import java.util.UUID
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 
 class IssueTypeConfigServiceTest :
   StringSpec({
+    val createFields =
+      Json.parseToJsonElement(
+        """
+        {
+          "version": 1,
+          "resource": "work_item",
+          "target": "create",
+          "fields": {
+            "title": { "participation": "required" }
+          }
+        }
+        """
+          .trimIndent()
+      )
+
     "requires exactly one initial status" {
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
       val catalog = mockk<WorkItemCatalogRepository>(relaxed = true)
@@ -26,6 +43,7 @@ class IssueTypeConfigServiceTest :
           projectId = null,
           issueTypeApiId = "typ_01H00000000000000000000000",
           workflowApiId = "wfl_01H00000000000000000000000",
+          createFields = createFields.jsonObject,
           statuses =
             listOf(
               IssueTypeConfigStatusInput("sts_01H00000000000000000000000"),
@@ -51,6 +69,7 @@ class IssueTypeConfigServiceTest :
           projectId = UUID.randomUUID(),
           issueTypeApiId = "typ_01H00000000000000000000000",
           workflowApiId = "wfl_01H00000000000000000000000",
+          createFields = createFields.jsonObject,
           statuses =
             listOf(IssueTypeConfigStatusInput("sts_01H00000000000000000000000", isInitial = true)),
         )

@@ -3,6 +3,7 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
@@ -15,11 +16,16 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.core.workitem.template.TransitionFieldsValidator
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -68,8 +74,10 @@ class WorkflowConfigurationService(
   }
 
   suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord {
-    catalog.findStatus(command.tenantId, command.fromStatusApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+    command.fromStatusApiId?.let { fromStatusApiId ->
+      catalog.findStatus(command.tenantId, fromStatusApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+    }
     catalog.findStatus(command.tenantId, command.toStatusApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
     return repository.createTransition(command)
@@ -92,9 +100,12 @@ class IssueTypeConfigService(
   private val catalog: WorkItemCatalogRepository,
   private val workflows: WorkflowConfigurationRepository,
 ) {
+  private val createFieldsParser = TransitionFieldsParser()
+
   suspend fun create(command: CreateIssueTypeConfigCommand): IssueTypeConfigDetails {
     validateScope(command.scope, command.projectId)
     validateBindings(command)
+    validateCreateFields(command)
     val created = configs.createConfig(command)
     validateWorkflowTransitions(created)
     return created
@@ -142,7 +153,8 @@ class IssueTypeConfigService(
     val statusIds = details.statuses.map { it.statusId }.toSet()
     val transitions = workflows.listTransitions(details.config.tenantId, details.config.workflowId)
     val invalid = transitions.firstOrNull { transition ->
-      transition.fromStatusId !in statusIds || transition.toStatusId !in statusIds
+      transition.toStatusId !in statusIds ||
+        (transition.fromStatusId != null && transition.fromStatusId !in statusIds)
     }
     if (invalid != null) {
       throw InvalidRequestException(
@@ -150,6 +162,64 @@ class IssueTypeConfigService(
         "Transition ${invalid.apiId.value} references a status outside the type config.",
       )
     }
+  }
+
+  private suspend fun validateCreateFields(command: CreateIssueTypeConfigCommand) {
+    val configId = UUID.randomUUID()
+    val properties =
+      command.properties.map { input ->
+        val record =
+          catalog.findProperty(command.tenantId, input.propertyApiId)
+            ?: throw ResourceNotFoundException(
+              WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND
+            )
+        IssueTypeConfigPropertyRecord(
+          id = UUID.randomUUID(),
+          tenantId = command.tenantId,
+          issueTypeConfigId = configId,
+          propertyId = record.id,
+          propertyApiId = record.apiId,
+          code = record.code,
+          name = record.name,
+          dataType = record.dataType,
+          validationOverride = input.validationOverride,
+          rank = input.rank,
+          displayConfig = input.displayConfig,
+        )
+      }
+    val template = createFieldsParser.parseCreateFields(command.createFields)
+    TransitionFieldsValidator.validate(
+      template,
+      IssueTypeConfigDetails(
+        config =
+          IssueTypeConfigRecord(
+            id = configId,
+            apiId = PublicId.new("itc"),
+            tenantId = command.tenantId,
+            scope = command.scope,
+            projectId = command.projectId,
+            issueTypeId = UUID.randomUUID(),
+            issueTypeApiId = PublicId.new("typ"),
+            workflowId = UUID.randomUUID(),
+            workflowApiId = PublicId.new("wfl"),
+            version = 1,
+            nameOverride = command.nameOverride,
+            iconOverride = command.iconOverride,
+            colorOverride = command.colorOverride,
+            rank = command.rank,
+            isActive = true,
+            validFrom = OffsetDateTime.now(),
+            validTo = null,
+            createdBy = command.createdBy,
+            createdAt = OffsetDateTime.now(),
+            updatedAt = OffsetDateTime.now(),
+            createFields = command.createFields,
+          ),
+        statuses = emptyList(),
+        properties = properties,
+      ),
+      expectedTarget = WorkItemValueTemplateTarget.CREATE,
+    )
   }
 }
 

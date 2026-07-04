@@ -8,7 +8,10 @@ object TransitionFieldsValidator {
   private const val MAX_FIELDS = 64
 
   @Suppress("ThrowsCount")
-  fun validateEnvelope(template: WorkItemTransitionFieldsTemplate) {
+  fun validateEnvelope(
+    template: WorkItemTransitionFieldsTemplate,
+    expectedTarget: WorkItemValueTemplateTarget = WorkItemValueTemplateTarget.TRANSITION,
+  ) {
     if (template.version != WorkItemTransitionFieldsTemplate.CURRENT_VERSION) {
       throw InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_VERSION_UNSUPPORTED,
@@ -21,10 +24,16 @@ object TransitionFieldsValidator {
         "Unsupported transition fields resource: ${template.resource}",
       )
     }
-    if (template.target != WorkItemValueTemplateTarget.TRANSITION) {
+    if (template.target != expectedTarget) {
       throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_TARGET_INVALID,
-        "Transition fields target must be transition.",
+        targetErrorCode(expectedTarget),
+        "Fields template target must be ${expectedTarget.wireName}.",
+      )
+    }
+    if (template.fields.isEmpty() && expectedTarget == WorkItemValueTemplateTarget.CREATE) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_CREATE_FIELDS_REQUIRED,
+        "Create fields template must define at least one field.",
       )
     }
     if (template.fields.size > MAX_FIELDS) {
@@ -32,8 +41,12 @@ object TransitionFieldsValidator {
     }
   }
 
-  fun validate(template: WorkItemTransitionFieldsTemplate, config: IssueTypeConfigDetails) {
-    validateEnvelope(template)
+  fun validate(
+    template: WorkItemTransitionFieldsTemplate,
+    config: IssueTypeConfigDetails,
+    expectedTarget: WorkItemValueTemplateTarget = WorkItemValueTemplateTarget.TRANSITION,
+  ) {
+    validateEnvelope(template, expectedTarget)
     template.fields.forEach { (field, spec) ->
       val property = WorkItemValueTemplateValidator.validateWritableField(field, config)
       spec.value?.let {
@@ -47,4 +60,12 @@ object TransitionFieldsValidator {
       }
     }
   }
+
+  private fun targetErrorCode(expectedTarget: WorkItemValueTemplateTarget): WorkbenchErrorCode =
+    when (expectedTarget) {
+      WorkItemValueTemplateTarget.CREATE ->
+        WorkbenchErrorCode.WORK_ITEM_CREATE_FIELDS_TARGET_INVALID
+      WorkItemValueTemplateTarget.TRANSITION ->
+        WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELDS_TARGET_INVALID
+    }
 }
