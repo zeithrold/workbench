@@ -49,6 +49,59 @@ class ExposedAccessGrantRepositoryIntegrationTest :
         repository.findByApiId(created.apiId.value)?.subjectUserId shouldBe user.id
       }
     }
+
+    "listBySubject and listActiveForSubject filter grants" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val repository = ExposedAccessGrantRepository(database)
+        val user = users.create(CreateUserCommand("Bob", "bob-active@example.test"))
+        val validFrom = OffsetDateTime.parse("2026-07-04T00:00:00Z")
+        val expiredAt = OffsetDateTime.parse("2026-07-04T01:00:00Z")
+
+        val active =
+          repository.create(
+            CreateAccessGrantCommand(
+              scope = GrantScope.TENANT,
+              tenantId = tenantId,
+              subjectUserId = user.id,
+              action = AuthorizationAction("project.read"),
+              resourcePattern = "project:*",
+              validFrom = validFrom,
+              grantedBy = user.id,
+            )
+          )
+        val expired =
+          repository.create(
+            CreateAccessGrantCommand(
+              scope = GrantScope.TENANT,
+              tenantId = tenantId,
+              subjectUserId = user.id,
+              action = AuthorizationAction("tenant.read"),
+              resourcePattern = "tenant:*",
+              validFrom = validFrom,
+              validTo = expiredAt,
+              grantedBy = user.id,
+            )
+          )
+
+        repository
+          .listBySubject(user.id, GrantScope.TENANT, tenantId, null)
+          .map { it.id }
+          .toSet() shouldBe setOf(active.id, expired.id)
+        repository
+          .listActiveForSubject(
+            subjectUserId = user.id,
+            scope = GrantScope.TENANT,
+            tenantId = tenantId,
+            projectId = null,
+            at = OffsetDateTime.parse("2026-07-04T12:00:00Z"),
+          )
+          .single()
+          .id shouldBe active.id
+        repository.expire(expired.id, expiredAt) shouldBe true
+      }
+    }
   })
 
 private fun withPostgresDatabase(block: suspend (Database) -> Unit) {

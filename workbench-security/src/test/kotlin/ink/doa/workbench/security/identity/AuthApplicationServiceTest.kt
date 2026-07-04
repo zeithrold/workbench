@@ -1,5 +1,7 @@
 package ink.doa.workbench.security.identity
 
+import ink.doa.workbench.core.common.errors.AuthenticationFailedException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
@@ -16,8 +18,10 @@ import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.auth.AuthenticationService
 import ink.doa.workbench.security.identity.auth.BearerCredentialService
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -41,6 +45,18 @@ class AuthApplicationServiceTest :
         bearerCredentialService,
         publicIds,
       )
+
+    beforeTest {
+      clearMocks(
+        authenticationService,
+        sessionService,
+        loginCompletionService,
+        bearerCredentialService,
+        publicIds,
+        answers = false,
+        recordedCalls = true,
+      )
+    }
 
     "login returns login view with session and tenant context" {
       val user = sampleUser()
@@ -134,6 +150,165 @@ class AuthApplicationServiceTest :
           "bearer-token",
           client.ipAddress,
           client.userAgent,
+        )
+      }
+    }
+
+    "logout skips revocation when credentials are absent" {
+      val client = ClientContext(ipAddress = "127.0.0.1", userAgent = "test")
+
+      runBlocking { service.logout(client, sessionSecret = null, bearerToken = null) }
+
+      coVerify(exactly = 0) { authenticationService.logoutSession(any(), any(), any()) }
+      coVerify(exactly = 0) { bearerCredentialService.revokeBearerToken(any(), any(), any()) }
+    }
+
+    "issueBearerToken resolves tenant from public id and returns issued view" {
+      val user = sampleUser()
+      val tenant = sampleTenant()
+      val loginAccountId = UUID.randomUUID()
+      val principal =
+        AuthenticatedPrincipal(
+          user = user,
+          loginAccountId = loginAccountId,
+          sessionId = UUID.randomUUID().toString(),
+          bearerTokenId = null,
+        )
+      val client = ClientContext(ipAddress = "127.0.0.1", userAgent = "test")
+      val issued =
+        IssuedCredential(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("btk"),
+          secret = "issued-secret",
+          expiresAt = OffsetDateTime.parse("2026-07-05T00:00:00Z"),
+        )
+
+      coEvery { publicIds.resolveTenant(tenant.apiId.value) } returns tenant
+      coEvery {
+        bearerCredentialService.createBearerToken(
+          userId = user.id,
+          loginAccountId = loginAccountId,
+          tenantId = tenant.id,
+          name = "ci-token",
+          scopes = setOf("workbench.api"),
+          ipAddress = client.ipAddress,
+          userAgent = client.userAgent,
+        )
+      } returns issued
+
+      val view = runBlocking {
+        service.issueBearerToken(
+          principal = principal,
+          tenantId = tenant.apiId.value,
+          name = "ci-token",
+          scopes = listOf("workbench.api"),
+          client = client,
+        )
+      }
+
+      view.id shouldBe issued.apiId!!.value
+      view.token shouldBe "issued-secret"
+      view.expiresAt shouldBe issued.expiresAt
+    }
+
+    "issueBearerToken uses active session tenant when tenant id is omitted" {
+      val user = sampleUser()
+      val tenant = sampleTenant()
+      val loginAccountId = UUID.randomUUID()
+      val principal =
+        AuthenticatedPrincipal(
+          user = user,
+          loginAccountId = loginAccountId,
+          sessionId = UUID.randomUUID().toString(),
+          bearerTokenId = null,
+        )
+      val client = ClientContext(ipAddress = "127.0.0.1", userAgent = "test")
+      val issued =
+        IssuedCredential(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("btk"),
+          secret = "session-tenant-secret",
+          expiresAt = OffsetDateTime.parse("2026-07-05T00:00:00Z"),
+        )
+
+      coEvery { sessionService.requireActiveTenantId(principal) } returns tenant.id
+      coEvery {
+        bearerCredentialService.createBearerToken(
+          userId = user.id,
+          loginAccountId = loginAccountId,
+          tenantId = tenant.id,
+          name = null,
+          scopes = emptySet(),
+          ipAddress = client.ipAddress,
+          userAgent = client.userAgent,
+        )
+      } returns issued
+
+      val view = runBlocking {
+        service.issueBearerToken(
+          principal = principal,
+          tenantId = null,
+          name = null,
+          scopes = emptyList(),
+          client = client,
+        )
+      }
+
+      view.token shouldBe "session-tenant-secret"
+    }
+
+    "issueBearerToken rejects principals without login account" {
+      val principal =
+        AuthenticatedPrincipal(
+          user = sampleUser(),
+          loginAccountId = null,
+          sessionId = UUID.randomUUID().toString(),
+          bearerTokenId = null,
+        )
+
+      shouldThrow<AuthenticationFailedException> {
+          runBlocking {
+            service.issueBearerToken(
+              principal = principal,
+              tenantId = null,
+              name = null,
+              scopes = emptyList(),
+              client = ClientContext(ipAddress = null, userAgent = null),
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.AUTH_AUTHENTICATION_REQUIRED
+    }
+
+    "revokeBearerToken delegates to bearer credential service" {
+      val user = sampleUser()
+      val principal =
+        AuthenticatedPrincipal(
+          user = user,
+          loginAccountId = UUID.randomUUID(),
+          sessionId = UUID.randomUUID().toString(),
+          bearerTokenId = null,
+        )
+      val client = ClientContext(ipAddress = "127.0.0.1", userAgent = "test")
+      val tokenPublicId = PublicId.new("btk").value
+
+      coEvery {
+        bearerCredentialService.revokeBearerTokenByApiId(
+          tokenApiId = tokenPublicId,
+          actorUserId = user.id,
+          ipAddress = client.ipAddress,
+          userAgent = client.userAgent,
+        )
+      } returns true
+
+      runBlocking { service.revokeBearerToken(principal, tokenPublicId, client) }
+
+      coVerify(exactly = 1) {
+        bearerCredentialService.revokeBearerTokenByApiId(
+          tokenApiId = tokenPublicId,
+          actorUserId = user.id,
+          ipAddress = client.ipAddress,
+          userAgent = client.userAgent,
         )
       }
     }

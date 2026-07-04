@@ -126,6 +126,174 @@ class ScopePermissionServiceTest :
       val decision = service.decide(request(AuthorizationScope.TENANT, projectId))
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
     }
+
+    test("instance scope denies matching deny grant") {
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns true
+      coEvery {
+        accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
+      } returns
+        listOf(
+          grant(
+            scope = GrantScope.INSTANCE,
+            action = "project.read",
+            pattern = "project:*",
+            effect = PermissionEffect.DENY,
+          )
+        )
+
+      val decision = service.decide(request(AuthorizationScope.INSTANCE))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "grant_denied"
+    }
+
+    test("instance scope denies when no matching grant") {
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns true
+      coEvery {
+        accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
+      } returns emptyList()
+
+      val decision = service.decide(request(AuthorizationScope.INSTANCE))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "no_matching_grant"
+    }
+
+    test("instance scope denies bearer token without matching scope") {
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns true
+      coEvery {
+        accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
+      } returns
+        listOf(
+          grant(
+            scope = GrantScope.INSTANCE,
+            action = "project.read",
+            pattern = "project:*",
+            effect = PermissionEffect.ALLOW,
+          )
+        )
+
+      val bearerRequest =
+        request(AuthorizationScope.INSTANCE)
+          .copy(
+            subject =
+              AuthorizationSubject(
+                userId = userId,
+                loginAccountId = null,
+                credentialType = CredentialType.BEARER_TOKEN,
+                credentialId = "token-id",
+                credentialTenantId = tenantId,
+                credentialScopes = setOf("other.scope"),
+              )
+          )
+
+      val decision = service.decide(bearerRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "token_scope_denied"
+    }
+
+    test("tenant scope denies without tenant id") {
+      val decision = service.decide(request(AuthorizationScope.TENANT).copy(tenantId = null))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "missing_tenant"
+    }
+
+    test("tenant scope denies inactive membership") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.INVITED)
+
+      val decision = service.decide(request(AuthorizationScope.TENANT))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "inactive_membership"
+    }
+
+    test("tenant scope denies matching deny binding") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, null, now)
+      } returns
+        listOf(
+          rule(
+            action = "project.read",
+            pattern = "project:*",
+            effect = PermissionEffect.DENY,
+          )
+        )
+
+      val decision = service.decide(request(AuthorizationScope.TENANT))
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      (decision as AuthorizationDecision.Deny).reason.code shouldBe "binding_denied"
+    }
+
+    test("tenant scope allows bearer token with workbench api scope") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, null, now)
+      } returns
+        listOf(
+          rule(
+            action = "project.read",
+            pattern = "project:prj_01",
+            effect = PermissionEffect.ALLOW,
+          )
+        )
+
+      val bearerRequest =
+        request(AuthorizationScope.TENANT)
+          .copy(
+            subject =
+              AuthorizationSubject(
+                userId = userId,
+                loginAccountId = null,
+                credentialType = CredentialType.BEARER_TOKEN,
+                credentialId = "token-id",
+                credentialTenantId = tenantId,
+                credentialScopes = setOf("workbench.api"),
+              ),
+            resource =
+              AuthorizationResource(
+                type = "project",
+                id = "prj_01",
+                tenantId = tenantId,
+                projectId = null,
+              ),
+          )
+
+      val decision = service.decide(bearerRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
+
+    test("tenant scope allows bearer token with wildcard action scope") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, null, now)
+      } returns
+        listOf(
+          rule(
+            action = "project.read",
+            pattern = "*",
+            effect = PermissionEffect.ALLOW,
+          )
+        )
+
+      val bearerRequest =
+        request(AuthorizationScope.TENANT)
+          .copy(
+            subject =
+              AuthorizationSubject(
+                userId = userId,
+                loginAccountId = null,
+                credentialType = CredentialType.BEARER_TOKEN,
+                credentialId = "token-id",
+                credentialTenantId = tenantId,
+                credentialScopes = setOf("project.*"),
+              )
+          )
+
+      val decision = service.decide(bearerRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
   })
 
 private fun membership(status: TenantMemberStatus) =

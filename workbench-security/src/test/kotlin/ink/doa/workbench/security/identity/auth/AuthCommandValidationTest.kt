@@ -32,6 +32,13 @@ class AuthCommandValidationTest :
       requireLoginPassword(passwordCommand) shouldBe "secret"
     }
 
+    "requireLoginPassword throws when missing" {
+      shouldThrow<InvalidRequestException> {
+          requireLoginPassword(passwordCommand.copy(password = null))
+        }
+        .errorCode shouldBe WorkbenchErrorCode.IDENTITY_LOGIN_PASSWORD_REQUIRED
+    }
+
     "requireLoginToken throws when missing" {
       shouldThrow<InvalidRequestException> {
           requireLoginToken(LoginCommand(method = LoginMethodKind.API_TOKEN))
@@ -52,5 +59,21 @@ class AuthCommandValidationTest :
       requireLdapTenantId(ldap) shouldBe "ten_abc"
       requireLdapSubject(ldap) shouldBe "ada"
       requireLdapPassword(ldap) shouldBe "secret"
+    }
+
+    "require ldap fields throw when missing" {
+      val ldap =
+        LoginCommand(
+          method = LoginMethodKind.LDAP,
+          loginMethodId = null,
+          tenantId = null,
+          subject = null,
+          password = null,
+        )
+
+      shouldThrow<InvalidRequestException> { requireLdapLoginMethodId(ldap) }
+      shouldThrow<InvalidRequestException> { requireLdapTenantId(ldap) }
+      shouldThrow<InvalidRequestException> { requireLdapSubject(ldap) }
+      shouldThrow<InvalidRequestException> { requireLdapPassword(ldap) }
     }
   })

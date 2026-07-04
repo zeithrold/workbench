@@ -94,6 +94,13 @@ class ExposedIdentityRepositoriesIntegrationTest :
         loginAccounts
           .findLoginAccountByMethodAndSubject("password", "ada@example.test")
           ?.id shouldBe loginAccount.id
+        loginAccounts
+          .findLoginAccountByParameterValue(
+            loginMethodCode = "password",
+            parameterKey = LoginAccountParameterKey.PasswordHash,
+            parameterValue = "hash:v1",
+          )
+          ?.id shouldBe loginAccount.id
         loginDiscovery.findUserByMethodAndSubject("password", "ada@example.test")?.id shouldBe
           user.id
 

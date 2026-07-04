@@ -37,6 +37,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -61,6 +62,119 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list instance admins rejects unauthenticated requests`() {
     mockMvc.perform(get("/api/admin/users/instance-admins")).andExpect(status().isUnauthorized())
+  }
+
+  @Test
+  fun `grant tenant admin returns created admin for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/admin/users/tenant-admins")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"userId":"usr_01JABCDEFGHJKMNPQRSTVWXYZ2"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.scope").value("tenant"))
+  }
+
+  @Test
+  fun `revoke admin returns no content for authenticated instance user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete("/api/admin/users/adm_01JABCDEFGHJKMNPQRSTVWXYZ0")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
+  }
+
+  @Test
+  fun `create grant returns created grant for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/admin/users/grants")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "scope": "TENANT",
+                "userId": "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+                "action": "project.write",
+                "resourcePattern": "project:*",
+                "effect": "ALLOW"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.action").value("project.write"))
+  }
+
+  @Test
+  fun `expire grant returns no content for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete("/api/admin/users/grants/grt_01JABCDEFGHJKMNPQRSTVWXYZ0")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
+  }
+
+  @Test
+  fun `list actions returns actions for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/admin/users/actions")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].code").value("project.read"))
+  }
+
+  @Test
+  fun `ensure action returns created action for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/admin/users/actions")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"code":"project.archive","description":"Archive projects"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.code").value("project.archive"))
   }
 
   @Test
@@ -234,6 +348,40 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
           validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
           validTo = null,
         )
+      coEvery {
+        service.grantTenantAdmin(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ2",
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+        )
+      } returns
+        AdminUserView(
+          id = "adm_01JABCDEFGHJKMNPQRSTVWXYZ3",
+          userId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ2",
+          scope = AdminScope.TENANT,
+          tenantId = TenantWebMvcFixtures.TENANT_ID.toString(),
+          status = "active",
+          validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          validTo = null,
+        )
+      coEvery { service.revokeAdmin("adm_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns true
+      return true
+    }
+
+    @Bean
+    fun permissionActionServiceSetup(service: PermissionActionService): Boolean {
+      coEvery { service.listActions() } returns
+        listOf(
+          ink.doa.workbench.security.permission.ActionView(
+            code = "project.read",
+            description = "Read projects",
+          )
+        )
+      coEvery { service.ensureAction("project.archive", "Archive projects") } returns
+        ink.doa.workbench.security.permission.ActionView(
+          code = "project.archive",
+          description = "Archive projects",
+        )
       return true
     }
 
@@ -260,6 +408,31 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
             validTo = null,
           )
         )
+      coEvery {
+        service.createGrant(
+          scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          actionCode = "project.write",
+          resourcePattern = "project:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          projectPublicId = null,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+        )
+      } returns
+        ink.doa.workbench.security.permission.AccessGrantView(
+          id = "grt_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+          tenantId = TenantWebMvcFixtures.TENANT_ID.toString(),
+          projectId = null,
+          userId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          action = "project.write",
+          resourcePattern = "project:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          validTo = null,
+        )
+      coEvery { service.expireGrant("grt_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns true
       return true
     }
   }

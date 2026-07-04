@@ -80,4 +80,160 @@ class WorkItemValueTemplateParserTest :
         )
       }
     }
+
+    "parses property api id field paths" {
+      val template =
+        parser.parse(
+          """
+          {
+            "version": 1,
+            "resource": "work_item",
+            "target": "create",
+            "values": {
+              "property.fld_123": "ready"
+            }
+          }
+          """
+            .trimIndent()
+        )
+
+      template.values[TemplateField.Property(apiId = "fld_123", code = null)] shouldBe
+        TemplateValueExpression.Literal(JsonPrimitive("ready"))
+    }
+
+    "parses relativeDateTime expressions" {
+      val expression =
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement(
+            """
+              {
+                "relativeDateTime": {
+                  "amount": 1,
+                  "unit": "week",
+                  "direction": "past",
+                  "anchor": "date.today"
+                }
+              }
+              """
+          )
+        )
+
+      expression shouldBe
+        TemplateValueExpression.RelativeDate(
+          amount = 1,
+          unit = TemplateRelativeDateUnit.WEEK,
+          direction = TemplateDateDirection.PAST,
+          anchor = "date.today",
+        )
+    }
+
+    "rejects invalid json payloads" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse("""{ "version": 1, "resource": """)
+      }
+    }
+
+    "rejects unknown template targets" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse(
+          """{ "version": 1, "resource": "work_item", "target": "archive", "values": {} }"""
+        )
+      }
+    }
+
+    "rejects blank property identities" {
+      shouldThrow<InvalidRequestException> {
+        parser.parseFieldPath("property.")
+      }
+    }
+
+    "rejects templates missing required fields" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse("""{ "version": 1, "resource": "work_item", "target": "create" }""")
+      }
+    }
+
+    "rejects non-object template payloads" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse("""["version", 1]""")
+      }
+    }
+
+    "rejects non-string variable references" {
+      shouldThrow<InvalidRequestException> {
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement("""{ "var": {} }""")
+        )
+      }
+    }
+
+    "rejects unknown relative date units" {
+      shouldThrow<InvalidRequestException> {
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement(
+            """
+            {
+              "relativeDate": {
+                "amount": 1,
+                "unit": "fortnight",
+                "direction": "future",
+                "anchor": "date.today"
+              }
+            }
+            """
+          )
+        )
+      }
+    }
+
+    "rejects non-integer template versions" {
+      shouldThrow<InvalidRequestException> {
+        parser.parse(
+          """{ "version": "one", "resource": "work_item", "target": "create", "values": {} }"""
+        )
+      }
+    }
+
+    "rejects unknown relative date directions" {
+      shouldThrow<InvalidRequestException> {
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement(
+            """
+            {
+              "relativeDate": {
+                "amount": 1,
+                "unit": "day",
+                "direction": "sideways",
+                "anchor": "date.today"
+              }
+            }
+            """
+          )
+        )
+      }
+    }
+
+    "parses object literal expressions" {
+      val expression =
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement("""{"label": "Ready"}""")
+        )
+
+      expression shouldBe
+        TemplateValueExpression.Literal(
+          kotlinx.serialization.json.Json.parseToJsonElement("""{"label": "Ready"}""")
+        )
+    }
+
+    "ignores clear flag when not true" {
+      val expression =
+        parser.parseExpression(
+          kotlinx.serialization.json.Json.parseToJsonElement("""{"clear": false}""")
+        )
+
+      expression shouldBe
+        TemplateValueExpression.Literal(
+          kotlinx.serialization.json.JsonObject(mapOf("clear" to JsonPrimitive(false)))
+        )
+    }
   })

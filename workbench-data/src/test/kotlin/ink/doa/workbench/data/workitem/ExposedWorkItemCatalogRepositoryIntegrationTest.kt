@@ -86,6 +86,24 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
       }
     }
 
+    "findProperty resolves by code" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val repository = ExposedWorkItemCatalogRepository(database)
+        repository.createProperty(
+          CreatePropertyDefinitionCommand(
+            tenantId = tenantId,
+            code = "severity",
+            name = "Severity",
+            description = null,
+            dataType = WorkItemPropertyDataType.TEXT,
+          )
+        )
+
+        repository.findProperty(tenantId, "severity")?.name shouldBe "Severity"
+      }
+    }
+
     "createIssueType persists and listIssueTypes returns it" {
       withPostgresDatabase { database ->
         val tenantId = seedTenant(database)
@@ -102,6 +120,7 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
         )
 
         repository.listIssueTypes(tenantId).single().code shouldBe "bug"
+        repository.findIssueType(tenantId, "bug", null)?.name shouldBe "Bug"
       }
     }
 

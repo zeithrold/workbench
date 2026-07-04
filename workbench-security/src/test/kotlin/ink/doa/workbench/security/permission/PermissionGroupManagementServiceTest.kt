@@ -79,6 +79,75 @@ class PermissionGroupManagementServiceTest :
 
       result.user.id shouldBe user.apiId.value
     }
+
+    "listGroups returns repository groups" {
+      val group = sampleGroup(tenantId, "developers")
+      coEvery { groups.list(tenantId) } returns listOf(group)
+
+      val result = runBlocking { service.listGroups(tenantId) }
+
+      result.single().code shouldBe "developers"
+    }
+
+    "getGroup returns group view" {
+      val group = sampleGroup(tenantId, "developers")
+      coEvery { groups.findByApiId(tenantId, group.apiId.value) } returns group
+
+      val result = runBlocking { service.getGroup(tenantId, group.apiId.value) }
+
+      result.code shouldBe "developers"
+    }
+
+    "deleteGroup rejects builtin group deletion" {
+      val group = sampleGroup(tenantId, "tenant-admin", builtin = true)
+      coEvery { groups.findByApiId(tenantId, group.apiId.value) } returns group
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.deleteGroup(tenantId, group.apiId.value) }
+      }
+    }
+
+    "deleteGroup delegates to repository for custom group" {
+      val group = sampleGroup(tenantId, "developers")
+      coEvery { groups.findByApiId(tenantId, group.apiId.value) } returns group
+      coEvery { groups.delete(tenantId, group.id) } returns true
+
+      runBlocking { service.deleteGroup(tenantId, group.apiId.value) } shouldBe true
+    }
+
+    "listGroupMembers resolves user summaries" {
+      val group = sampleGroup(tenantId, "developers")
+      val user = sampleUser()
+      val member =
+        ink.doa.workbench.core.permission.GroupMemberRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("pgm"),
+          groupId = group.id,
+          userId = user.id,
+          status = ink.doa.workbench.core.permission.GroupMemberStatus.ACTIVE,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { groups.findByApiId(tenantId, group.apiId.value) } returns group
+      coEvery { groups.listMembers(group.id) } returns listOf(member)
+      coEvery { users.findById(user.id) } returns user
+
+      val result = runBlocking { service.listGroupMembers(tenantId, group.apiId.value) }
+
+      result.single().user.id shouldBe user.apiId.value
+    }
+
+    "removeGroupMember resolves user and removes membership" {
+      val group = sampleGroup(tenantId, "developers")
+      val user = sampleUser()
+      coEvery { groups.findByApiId(tenantId, group.apiId.value) } returns group
+      coEvery { publicIds.resolveUser(user.apiId.value) } returns user
+      coEvery { groups.removeMember(group.id, user.id, any()) } returns true
+
+      runBlocking {
+        service.removeGroupMember(tenantId, group.apiId.value, user.apiId.value)
+      } shouldBe true
+    }
   })
 
 private fun sampleGroup(

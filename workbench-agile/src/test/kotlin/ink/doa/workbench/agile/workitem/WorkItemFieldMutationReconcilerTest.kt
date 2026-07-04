@@ -9,6 +9,8 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.FieldWriteGrant
 import ink.doa.workbench.core.workitem.template.TemplateField
@@ -758,6 +760,219 @@ class WorkItemFieldMutationReconcilerTest :
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
     }
+
+    "assertWritableProperties throws when write permission denied" {
+      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
+      val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
+      val config = configWithProperties(listOf(resolution))
+
+      shouldThrow<PermissionDeniedException> {
+          reconciler.assertWritableProperties(
+            permissionContext(),
+            config,
+            mapOf("resolution" to JsonPrimitive("blocked")),
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED
+    }
+
+    "assertWritableSystemFields skips null values and denies protected fields" {
+      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
+        {
+          val field = secondArg<TemplateField>()
+          field is TemplateField.System && field.canonicalName == "title"
+        }
+
+      shouldThrow<PermissionDeniedException> {
+          reconciler.assertWritableSystemFields(
+            permissionContext(),
+            mapOf("title" to "Allowed", "assignee" to "usr_other"),
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED
+    }
+
+    "buildFieldMeta returns editable metadata with defaults" {
+      val config =
+        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
+      val meta =
+        reconciler.buildFieldMeta(
+          template =
+            template(
+              TemplateField.Property(apiId = null, code = "resolution") to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  value = TemplateValueExpression.Literal(JsonPrimitive("default")),
+                )
+            ),
+          config = config,
+          templateContext = templateContext(),
+          permissionContext = permissionContext(),
+        )
+
+      meta.single().path shouldBe "property.resolution"
+      meta.single().defaultValue shouldBe JsonPrimitive("default")
+      meta.single().editable shouldBe true
+    }
+
+    "buildCommentMeta returns null when comment spec absent" {
+      reconciler.buildCommentMeta(spec = null, templateContext = templateContext()) shouldBe null
+    }
+
+    "buildCommentMeta returns editable metadata with default template" {
+      val meta =
+        reconciler.buildCommentMeta(
+          spec =
+            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+              participation = FieldParticipation.OPTIONAL,
+              template = TemplateValueExpression.Literal(JsonPrimitive("Auto comment")),
+            ),
+          templateContext = templateContext(),
+        )
+
+      meta?.defaultTemplate shouldBe "Auto comment"
+      meta?.editable shouldBe true
+    }
+
+    "reconcileTransitionComment rejects automatic participation" {
+      shouldThrow<InvalidRequestException> {
+          reconciler.reconcileTransitionComment(
+            spec =
+              ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+                participation = FieldParticipation.AUTOMATIC,
+                template = TemplateValueExpression.Literal(JsonPrimitive("auto")),
+              ),
+            templateContext = templateContext(),
+            userComment = null,
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_PARTICIPATION_INVALID
+    }
+
+    "reconcileTransitionComment requires body when participation is required" {
+      shouldThrow<InvalidRequestException> {
+          reconciler.reconcileTransitionComment(
+            spec =
+              ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+                participation = FieldParticipation.REQUIRED,
+                template = null,
+              ),
+            templateContext = templateContext(),
+            userComment = "   ",
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_REQUIRED
+    }
+
+    "transition reject unauthorized mutation throws when user overrides" {
+      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
+      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
+      val config =
+        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
+
+      shouldThrow<PermissionDeniedException> {
+          reconciler.reconcileTransition(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    onUnauthorized = UnauthorizedMutationBehavior.REJECT,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
+            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
+            permissionContext = permissionContext(),
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_UNAUTHORIZED_FIELD_MUTATION
+    }
+
+    "transition required missing value throws property required" {
+      val config = configWithProperties(listOf(property("summary", WorkItemPropertyDataType.TEXT)))
+
+      shouldThrow<InvalidRequestException> {
+          reconciler.reconcileTransition(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "summary") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED)
+              ),
+            config = config,
+            templateContext = templateContext(),
+            currentProperties = emptyMap(),
+            userProperties = emptyMap(),
+            permissionContext = permissionContext(),
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_PROPERTY_REQUIRED
+    }
+
+    "transition resolves current system fields from work item context" {
+      val config = configWithProperties(emptyList())
+      val issue = workItemRecord()
+      val context =
+        WorkItemValueTemplateContext(
+          tenantId = issue.tenantId,
+          projectId = issue.projectId,
+          currentUserApiId = "usr_test",
+          currentProjectApiId = "prj_test",
+          actorUserId = UUID.randomUUID(),
+          workItem = issue,
+        )
+      val result =
+        reconciler.reconcileTransition(
+          template =
+            template(
+              TemplateField.System("title") to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                ),
+              TemplateField.System("assignee") to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                ),
+            ),
+          config = config,
+          templateContext = context,
+          currentProperties = emptyMap(),
+          userProperties = emptyMap(),
+          permissionContext = permissionContext(),
+        )
+
+      result.systemFields["title"] shouldBe issue.title
+      result.systemFields["assignee"] shouldBe issue.assigneeApiId?.value
+    }
+
+    "transition accepts property submission by api id key" {
+      val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
+      val config = configWithProperties(listOf(resolution))
+      val result =
+        reconciler.reconcileTransition(
+          template =
+            template(
+              TemplateField.Property(
+                apiId = resolution.propertyApiId.value,
+                code = "resolution",
+              ) to
+                TransitionFieldSpec(
+                  participation = FieldParticipation.OPTIONAL,
+                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                )
+            ),
+          config = config,
+          templateContext = templateContext(),
+          currentProperties = emptyMap(),
+          userProperties = mapOf(resolution.propertyApiId.value to JsonPrimitive("done")),
+          permissionContext = permissionContext(),
+        )
+
+      result.propertyValues["resolution"] shouldBe JsonPrimitive("done")
+    }
   })
 
 private fun mockTitleOnlyEditable(fieldPermissions: WorkItemFieldPermissionService) {
@@ -856,3 +1071,28 @@ private fun property(code: String, type: WorkItemPropertyDataType): IssueTypeCon
     displayConfig = JsonObject(emptyMap()),
   )
 }
+
+private fun workItemRecord(): WorkItemRecord =
+  WorkItemRecord(
+    id = UUID.randomUUID(),
+    apiId = PublicId.new("iss"),
+    tenantId = UUID.randomUUID(),
+    projectId = UUID.randomUUID(),
+    issueTypeApiId = PublicId.new("typ"),
+    issueTypeConfigApiId = PublicId.new("itc"),
+    key = "CORE-1",
+    title = "Existing title",
+    description = "<p>Body</p>",
+    statusId = UUID.randomUUID(),
+    statusApiId = PublicId.new("sts"),
+    statusGroup = WorkItemStatusGroup.TODO,
+    reporterId = UUID.randomUUID(),
+    assigneeId = UUID.randomUUID(),
+    priorityApiId = PublicId.new("pri"),
+    reporterApiId = PublicId.new("usr"),
+    assigneeApiId = PublicId.new("usr"),
+    sprintApiId = PublicId.new("spr"),
+    properties = JsonObject(emptyMap()),
+    createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+    updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+  )
