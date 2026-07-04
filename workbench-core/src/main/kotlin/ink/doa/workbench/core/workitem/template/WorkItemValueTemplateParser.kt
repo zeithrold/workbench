@@ -1,10 +1,8 @@
-@file:Suppress("SwallowedException")
-
 package ink.doa.workbench.core.workitem.template
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.SerializationParseSupport
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -17,14 +15,15 @@ import kotlinx.serialization.json.jsonPrimitive
 
 class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownKeys = false }) {
   fun parse(payload: String): WorkItemValueTemplate =
-    try {
-      parse(json.parseToJsonElement(payload))
-    } catch (ex: SerializationException) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_INVALID_JSON,
-        "Invalid work item value template JSON: ${ex.message}",
-      )
-    }
+    SerializationParseSupport.parseOrThrow(
+      { parse(json.parseToJsonElement(payload)) },
+      { ex ->
+        InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_TEMPLATE_INVALID_JSON,
+          "Invalid work item value template JSON: ${ex.message}",
+        )
+      },
+    )
 
   fun parse(element: JsonElement): WorkItemValueTemplate {
     val obj = element.asObject("template")

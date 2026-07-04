@@ -18,7 +18,6 @@ class ProjectDestructionService(
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
 
-  @Suppress("ReturnCount")
   suspend fun execute(
     tenantId: UUID,
     projectId: UUID,

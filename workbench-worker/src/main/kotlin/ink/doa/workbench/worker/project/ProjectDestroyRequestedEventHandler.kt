@@ -31,7 +31,6 @@ class ProjectDestroyRequestedEventHandler(
 ) : DomainEventHandler<ProjectDestroyRequestedEvent> {
   private val logger = LoggerFactory.getLogger(javaClass)
 
-  @Suppress("ReturnCount")
   override suspend fun handle(payload: ProjectDestroyRequestedEvent) {
     val tenant =
       tenants.findByApiId(payload.tenantId)

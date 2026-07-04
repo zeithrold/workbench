@@ -16,29 +16,28 @@ class ProjectVisibilityPermissionDecorator(
   private val delegate: ScopePermissionService,
   private val projectAccess: ProjectAccessService,
 ) : PermissionService {
-  @Suppress("ReturnCount")
   override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision {
     val decision = delegate.decide(request)
-    if (decision is AuthorizationDecision.Allow) return decision
-    if (request.scope != AuthorizationScope.TENANT) return decision
-    val projectId = request.resource.projectId ?: return decision
-    val tenantId = request.tenantId ?: return decision
-    if (decision.reason.code != "no_matching_binding") return decision
-    if (
+    val projectId = request.resource.projectId
+    val tenantId = request.tenantId
+    return when {
+      decision is AuthorizationDecision.Allow -> decision
+      request.scope != AuthorizationScope.TENANT -> decision
+      projectId == null || tenantId == null -> decision
+      decision.reason.code != "no_matching_binding" -> decision
       projectAccess.allowsVisibilityAction(
         userId = request.subject.userId,
         tenantId = tenantId,
         projectId = projectId,
         action = request.action,
-      )
-    ) {
-      return AuthorizationDecision.Allow(
-        DecisionReason(
-          code = "visibility_allowed",
-          message = "Project visibility settings allowed the request.",
+      ) ->
+        AuthorizationDecision.Allow(
+          DecisionReason(
+            code = "visibility_allowed",
+            message = "Project visibility settings allowed the request.",
+          )
         )
-      )
+      else -> decision
     }
-    return decision
   }
 }

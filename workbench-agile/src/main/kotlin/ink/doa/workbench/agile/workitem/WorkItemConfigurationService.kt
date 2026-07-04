@@ -3,6 +3,8 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.errors.requireFound
+import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
@@ -104,20 +106,11 @@ class WorkflowConfigurationService(
     actorUserId: UUID,
   ): WorkflowRecord = repository.deactivateWorkflow(tenantId, workflowApiIdOrCode, actorUserId)
 
-  @Suppress("ThrowsCount")
   suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord {
-    val workflow =
-      repository.findWorkflow(command.tenantId, command.workflowApiId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
-    if (workflow.publishedAt != null) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN)
-    }
-    command.fromStatusApiId?.let { fromStatusApiId ->
-      catalog.findStatus(command.tenantId, fromStatusApiId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
-    }
-    catalog.findStatus(command.tenantId, command.toStatusApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+    val workflow = findRequiredWorkflow(repository, command.tenantId, command.workflowApiId)
+    requireUnpublishedWorkflow(workflow)
+    requireExistingStatus(catalog, command.tenantId, command.fromStatusApiId)
+    requireExistingStatus(catalog, command.tenantId, command.toStatusApiId)
     validateTransitionAgainstActiveConfigs(command, workflow)
     val canonicalCommand =
       command.copy(
@@ -127,26 +120,14 @@ class WorkflowConfigurationService(
     return repository.createTransition(canonicalCommand)
   }
 
-  @Suppress("ThrowsCount")
   suspend fun deactivateTransition(
     tenantId: UUID,
     workflowApiIdOrCode: String,
     transitionApiId: String,
   ): WorkflowTransitionRecord {
-    val workflow =
-      repository.findWorkflow(tenantId, workflowApiIdOrCode)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
-    val transition =
-      repository.findTransition(tenantId, transitionApiId)
-        ?: throw ResourceNotFoundException(
-          WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
-        )
-    if (transition.workflowId != workflow.id) {
-      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND)
-    }
-    if (workflow.publishedAt != null) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN)
-    }
+    val workflow = findRequiredWorkflow(repository, tenantId, workflowApiIdOrCode)
+    findRequiredTransition(repository, tenantId, transitionApiId, workflow.id)
+    requireUnpublishedWorkflow(workflow)
     return repository.deactivateTransition(tenantId, transitionApiId)
   }
 
@@ -218,28 +199,46 @@ class IssueTypeConfigService(
         WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
       )
 
-  @Suppress("ThrowsCount")
   private suspend fun validateBindings(command: CreateIssueTypeConfigCommand) {
-    if (command.statuses.count { it.isInitial } != 1) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED)
-    }
-    if (command.statuses.map { it.statusApiId }.distinct().size != command.statuses.size) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_STATUS)
-    }
-    if (command.properties.map { it.propertyApiId }.distinct().size != command.properties.size) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_PROPERTY)
-    }
-    catalog.findIssueType(command.tenantId, command.issueTypeApiId, command.projectId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND)
-    workflows.findWorkflow(command.tenantId, command.workflowApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    validateBindingShape(command)
+    validateBindingReferences(command)
+  }
+
+  private fun validateBindingShape(command: CreateIssueTypeConfigCommand) {
+    requireValid(
+      command.statuses.count { it.isInitial } == 1,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED,
+    )
+    requireValid(
+      command.statuses.map { it.statusApiId }.distinct().size == command.statuses.size,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_STATUS,
+    )
+    requireValid(
+      command.properties.map { it.propertyApiId }.distinct().size == command.properties.size,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_PROPERTY,
+    )
+  }
+
+  private suspend fun validateBindingReferences(command: CreateIssueTypeConfigCommand) {
+    requireFound(
+      catalog.findIssueType(command.tenantId, command.issueTypeApiId, command.projectId) != null,
+      WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+    )
+    requireFound(
+      workflows.findWorkflow(command.tenantId, command.workflowApiId) != null,
+      WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND,
+    )
     command.statuses.forEach {
-      catalog.findStatus(command.tenantId, it.statusApiId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+      requireFound(
+        catalog.findStatus(command.tenantId, it.statusApiId) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND,
+      )
     }
     command.properties.forEach {
-      catalog.findProperty(command.tenantId, it.propertyApiId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND)
+      requireFound(
+        catalog.findProperty(command.tenantId, it.propertyApiId) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND,
+      )
     }
   }
 
@@ -324,4 +323,46 @@ private fun validateScope(scope: WorkItemConfigScope, projectId: UUID?) {
   if (scope == WorkItemConfigScope.PROJECT && projectId == null) {
     throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_SCOPE_PROJECT_REQUIRED)
   }
+}
+
+private suspend fun findRequiredWorkflow(
+  repository: WorkflowConfigurationRepository,
+  tenantId: UUID,
+  workflowApiIdOrCode: String,
+): WorkflowRecord =
+  repository.findWorkflow(tenantId, workflowApiIdOrCode)
+    ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+
+private suspend fun findRequiredTransition(
+  repository: WorkflowConfigurationRepository,
+  tenantId: UUID,
+  transitionApiId: String,
+  workflowId: UUID,
+) {
+  val transition =
+    repository.findTransition(tenantId, transitionApiId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND)
+  requireFound(
+    transition.workflowId == workflowId,
+    WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND,
+  )
+}
+
+private fun requireUnpublishedWorkflow(workflow: WorkflowRecord) {
+  requireValid(
+    workflow.publishedAt == null,
+    WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN,
+  )
+}
+
+private suspend fun requireExistingStatus(
+  catalog: WorkItemCatalogRepository,
+  tenantId: UUID,
+  statusApiId: String?,
+) {
+  statusApiId ?: return
+  requireFound(
+    catalog.findStatus(tenantId, statusApiId) != null,
+    WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND,
+  )
 }

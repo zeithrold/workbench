@@ -1,3 +1,10 @@
+# Detekt governance policy:
+# - ReturnCount/ThrowsCount: excludeGuardClauses for authorization and validation guard patterns
+# - SwallowedException: ignore serialization parse exceptions re-thrown as domain errors
+# - Flyway ClassNaming: inline @Suppress on migration classes (required by Flyway naming)
+# - AOP context UnusedParameter: inline @Suppress on @TenantScoped/@InstanceScoped controllers
+# - Test LongMethod/LargeClass: disabled via config/detekt/detekt-test.yml on test source sets
+
 config:
   validation: true
 
@@ -9,6 +16,23 @@ complexity:
     ignoreDeprecated: true
     ignorePrivate: false
     ignoreOverridden: false
+  LongMethod:
+    active: true
+    excludes:
+      - '**/test/**'
+      - '**/testFixtures/**'
+  LargeClass:
+    active: true
+    excludes:
+      - '**/test/**'
+      - '**/testFixtures/**'
+
+exceptions:
+  SwallowedException:
+    active: true
+    ignoredExceptionTypes:
+      - kotlinx.serialization.SerializationException
+      - com.fasterxml.jackson.core.JsonProcessingException
 
 style:
   MagicNumber:
@@ -16,6 +40,13 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 140
+  ReturnCount:
+    active: true
+    max: 4
+    excludeGuardClauses: true
+  ThrowsCount:
+    active: true
+    excludeGuardClauses: true
 
 naming:
   FunctionNaming:

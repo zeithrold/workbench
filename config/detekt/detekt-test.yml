@@ -1,0 +1,5 @@
+complexity:
+  LongMethod:
+    active: false
+  LargeClass:
+    active: false
