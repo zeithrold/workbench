@@ -54,11 +54,27 @@ class ProjectAccessService(
     val project = projects.findById(tenantId, projectId) ?: return false
     return when (project.nonMemberVisibility) {
       NonMemberVisibility.INVISIBLE -> false
-      NonMemberVisibility.READ_ONLY -> action == AuthorizationAction("project.read")
-      NonMemberVisibility.READ_WRITE ->
-        action == AuthorizationAction("project.read") ||
-          action == AuthorizationAction("project.update")
+      NonMemberVisibility.READ_ONLY -> action in READ_ONLY_VISIBILITY_ACTIONS
+      NonMemberVisibility.READ_WRITE -> action in READ_WRITE_VISIBILITY_ACTIONS
     }
+  }
+
+  private companion object {
+    private val READ_ONLY_VISIBILITY_ACTIONS =
+      setOf(
+        AuthorizationAction("project.read"),
+        AuthorizationAction("issue.view"),
+      )
+    private val READ_WRITE_VISIBILITY_ACTIONS =
+      setOf(
+        AuthorizationAction("project.read"),
+        AuthorizationAction("project.update"),
+        AuthorizationAction("issue.view"),
+        AuthorizationAction("issue.create"),
+        AuthorizationAction("issue.update"),
+        AuthorizationAction("issue.transition"),
+        AuthorizationAction("issue.field.write"),
+      )
   }
 
   suspend fun listVisibleProjects(

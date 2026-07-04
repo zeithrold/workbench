@@ -12,13 +12,14 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.core.workitem.template.TransitionFieldsLegacyMigrator
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -65,7 +66,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.create(any(), any(), any(), any(), capture(values))
       } returns WorkItemMutationResult(created, "work_item.created")
 
-      WorkItemService(repository, configs, workflows, events, clock)
+      workItemService(repository, configs, workflows, events, clock)
         .create(
           CreateWorkItemCommand(
             tenantId = tenantId,
@@ -104,14 +105,16 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { configs.findConfig(tenantId, issue.issueTypeConfigApiId.value) } returns config
       coEvery { workflows.findTransition(tenantId, "trn_done") } returns transition
       coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
-      coEvery { repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done")) } returns 0
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done"))
+      } returns 0
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
       coEvery {
         repository.transition(capture(command), any(), any(), any(), capture(values))
       } returns WorkItemMutationResult(issue, "work_item.transitioned")
 
-      WorkItemService(repository, configs, workflows, events, clock)
+      workItemService(repository, configs, workflows, events, clock)
         .transition(
           TransitionWorkItemCommand(
             tenantId = tenantId,
@@ -239,25 +242,28 @@ private fun transition(config: IssueTypeConfigDetails): WorkflowTransitionRecord
     rank = 100,
     permissionCondition = JsonObject(emptyMap()),
     preconditionAst = JsonObject(emptyMap()),
-    requiredProperties = Json.parseToJsonElement("""["resolution"]"""),
-    optionalProperties = Json.parseToJsonElement("""[]"""),
-    propertyDefaults =
-      Json.parseToJsonElement(
-          """
-          {
-            "version": 1,
-            "resource": "work_item",
-            "target": "transition",
-            "values": {
-              "assignee": { "var": "user.currentUser" },
-              "property.resolution": "fixed",
-              "property.resolvedAt": { "var": "date.now" }
-            }
-          }
-          """
-            .trimIndent()
-        )
-        .jsonObject,
+    fields =
+      TransitionFieldsLegacyMigrator.migrate(
+        requiredProperties = Json.parseToJsonElement("""["resolution"]"""),
+        optionalProperties = Json.parseToJsonElement("""[]"""),
+        propertyDefaults =
+          Json.parseToJsonElement(
+              """
+              {
+                "version": 1,
+                "resource": "work_item",
+                "target": "transition",
+                "values": {
+                  "assignee": { "var": "user.currentUser" },
+                  "property.resolution": "fixed",
+                  "property.resolvedAt": { "var": "date.now" }
+                }
+              }
+              """
+                .trimIndent()
+            )
+            .jsonObject,
+      ),
     isActive = true,
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
@@ -291,3 +297,25 @@ private fun workItem(
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
   )
+
+private fun workItemService(
+  repository: WorkItemRepository,
+  configs: IssueTypeConfigRepository,
+  workflows: WorkflowConfigurationRepository,
+  events: DomainEventPublisher,
+  clock: Clock,
+): WorkItemService {
+  val fieldPermissions = mockk<WorkItemFieldPermissionService>()
+  coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
+  coEvery { fieldPermissions.isFieldEditableInTransition(any(), any(), any()) } returns true
+  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+  return WorkItemService(
+    repository,
+    configs,
+    workflows,
+    events,
+    reconciler,
+    fieldPermissions,
+    clock,
+  )
+}

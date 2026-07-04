@@ -39,8 +39,11 @@ class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownK
         version = obj.requiredInt("version"),
         resource = obj.requiredString("resource"),
         target = target,
-        values = obj.requiredObject("values").mapKeys { parseFieldPath(it.key) }
-          .mapValues { parseExpression(it.value) },
+        values =
+          obj
+            .requiredObject("values")
+            .mapKeys { parseFieldPath(it.key) }
+            .mapValues { parseExpression(it.value) },
       )
     WorkItemValueTemplateValidator.validateEnvelope(template)
     return template
@@ -49,9 +52,15 @@ class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownK
   fun parseExpression(element: JsonElement): TemplateValueExpression =
     when (element) {
       is JsonObject -> {
-        element["var"]?.let { return TemplateValueExpression.Variable(it.asString("variable")) }
-        element["relativeDate"]?.let { return parseRelativeDate(it) }
-        element["relativeDateTime"]?.let { return parseRelativeDate(it) }
+        element["var"]?.let {
+          return TemplateValueExpression.Variable(it.asString("variable"))
+        }
+        element["relativeDate"]?.let {
+          return parseRelativeDate(it)
+        }
+        element["relativeDateTime"]?.let {
+          return parseRelativeDate(it)
+        }
         element["copy"]?.let {
           return TemplateValueExpression.Copy(parseFieldPath(it.asString("copy")))
         }
@@ -67,7 +76,9 @@ class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownK
     if (path.startsWith("property.")) {
       val identity =
         path.removePrefix("property.").ifBlank {
-          throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TEMPLATE_PROPERTY_IDENTITY_REQUIRED)
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_TEMPLATE_PROPERTY_IDENTITY_REQUIRED
+          )
         }
       if (identity.startsWith("fld_")) {
         TemplateField.Property(apiId = identity, code = null)
@@ -131,5 +142,4 @@ private fun JsonObject.requiredInt(key: String): Int =
       "Work item value template $key must be an integer.",
     )
 
-private fun JsonObject.requiredObject(key: String): JsonObject =
-  required(key).jsonObject
+private fun JsonObject.requiredObject(key: String): JsonObject = required(key).jsonObject

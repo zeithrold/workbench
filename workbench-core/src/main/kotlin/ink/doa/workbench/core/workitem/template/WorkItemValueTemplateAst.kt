@@ -19,8 +19,9 @@ enum class WorkItemValueTemplateTarget(val wireName: String) {
   TRANSITION("transition");
 
   companion object {
-    fun fromWireName(value: String): WorkItemValueTemplateTarget? =
-      entries.firstOrNull { it.wireName == value }
+    fun fromWireName(value: String): WorkItemValueTemplateTarget? = entries.firstOrNull {
+      it.wireName == value
+    }
   }
 }
 
@@ -64,8 +65,9 @@ enum class TemplateRelativeDateUnit(val wireName: String) {
   YEAR("year");
 
   companion object {
-    fun fromWireName(value: String): TemplateRelativeDateUnit? =
-      entries.firstOrNull { it.wireName == value }
+    fun fromWireName(value: String): TemplateRelativeDateUnit? = entries.firstOrNull {
+      it.wireName == value
+    }
   }
 }
 
@@ -74,7 +76,8 @@ enum class TemplateDateDirection(val wireName: String) {
   FUTURE("future");
 
   companion object {
-    fun fromWireName(value: String): TemplateDateDirection? =
-      entries.firstOrNull { it.wireName == value }
+    fun fromWireName(value: String): TemplateDateDirection? = entries.firstOrNull {
+      it.wireName == value
+    }
   }
 }

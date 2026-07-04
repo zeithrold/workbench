@@ -17,9 +17,9 @@ object WorkItemValueTemplateValidator {
       "date.startOfWeek",
       "date.endOfWeek",
     )
-  private val dateAnchors =
-    setOf("date.now", "date.today", "date.startOfWeek", "date.endOfWeek")
+  private val dateAnchors = setOf("date.now", "date.today", "date.startOfWeek", "date.endOfWeek")
 
+  @Suppress("ThrowsCount")
   fun validateEnvelope(template: WorkItemValueTemplate) {
     if (template.version != WorkItemValueTemplate.CURRENT_VERSION) {
       throw InvalidRequestException(
@@ -112,12 +112,15 @@ object WorkItemValueTemplateValidator {
     )
   }
 
+  @Suppress("ThrowsCount")
   private fun validateRelativeDate(
     expression: TemplateValueExpression.RelativeDate,
     targetProperty: IssueTypeConfigPropertyRecord?,
   ) {
     if (expression.amount <= 0) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE)
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE
+      )
     }
     if (expression.anchor !in dateAnchors) {
       throw InvalidRequestException(
@@ -127,7 +130,8 @@ object WorkItemValueTemplateValidator {
     }
     if (
       targetProperty != null &&
-        targetProperty.dataType !in setOf(WorkItemPropertyDataType.DATE, WorkItemPropertyDataType.DATETIME)
+        targetProperty.dataType !in
+          setOf(WorkItemPropertyDataType.DATE, WorkItemPropertyDataType.DATETIME)
     ) {
       throw InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VALUE_TYPE_INVALID,

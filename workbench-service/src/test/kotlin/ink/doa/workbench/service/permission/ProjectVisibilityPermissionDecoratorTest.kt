@@ -67,4 +67,20 @@ class ProjectVisibilityPermissionDecoratorTest :
 
       decorator.decide(request("project.read")).shouldBeInstanceOf<AuthorizationDecision.Allow>()
     }
+    "decorator allows issue.view when visibility grants access after binding deny" {
+      coEvery { delegate.decide(any()) } returns
+        AuthorizationDecision.Deny(
+          DecisionReason("no_matching_binding", "No active policy binding allows the request.")
+        )
+      coEvery {
+        projectAccess.allowsVisibilityAction(
+          userId,
+          tenantId,
+          projectId,
+          AuthorizationAction("issue.view"),
+        )
+      } returns true
+
+      decorator.decide(request("issue.view")).shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
   })

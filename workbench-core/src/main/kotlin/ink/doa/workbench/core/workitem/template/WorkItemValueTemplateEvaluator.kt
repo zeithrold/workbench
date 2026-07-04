@@ -25,6 +25,7 @@ data class WorkItemValueTemplateContext(
   val currentProperties: Map<String, JsonElement> = emptyMap(),
 )
 
+@Suppress("TooManyFunctions")
 class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC()) {
   fun evaluate(
     template: WorkItemValueTemplate,
@@ -32,12 +33,15 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
     context: WorkItemValueTemplateContext,
   ): Map<String, JsonElement> {
     WorkItemValueTemplateValidator.validate(template, config)
-    return template.values.map { (field, expression) ->
-        val property = (field as? TemplateField.Property)?.let {
-          WorkItemValueTemplateValidator.resolveProperty(it, config)
-        }
+    return template.values
+      .map { (field, expression) ->
+        val property =
+          (field as? TemplateField.Property)?.let {
+            WorkItemValueTemplateValidator.resolveProperty(it, config)
+          }
         field.outputKey(config) to evaluateExpression(expression, property, context)
-      }.toMap()
+      }
+      .toMap()
   }
 
   fun evaluatePropertyDefault(
@@ -73,9 +77,15 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
       "date.endOfWeek" -> JsonPrimitive(today().endOfWeek().toString())
       else ->
         if (name.startsWith("workItem.current.")) {
-          resolveCopy(WorkItemValueTemplateParser().parseFieldPath(name.removePrefix("workItem.current.")), context)
+          resolveCopy(
+            WorkItemValueTemplateParser().parseFieldPath(name.removePrefix("workItem.current.")),
+            context,
+          )
         } else if (name.startsWith("workItem.previous.")) {
-          resolveCopy(WorkItemValueTemplateParser().parseFieldPath(name.removePrefix("workItem.previous.")), context)
+          resolveCopy(
+            WorkItemValueTemplateParser().parseFieldPath(name.removePrefix("workItem.previous.")),
+            context,
+          )
         } else {
           throw InvalidRequestException(
             WorkbenchErrorCode.WORK_ITEM_TEMPLATE_VARIABLE_UNKNOWN,
@@ -89,7 +99,9 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
     targetProperty: IssueTypeConfigPropertyRecord?,
   ): JsonElement {
     if (expression.amount <= 0) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE)
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_TEMPLATE_RELATIVE_DATE_AMOUNT_POSITIVE
+      )
     }
     val dateLike =
       when (expression.anchor) {
@@ -117,11 +129,16 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
             .toString()
         )
       else ->
-        JsonPrimitive((shifted as? LocalDate ?: (shifted as OffsetDateTime).toLocalDate()).toString())
+        JsonPrimitive(
+          (shifted as? LocalDate ?: (shifted as OffsetDateTime).toLocalDate()).toString()
+        )
     }
   }
 
-  private fun resolveCopy(field: TemplateField, context: WorkItemValueTemplateContext): JsonElement =
+  private fun resolveCopy(
+    field: TemplateField,
+    context: WorkItemValueTemplateContext,
+  ): JsonElement =
     when (field) {
       is TemplateField.Property ->
         field.code?.let { context.currentProperties[it] }
@@ -149,7 +166,9 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
       is TemplateField.Property -> WorkItemValueTemplateValidator.resolveProperty(this, config).code
     }
 
-  private fun OffsetDateTime.shift(expression: TemplateValueExpression.RelativeDate): OffsetDateTime {
+  private fun OffsetDateTime.shift(
+    expression: TemplateValueExpression.RelativeDate
+  ): OffsetDateTime {
     val amount = expression.signedAmount()
     return when (expression.unit) {
       TemplateRelativeDateUnit.DAY -> plusDays(amount)

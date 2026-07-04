@@ -305,8 +305,8 @@ data class WorkItemTransitionResponse(
   val toStatusId: String,
   val enabled: Boolean,
   val reason: String?,
-  val requiredProperties: JsonElement,
-  val optionalProperties: JsonElement,
+  val fields: JsonObject,
+  val editableFields: List<String>,
 ) {
   companion object {
     fun from(option: WorkItemTransitionOption): WorkItemTransitionResponse =
@@ -316,8 +316,8 @@ data class WorkItemTransitionResponse(
         toStatusId = option.toStatusId.value,
         enabled = option.enabled,
         reason = option.reason,
-        requiredProperties = option.requiredProperties,
-        optionalProperties = option.optionalProperties,
+        fields = option.fields,
+        editableFields = option.editableFields,
       )
   }
 }

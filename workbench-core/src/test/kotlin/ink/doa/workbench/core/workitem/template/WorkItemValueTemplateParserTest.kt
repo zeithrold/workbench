@@ -48,7 +48,9 @@ class WorkItemValueTemplateParserTest :
 
     "rejects invalid envelopes" {
       shouldThrow<InvalidRequestException> {
-          parser.parse("""{ "version": 2, "resource": "work_item", "target": "create", "values": {} }""")
+          parser.parse(
+            """{ "version": 2, "resource": "work_item", "target": "create", "values": {} }"""
+          )
         }
         .message shouldBe "Unsupported work item value template version: 2"
     }
