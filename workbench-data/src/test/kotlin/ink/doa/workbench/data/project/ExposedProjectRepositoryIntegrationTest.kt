@@ -2,6 +2,9 @@ package ink.doa.workbench.data.project
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.project.model.CreateProjectCommand
+import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
+import ink.doa.workbench.core.project.model.NonMemberVisibility
+import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
 import ink.doa.workbench.data.persistence.TenantsTable
 import ink.doa.workbench.data.persistence.UsersTable
@@ -60,6 +63,53 @@ class ExposedProjectRepositoryIntegrationTest :
           )
 
         updated.name shouldBe "Workbench Updated"
+      }
+    }
+
+    "archive reactivate rename identifier and find by id" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val repository = ExposedProjectRepository(database)
+        val archivedAt = OffsetDateTime.now(ZoneOffset.UTC)
+
+        val created =
+          repository.create(
+            CreateProjectCommand(
+              tenantId = tenantId,
+              identifier = "OLD",
+              name = "Rename Me",
+              description = null,
+              createdBy = actorId,
+              leadUserId = actorId,
+            )
+          )
+
+        repository.findById(tenantId, created.id)?.identifier shouldBe "OLD"
+
+        val archived = repository.markArchived(tenantId, created.id, archivedAt, actorId)
+        archived.status shouldBe ProjectStatus.ARCHIVED
+
+        val active = repository.markActive(tenantId, created.id)
+        active.status shouldBe ProjectStatus.ACTIVE
+
+        val renamed =
+          repository.update(
+            UpdateProjectCommand(
+              tenantId = tenantId,
+              projectId = created.id,
+              name = null,
+              identifier = "NEW",
+              description = null,
+              nonMemberVisibility = NonMemberVisibility.READ_WRITE,
+              nonMemberJoinPolicy = NonMemberJoinPolicy.OPEN,
+              updatedBy = actorId,
+            )
+          )
+
+        renamed.identifier shouldBe "NEW"
+        renamed.nonMemberVisibility shouldBe NonMemberVisibility.READ_WRITE
+        renamed.nonMemberJoinPolicy shouldBe NonMemberJoinPolicy.OPEN
       }
     }
   })

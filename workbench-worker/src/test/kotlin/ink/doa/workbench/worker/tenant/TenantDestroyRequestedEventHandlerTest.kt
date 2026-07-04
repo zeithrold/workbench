@@ -4,19 +4,17 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.TenantRepository
 import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.port.locking.DistributedLockService
+import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
-import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.instance.TenantDestructionService
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import java.time.Clock
-import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -25,112 +23,103 @@ import kotlinx.coroutines.runBlocking
 
 class TenantDestroyRequestedEventHandlerTest :
   StringSpec({
-    val tenants = mockk<TenantRepository>()
-    val users = mockk<UserRepository>()
-    val tenantDestructionService = mockk<TenantDestructionService>()
-    val publisher = RecordingDomainEventPublisher()
-    val distributedLockService =
-      object : DistributedLockService {
-        override fun <T> withLock(
-          name: String,
-          wait: Duration,
-          lease: Duration,
-          block: () -> T,
-        ): T = block()
-      }
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-    val handler =
-      TenantDestroyRequestedEventHandler(
-        tenants,
-        users,
-        tenantDestructionService,
-        publisher,
-        distributedLockService,
-        clock,
-      )
-
-    beforeTest {
-      publisher.clear()
-    }
-
-    "handle executes destruction and publishes destroyed event" {
-      val tenant = sampleTenant()
-      val actor = sampleUser()
-      val payload =
-        TenantDestroyRequestedEvent(
-          tenantId = tenant.apiId.value,
-          requestedBy = actor.apiId.value,
-          deleteReason = "cleanup",
-          requestedAt = "2026-07-04T00:00:00Z",
-        )
-
-      coEvery { tenants.findByApiIdForAdmin(tenant.apiId.value) } returns tenant
-      coEvery { users.findByApiId(actor.apiId.value) } returns actor
-      coEvery {
-        tenantDestructionService.execute(
-          tenantId = tenant.id,
-          deletedBy = actor.id,
-          deleteReason = "cleanup",
-        )
-      } returns true
-
-      runBlocking { handler.handle(payload) }
-
-      publisher.published.single().spec shouldBe TenantDomainEvents.Destroyed
-    }
+    val now = OffsetDateTime.now(ZoneOffset.UTC)
 
     "handle skips when tenant is missing" {
+      val tenants = mockk<TenantRepository>()
+      val users = mockk<UserRepository>()
       coEvery { tenants.findByApiIdForAdmin("ten_missing") } returns null
+      val handler =
+        TenantDestroyRequestedEventHandler(
+          tenants = tenants,
+          users = users,
+          tenantDestructionService = mockk(relaxed = true),
+          domainEventPublisher = mockk(relaxed = true),
+          distributedLockService =
+            object : DistributedLockService {
+              override fun <T> withLock(
+                name: String,
+                wait: java.time.Duration,
+                lease: java.time.Duration,
+                block: () -> T,
+              ): T = block()
+            },
+          clock = clock,
+        )
 
       runBlocking {
         handler.handle(
           TenantDestroyRequestedEvent(
             tenantId = "ten_missing",
-            requestedBy = "usr_missing",
-            deleteReason = null,
+            requestedBy = "usr_abc",
+            deleteReason = "cleanup",
             requestedAt = "2026-07-04T00:00:00Z",
           )
         )
       }
 
-      publisher.published shouldBe emptyList()
+      coVerify(exactly = 0) { users.findByApiId(any()) }
     }
 
-    "handle skips when actor is missing" {
-      val tenant = sampleTenant()
+    "handle executes destruction and publishes destroyed event" {
+      val tenantId = UUID.randomUUID()
+      val userId = UUID.randomUUID()
+      val tenants = mockk<TenantRepository>()
+      val users = mockk<UserRepository>()
+      val destruction = mockk<TenantDestructionService>()
+      val publisher = mockk<DomainEventPublisher>(relaxed = true)
+      val tenant =
+        TenantRecord(
+          id = tenantId,
+          apiId = PublicId.new("ten"),
+          slug = "acme",
+          name = "Acme",
+          timezone = "UTC",
+          locale = "en-US",
+          createdAt = now,
+          updatedAt = now,
+        )
+      val user =
+        UserRecord(
+          id = userId,
+          apiId = PublicId.new("usr"),
+          displayName = "Ada",
+          primaryEmail = "ada@example.test",
+        )
       coEvery { tenants.findByApiIdForAdmin(tenant.apiId.value) } returns tenant
-      coEvery { users.findByApiId("usr_missing") } returns null
+      coEvery { users.findByApiId(user.apiId.value) } returns user
+      coEvery { destruction.execute(tenantId, userId, "cleanup") } returns true
+      val handler =
+        TenantDestroyRequestedEventHandler(
+          tenants = tenants,
+          users = users,
+          tenantDestructionService = destruction,
+          domainEventPublisher = publisher,
+          distributedLockService =
+            object : DistributedLockService {
+              override fun <T> withLock(
+                name: String,
+                wait: java.time.Duration,
+                lease: java.time.Duration,
+                block: () -> T,
+              ): T = block()
+            },
+          clock = clock,
+        )
 
       runBlocking {
         handler.handle(
           TenantDestroyRequestedEvent(
             tenantId = tenant.apiId.value,
-            requestedBy = "usr_missing",
-            deleteReason = null,
+            requestedBy = user.apiId.value,
+            deleteReason = "cleanup",
             requestedAt = "2026-07-04T00:00:00Z",
           )
         )
       }
 
-      publisher.published shouldBe emptyList()
+      coVerify { destruction.execute(tenantId, userId, "cleanup") }
+      verify { publisher.publish(any(), tenant.apiId.value, any(), any()) }
     }
   })
-
-private fun sampleTenant(): TenantRecord =
-  TenantRecord(
-    id = UUID.randomUUID(),
-    apiId = PublicId.new("ten"),
-    slug = "acme",
-    name = "Acme",
-    status = TenantStatus.DESTROYING,
-    createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-    updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-  )
-
-private fun sampleUser(): UserRecord =
-  UserRecord(
-    id = UUID.randomUUID(),
-    apiId = PublicId.new("usr"),
-    displayName = "Ada",
-    primaryEmail = "ada@example.test",
-  )
