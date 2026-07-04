@@ -1,0 +1,143 @@
+package ink.doa.workbench.web.manage
+
+import ink.doa.workbench.core.common.summary.ProjectSummary
+import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.core.permission.PermissionPrincipalType
+import ink.doa.workbench.security.permission.GroupMemberView
+import ink.doa.workbench.security.permission.PermissionBindingView
+import ink.doa.workbench.security.permission.PermissionGroupView
+import ink.doa.workbench.security.permission.PermissionPolicyRuleView
+import ink.doa.workbench.security.permission.PermissionPolicySummary
+import ink.doa.workbench.security.permission.PermissionPolicyView
+import jakarta.validation.constraints.NotBlank
+
+data class CreatePermissionGroupRequest(
+  @field:NotBlank val code: String,
+  @field:NotBlank val name: String,
+  val description: String?,
+)
+
+data class UpdatePermissionGroupRequest(
+  val name: String?,
+  val description: String?,
+)
+
+data class CreatePermissionPolicyRequest(
+  @field:NotBlank val code: String,
+  @field:NotBlank val name: String,
+  val description: String?,
+)
+
+data class UpdatePermissionPolicyRequest(
+  val name: String?,
+  val description: String?,
+)
+
+data class CreatePermissionPolicyRuleRequest(
+  @field:NotBlank val action: String,
+  @field:NotBlank val resourcePattern: String,
+  val effect: String? = null,
+)
+
+data class AddGroupMemberRequest(@field:NotBlank val userId: String)
+
+data class CreatePermissionBindingRequest(
+  val principalType: PermissionPrincipalType,
+  val userId: String?,
+  val groupId: String?,
+  @field:NotBlank val policyId: String,
+  val projectId: String?,
+)
+
+data class PermissionGroupResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val description: String?,
+  val builtin: Boolean,
+) {
+  companion object {
+    fun from(view: PermissionGroupView) =
+      PermissionGroupResponse(
+        id = view.id,
+        code = view.code,
+        name = view.name,
+        description = view.description,
+        builtin = view.builtin,
+      )
+  }
+}
+
+data class GroupMemberResponse(val id: String, val user: UserSummary) {
+  companion object {
+    fun from(view: GroupMemberView) = GroupMemberResponse(id = view.id, user = view.user)
+  }
+}
+
+data class PermissionPolicyResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val description: String?,
+  val builtin: Boolean,
+  val rules: List<PermissionPolicyRuleResponse>,
+) {
+  companion object {
+    fun from(view: PermissionPolicyView) =
+      PermissionPolicyResponse(
+        id = view.id,
+        code = view.code,
+        name = view.name,
+        description = view.description,
+        builtin = view.builtin,
+        rules = view.rules.map { PermissionPolicyRuleResponse.from(it) },
+      )
+  }
+}
+
+data class PermissionPolicyRuleResponse(
+  val action: String,
+  val resourcePattern: String,
+  val effect: String,
+) {
+  companion object {
+    fun from(view: PermissionPolicyRuleView) =
+      PermissionPolicyRuleResponse(
+        action = view.action,
+        resourcePattern = view.resourcePattern,
+        effect = view.effect,
+      )
+  }
+}
+
+data class PermissionPolicySummaryResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+) {
+  companion object {
+    fun from(view: PermissionPolicySummary) =
+      PermissionPolicySummaryResponse(id = view.id, code = view.code, name = view.name)
+  }
+}
+
+data class PermissionBindingResponse(
+  val id: String,
+  val principalType: String,
+  val user: UserSummary?,
+  val group: PermissionGroupResponse?,
+  val policy: PermissionPolicySummaryResponse,
+  val project: ProjectSummary?,
+) {
+  companion object {
+    fun from(view: PermissionBindingView) =
+      PermissionBindingResponse(
+        id = view.id,
+        principalType = view.principalType,
+        user = view.user,
+        group = view.group?.let { PermissionGroupResponse.from(it) },
+        policy = PermissionPolicySummaryResponse.from(view.policy),
+        project = view.project,
+      )
+  }
+}
