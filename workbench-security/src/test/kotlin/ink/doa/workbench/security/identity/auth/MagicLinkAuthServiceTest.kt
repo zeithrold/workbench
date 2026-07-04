@@ -1,0 +1,58 @@
+package ink.doa.workbench.security.identity.auth
+
+import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.identity.LoginAccountStore
+import ink.doa.workbench.core.identity.LoginMethodRepository
+import ink.doa.workbench.core.identity.TenantLoginMethodSettingRepository
+import ink.doa.workbench.core.identity.TenantRepository
+import ink.doa.workbench.core.identity.UserLoginAccountRepository
+import ink.doa.workbench.core.identity.auth.CredentialHasher
+import ink.doa.workbench.core.identity.auth.CredentialSecretGenerator
+import ink.doa.workbench.core.identity.auth.MagicLinkTokenRepository
+import ink.doa.workbench.tenant.tenantconfig.TenantConfigService
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.mockk.coEvery
+import io.mockk.mockk
+import java.time.Clock
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import kotlinx.coroutines.runBlocking
+
+class MagicLinkAuthServiceTest :
+  StringSpec({
+    val loginMethods = mockk<LoginMethodRepository>(relaxed = true)
+    val tenantLoginSettings = mockk<TenantLoginMethodSettingRepository>(relaxed = true)
+    val loginAccounts = mockk<LoginAccountStore>(relaxed = true)
+    val userLoginAccounts = mockk<UserLoginAccountRepository>(relaxed = true)
+    val tenants = mockk<TenantRepository>(relaxed = true)
+    val magicLinkTokens = mockk<MagicLinkTokenRepository>()
+    val credentialHasher = mockk<CredentialHasher>()
+    val secretGenerator = mockk<CredentialSecretGenerator>(relaxed = true)
+    val tenantConfig = mockk<TenantConfigService>(relaxed = true)
+    val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
+    val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
+    val service =
+      MagicLinkAuthService(
+        loginMethods,
+        tenantLoginSettings,
+        loginAccounts,
+        userLoginAccounts,
+        tenants,
+        magicLinkTokens,
+        credentialHasher,
+        secretGenerator,
+        tenantConfig,
+        clock,
+      )
+
+    "resolveToken throws when token is invalid" {
+      coEvery { credentialHasher.hash("invalid-token") } returns "hashed-invalid"
+      coEvery { magicLinkTokens.findActiveByHash("hashed-invalid", now) } returns null
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.resolveToken("invalid-token") }
+      }
+    }
+  })

@@ -151,4 +151,41 @@ class WorkItemQueryValueValidatorsTest :
         }
         .message shouldBe "Operator eq requires a single value."
     }
+
+    "accepts starts_with with string value" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.TEXT,
+        QueryOperator.STARTS_WITH,
+        QueryValue.Literal(JsonPrimitive("bug")),
+      )
+    }
+
+    "accepts between with to bound only" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.NUMBER,
+        QueryOperator.BETWEEN,
+        QueryValue.Between(from = null, to = JsonPrimitive(10)),
+      )
+    }
+
+    "accepts project current project variable" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.PROJECT,
+        QueryOperator.EQ,
+        QueryValue.Variable("project.currentProject"),
+      )
+    }
+
+    "accepts relative date with date.today anchor" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.DATE,
+        QueryOperator.WITHIN,
+        QueryValue.RelativeDate(
+          amount = 3,
+          unit = RelativeDateUnit.DAY,
+          direction = DateDirection.FUTURE,
+          anchor = "date.today",
+        ),
+      )
+    }
   })

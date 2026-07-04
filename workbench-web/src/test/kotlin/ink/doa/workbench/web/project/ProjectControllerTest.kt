@@ -1,25 +1,50 @@
 package ink.doa.workbench.web.project
 
+import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.SecurityConfiguration
+import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.service.project.ProjectManagementApplicationService
+import ink.doa.workbench.service.project.ProjectView
+import ink.doa.workbench.web.api.GlobalExceptionHandler
+import ink.doa.workbench.web.api.InfrastructureAspect
+import ink.doa.workbench.web.api.RequestContextResolver
+import ink.doa.workbench.web.api.TenantRequestContextResolver
+import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
+import ink.doa.workbench.web.support.TenantWebMvcFixtures
+import io.mockk.coEvery
 import io.mockk.mockk
+import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @WebMvcTest(ProjectController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
+  AopAutoConfiguration::class,
+  InfrastructureAspect::class,
+  RequestContextResolver::class,
+  TenantRequestContextResolver::class,
+  ink.doa.workbench.web.api.ProjectRequestContextResolver::class,
   ink.doa.workbench.web.support.ContextWebMvcSupport::class,
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
+  TenantScopedWebMvcSupport::class,
+  GlobalExceptionHandler::class,
   ProjectControllerTest.TestBeans::class,
 )
 class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
@@ -28,14 +53,76 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc.perform(get("/api/projects")).andExpect(status().isUnauthorized())
   }
 
+  @Test
+  fun `list projects returns visible projects for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/projects")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$[0].identifier").value("CORE"))
+      .andExpect(jsonPath("$[0].name").value("Core Platform"))
+  }
+
+  @Test
+  fun `create project returns created project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "identifier": "NEW",
+                "name": "New Project",
+                "description": "Created from test"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.identifier").value("NEW"))
+  }
+
+  @Test
+  fun `get project returns project for authenticated tenant user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.identifier").value("CORE"))
+  }
+
   @TestConfiguration
   class TestBeans {
-    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
-
     @Bean
     fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
       object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
-        override suspend fun authenticateSession(sessionId: String) = null
+        override suspend fun authenticateSession(sessionId: String) =
+          if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
@@ -45,10 +132,60 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
       }
 
     @Bean
-    fun clock(): java.time.Clock =
-      java.time.Clock.fixed(
-        java.time.Instant.parse("2026-07-04T00:00:00Z"),
-        java.time.ZoneOffset.UTC,
+    fun sessionService(): SessionService = mockk {
+      coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
+    }
+
+    @Bean
+    fun projectResolverSetup(resolver: ink.doa.workbench.agile.project.ProjectResolver): Boolean {
+      coEvery {
+        resolver.resolveProject(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+        )
+      } returns TenantWebMvcFixtures.PROJECT_RECORD
+      return true
+    }
+
+    @Bean
+    fun projectManagementServiceSetup(service: ProjectManagementApplicationService): Boolean {
+      coEvery {
+        service.list(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.USER_ID, null)
+      } returns listOf(SAMPLE_PROJECT)
+      coEvery { service.create(any(), TenantWebMvcFixtures.USER_ID) } returns
+        SAMPLE_PROJECT.copy(
+          identifier = "NEW",
+          name = "New Project",
+          description = "Created from test",
+        )
+      coEvery {
+        service.get(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.USER_ID,
+          TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+        )
+      } returns SAMPLE_PROJECT
+      return true
+    }
+  }
+
+  private companion object {
+    val SAMPLE_PROJECT =
+      ProjectView(
+        id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+        identifier = "CORE",
+        name = "Core Platform",
+        description = "Platform engineering",
+        status = "active",
+        nonMemberVisibility = "invisible",
+        nonMemberJoinPolicy = "admin_only",
+        lead =
+          UserSummary(
+            id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+            displayName = "Ada",
+            primaryEmail = "ada@example.test",
+          ),
+        archivedAt = null,
       )
   }
 }
