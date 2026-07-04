@@ -3,6 +3,7 @@ package ink.doa.workbench.agile.project
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.TenantMemberRepository
 import ink.doa.workbench.core.identity.UserRepository
@@ -114,25 +115,15 @@ class ProjectMemberService(
     return bindings.expire(tenantId, binding.id, OffsetDateTime.now(clock))
   }
 
-  @Suppress("ThrowsCount")
   suspend fun join(
     tenantId: UUID,
     projectId: UUID,
     userId: UUID,
     actorUserId: UUID?,
   ): ProjectMemberView {
-    val project =
-      projects.findById(tenantId, projectId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
-    if (project.nonMemberJoinPolicy != NonMemberJoinPolicy.OPEN) {
-      throw InvalidRequestException(WorkbenchErrorCode.PROJECT_SELF_JOIN_DISABLED)
-    }
+    requireOpenJoinProject(tenantId, projectId)
     val user = requireActiveTenantMember(tenantId, userId)
-    val memberPolicy =
-      policies.findByCode(tenantId, "project-member")
-        ?: throw ResourceNotFoundException(
-          WorkbenchErrorCode.RESOURCE_PROJECT_MEMBER_POLICY_NOT_FOUND
-        )
+    val memberPolicy = requireProjectMemberPolicy(tenantId)
     bindings.create(
       CreatePermissionBindingCommand(
         tenantId = tenantId,
@@ -147,6 +138,22 @@ class ProjectMemberService(
     )
     return listMembers(tenantId, projectId).single { it.user.id == user.apiId.value }
   }
+
+  private suspend fun requireOpenJoinProject(tenantId: UUID, projectId: UUID) {
+    val project =
+      projects.findById(tenantId, projectId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+    requireValid(
+      project.nonMemberJoinPolicy == NonMemberJoinPolicy.OPEN,
+      WorkbenchErrorCode.PROJECT_SELF_JOIN_DISABLED,
+    )
+  }
+
+  private suspend fun requireProjectMemberPolicy(tenantId: UUID) =
+    policies.findByCode(tenantId, "project-member")
+      ?: throw ResourceNotFoundException(
+        WorkbenchErrorCode.RESOURCE_PROJECT_MEMBER_POLICY_NOT_FOUND
+      )
 
   private suspend fun requireActiveTenantMember(tenantId: UUID, userId: UUID) =
     tenantMembers

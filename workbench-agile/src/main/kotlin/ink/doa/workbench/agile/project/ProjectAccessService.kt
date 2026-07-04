@@ -30,7 +30,6 @@ class ProjectAccessService(
   suspend fun isProjectMember(userId: UUID, tenantId: UUID, projectId: UUID): Boolean =
     bindings.listProjectIdsForSubject(tenantId, userId, now()).contains(projectId)
 
-  @Suppress("ReturnCount")
   suspend fun canViewProject(
     userId: UUID,
     tenantId: UUID,
@@ -42,7 +41,6 @@ class ProjectAccessService(
     return project.nonMemberVisibility != NonMemberVisibility.INVISIBLE
   }
 
-  @Suppress("ReturnCount")
   suspend fun allowsVisibilityAction(
     userId: UUID,
     tenantId: UUID,

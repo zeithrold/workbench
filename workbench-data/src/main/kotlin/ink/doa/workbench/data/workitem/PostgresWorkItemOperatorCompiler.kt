@@ -17,42 +17,56 @@ import kotlinx.serialization.json.doubleOrNull
 import org.postgresql.util.PGobject
 
 class PostgresWorkItemOperatorCompiler {
-  @Suppress("CyclomaticComplexMethod")
+  private data class CompileContext(
+    val valueSql: String,
+    val type: WorkItemQueryFieldType,
+    val value: QueryValue?,
+  )
+
+  private val operatorCompilers: Map<QueryOperator, (CompileContext) -> SqlFragment> =
+    mapOf(
+      QueryOperator.EQ to { ctx -> compare(ctx.valueSql, "=", ctx.value) },
+      QueryOperator.NEQ to { ctx -> compare(ctx.valueSql, "<>", ctx.value) },
+      QueryOperator.IN to { ctx -> arrayCompare(ctx.valueSql, "IN", ctx.value) },
+      QueryOperator.NOT_IN to { ctx -> arrayCompare(ctx.valueSql, "NOT IN", ctx.value) },
+      QueryOperator.LT to { ctx -> compare(ctx.valueSql, "<", ctx.value) },
+      QueryOperator.BEFORE to { ctx -> compare(ctx.valueSql, "<", ctx.value) },
+      QueryOperator.LTE to { ctx -> compare(ctx.valueSql, "<=", ctx.value) },
+      QueryOperator.ON_OR_BEFORE to { ctx -> compare(ctx.valueSql, "<=", ctx.value) },
+      QueryOperator.GT to { ctx -> compare(ctx.valueSql, ">", ctx.value) },
+      QueryOperator.AFTER to { ctx -> compare(ctx.valueSql, ">", ctx.value) },
+      QueryOperator.GTE to { ctx -> compare(ctx.valueSql, ">=", ctx.value) },
+      QueryOperator.ON_OR_AFTER to { ctx -> compare(ctx.valueSql, ">=", ctx.value) },
+      QueryOperator.BETWEEN to { ctx -> between(ctx.valueSql, ctx.value) },
+      QueryOperator.CONTAINS to
+        { ctx ->
+          contains(ctx.valueSql, ctx.type, ctx.value, negated = false)
+        },
+      QueryOperator.NOT_CONTAINS to
+        { ctx ->
+          contains(ctx.valueSql, ctx.type, ctx.value, negated = true)
+        },
+      QueryOperator.STARTS_WITH to { ctx -> like(ctx.valueSql, ctx.value, suffix = "%") },
+      QueryOperator.ENDS_WITH to { ctx -> like(ctx.valueSql, ctx.value, prefix = "%") },
+      QueryOperator.MATCHES to { ctx -> regex(ctx.valueSql, ctx.value) },
+      QueryOperator.IS_EMPTY to { ctx -> emptyCheck(ctx.valueSql, ctx.type, negated = false) },
+      QueryOperator.IS_NOT_EMPTY to { ctx -> emptyCheck(ctx.valueSql, ctx.type, negated = true) },
+      QueryOperator.WITHIN to { ctx -> within(ctx.valueSql, ctx.value) },
+      QueryOperator.HAS_ANY to { ctx -> jsonbArray(ctx.valueSql, "?|", ctx.value) },
+      QueryOperator.HAS_ALL to { ctx -> jsonbArray(ctx.valueSql, "?&", ctx.value) },
+      QueryOperator.HAS_NONE to
+        { ctx ->
+          val fragment = jsonbArray(ctx.valueSql, "?|", ctx.value)
+          SqlFragment("NOT (${fragment.sql})", fragment.params)
+        },
+    )
+
   fun compile(
     valueSql: String,
     type: WorkItemQueryFieldType,
     op: QueryOperator,
     value: QueryValue?,
-  ): SqlFragment =
-    when (op) {
-      QueryOperator.EQ -> compare(valueSql, "=", value)
-      QueryOperator.NEQ -> compare(valueSql, "<>", value)
-      QueryOperator.IN -> arrayCompare(valueSql, "IN", value)
-      QueryOperator.NOT_IN -> arrayCompare(valueSql, "NOT IN", value)
-      QueryOperator.LT,
-      QueryOperator.BEFORE -> compare(valueSql, "<", value)
-      QueryOperator.LTE,
-      QueryOperator.ON_OR_BEFORE -> compare(valueSql, "<=", value)
-      QueryOperator.GT,
-      QueryOperator.AFTER -> compare(valueSql, ">", value)
-      QueryOperator.GTE,
-      QueryOperator.ON_OR_AFTER -> compare(valueSql, ">=", value)
-      QueryOperator.BETWEEN -> between(valueSql, value)
-      QueryOperator.CONTAINS -> contains(valueSql, type, value, negated = false)
-      QueryOperator.NOT_CONTAINS -> contains(valueSql, type, value, negated = true)
-      QueryOperator.STARTS_WITH -> like(valueSql, value, suffix = "%")
-      QueryOperator.ENDS_WITH -> like(valueSql, value, prefix = "%")
-      QueryOperator.MATCHES -> regex(valueSql, value)
-      QueryOperator.IS_EMPTY -> emptyCheck(valueSql, type, negated = false)
-      QueryOperator.IS_NOT_EMPTY -> emptyCheck(valueSql, type, negated = true)
-      QueryOperator.WITHIN -> within(valueSql, value)
-      QueryOperator.HAS_ANY -> jsonbArray(valueSql, "?|", value)
-      QueryOperator.HAS_ALL -> jsonbArray(valueSql, "?&", value)
-      QueryOperator.HAS_NONE -> {
-        val fragment = jsonbArray(valueSql, "?|", value)
-        SqlFragment("NOT (${fragment.sql})", fragment.params)
-      }
-    }
+  ): SqlFragment = operatorCompilers.getValue(op)(CompileContext(valueSql, type, value))
 
   private fun compare(valueSql: String, operator: String, value: QueryValue?): SqlFragment {
     val operand = value.toOperand()

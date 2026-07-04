@@ -1,4 +1,4 @@
-@file:Suppress("UnusedParameter", "ThrowsCount")
+@file:Suppress("UnusedParameter")
 
 package ink.doa.workbench.security.identity.auth
 
@@ -44,28 +44,11 @@ class FederatedAuthService(
     returnUrl: String,
     redirectUri: String,
   ): FederatedAuthorizeResult {
-    val tenant =
-      tenants.findByApiId(tenantId)
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND,
-          "Unknown tenant: $tenantId",
-        )
-    val method =
-      loginMethods.findLoginMethodByApiId(loginMethodId)
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND,
-          "Unknown login method: $loginMethodId",
-        )
-    if (method.kind !in setOf(LoginMethodKind.OAUTH2, LoginMethodKind.OIDC, LoginMethodKind.SAML)) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.IDENTITY_FEDERATED_PROTOCOL_UNSUPPORTED,
-        "Login method $loginMethodId does not support federated authorize.",
-      )
-    }
-    val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
-    if (setting?.isEnabled != true) {
-      throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_DISABLED)
-    }
+    val tenant = requireTenantByApiId(tenants, tenantId)
+    val method = requireLoginMethodByApiId(loginMethods, loginMethodId)
+    requireFederatedMethod(method, loginMethodId)
+    val setting =
+      requireEnabledFederatedSetting(tenantLoginSettings.findTenantSetting(tenant.id, method.id))
 
     val state = secretGenerator.generate()
     val verifier = secretGenerator.generate()
@@ -101,34 +84,35 @@ class FederatedAuthService(
     state: String,
     redirectUri: String,
   ): FederatedLoginResult {
-    val now = OffsetDateTime.now(clock)
-    val loginState =
-      loginStates.findActiveByStateHash(credentialHasher.hash(state), now)
-        ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_FEDERATED_OAUTH_STATE_INVALID)
-    loginStates.consume(loginState.id, now)
-
-    val methodRecord =
-      loginMethods.findLoginMethodById(loginState.loginMethodId)
-        ?: throw InvalidRequestException(WorkbenchErrorCode.RESOURCE_LOGIN_METHOD_NOT_FOUND)
-    val setting =
-      tenantLoginSettings.findTenantSetting(loginState.tenantId, loginState.loginMethodId)
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.IDENTITY_TENANT_LOGIN_SETTINGS_NOT_FOUND
-        )
-    val config = setting.config as? JsonObject ?: JsonObject(emptyMap())
+    val context = loadOAuthCallbackContext(state)
+    val config = context.setting.config as? JsonObject ?: JsonObject(emptyMap())
     val tokenResponse =
       oauthClient.exchangeAuthorizationCode(
         config,
-        setting.secretRef,
+        context.setting.secretRef,
         code,
         redirectUri,
-        loginState.pkceVerifier,
+        context.loginState.pkceVerifier,
       )
-    val subject = oauthClient.resolveSubject(config, tokenResponse, methodRecord.kind)
+    val subject = oauthClient.resolveSubject(config, tokenResponse, context.methodRecord.kind)
     return FederatedLoginResult(
-      identity = resolveIdentity(methodRecord.code, subject, "federated"),
-      tenantId = loginState.tenantId,
+      identity = resolveIdentity(context.methodRecord.code, subject, "federated"),
+      tenantId = context.loginState.tenantId,
     )
+  }
+
+  private suspend fun loadOAuthCallbackContext(state: String): OAuthCallbackContext {
+    val now = OffsetDateTime.now(clock)
+    val loginState = requireActiveOAuthLoginState(loginStates, credentialHasher.hash(state), now)
+    loginStates.consume(loginState.id, now)
+    val methodRecord = requireLoginMethodByInternalId(loginMethods, loginState.loginMethodId)
+    val setting =
+      requireTenantLoginSetting(
+        tenantLoginSettings,
+        loginState.tenantId,
+        loginState.loginMethodId,
+      )
+    return OAuthCallbackContext(loginState, methodRecord, setting)
   }
 
   suspend fun completeSamlAcs(samlResponse: String, relayState: String): FederatedLoginResult {
@@ -175,4 +159,10 @@ data class FederatedAuthorizeResult(val authorizationUrl: String, val state: Str
 data class FederatedLoginResult(
   val identity: AuthenticatedIdentity,
   val tenantId: UUID,
+)
+
+private data class OAuthCallbackContext(
+  val loginState: ink.doa.workbench.core.identity.model.AuthLoginStateRecord,
+  val methodRecord: ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord,
+  val setting: ink.doa.workbench.core.identity.model.TenantLoginMethodSettingRecord,
 )

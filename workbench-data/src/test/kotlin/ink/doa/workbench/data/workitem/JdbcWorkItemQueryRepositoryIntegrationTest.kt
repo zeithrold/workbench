@@ -1,5 +1,3 @@
-@file:Suppress("LongMethod")
-
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.workitem.WorkItemSearchScope

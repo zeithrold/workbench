@@ -1,5 +1,3 @@
-@file:Suppress("LargeClass")
-
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException

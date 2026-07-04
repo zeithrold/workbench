@@ -1,5 +1,3 @@
-@file:Suppress("LongMethod")
-
 package ink.doa.workbench.data
 
 import io.kotest.core.spec.style.StringSpec

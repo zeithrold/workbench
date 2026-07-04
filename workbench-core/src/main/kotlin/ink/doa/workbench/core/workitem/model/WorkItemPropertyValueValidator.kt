@@ -13,26 +13,29 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 
 object WorkItemPropertyValueValidator {
-  @Suppress("CyclomaticComplexMethod")
+  private typealias PropertyValueValidator = (JsonElement) -> Boolean
+
+  private val validators: Map<WorkItemPropertyDataType, PropertyValueValidator> =
+    mapOf(
+      WorkItemPropertyDataType.TEXT to { it.isStringPrimitive() },
+      WorkItemPropertyDataType.LONG_TEXT to { it.isStringPrimitive() },
+      WorkItemPropertyDataType.URL to { it.isStringPrimitive() },
+      WorkItemPropertyDataType.DATE to { it.isStringPrimitive() && it.parsesAsDate() },
+      WorkItemPropertyDataType.DATETIME to { it.isStringPrimitive() && it.parsesAsDateTime() },
+      WorkItemPropertyDataType.USER to { it.isNonBlankStringPrimitive() },
+      WorkItemPropertyDataType.PROJECT to { it.isNonBlankStringPrimitive() },
+      WorkItemPropertyDataType.ISSUE to { it.isNonBlankStringPrimitive() },
+      WorkItemPropertyDataType.SINGLE_SELECT to { it.isNonBlankStringPrimitive() },
+      WorkItemPropertyDataType.NUMBER to { it is JsonPrimitive && it.doubleOrNull != null },
+      WorkItemPropertyDataType.BOOLEAN to { it is JsonPrimitive && it.booleanOrNull != null },
+      WorkItemPropertyDataType.MULTI_SELECT to { it.isArrayOfNonBlankStrings() },
+      WorkItemPropertyDataType.MULTI_USER to { it.isArrayOfNonBlankStrings() },
+      WorkItemPropertyDataType.JSON to { true },
+    )
+
   fun validate(property: IssueTypeConfigPropertyRecord, value: JsonElement) {
     if (value is JsonNull) return
-    val valid =
-      when (property.dataType) {
-        WorkItemPropertyDataType.TEXT,
-        WorkItemPropertyDataType.LONG_TEXT,
-        WorkItemPropertyDataType.URL -> value.isStringPrimitive()
-        WorkItemPropertyDataType.DATE -> value.isStringPrimitive() && parsesAsDate(value)
-        WorkItemPropertyDataType.DATETIME -> value.isStringPrimitive() && parsesAsDateTime(value)
-        WorkItemPropertyDataType.USER,
-        WorkItemPropertyDataType.PROJECT,
-        WorkItemPropertyDataType.ISSUE,
-        WorkItemPropertyDataType.SINGLE_SELECT -> value.isNonBlankStringPrimitive()
-        WorkItemPropertyDataType.NUMBER -> value is JsonPrimitive && value.doubleOrNull != null
-        WorkItemPropertyDataType.BOOLEAN -> value is JsonPrimitive && value.booleanOrNull != null
-        WorkItemPropertyDataType.MULTI_SELECT,
-        WorkItemPropertyDataType.MULTI_USER -> value.isArrayOfNonBlankStrings()
-        WorkItemPropertyDataType.JSON -> true
-      }
+    val valid = validators.getValue(property.dataType).invoke(value)
     if (!valid) {
       throw InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_PROPERTY_VALUE_INVALID,
@@ -50,9 +53,9 @@ object WorkItemPropertyValueValidator {
   private fun JsonElement.isArrayOfNonBlankStrings(): Boolean =
     this is JsonArray && all { it.isNonBlankStringPrimitive() }
 
-  private fun parsesAsDate(value: JsonElement): Boolean =
-    runCatching { LocalDate.parse((value as JsonPrimitive).content) }.isSuccess
+  private fun JsonElement.parsesAsDate(): Boolean =
+    runCatching { LocalDate.parse((this as JsonPrimitive).content) }.isSuccess
 
-  private fun parsesAsDateTime(value: JsonElement): Boolean =
-    runCatching { OffsetDateTime.parse((value as JsonPrimitive).content) }.isSuccess
+  private fun JsonElement.parsesAsDateTime(): Boolean =
+    runCatching { OffsetDateTime.parse((this as JsonPrimitive).content) }.isSuccess
 }
