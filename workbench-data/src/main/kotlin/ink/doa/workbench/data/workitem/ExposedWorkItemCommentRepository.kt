@@ -185,6 +185,7 @@ class ExposedWorkItemCommentRepository(private val database: Database) : WorkIte
           (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
             (IssuesTable.projectId eq projectId.toKotlinUuid()) and
             (IssuesTable.apiId eq workItemApiId) and
+            IssuesTable.archivedAt.isNull() and
             IssuesTable.deletedAt.isNull()
         }
         .singleOrNull()

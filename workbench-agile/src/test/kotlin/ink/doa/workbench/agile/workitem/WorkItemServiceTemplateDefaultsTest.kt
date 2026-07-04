@@ -8,6 +8,7 @@ import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
@@ -253,6 +254,36 @@ class WorkItemServiceTemplateDefaultsTest :
             )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+    }
+
+    "soft deletes work item through repository and publishes mutation event" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
+      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
+      val events = mockk<DomainEventPublisher>()
+      justRun { events.publish<Any>(any(), any(), any(), any()) }
+
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = config(defaultDueDate = false)
+      val issue = workItem(tenantId, projectId, config)
+      val command =
+        DeleteWorkItemCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          workItemApiId = issue.apiId.value,
+          actorUserId = actorId,
+          deleteReason = "No longer needed",
+        )
+      coEvery { repository.softDelete(command) } returns
+        WorkItemMutationResult(issue, "work_item.updated")
+
+      val result = workItemService(repository, configs, workflows, events, clock).delete(command)
+
+      result.workItem shouldBe issue
+      coVerify(exactly = 1) { repository.softDelete(command) }
+      coVerify(exactly = 1) { events.publish<Any>(any(), issue.apiId.value, any(), any()) }
     }
   })
 

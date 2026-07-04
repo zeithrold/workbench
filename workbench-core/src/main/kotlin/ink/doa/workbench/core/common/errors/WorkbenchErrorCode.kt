@@ -729,6 +729,10 @@ enum class WorkbenchErrorCode(
     "work_item.config.cross_tenant_reference",
     "Referenced work item configuration resource belongs to another tenant.",
   ),
+  WORK_ITEM_CONFIG_RESOURCE_IN_USE(
+    "work_item.config.resource_in_use",
+    "Work item configuration resource is still used by active configuration.",
+  ),
   WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN(
     "workflow.published_update_forbidden",
     "Published workflows cannot be updated in place.",

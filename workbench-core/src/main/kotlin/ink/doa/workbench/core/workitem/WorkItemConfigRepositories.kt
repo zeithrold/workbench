@@ -23,11 +23,23 @@ interface WorkItemCatalogRepository {
 
   suspend fun findStatus(tenantId: UUID, apiIdOrCode: String): IssueStatusRecord?
 
+  suspend fun deactivateStatus(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): IssueStatusRecord
+
   suspend fun createProperty(command: CreatePropertyDefinitionCommand): PropertyDefinitionRecord
 
   suspend fun listProperties(tenantId: UUID): List<PropertyDefinitionRecord>
 
   suspend fun findProperty(tenantId: UUID, apiIdOrCode: String): PropertyDefinitionRecord?
+
+  suspend fun deactivateProperty(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): PropertyDefinitionRecord
 
   suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord
 
@@ -38,6 +50,13 @@ interface WorkItemCatalogRepository {
     apiIdOrCode: String,
     projectId: UUID? = null,
   ): IssueTypeRecord?
+
+  suspend fun deactivateIssueType(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+    projectId: UUID? = null,
+  ): IssueTypeRecord
 }
 
 interface WorkflowConfigurationRepository {
@@ -46,6 +65,12 @@ interface WorkflowConfigurationRepository {
   suspend fun listWorkflows(tenantId: UUID): List<WorkflowRecord>
 
   suspend fun findWorkflow(tenantId: UUID, apiIdOrCode: String): WorkflowRecord?
+
+  suspend fun deactivateWorkflow(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): WorkflowRecord
 
   suspend fun publishWorkflow(
     tenantId: UUID,
@@ -58,6 +83,11 @@ interface WorkflowConfigurationRepository {
   suspend fun listTransitions(tenantId: UUID, workflowId: UUID): List<WorkflowTransitionRecord>
 
   suspend fun findTransition(tenantId: UUID, apiId: String): WorkflowTransitionRecord?
+
+  suspend fun deactivateTransition(
+    tenantId: UUID,
+    transitionApiId: String,
+  ): WorkflowTransitionRecord
 }
 
 interface IssueTypeConfigRepository {

@@ -40,7 +40,7 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     return query
   }
 
-  private fun parseCondition(element: JsonElement): ConditionNode {
+  fun parseCondition(element: JsonElement): ConditionNode {
     val obj = element.asObject("condition")
     val field = obj["field"]
     if (field != null) {

@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
 
 object WorkItemValueTemplateValidator {
   private val writableSystemFields = setOf("title", "description", "assignee", "priority", "sprint")
@@ -56,7 +57,8 @@ object WorkItemValueTemplateValidator {
       is TemplateValueExpression.Variable -> validateVariable(expression.name)
       is TemplateValueExpression.RelativeDate -> validateRelativeDate(expression, targetProperty)
       is TemplateValueExpression.Clear -> Unit
-      is TemplateValueExpression.Literal -> Unit
+      is TemplateValueExpression.Literal ->
+        targetProperty?.let { WorkItemPropertyValueValidator.validate(it, expression.value) }
     }
   }
 

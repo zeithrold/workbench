@@ -23,6 +23,7 @@ import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import ink.doa.workbench.core.workitem.template.TransitionFieldsValidator
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
@@ -39,11 +40,24 @@ class WorkItemCatalogService(private val repository: WorkItemCatalogRepository) 
   suspend fun listStatuses(tenantId: UUID): List<IssueStatusRecord> =
     repository.listStatuses(tenantId)
 
+  suspend fun deactivateStatus(
+    tenantId: UUID,
+    statusApiIdOrCode: String,
+    actorUserId: UUID,
+  ): IssueStatusRecord = repository.deactivateStatus(tenantId, statusApiIdOrCode, actorUserId)
+
   suspend fun createProperty(command: CreatePropertyDefinitionCommand): PropertyDefinitionRecord =
     repository.createProperty(command)
 
   suspend fun listProperties(tenantId: UUID): List<PropertyDefinitionRecord> =
     repository.listProperties(tenantId)
+
+  suspend fun deactivateProperty(
+    tenantId: UUID,
+    propertyApiIdOrCode: String,
+    actorUserId: UUID,
+  ): PropertyDefinitionRecord =
+    repository.deactivateProperty(tenantId, propertyApiIdOrCode, actorUserId)
 
   suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord {
     validateScope(command.scope, command.projectId)
@@ -52,14 +66,25 @@ class WorkItemCatalogService(private val repository: WorkItemCatalogRepository) 
 
   suspend fun listIssueTypes(tenantId: UUID, projectId: UUID? = null): List<IssueTypeRecord> =
     repository.listIssueTypes(tenantId, projectId)
+
+  suspend fun deactivateIssueType(
+    tenantId: UUID,
+    issueTypeApiIdOrCode: String,
+    actorUserId: UUID,
+    projectId: UUID? = null,
+  ): IssueTypeRecord =
+    repository.deactivateIssueType(tenantId, issueTypeApiIdOrCode, actorUserId, projectId)
 }
 
 @Service
 class WorkflowConfigurationService(
   private val repository: WorkflowConfigurationRepository,
   private val catalog: WorkItemCatalogRepository,
+  private val configs: IssueTypeConfigRepository,
   private val clock: Clock,
 ) {
+  private val transitionFieldsParser = TransitionFieldsParser()
+
   suspend fun createWorkflow(command: CreateWorkflowCommand): WorkflowRecord =
     repository.createWorkflow(command)
 
@@ -73,14 +98,82 @@ class WorkflowConfigurationService(
     return repository.publishWorkflow(tenantId, workflow.id, OffsetDateTime.now(clock))
   }
 
+  suspend fun deactivateWorkflow(
+    tenantId: UUID,
+    workflowApiIdOrCode: String,
+    actorUserId: UUID,
+  ): WorkflowRecord = repository.deactivateWorkflow(tenantId, workflowApiIdOrCode, actorUserId)
+
   suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord {
+    val workflow =
+      repository.findWorkflow(command.tenantId, command.workflowApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    if (workflow.publishedAt != null) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN)
+    }
     command.fromStatusApiId?.let { fromStatusApiId ->
       catalog.findStatus(command.tenantId, fromStatusApiId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
     }
     catalog.findStatus(command.tenantId, command.toStatusApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
-    return repository.createTransition(command)
+    validateTransitionAgainstActiveConfigs(command, workflow)
+    val canonicalCommand =
+      command.copy(
+        permissionCondition = WorkItemConditionJson.canonicalize(command.permissionCondition),
+        preconditionAst = WorkItemConditionJson.canonicalize(command.preconditionAst),
+      )
+    return repository.createTransition(canonicalCommand)
+  }
+
+  suspend fun deactivateTransition(
+    tenantId: UUID,
+    workflowApiIdOrCode: String,
+    transitionApiId: String,
+  ): WorkflowTransitionRecord {
+    val workflow =
+      repository.findWorkflow(tenantId, workflowApiIdOrCode)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    val transition =
+      repository.findTransition(tenantId, transitionApiId)
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
+        )
+    if (transition.workflowId != workflow.id) {
+      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND)
+    }
+    if (workflow.publishedAt != null) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN)
+    }
+    return repository.deactivateTransition(tenantId, transitionApiId)
+  }
+
+  private suspend fun validateTransitionAgainstActiveConfigs(
+    command: CreateWorkflowTransitionCommand,
+    workflow: WorkflowRecord,
+  ) {
+    val template = transitionFieldsParser.parse(command.fields)
+    val activeConfigs =
+      configs
+        .listConfigs(command.tenantId)
+        .filter {
+          it.config.workflowId == workflow.id && it.config.isActive && it.config.validTo == null
+        }
+    if (activeConfigs.isEmpty()) {
+      TransitionFieldsValidator.validateEnvelope(template)
+      return
+    }
+    activeConfigs.forEach { config ->
+      val statusIds = config.statuses.map { it.statusApiId.value }.toSet()
+      val fromStatusAvailable = command.fromStatusApiId == null || command.fromStatusApiId in statusIds
+      if (command.toStatusApiId !in statusIds || !fromStatusAvailable) {
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE,
+          "Transition references a status outside active type config ${config.config.apiId.value}.",
+        )
+      }
+      TransitionFieldsValidator.validate(template, config)
+    }
   }
 
   suspend fun listTransitions(

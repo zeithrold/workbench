@@ -65,6 +65,14 @@ data class UpdateWorkItemCommand(
   val actorUserId: UUID,
 )
 
+data class DeleteWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val actorUserId: UUID,
+  val deleteReason: String? = null,
+)
+
 data class TransitionWorkItemCommand(
   val tenantId: UUID,
   val projectId: UUID,

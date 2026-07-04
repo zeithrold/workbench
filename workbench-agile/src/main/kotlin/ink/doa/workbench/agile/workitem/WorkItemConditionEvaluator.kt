@@ -3,6 +3,11 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.core.workitem.query.ConditionNode
+import ink.doa.workbench.core.workitem.query.QueryField
+import ink.doa.workbench.core.workitem.query.QueryOperator
+import ink.doa.workbench.core.workitem.query.QueryValue
+import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
 import java.util.UUID
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -11,7 +16,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 data class WorkItemConditionContext(
   val workItem: WorkItemRecord,
@@ -22,62 +26,53 @@ data class WorkItemConditionContext(
 
 class WorkItemConditionEvaluator {
   fun evaluate(ast: JsonObject, context: WorkItemConditionContext): Boolean {
-    if (ast.isEmpty()) return true
-    return evaluateNode(ast, context)
+    val condition = WorkItemConditionJson.parse(ast) ?: return true
+    return evaluateNode(condition, context)
   }
 
-  private fun evaluateNode(node: JsonObject, context: WorkItemConditionContext): Boolean =
-    when {
-      "all" in node -> node.array("all").all { evaluateElement(it, context) }
-      "any" in node -> node.array("any").any { evaluateElement(it, context) }
-      "not" in node -> !evaluateElement(node.require("not"), context)
-      "field" in node -> evaluatePredicate(node, context)
-      else ->
-        throw InvalidRequestException(
-          WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-          "Condition node must contain all, any, not, or field.",
-        )
+  private fun evaluateNode(node: ConditionNode, context: WorkItemConditionContext): Boolean =
+    when (node) {
+      is ConditionNode.And -> node.args.all { evaluateNode(it, context) }
+      is ConditionNode.Or -> node.args.any { evaluateNode(it, context) }
+      is ConditionNode.Not -> !evaluateNode(node.arg, context)
+      is ConditionNode.Predicate -> evaluatePredicate(node, context)
     }
-
-  private fun evaluateElement(element: JsonElement, context: WorkItemConditionContext): Boolean =
-    evaluateNode(
-      element as? JsonObject
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-          "Condition child must be an object.",
-        ),
-      context,
-    )
 
   @Suppress("CyclomaticComplexMethod")
-  private fun evaluatePredicate(node: JsonObject, context: WorkItemConditionContext): Boolean {
-    val left = resolveField(node.string("field"), context)
-    val op = node.string("op").lowercase()
-    val right = node["value"]?.let { resolveValue(it, context) }
-    return when (op) {
-      "eq",
-      "==" -> scalar(left) == scalar(right)
-      "ne",
-      "!=" -> scalar(left) != scalar(right)
-      "in" -> node.array("value").map { scalar(resolveValue(it, context)) }.contains(scalar(left))
-      "not_in" ->
-        !node.array("value").map { scalar(resolveValue(it, context)) }.contains(scalar(left))
-      "exists" -> left != null && left !is JsonNull
-      "missing" -> left == null || left is JsonNull
-      "gt" -> number(left) > number(right)
-      "gte" -> number(left) >= number(right)
-      "lt" -> number(left) < number(right)
-      "lte" -> number(left) <= number(right)
+  private fun evaluatePredicate(predicate: ConditionNode.Predicate, context: WorkItemConditionContext): Boolean {
+    val left = resolveField(predicate.field, context)
+    val right = predicate.value?.let { resolveValue(it, context) }
+    return when (predicate.op) {
+      QueryOperator.EQ -> scalar(left) == scalar(right)
+      QueryOperator.NEQ -> scalar(left) != scalar(right)
+      QueryOperator.IN -> values(right).contains(scalar(left))
+      QueryOperator.NOT_IN -> !values(right).contains(scalar(left))
+      QueryOperator.IS_NOT_EMPTY -> left != null && left !is JsonNull
+      QueryOperator.IS_EMPTY -> left == null || left is JsonNull
+      QueryOperator.GT -> number(left) > number(right)
+      QueryOperator.GTE -> number(left) >= number(right)
+      QueryOperator.LT -> number(left) < number(right)
+      QueryOperator.LTE -> number(left) <= number(right)
+      QueryOperator.CONTAINS -> scalar(left)?.contains(scalar(right).orEmpty()) == true
+      QueryOperator.NOT_CONTAINS -> scalar(left)?.contains(scalar(right).orEmpty()) != true
+      QueryOperator.HAS_ANY -> arrayValues(left).any { it in values(right) }
+      QueryOperator.HAS_ALL -> values(right).all { it in arrayValues(left) }
+      QueryOperator.HAS_NONE -> arrayValues(left).none { it in values(right) }
       else ->
         throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-          "Unsupported condition operator: $op",
+          "Unsupported condition operator: ${predicate.op.wireName}",
         )
     }
   }
 
-  private fun resolveField(name: String, context: WorkItemConditionContext): JsonElement? =
-    when (name) {
+  private fun resolveField(field: QueryField, context: WorkItemConditionContext): JsonElement? {
+    if (field is QueryField.Property) {
+      return field.apiId?.let { context.properties[it] ?: context.workItem.properties[it] }
+        ?: field.code?.let { context.properties[it] ?: context.workItem.properties[it] }
+    }
+    val name = field.canonicalName.removePrefix("property.")
+    return when (name) {
       "actor",
       "actorId" -> JsonPrimitive(context.actorUserId.toString())
       "reporter",
@@ -96,19 +91,38 @@ class WorkItemConditionEvaluator {
       "children.notDone" -> JsonPrimitive(context.childIssuesNotDone)
       else -> context.properties[name] ?: context.workItem.properties[name]
     }
+  }
 
-  private fun resolveValue(value: JsonElement, context: WorkItemConditionContext): JsonElement =
-    if (value is JsonPrimitive && value.isString) {
-      when (value.content) {
-        "user.currentUser" -> JsonPrimitive(context.actorUserId.toString())
-        "issue.reporter" -> JsonPrimitive(context.workItem.reporterId.toString())
-        "issue.assignee" ->
-          context.workItem.assigneeId?.let { JsonPrimitive(it.toString()) } ?: JsonNull
-        else -> value
-      }
-    } else {
-      value
+  private fun resolveValue(value: QueryValue, context: WorkItemConditionContext): JsonElement =
+    when (value) {
+      is QueryValue.Literal -> value.value
+      is QueryValue.Variable ->
+        when (value.name) {
+          "user.currentUser" -> JsonPrimitive(context.actorUserId.toString())
+          "issue.reporter" -> JsonPrimitive(context.workItem.reporterId.toString())
+          "issue.assignee" ->
+            context.workItem.assigneeId?.let { JsonPrimitive(it.toString()) } ?: JsonNull
+          else ->
+            throw InvalidRequestException(
+              WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
+              "Unsupported condition variable: ${value.name}",
+            )
+        }
+      else ->
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
+          "Unsupported condition value.",
+        )
     }
+
+  private fun values(value: JsonElement?): List<String?> =
+    when (value) {
+      is JsonArray -> value.map { scalar(it) }
+      else -> listOf(scalar(value))
+    }
+
+  private fun arrayValues(value: JsonElement?): List<String?> =
+    (value as? JsonArray)?.map { scalar(it) } ?: emptyList()
 
   private fun scalar(value: JsonElement?): String? =
     when (value) {
@@ -123,26 +137,5 @@ class WorkItemConditionEvaluator {
       ?: throw InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
         "Condition value must be numeric.",
-      )
-
-  private fun JsonObject.require(name: String): JsonElement =
-    this[name]
-      ?: throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-        "Condition missing '$name'.",
-      )
-
-  private fun JsonObject.string(name: String): String =
-    require(name).jsonPrimitive.contentOrNull
-      ?: throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-        "Condition '$name' must be a string.",
-      )
-
-  private fun JsonObject.array(name: String): JsonArray =
-    require(name) as? JsonArray
-      ?: throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_CONDITION_UNSUPPORTED,
-        "Condition '$name' must be an array.",
       )
 }

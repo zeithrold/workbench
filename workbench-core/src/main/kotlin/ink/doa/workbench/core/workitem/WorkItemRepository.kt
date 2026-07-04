@@ -2,6 +2,7 @@ package ink.doa.workbench.core.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
@@ -53,6 +54,8 @@ interface WorkItemRepository {
     transitionId: UUID,
     propertyValues: List<WorkItemPropertyValue>,
   ): WorkItemMutationResult
+
+  suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult
 
   suspend fun countChildrenNotInStatusGroups(
     tenantId: UUID,

@@ -12,14 +12,15 @@ import ink.doa.workbench.core.workitem.events.WorkItemDomainEvents
 import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
 import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
@@ -28,14 +29,9 @@ import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
 import ink.doa.workbench.core.workitem.template.toWirePath
 import java.time.Clock
 import java.util.UUID
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
 import org.springframework.stereotype.Service
 
 @Service
@@ -193,6 +189,9 @@ class WorkItemService(
     return repository.update(effectiveCommand, values).also { publish(it) }
   }
 
+  suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =
+    repository.softDelete(command).also { publish(it) }
+
   suspend fun availableTransitions(
     tenantId: UUID,
     projectId: UUID,
@@ -209,7 +208,7 @@ class WorkItemService(
       .listTransitions(tenantId, config.config.workflowId)
       .filter { it.fromStatusId == null || it.fromStatusId == issue.statusId }
       .map { transition ->
-        val fieldsTemplate = transitionFieldsParser.parse(transition.fields)
+        val fieldsTemplate = runCatching { transitionFieldsParser.parse(transition.fields) }
         val templateContext =
           templateContext(
             tenantId = tenantId,
@@ -218,23 +217,55 @@ class WorkItemService(
             workItem = issue,
             currentProperties = currentProperties,
           )
+        val targetStatusAvailable = transition.toStatusId in config.statuses.map { it.statusId }.toSet()
+        val permissionCondition =
+          checkCondition(
+            transition.permissionCondition,
+            context,
+            failedReason = "Transition permission condition is not satisfied.",
+            invalidReason = "Transition permission condition is invalid.",
+          )
+        val precondition =
+          checkCondition(
+            transition.preconditionAst,
+            context,
+            failedReason = "Transition precondition is not satisfied.",
+            invalidReason = "Transition precondition is invalid.",
+          )
         val enabled =
-          canUseTransition(transition.permissionCondition, context) &&
-            canUseTransition(transition.preconditionAst, context) &&
-            transition.toStatusId in config.statuses.map { it.statusId }.toSet()
+          targetStatusAvailable &&
+            permissionCondition.enabled &&
+            precondition.enabled &&
+            fieldsTemplate.isSuccess
         val editableFields =
-          fieldsTemplate.fields
-            .filter { (field, spec) ->
+          fieldsTemplate
+            .getOrNull()
+            ?.fields
+            ?.filter { (field, spec) ->
               fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
             }
-            .map { (field, _) -> field.toWirePath() }
+            ?.map { (field, _) -> field.toWirePath() }
+            .orEmpty()
         val fieldMeta =
-          fieldMutationReconciler.buildFieldMeta(
-            template = fieldsTemplate,
-            config = config,
-            templateContext = templateContext,
-            permissionContext = permissionContext,
-          )
+          fieldsTemplate
+            .getOrNull()
+            ?.let {
+              fieldMutationReconciler.buildFieldMeta(
+                template = it,
+                config = config,
+                templateContext = templateContext,
+                permissionContext = permissionContext,
+              )
+            }
+            .orEmpty()
+        val reason =
+          when {
+            !targetStatusAvailable -> "Transition target status is not available in this type config."
+            permissionCondition.reason != null -> permissionCondition.reason
+            precondition.reason != null -> precondition.reason
+            fieldsTemplate.isFailure -> "Transition field requirements are invalid."
+            else -> null
+          }
         WorkItemTransitionOption(
           id = transition.apiId,
           name = transition.name,
@@ -245,12 +276,14 @@ class WorkItemService(
                 WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND
               ),
           enabled = enabled,
-          reason = if (enabled) null else "Transition conditions are not satisfied.",
+          reason = reason,
           fields = transition.fields,
           editableFields = editableFields,
           fieldMeta = fieldMeta,
           commentMeta =
-            fieldMutationReconciler.buildCommentMeta(fieldsTemplate.comment, templateContext),
+            fieldsTemplate
+              .getOrNull()
+              ?.let { fieldMutationReconciler.buildCommentMeta(it.comment, templateContext) },
         )
       }
   }
@@ -370,8 +403,17 @@ class WorkItemService(
         repository.countChildrenNotInStatusGroups(issue.tenantId, issue.id, setOf("done")),
     )
 
-  private fun canUseTransition(ast: JsonObject, context: WorkItemConditionContext): Boolean =
-    runCatching { conditions.evaluate(ast, context) }.getOrDefault(false)
+  private fun checkCondition(
+    ast: JsonObject,
+    context: WorkItemConditionContext,
+    failedReason: String,
+    invalidReason: String,
+  ): TransitionConditionCheck =
+    runCatching { conditions.evaluate(ast, context) }
+      .fold(
+        onSuccess = { TransitionConditionCheck(it, if (it) null else failedReason) },
+        onFailure = { TransitionConditionCheck(false, invalidReason) },
+      )
 
   private suspend fun requireConfig(tenantId: UUID, configApiId: String): IssueTypeConfigDetails =
     configs.findConfig(tenantId, configApiId)
@@ -397,41 +439,13 @@ class WorkItemService(
             WorkbenchErrorCode.WORK_ITEM_PROPERTY_UNAVAILABLE,
             "Property is not available in this config: $key",
           )
-      validateValue(property, value)
+      WorkItemPropertyValueValidator.validate(property, value)
       WorkItemPropertyValue(
         propertyId = property.propertyId,
         propertyApiId = property.propertyApiId,
         code = property.code,
         dataType = property.dataType,
         value = value,
-      )
-    }
-  }
-
-  private fun validateValue(property: IssueTypeConfigPropertyRecord, value: JsonElement) {
-    if (value is JsonNull) return
-    val valid =
-      when (property.dataType) {
-        WorkItemPropertyDataType.TEXT,
-        WorkItemPropertyDataType.LONG_TEXT,
-        WorkItemPropertyDataType.DATE,
-        WorkItemPropertyDataType.DATETIME,
-        WorkItemPropertyDataType.URL,
-        WorkItemPropertyDataType.USER,
-        WorkItemPropertyDataType.PROJECT,
-        WorkItemPropertyDataType.ISSUE,
-        WorkItemPropertyDataType.SINGLE_SELECT ->
-          value is JsonPrimitive && value.contentOrNull != null
-        WorkItemPropertyDataType.NUMBER -> value is JsonPrimitive && value.doubleOrNull != null
-        WorkItemPropertyDataType.BOOLEAN -> value is JsonPrimitive && value.booleanOrNull != null
-        WorkItemPropertyDataType.MULTI_SELECT,
-        WorkItemPropertyDataType.MULTI_USER -> value is JsonArray
-        WorkItemPropertyDataType.JSON -> true
-      }
-    if (!valid) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_PROPERTY_VALUE_INVALID,
-        "Invalid value for property ${property.code}.",
       )
     }
   }
@@ -541,6 +555,8 @@ class WorkItemService(
     filterKeys {
       it !in systemTemplateFields
     }
+
+  private data class TransitionConditionCheck(val enabled: Boolean, val reason: String?)
 
   private companion object {
     val systemTemplateFields = setOf("title", "description", "assignee", "priority", "sprint")
