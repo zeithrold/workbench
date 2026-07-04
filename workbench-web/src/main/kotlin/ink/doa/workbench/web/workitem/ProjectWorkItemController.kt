@@ -12,6 +12,7 @@ import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
 import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
@@ -165,6 +166,29 @@ class ProjectWorkItemController(
         .update(request.toCommand(projectContext, workItemId, actorUserId(projectContext)))
         .workItem
     )
+
+  @DeleteMapping("/{workItemId}")
+  @Authenticated
+  @TenantScoped
+  @ProjectScoped
+  @Authorize(action = "issue.delete", resource = "issue")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Delete a work item")
+  suspend fun delete(
+    @PathVariable @ResourceId workItemId: String,
+    @RequestBody(required = false) request: DeleteWorkItemRequest?,
+    projectContext: ProjectRequestContext,
+  ) {
+    service.delete(
+      DeleteWorkItemCommand(
+        tenantId = projectContext.tenant.id,
+        projectId = projectContext.project.id,
+        workItemApiId = workItemId,
+        actorUserId = actorUserId(projectContext),
+        deleteReason = request?.deleteReason,
+      )
+    )
+  }
 
   @GetMapping("/{workItemId}/transitions")
   @Authenticated
@@ -385,6 +409,8 @@ data class TransitionWorkItemRequest(
       properties = properties.toJsonObject().toMap(),
     )
 }
+
+data class DeleteWorkItemRequest(val deleteReason: String? = null)
 
 data class WorkItemSearchRequest(
   val query: JsonNode,

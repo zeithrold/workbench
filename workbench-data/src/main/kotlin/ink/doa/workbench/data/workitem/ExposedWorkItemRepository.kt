@@ -7,6 +7,7 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
@@ -128,6 +129,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         .where {
           (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
             (IssuesTable.apiId eq apiId) and
+            IssuesTable.archivedAt.isNull() and
             IssuesTable.deletedAt.isNull()
         }
         .singleOrNull()
@@ -145,6 +147,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
           (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
             (IssuesTable.projectId eq projectId.toKotlinUuid()) and
             (IssuesTable.apiId eq apiId) and
+            IssuesTable.archivedAt.isNull() and
             IssuesTable.deletedAt.isNull()
         }
         .singleOrNull()
@@ -162,6 +165,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         .where {
           (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
             (IssuesTable.projectId eq projectId.toKotlinUuid()) and
+            IssuesTable.archivedAt.isNull() and
             IssuesTable.deletedAt.isNull()
         }
         .orderBy(IssuesTable.updatedAt to SortOrder.DESC)
@@ -282,6 +286,28 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
       )
     }
 
+  override suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult =
+    suspendTransaction(db = database) {
+      val issue = requireIssueRow(command.tenantId, command.projectId, command.workItemApiId)
+      val now = now()
+      IssuesTable.update({ IssuesTable.id eq issue[IssuesTable.id] }) {
+        it[IssuesTable.deletedAt] = now
+        it[IssuesTable.deletedBy] = command.actorUserId.toKotlinUuid()
+        it[IssuesTable.deleteReason] = command.deleteReason
+        it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
+        it[IssuesTable.updatedAt] = now
+      }
+      val deleted =
+        IssuesTable.selectAll()
+          .where { IssuesTable.id eq issue[IssuesTable.id] }
+          .single()
+          .toWorkItemRecord()
+      WorkItemMutationResult(
+        workItem = deleted,
+        eventType = "work_item.updated",
+      )
+    }
+
   override suspend fun countChildrenNotInStatusGroups(
     tenantId: UUID,
     issueId: UUID,
@@ -346,6 +372,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
           (IssuesTable.projectId eq projectId.toKotlinUuid()) and
           (IssuesTable.apiId eq apiId) and
+          IssuesTable.archivedAt.isNull() and
           IssuesTable.deletedAt.isNull()
       }
       .singleOrNull()

@@ -46,6 +46,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -97,6 +98,23 @@ class WorkItemConfigurationController(
       )
     )
 
+  @PatchMapping("/statuses/{statusId}/deactivate")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Operation(summary = "Deactivate work item status")
+  suspend fun deactivateStatus(
+    @PathVariable statusId: String,
+    tenantContext: TenantRequestContext,
+  ): IssueStatusResponse =
+    IssueStatusResponse.from(
+      catalog.deactivateStatus(
+        tenantContext.tenant.id,
+        statusId,
+        actorUserId(tenantContext),
+      )
+    )
+
   @GetMapping("/properties")
   @Authenticated
   @TenantScoped
@@ -129,6 +147,23 @@ class WorkItemConfigurationController(
           validationSchema = request.validationSchema.toJsonObject(objectMapper),
           searchConfig = request.searchConfig.toJsonObject(objectMapper),
         )
+      )
+    )
+
+  @PatchMapping("/properties/{propertyId}/deactivate")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Operation(summary = "Deactivate work item property")
+  suspend fun deactivateProperty(
+    @PathVariable propertyId: String,
+    tenantContext: TenantRequestContext,
+  ): PropertyDefinitionResponse =
+    PropertyDefinitionResponse.from(
+      catalog.deactivateProperty(
+        tenantContext.tenant.id,
+        propertyId,
+        actorUserId(tenantContext),
       )
     )
 
@@ -168,6 +203,23 @@ class WorkItemConfigurationController(
       )
     )
   }
+
+  @PatchMapping("/types/{typeId}/deactivate")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "work_item_config.manage", resource = "work_item_config")
+  @Operation(summary = "Deactivate work item type")
+  suspend fun deactivateType(
+    @PathVariable typeId: String,
+    tenantContext: TenantRequestContext,
+  ): IssueTypeResponse =
+    IssueTypeResponse.from(
+      catalog.deactivateIssueType(
+        tenantContext.tenant.id,
+        typeId,
+        actorUserId(tenantContext),
+      )
+    )
 
   @GetMapping("/type-configs")
   @Authenticated
@@ -228,6 +280,10 @@ class WorkItemConfigurationController(
       )
     )
   }
+
+  private fun actorUserId(tenantContext: TenantRequestContext) =
+    tenantContext.actor?.id
+      ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
 }
 
 @RestController
@@ -281,6 +337,23 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
   ): WorkflowResponse =
     WorkflowResponse.from(workflows.publishWorkflow(tenantContext.tenant.id, id))
 
+  @PatchMapping("/{id}/deactivate")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "workflow.manage", resource = "workflow")
+  @Operation(summary = "Deactivate workflow")
+  suspend fun deactivate(
+    @PathVariable id: String,
+    tenantContext: TenantRequestContext,
+  ): WorkflowResponse =
+    WorkflowResponse.from(
+      workflows.deactivateWorkflow(
+        tenantContext.tenant.id,
+        id,
+        actorUserId(tenantContext),
+      )
+    )
+
   @GetMapping("/{id}/transitions")
   @Authenticated
   @TenantScoped
@@ -318,6 +391,28 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
         )
       )
     )
+
+  @PatchMapping("/{id}/transitions/{transitionId}/deactivate")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "workflow.manage", resource = "workflow")
+  @Operation(summary = "Deactivate workflow transition")
+  suspend fun deactivateTransition(
+    @PathVariable id: String,
+    @PathVariable transitionId: String,
+    tenantContext: TenantRequestContext,
+  ): WorkflowTransitionResponse =
+    WorkflowTransitionResponse.from(
+      workflows.deactivateTransition(
+        tenantId = tenantContext.tenant.id,
+        workflowApiIdOrCode = id,
+        transitionApiId = transitionId,
+      )
+    )
+
+  private fun actorUserId(tenantContext: TenantRequestContext) =
+    tenantContext.actor?.id
+      ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
 }
 
 @RestController

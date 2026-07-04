@@ -7,6 +7,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -43,6 +44,39 @@ class WorkItemConditionEvaluatorTest :
         ast,
         WorkItemConditionContext(issue, actorId, properties = emptyMap(), childIssuesNotDone = 1),
       ) shouldBe false
+    }
+
+    "evaluates query style condition ast and variables" {
+      val ast =
+        JsonObject(
+          mapOf(
+            "op" to JsonPrimitive("and"),
+            "args" to
+              JsonArray(
+                listOf(
+                  JsonObject(
+                    mapOf(
+                      "field" to JsonPrimitive("assignee"),
+                      "op" to JsonPrimitive("eq"),
+                      "value" to JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+                    )
+                  ),
+                  JsonObject(
+                    mapOf(
+                      "field" to JsonPrimitive("statusGroup"),
+                      "op" to JsonPrimitive("eq"),
+                      "value" to JsonPrimitive("todo"),
+                    )
+                  ),
+                )
+              ),
+          )
+        )
+
+      evaluator.evaluate(
+        ast,
+        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
+      ) shouldBe true
     }
   })
 

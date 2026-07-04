@@ -1,5 +1,6 @@
 package ink.doa.workbench.data.workitem
 
+import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
@@ -106,6 +107,34 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         ?.toIssueStatusRecord()
     }
 
+  override suspend fun deactivateStatus(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): IssueStatusRecord =
+    suspendTransaction(db = database) {
+      val row =
+        IssueStatusesTable.selectAll()
+          .where {
+            (IssueStatusesTable.tenantId eq tenantId.toKotlinUuid()) and
+              ((IssueStatusesTable.apiId eq apiIdOrCode) or
+                (IssueStatusesTable.code eq apiIdOrCode)) and
+              (IssueStatusesTable.isActive eq true)
+          }
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND)
+      rejectIfActiveConfigsUseStatus(tenantId, row[IssueStatusesTable.id].toJavaUuid())
+      val now = now()
+      IssueStatusesTable.update({ IssueStatusesTable.id eq row[IssueStatusesTable.id] }) {
+        it[IssueStatusesTable.isActive] = false
+        it[IssueStatusesTable.updatedAt] = now
+      }
+      IssueStatusesTable.selectAll()
+        .where { IssueStatusesTable.id eq row[IssueStatusesTable.id] }
+        .single()
+        .toIssueStatusRecord()
+    }
+
   override suspend fun createProperty(
     command: CreatePropertyDefinitionCommand
   ): PropertyDefinitionRecord =
@@ -161,6 +190,36 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         ?.toPropertyDefinitionRecord()
     }
 
+  override suspend fun deactivateProperty(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): PropertyDefinitionRecord =
+    suspendTransaction(db = database) {
+      val row =
+        PropertyDefinitionsTable.selectAll()
+          .where {
+            (PropertyDefinitionsTable.tenantId eq tenantId.toKotlinUuid()) and
+              ((PropertyDefinitionsTable.apiId eq apiIdOrCode) or
+                (PropertyDefinitionsTable.code eq apiIdOrCode)) and
+              (PropertyDefinitionsTable.isActive eq true)
+          }
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND
+          )
+      rejectIfActiveConfigsUseProperty(tenantId, row[PropertyDefinitionsTable.id].toJavaUuid())
+      val now = now()
+      PropertyDefinitionsTable.update({ PropertyDefinitionsTable.id eq row[PropertyDefinitionsTable.id] }) {
+        it[PropertyDefinitionsTable.isActive] = false
+        it[PropertyDefinitionsTable.updatedAt] = now
+      }
+      PropertyDefinitionsTable.selectAll()
+        .where { PropertyDefinitionsTable.id eq row[PropertyDefinitionsTable.id] }
+        .single()
+        .toPropertyDefinitionRecord()
+    }
+
   override suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
@@ -214,6 +273,30 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       findIssueTypeRow(tenantId, apiIdOrCode, projectId)?.toIssueTypeRecord()
     }
 
+  override suspend fun deactivateIssueType(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+    projectId: UUID?,
+  ): IssueTypeRecord =
+    suspendTransaction(db = database) {
+      val row =
+        findIssueTypeRow(tenantId, apiIdOrCode, projectId)
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND)
+      rejectIfActiveConfigsUseIssueType(tenantId, row[IssueTypesTable.id].toJavaUuid())
+      val now = now()
+      IssueTypesTable.update({ IssueTypesTable.id eq row[IssueTypesTable.id] }) {
+        it[IssueTypesTable.isActive] = false
+        it[IssueTypesTable.archivedAt] = now
+        it[IssueTypesTable.archivedBy] = actorUserId.toKotlinUuid()
+        it[IssueTypesTable.updatedAt] = now
+      }
+      IssueTypesTable.selectAll()
+        .where { IssueTypesTable.id eq row[IssueTypesTable.id] }
+        .single()
+        .toIssueTypeRecord()
+    }
+
   override suspend fun createWorkflow(command: CreateWorkflowCommand): WorkflowRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
@@ -262,6 +345,38 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         .limit(1)
         .singleOrNull()
         ?.toWorkflowRecord()
+    }
+
+  override suspend fun deactivateWorkflow(
+    tenantId: UUID,
+    apiIdOrCode: String,
+    actorUserId: UUID,
+  ): WorkflowRecord =
+    suspendTransaction(db = database) {
+      val row =
+        WorkflowsTable.selectAll()
+          .where {
+            (WorkflowsTable.tenantId eq tenantId.toKotlinUuid()) and
+              ((WorkflowsTable.apiId eq apiIdOrCode) or (WorkflowsTable.code eq apiIdOrCode)) and
+              (WorkflowsTable.isActive eq true) and
+              WorkflowsTable.deletedAt.isNull()
+          }
+          .orderBy(WorkflowsTable.version to SortOrder.DESC)
+          .limit(1)
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+      rejectIfActiveConfigsUseWorkflow(tenantId, row[WorkflowsTable.id].toJavaUuid())
+      val now = now()
+      WorkflowsTable.update({ WorkflowsTable.id eq row[WorkflowsTable.id] }) {
+        it[WorkflowsTable.isActive] = false
+        it[WorkflowsTable.archivedAt] = now
+        it[WorkflowsTable.archivedBy] = actorUserId.toKotlinUuid()
+        it[WorkflowsTable.updatedAt] = now
+      }
+      WorkflowsTable.selectAll()
+        .where { WorkflowsTable.id eq row[WorkflowsTable.id] }
+        .single()
+        .toWorkflowRecord()
     }
 
   override suspend fun publishWorkflow(
@@ -350,6 +465,33 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
         }
         .singleOrNull()
         ?.toWorkflowTransitionRecord()
+    }
+
+  override suspend fun deactivateTransition(
+    tenantId: UUID,
+    transitionApiId: String,
+  ): WorkflowTransitionRecord =
+    suspendTransaction(db = database) {
+      val row =
+        WorkflowTransitionsTable.selectAll()
+          .where {
+            (WorkflowTransitionsTable.tenantId eq tenantId.toKotlinUuid()) and
+              (WorkflowTransitionsTable.apiId eq transitionApiId) and
+              (WorkflowTransitionsTable.isActive eq true)
+          }
+          .singleOrNull()
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
+          )
+      val now = now()
+      WorkflowTransitionsTable.update({ WorkflowTransitionsTable.id eq row[WorkflowTransitionsTable.id] }) {
+        it[WorkflowTransitionsTable.isActive] = false
+        it[WorkflowTransitionsTable.updatedAt] = now
+      }
+      WorkflowTransitionsTable.selectAll()
+        .where { WorkflowTransitionsTable.id eq row[WorkflowTransitionsTable.id] }
+        .single()
+        .toWorkflowTransitionRecord()
     }
 
   override suspend fun createConfig(command: CreateIssueTypeConfigCommand): IssueTypeConfigDetails =
@@ -538,6 +680,73 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
       it[IssueTypeConfigsTable.isActive] = false
       it[IssueTypeConfigsTable.validTo] = closedAt
       it[IssueTypeConfigsTable.updatedAt] = closedAt
+    }
+  }
+
+  private fun rejectIfActiveConfigsUseStatus(tenantId: UUID, statusId: UUID) {
+    val inUse =
+      (IssueTypeConfigStatusesTable innerJoin IssueTypeConfigsTable)
+        .selectAll()
+        .where {
+          (IssueTypeConfigStatusesTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssueTypeConfigStatusesTable.statusId eq statusId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.isActive eq true) and
+            IssueTypeConfigsTable.validTo.isNull()
+        }
+        .limit(1)
+        .singleOrNull() != null
+    rejectIfInUse(inUse, "Status is still used by an active issue type config.")
+  }
+
+  private fun rejectIfActiveConfigsUseProperty(tenantId: UUID, propertyId: UUID) {
+    val inUse =
+      (IssueTypeConfigPropertiesTable innerJoin IssueTypeConfigsTable)
+        .selectAll()
+        .where {
+          (IssueTypeConfigPropertiesTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssueTypeConfigPropertiesTable.propertyId eq propertyId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.isActive eq true) and
+            IssueTypeConfigsTable.validTo.isNull()
+        }
+        .limit(1)
+        .singleOrNull() != null
+    rejectIfInUse(inUse, "Property is still used by an active issue type config.")
+  }
+
+  private fun rejectIfActiveConfigsUseIssueType(tenantId: UUID, issueTypeId: UUID) {
+    val inUse =
+      IssueTypeConfigsTable.selectAll()
+        .where {
+          (IssueTypeConfigsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.issueTypeId eq issueTypeId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.isActive eq true) and
+            IssueTypeConfigsTable.validTo.isNull()
+        }
+        .limit(1)
+        .singleOrNull() != null
+    rejectIfInUse(inUse, "Issue type is still used by an active issue type config.")
+  }
+
+  private fun rejectIfActiveConfigsUseWorkflow(tenantId: UUID, workflowId: UUID) {
+    val inUse =
+      IssueTypeConfigsTable.selectAll()
+        .where {
+          (IssueTypeConfigsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.workflowId eq workflowId.toKotlinUuid()) and
+            (IssueTypeConfigsTable.isActive eq true) and
+            IssueTypeConfigsTable.validTo.isNull()
+        }
+        .limit(1)
+        .singleOrNull() != null
+    rejectIfInUse(inUse, "Workflow is still used by an active issue type config.")
+  }
+
+  private fun rejectIfInUse(inUse: Boolean, message: String) {
+    if (inUse) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_CONFIG_RESOURCE_IN_USE,
+        message,
+      )
     }
   }
 
