@@ -8,9 +8,13 @@ import ink.doa.workbench.core.permission.CreatePermissionGroupCommand
 import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
 import ink.doa.workbench.core.permission.PermissionPrincipalType
+import ink.doa.workbench.core.permission.UpdatePermissionGroupCommand
+import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.model.AuthorizationAction
+import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.data.identity.ExposedUserRepository
 import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.project.ExposedProjectRepository
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -144,6 +148,154 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
           )
 
         rules.single().action.code shouldBe "project.read"
+      }
+    }
+
+    "project bindings resolve project ids for subject" {
+      withPermissionPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val projects = ExposedProjectRepository(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val bindings = ExposedPermissionBindingRepository(database)
+        val user = users.create(CreateUserCommand("Cara", "cara-permissions@example.test"))
+        val project =
+          projects.create(
+            CreateProjectCommand(
+              tenantId = tenantId,
+              identifier = "WB",
+              name = "Workbench",
+              description = null,
+              createdBy = user.id,
+              leadUserId = user.id,
+            )
+          )
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "project-member",
+              name = "Project Member",
+              description = null,
+            )
+          )
+        policies.addRule(
+          CreatePermissionPolicyRuleCommand(
+            policyId = policy.id,
+            action = AuthorizationAction("project.read"),
+            resourcePattern = "project:*",
+          )
+        )
+        bindings.create(
+          CreatePermissionBindingCommand(
+            tenantId = tenantId,
+            projectId = project.id,
+            principalType = PermissionPrincipalType.USER,
+            principalUserId = user.id,
+            principalGroupId = null,
+            policyId = policy.id,
+            validFrom = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1),
+            createdBy = user.id,
+          )
+        )
+
+        bindings.listProjectIdsForSubject(
+          tenantId = tenantId,
+          subjectUserId = user.id,
+          at = OffsetDateTime.now(ZoneOffset.UTC),
+        ) shouldBe setOf(project.id)
+      }
+    }
+
+    "policy and group update persist renamed metadata" {
+      withPermissionPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val groups = ExposedPermissionGroupRepository(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val user = users.create(CreateUserCommand("Dana", "dana-permissions@example.test"))
+        val group =
+          groups.create(
+            CreatePermissionGroupCommand(
+              tenantId = tenantId,
+              code = "qa",
+              name = "QA",
+              description = "Quality",
+            )
+          )
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "reader",
+              name = "Reader",
+              description = "Read access",
+            )
+          )
+
+        val updatedGroup =
+          groups.update(UpdatePermissionGroupCommand(group.id, "QA Team", "Quality assurance"))
+        val updatedPolicy =
+          policies.update(UpdatePermissionPolicyCommand(policy.id, "Readers", "Read-only"))
+        updatedGroup.name shouldBe "QA Team"
+        updatedPolicy.name shouldBe "Readers"
+        groups.findById(tenantId, group.id)?.name shouldBe "QA Team"
+        policies.findById(tenantId, policy.id)?.name shouldBe "Readers"
+      }
+    }
+
+    "binding expire and listByProject return project scoped bindings" {
+      withPermissionPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val projects = ExposedProjectRepository(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val bindings = ExposedPermissionBindingRepository(database)
+        val user = users.create(CreateUserCommand("Eli", "eli-permissions@example.test"))
+        val project =
+          projects.create(
+            CreateProjectCommand(
+              tenantId = tenantId,
+              identifier = "OPS",
+              name = "Operations",
+              description = null,
+              createdBy = user.id,
+              leadUserId = user.id,
+            )
+          )
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "ops-reader",
+              name = "Ops Reader",
+              description = null,
+            )
+          )
+        val binding =
+          bindings.create(
+            CreatePermissionBindingCommand(
+              tenantId = tenantId,
+              projectId = project.id,
+              principalType = PermissionPrincipalType.USER,
+              principalUserId = user.id,
+              principalGroupId = null,
+              policyId = policy.id,
+              validFrom = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1),
+              createdBy = user.id,
+            )
+          )
+
+        bindings.listByProject(tenantId, project.id).single().id shouldBe binding.id
+        bindings.expire(tenantId, binding.id, OffsetDateTime.now(ZoneOffset.UTC)) shouldBe true
+        bindings
+          .listActiveRulesForSubject(
+            subjectUserId = user.id,
+            tenantId = tenantId,
+            projectId = project.id,
+            at = OffsetDateTime.now(ZoneOffset.UTC),
+          )
+          .shouldBeEmpty()
       }
     }
   })

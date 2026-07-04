@@ -70,8 +70,8 @@ val koverExcludedClasses =
       "*.data.persistence.*Configuration",
   )
 
-// Kover baseline: all backend modules target 80% line coverage minimum.
-fun moduleLineCoverageFloor(moduleName: String): Int = 80
+// Kover baseline: all backend modules target 90% line coverage minimum.
+fun moduleLineCoverageFloor(moduleName: String): Int = 90
 
 dependencies {
     backendProjects.forEach { kover(it) }
@@ -91,7 +91,7 @@ extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kov
         }
         verify {
             rule("aggregate line coverage") {
-                minBound(80)
+                minBound(90)
             }
         }
     }

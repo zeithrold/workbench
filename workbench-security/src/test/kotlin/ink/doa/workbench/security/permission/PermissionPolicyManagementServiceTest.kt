@@ -66,6 +66,112 @@ class PermissionPolicyManagementServiceTest :
 
       result.name shouldBe "Renamed"
     }
+
+    "listPolicies returns policies with rules" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      val rule =
+        ink.doa.workbench.core.permission.PermissionPolicyRuleRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("prr"),
+          policyId = policy.id,
+          action = ink.doa.workbench.core.permission.model.AuthorizationAction("project.read"),
+          resourcePattern = "project:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = null,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { policies.list(tenantId) } returns listOf(policy)
+      coEvery { policies.listRules(policy.id) } returns listOf(rule)
+
+      val result = runBlocking { service.listPolicies(tenantId) }
+
+      result.single().rules.single().action shouldBe "project.read"
+    }
+
+    "getPolicy returns policy view" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns emptyList()
+
+      val result = runBlocking { service.getPolicy(tenantId, policy.apiId.value) }
+
+      result.code shouldBe "custom"
+    }
+
+    "deletePolicy rejects builtin policy" {
+      val policy = samplePolicy(tenantId, "tenant-admin", builtin = true)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.deletePolicy(tenantId, policy.apiId.value) }
+      }
+    }
+
+    "deletePolicy rejects policy with active bindings" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.hasActiveBindings(policy.id, any()) } returns true
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.deletePolicy(tenantId, policy.apiId.value) }
+      }
+    }
+
+    "deletePolicy delegates to repository for custom policy" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.hasActiveBindings(policy.id, any()) } returns false
+      coEvery { policies.delete(tenantId, policy.id) } returns true
+
+      runBlocking { service.deletePolicy(tenantId, policy.apiId.value) } shouldBe true
+    }
+
+    "addPolicyRule rejects builtin policy changes" {
+      val policy = samplePolicy(tenantId, "tenant-admin", builtin = true)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking {
+          service.addPolicyRule(
+            tenantId,
+            policy.apiId.value,
+            "project.read",
+            "project:*",
+            ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          )
+        }
+      }
+    }
+
+    "addPolicyRule appends rule to custom policy" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      val rule =
+        ink.doa.workbench.core.permission.PermissionPolicyRuleRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("prr"),
+          policyId = policy.id,
+          action = ink.doa.workbench.core.permission.model.AuthorizationAction("project.read"),
+          resourcePattern = "project:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = null,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.addRule(any()) } returns rule
+      coEvery { policies.listRules(policy.id) } returns listOf(rule)
+
+      val result = runBlocking {
+        service.addPolicyRule(
+          tenantId,
+          policy.apiId.value,
+          "project.read",
+          "project:*",
+          ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+        )
+      }
+
+      result.rules.single().action shouldBe "project.read"
+    }
   })
 
 private fun samplePolicy(

@@ -7,6 +7,7 @@ import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.UserRecord
+import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
@@ -18,6 +19,7 @@ import ink.doa.workbench.security.permission.PermissionBootstrapService
 import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -193,6 +195,103 @@ class ProjectManagementApplicationServiceTest :
 
       view.status shouldBe "destroying"
       publisher.published.single().key shouldBe record.apiId.value
+    }
+
+    "get returns view when project is visible" {
+      val tenantId = UUID.randomUUID()
+      val userId = UUID.randomUUID()
+      val record = sampleProject(tenantId, userId)
+      coEvery { projects.get(tenantId, record.apiId.value) } returns record
+      coEvery { projectAccess.canViewProject(userId, tenantId, record) } returns true
+      coEvery { userLookupService.requireUser(userId) } returns sampleUser(userId)
+
+      val view = runBlocking { service.get(tenantId, userId, record.apiId.value) }
+
+      view.identifier shouldBe "WB"
+    }
+
+    "unarchive returns active project view" {
+      val tenantId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val record = sampleProject(tenantId, actorId)
+      val active = record.copy(status = ProjectStatus.ACTIVE)
+      coEvery { projects.unarchive(tenantId, record.id) } returns active
+      coEvery { userLookupService.requireUser(actorId) } returns sampleUser(actorId)
+
+      val view = runBlocking { service.unarchive(tenantId, record.id) }
+
+      view.status shouldBe "active"
+    }
+
+    "create maps project without lead user" {
+      val tenantId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val record = sampleProject(tenantId, actorId).copy(leadUserId = null)
+      coEvery { projects.create(any()) } returns record
+      coEvery { permissionBootstrap.provisionProjectCreator(any(), any(), any(), any()) } returns
+        Unit
+
+      val view = runBlocking {
+        service.create(
+          CreateProjectCommand(
+            tenantId = tenantId,
+            identifier = "WB",
+            name = "Workbench",
+            description = null,
+            createdBy = actorId,
+            leadUserId = actorId,
+          ),
+          actorUserId = actorId,
+        )
+      }
+
+      view.lead.shouldBeNull()
+    }
+
+    "requestDestroy restores project status when event publish fails" {
+      val tenantId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val record = sampleProject(tenantId, actorId)
+      val destroying = record.copy(status = ProjectStatus.DESTROYING)
+      val failingPublisher = mockk<DomainEventPublisher>()
+      val failingService =
+        ProjectManagementApplicationService(
+          projects,
+          userLookupService,
+          projectAccess,
+          permissionBootstrap,
+          failingPublisher,
+          clock,
+        )
+      coEvery { projects.get(tenantId, record.apiId.value) } returns record
+      coEvery { userLookupService.requireAuthenticatedUser(actorId) } returns sampleUser(actorId)
+      coEvery {
+        projects.markDestroying(
+          tenantId,
+          record.id,
+          actorUserId = actorId,
+          deleteReason = "cleanup",
+        )
+      } returns destroying
+      coEvery { failingPublisher.publish(any(), any(), any(), any()) } throws
+        RuntimeException("broker down")
+      coEvery { projects.restoreStatus(tenantId, record.id, ProjectStatus.ACTIVE) } returns true
+
+      shouldThrow<RuntimeException> {
+        runBlocking {
+          failingService.requestDestroy(
+            tenantId = tenantId,
+            tenantPublicId = PublicId.new("ten"),
+            projectPublicId = record.apiId.value,
+            actorUserId = actorId,
+            deleteReason = "cleanup",
+          )
+        }
+      }
+
+      coVerify(exactly = 1) {
+        projects.restoreStatus(tenantId, record.id, ProjectStatus.ACTIVE)
+      }
     }
   })
 

@@ -7,6 +7,7 @@ import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.permission.PermissionBindingRecord
 import ink.doa.workbench.core.permission.PermissionBindingRepository
+import ink.doa.workbench.core.permission.PermissionGroupRecord
 import ink.doa.workbench.core.permission.PermissionPolicyRecord
 import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.core.permission.model.PermissionEffect
@@ -112,7 +113,115 @@ class PermissionBindingManagementServiceTest :
         runBlocking { service.expireBinding(tenantId, "pbd_missing") }
       }
     }
+
+    "createBinding creates GROUP principal binding" {
+      val group = sampleGroup(tenantId)
+      val policy = samplePolicy(tenantId)
+      val binding =
+        sampleBinding(tenantId, userId = null, policyId = policy.id)
+          .copy(
+            principalType = PermissionPrincipalType.GROUP,
+            principalGroupId = group.id,
+          )
+      val view = sampleBindingView(binding)
+      coEvery { groupManagement.requireGroup(tenantId, group.apiId.value) } returns group
+      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { bindings.create(any()) } returns binding
+      coEvery { bindingViews.assemble(tenantId, binding) } returns view
+
+      val result = runBlocking {
+        service.createBinding(
+          CreateManagedPermissionBindingCommand(
+            tenantId = tenantId,
+            principalType = PermissionPrincipalType.GROUP,
+            userPublicId = null,
+            groupPublicId = group.apiId.value,
+            policyPublicId = policy.apiId.value,
+            projectPublicId = null,
+            effect = null,
+            actorUserId = UUID.randomUUID(),
+          )
+        )
+      }
+
+      result.id shouldBe binding.apiId.value
+    }
+
+    "createBinding creates TENANT_MEMBER principal binding" {
+      val policy = samplePolicy(tenantId)
+      val binding =
+        sampleBinding(tenantId, userId = null, policyId = policy.id)
+          .copy(principalType = PermissionPrincipalType.TENANT_MEMBER)
+      val view = sampleBindingView(binding)
+      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { bindings.create(any()) } returns binding
+      coEvery { bindingViews.assemble(tenantId, binding) } returns view
+
+      val result = runBlocking {
+        service.createBinding(
+          CreateManagedPermissionBindingCommand(
+            tenantId = tenantId,
+            principalType = PermissionPrincipalType.TENANT_MEMBER,
+            userPublicId = null,
+            groupPublicId = null,
+            policyPublicId = policy.apiId.value,
+            projectPublicId = null,
+            effect = null,
+            actorUserId = null,
+          )
+        )
+      }
+
+      result.principalType shouldBe "TENANT_MEMBER"
+    }
+
+    "createBinding rejects invalid user principal target" {
+      val group = sampleGroup(tenantId)
+      val policy = samplePolicy(tenantId)
+      coEvery { groupManagement.requireGroup(tenantId, group.apiId.value) } returns group
+      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking {
+          service.createBinding(
+            CreateManagedPermissionBindingCommand(
+              tenantId = tenantId,
+              principalType = PermissionPrincipalType.USER,
+              userPublicId = null,
+              groupPublicId = group.apiId.value,
+              policyPublicId = policy.apiId.value,
+              projectPublicId = null,
+              effect = null,
+              actorUserId = null,
+            )
+          )
+        }
+      }
+    }
+
+    "expireBinding delegates to repository" {
+      val binding = sampleBinding(tenantId)
+      coEvery { bindings.findByApiId(tenantId, binding.apiId.value) } returns binding
+      coEvery { bindings.expire(tenantId, binding.id, any()) } returns true
+
+      runBlocking { service.expireBinding(tenantId, binding.apiId.value) } shouldBe true
+    }
   })
+
+private fun sampleGroup(tenantId: UUID): PermissionGroupRecord {
+  val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
+  return PermissionGroupRecord(
+    id = UUID.randomUUID(),
+    apiId = PublicId.new("pgr"),
+    tenantId = tenantId,
+    code = "developers",
+    name = "Developers",
+    description = null,
+    builtin = false,
+    createdAt = now,
+    updatedAt = now,
+  )
+}
 
 private fun sampleUser(): UserRecord =
   UserRecord(

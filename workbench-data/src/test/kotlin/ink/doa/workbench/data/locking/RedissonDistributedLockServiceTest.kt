@@ -43,4 +43,16 @@ class RedissonDistributedLockServiceTest :
         service.withLock("busy", Duration.ofMillis(10), Duration.ofMillis(10)) { "never" }
       }
     }
+
+    "withLock skips unlock when current thread does not hold lock" {
+      val lock = mockk<RLock>(relaxed = true)
+      val redisson = mockk<RedissonClient> { every { getLock("shared") } returns lock }
+      every { lock.tryLock(any(), any(), any()) } returns true
+      every { lock.isHeldByCurrentThread } returns false
+
+      val service = RedissonDistributedLockService(redisson)
+      service.withLock("shared", Duration.ofMillis(10), Duration.ofMillis(10)) { "ok" } shouldBe
+        "ok"
+      verify(exactly = 0) { lock.unlock() }
+    }
   })

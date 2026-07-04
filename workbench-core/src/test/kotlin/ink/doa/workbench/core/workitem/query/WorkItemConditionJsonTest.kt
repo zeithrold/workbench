@@ -209,4 +209,68 @@ class WorkItemConditionJsonTest :
             ),
         )
     }
+
+    "parse converts legacy inequality operator" {
+      val legacy =
+        JsonObject(
+          mapOf(
+            "field" to JsonPrimitive("statusGroup"),
+            "op" to JsonPrimitive("!="),
+            "value" to JsonPrimitive("done"),
+          )
+        )
+
+      val parsed = WorkItemConditionJson.parse(legacy)
+
+      parsed shouldBe
+        ConditionNode.Predicate(
+          field = QueryField.System("statusGroup"),
+          op = QueryOperator.NEQ,
+          value = QueryValue.Literal(JsonPrimitive("done")),
+        )
+    }
+
+    "parse converts legacy missing operator" {
+      val legacy =
+        JsonObject(
+          mapOf(
+            "field" to JsonPrimitive("assignee"),
+            "op" to JsonPrimitive("missing"),
+          )
+        )
+
+      val parsed = WorkItemConditionJson.parse(legacy)
+
+      parsed shouldBe
+        ConditionNode.Predicate(
+          field = QueryField.System("assignee"),
+          op = QueryOperator.IS_EMPTY,
+          value = null,
+        )
+    }
+
+    "canonicalize round-trips relative date values" {
+      val canonical =
+        json
+          .parseToJsonElement(
+            """
+            {
+              "field": "property.dueDate",
+              "op": "eq",
+              "value": {
+                "relativeDate": {
+                  "amount": 2,
+                  "unit": "day",
+                  "direction": "future",
+                  "anchor": "date.today"
+                }
+              }
+            }
+            """
+              .trimIndent()
+          )
+          .jsonObject
+
+      WorkItemConditionJson.canonicalize(canonical) shouldBe canonical
+    }
   })
