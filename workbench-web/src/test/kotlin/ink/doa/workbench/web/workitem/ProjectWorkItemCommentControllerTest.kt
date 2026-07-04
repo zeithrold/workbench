@@ -1,13 +1,16 @@
-package ink.doa.workbench.web.manage
+package ink.doa.workbench.web.workitem
 
+import ink.doa.workbench.agile.project.ProjectResolver
+import ink.doa.workbench.agile.workitem.WorkItemCommentService
+import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.security.permission.PermissionPolicyManagementService
-import ink.doa.workbench.security.permission.PermissionPolicyView
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
+import ink.doa.workbench.web.api.ProjectRequestContextResolver
 import ink.doa.workbench.web.api.RequestContextResolver
 import ink.doa.workbench.web.api.TenantRequestContextResolver
 import ink.doa.workbench.web.support.TenantScopedWebMvcSupport
@@ -15,6 +18,7 @@ import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
+import java.time.OffsetDateTime
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
@@ -29,7 +33,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPat
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(ManagePermissionPolicyController::class)
+@WebMvcTest(ProjectWorkItemCommentController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
@@ -37,24 +41,31 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   InfrastructureAspect::class,
   RequestContextResolver::class,
   TenantRequestContextResolver::class,
+  ProjectRequestContextResolver::class,
   ink.doa.workbench.web.support.ContextWebMvcSupport::class,
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
   TenantScopedWebMvcSupport::class,
   GlobalExceptionHandler::class,
-  ManagePermissionPolicyControllerTest.TestBeans::class,
+  ProjectWorkItemCommentControllerTest.TestBeans::class,
 )
-class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list permission policies rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/manage/permission-policies")).andExpect(status().isUnauthorized())
+  fun `list comments rejects unauthenticated requests`() {
+    mockMvc
+      .perform(
+        get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments")
+      )
+      .andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list permission policies returns policies for authenticated tenant user`() {
+  fun `list comments returns work item comments for authenticated user`() {
     val result =
       mockMvc
         .perform(
-          get("/api/manage/permission-policies")
+          get(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments"
+            )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -63,7 +74,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("admin"))
+      .andExpect(jsonPath("$[0].body").value("Looks good"))
   }
 
   @TestConfiguration
@@ -87,25 +98,50 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     }
 
     @Bean
-    fun permissionPolicyManagementService(): PermissionPolicyManagementService =
-      mockk(relaxed = true)
-
-    @Bean
-    fun permissionPolicyManagementServiceSetup(
-      service: PermissionPolicyManagementService
-    ): Boolean {
-      coEvery { service.listPolicies(TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf(
-          PermissionPolicyView(
-            id = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
-            code = "admin",
-            name = "Admin",
-            description = "Full access",
-            builtin = true,
-            rules = emptyList(),
-          )
+    fun projectResolverSetup(resolver: ProjectResolver): Boolean {
+      coEvery {
+        resolver.resolveProject(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
         )
+      } returns TenantWebMvcFixtures.PROJECT_RECORD
       return true
     }
+
+    @Bean fun workItemCommentService(): WorkItemCommentService = mockk(relaxed = true)
+
+    @Bean
+    fun workItemCommentServiceSetup(service: WorkItemCommentService): Boolean {
+      coEvery {
+        service.list(
+          TenantWebMvcFixtures.TENANT_ID,
+          TenantWebMvcFixtures.PROJECT_ID,
+          "iss_test",
+          50,
+          0,
+        )
+      } returns listOf(SAMPLE_COMMENT)
+      return true
+    }
+  }
+
+  private companion object {
+    val SAMPLE_COMMENT =
+      WorkItemCommentRecord(
+        id = java.util.UUID.randomUUID(),
+        apiId = PublicId("cmt_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        tenantId = TenantWebMvcFixtures.TENANT_ID,
+        issueId = java.util.UUID.randomUUID(),
+        authorId = TenantWebMvcFixtures.USER_ID,
+        authorApiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+        body = "Looks good",
+        bodyPlainText = "Looks good",
+        bodyFormat = "plain",
+        transitionId = null,
+        statusHistoryId = null,
+        editedAt = null,
+        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+      )
   }
 }

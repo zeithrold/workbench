@@ -1,6 +1,7 @@
 package ink.doa.workbench.security.invitation
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.InvitationRepository
@@ -115,6 +116,24 @@ class InvitationServiceTest :
 
       preview.email shouldBe invitation.email
       preview.tenant.name shouldBe tenant.name
+    }
+
+    "preview rejects invalid or expired invitations" {
+      coEvery { credentialHasher.hash("bad-token") } returns "hash"
+      coEvery { invitations.findActiveByHash("hash", any()) } returns null
+
+      shouldThrow<InvalidRequestException> { runBlocking { service.preview("bad-token") } }
+        .errorCode shouldBe WorkbenchErrorCode.INVITATION_INVALID_OR_EXPIRED
+    }
+
+    "preview throws when tenant is missing" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_ADMIN)
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+      coEvery { tenants.findById(invitation.tenantId) } returns null
+
+      shouldThrow<ResourceNotFoundException> { runBlocking { service.preview("token") } }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND
     }
   })
 

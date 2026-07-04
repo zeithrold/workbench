@@ -2,6 +2,7 @@ package ink.doa.workbench.web.manage
 
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.security.permission.GroupMemberView
 import ink.doa.workbench.security.permission.PermissionBindingView
 import ink.doa.workbench.security.permission.PermissionGroupView
@@ -67,5 +68,23 @@ class ManagePermissionResponsesTest :
         )
 
       PermissionBindingResponse.from(view).project?.identifier shouldBe "CORE"
+    }
+
+    "create permission binding request stores principal fields" {
+      val request =
+        CreatePermissionBindingRequest(
+          principalType = PermissionPrincipalType.USER,
+          userId = "usr_abc",
+          groupId = null,
+          policyId = "pol_abc",
+          projectId = "prj_abc",
+        )
+
+      request.policyId shouldBe "pol_abc"
+      request.projectId shouldBe "prj_abc"
+    }
+
+    "add group member request stores user id" {
+      AddGroupMemberRequest(userId = "usr_abc").userId shouldBe "usr_abc"
     }
   })

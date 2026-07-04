@@ -82,6 +82,47 @@ class AdminUserServiceTest :
 
       result.single().userId shouldBe user.apiId.value
     }
+
+    "grantTenantAdmin creates tenant-scoped admin record" {
+      val user = sampleUser()
+      val tenantId = UUID.randomUUID()
+      val record = sampleAdminRecord(user.id, AdminScope.TENANT, tenantId)
+      coEvery { publicIds.resolveUser(user.apiId.value) } returns user
+      coEvery { adminUserCommands.create(any()) } returns record
+
+      val result = runBlocking { service.grantTenantAdmin(tenantId, user.apiId.value, null) }
+
+      result.scope shouldBe AdminScope.TENANT
+      result.tenantId shouldBe tenantId.toString()
+    }
+
+    "listTenantAdmins maps tenant admin records" {
+      val user = sampleUser()
+      val tenantId = UUID.randomUUID()
+      val record = sampleAdminRecord(user.id, AdminScope.TENANT, tenantId)
+      coEvery { adminUserQueries.listTenantAdmins(tenantId) } returns listOf(record)
+      coEvery { userRepository.findById(user.id) } returns user
+
+      val result = runBlocking { service.listTenantAdmins(tenantId) }
+
+      result.single().tenantId shouldBe tenantId.toString()
+    }
+
+    "provisionTenantAdmin creates membership, admin record, and grants" {
+      val user = sampleUser()
+      val tenantId = UUID.randomUUID()
+      val record = sampleAdminRecord(user.id, AdminScope.TENANT, tenantId)
+      coEvery { userRepository.findById(user.id) } returns user
+      coEvery { tenantMembers.create(any()) } returns mockk(relaxed = true)
+      coEvery { adminUserCommands.create(any()) } returns record
+
+      val result = runBlocking {
+        service.provisionTenantAdmin(tenantId, user.id, UUID.randomUUID())
+      }
+
+      result.userId shouldBe user.apiId.value
+      coVerify(exactly = 7) { accessGrants.create(any()) }
+    }
   })
 
 private fun sampleUser(): UserRecord =

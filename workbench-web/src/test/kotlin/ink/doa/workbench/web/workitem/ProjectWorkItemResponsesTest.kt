@@ -91,4 +91,36 @@ class ProjectWorkItemResponsesTest :
 
       WorkItemCreateFormResponse.from(option).editableFields shouldBe listOf("title")
     }
+
+    "work item response maps assignee and priority refs" {
+      val record =
+        WorkItemRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("iss"),
+          tenantId = UUID.randomUUID(),
+          projectId = UUID.randomUUID(),
+          issueTypeApiId = PublicId.new("ity"),
+          issueTypeConfigApiId = PublicId.new("itc"),
+          key = "WB-2",
+          title = "Assigned",
+          description = null,
+          statusId = UUID.randomUUID(),
+          statusApiId = PublicId.new("sts"),
+          statusGroup = WorkItemStatusGroup.IN_PROGRESS,
+          reporterId = UUID.randomUUID(),
+          assigneeId = UUID.randomUUID(),
+          priorityApiId = PublicId.new("pri"),
+          reporterApiId = PublicId.new("usr"),
+          assigneeApiId = PublicId.new("asg"),
+          sprintApiId = PublicId.new("spr"),
+          properties = JsonObject(emptyMap()),
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      val response = WorkItemResponse.from(record)
+      response.assigneeId shouldBe record.assigneeApiId?.value
+      response.priorityId shouldBe record.priorityApiId?.value
+      response.sprintId shouldBe record.sprintApiId?.value
+    }
   })
