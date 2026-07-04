@@ -122,4 +122,119 @@ class PostgresWorkItemOperatorCompilerTest :
       fragment.sql shouldContain "ILIKE"
       fragment.params.single().toString() shouldContain "100"
     }
+
+    "compile NEQ NOT_IN and comparison operators" {
+      compiler
+        .compile(
+          "ipv.value_number",
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.NEQ,
+          QueryValue.Literal(JsonPrimitive(2)),
+        )
+        .sql shouldBe "ipv.value_number <> ?"
+      compiler
+        .compile(
+          "i.status_id",
+          WorkItemQueryFieldType.TEXT,
+          QueryOperator.NOT_IN,
+          QueryValue.Literal(JsonArray(listOf(JsonPrimitive("a")))),
+        )
+        .sql shouldContain "NOT IN"
+      compiler
+        .compile(
+          "ipv.value_number",
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.GT,
+          QueryValue.Literal(JsonPrimitive(1)),
+        )
+        .sql shouldBe "ipv.value_number > ?"
+      compiler
+        .compile(
+          "ipv.value_number",
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.GTE,
+          QueryValue.Literal(JsonPrimitive(1)),
+        )
+        .sql shouldBe "ipv.value_number >= ?"
+      compiler
+        .compile(
+          "ipv.value_number",
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.LT,
+          QueryValue.Literal(JsonPrimitive(1)),
+        )
+        .sql shouldBe "ipv.value_number < ?"
+      compiler
+        .compile(
+          "ipv.value_number",
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.LTE,
+          QueryValue.Literal(JsonPrimitive(1)),
+        )
+        .sql shouldBe "ipv.value_number <= ?"
+    }
+
+    "compile ENDS_WITH MATCHES and empty checks" {
+      compiler
+        .compile(
+          "i.title",
+          WorkItemQueryFieldType.TEXT,
+          QueryOperator.ENDS_WITH,
+          QueryValue.Literal(JsonPrimitive("end")),
+        )
+        .sql shouldContain "ILIKE"
+      compiler
+        .compile(
+          "i.title",
+          WorkItemQueryFieldType.TEXT,
+          QueryOperator.MATCHES,
+          QueryValue.Literal(JsonPrimitive("pat.*")),
+        )
+        .sql shouldContain "~*"
+      compiler
+        .compile("ipv.value_text", WorkItemQueryFieldType.TEXT, QueryOperator.IS_NOT_EMPTY, null)
+        .sql shouldContain "NOT"
+      compiler
+        .compile("ipv.value_json", WorkItemQueryFieldType.JSON, QueryOperator.IS_EMPTY, null)
+        .sql shouldContain "'[]'::jsonb"
+    }
+
+    "compile jsonb membership operators" {
+      val array = JsonArray(listOf(JsonPrimitive("x")))
+      compiler
+        .compile(
+          "ipv.value_json",
+          WorkItemQueryFieldType.JSON,
+          QueryOperator.HAS_ANY,
+          QueryValue.Literal(array),
+        )
+        .sql shouldContain "?|"
+      compiler
+        .compile(
+          "ipv.value_json",
+          WorkItemQueryFieldType.JSON,
+          QueryOperator.HAS_ALL,
+          QueryValue.Literal(array),
+        )
+        .sql shouldContain "?&"
+      compiler
+        .compile(
+          "ipv.value_json",
+          WorkItemQueryFieldType.JSON,
+          QueryOperator.HAS_NONE,
+          QueryValue.Literal(array),
+        )
+        .sql shouldContain "NOT"
+    }
+
+    "compile NOT_CONTAINS negates predicate" {
+      compiler
+        .compile(
+          "i.title",
+          WorkItemQueryFieldType.TEXT,
+          QueryOperator.NOT_CONTAINS,
+          QueryValue.Literal(JsonPrimitive("bug")),
+        )
+        .sql shouldContain "NOT"
+    }
   })

@@ -94,4 +94,33 @@ class ExposedIssueTypeConfigRepositoryIntegrationTest :
         repository.findConfig(stack.tenantId, "itc_missing").shouldBeNull()
       }
     }
+
+    "listConfigs with project id includes project scoped config" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val workflows = ExposedWorkflowConfigurationRepository(database, catalog)
+        val repository = ExposedIssueTypeConfigRepository(database, catalog, workflows)
+        repository.createConfig(
+          CreateIssueTypeConfigCommand(
+            tenantId = stack.tenantId,
+            scope = WorkItemConfigScope.PROJECT,
+            projectId = stack.projectId,
+            issueTypeApiId = stack.issueType.apiId.value,
+            workflowApiId = stack.workflow.apiId.value,
+            createdBy = stack.actorId,
+            createFields = JsonObject(emptyMap()),
+            statuses =
+              listOf(
+                IssueTypeConfigStatusInput(
+                  statusApiId = stack.todoStatus.apiId.value,
+                  isInitial = true,
+                )
+              ),
+          )
+        )
+
+        repository.listConfigs(stack.tenantId, stack.projectId).shouldHaveSize(2)
+      }
+    }
   })

@@ -110,3 +110,5 @@ package
 # End of https://www.toptal.com/developers/gitignore/api/svelte
 
 # End of https://www.toptal.com/developers/gitignore/api/jetbrains+iml
+
+.pnpm-store/

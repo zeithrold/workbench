@@ -41,4 +41,22 @@ class RichTextProcessorTest {
     processed?.html shouldContain "Hello"
     processed?.plainText shouldBe "Hello world"
   }
+
+  @Test
+  fun `processDescription returns null for null input`() {
+    RichTextProcessor.processDescription(null) shouldBe null
+  }
+
+  @Test
+  fun `processDescription returns nulls for blank sanitized html`() {
+    val processed = RichTextProcessor.processDescription("<script>alert(1)</script>")
+    processed?.html shouldBe null
+    processed?.plainText shouldBe null
+  }
+
+  @Test
+  fun `isPlainText detects html tags`() {
+    RichTextProcessor.isPlainText("plain") shouldBe true
+    RichTextProcessor.isPlainText("<p>html</p>") shouldBe false
+  }
 }

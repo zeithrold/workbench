@@ -112,6 +112,53 @@ class SessionServiceTest :
         }
         .errorCode shouldBe WorkbenchErrorCode.AUTH_TENANT_MEMBERSHIP_REQUIRED
     }
+
+    "switchTenant updates active tenant for active membership" {
+      val user = sampleUser()
+      val tenant = sampleTenant()
+      val sessionId = UUID.randomUUID()
+      val principal =
+        AuthenticatedPrincipal(
+          user = user,
+          loginAccountId = UUID.randomUUID(),
+          sessionId = sessionId.toString(),
+          bearerTokenId = null,
+          tenantId = null,
+        )
+      coEvery { publicIds.resolveTenant(tenant.apiId.value) } returns tenant
+      coEvery { tenants.findById(tenant.id) } returns tenant
+      coEvery { tenantMembers.findByTenantAndUser(tenant.id, user.id) } returns
+        TenantMemberRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("tmb"),
+          tenantId = tenant.id,
+          userId = user.id,
+          status = TenantMemberStatus.ACTIVE,
+          joinedAt = OffsetDateTime.parse("2026-07-01T00:00:00Z"),
+          invitedBy = null,
+          createdAt = OffsetDateTime.parse("2026-07-01T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-01T00:00:00Z"),
+        )
+      coEvery { sessions.updateActiveTenant(sessionId, tenant.id, any()) } returns true
+      coEvery { sessions.findById(sessionId) } returns
+        AuthSessionRecord(
+          id = sessionId,
+          sessionHash = "hash",
+          userId = user.id,
+          loginAccountId = UUID.randomUUID(),
+          activeTenantId = tenant.id,
+          expiresAt = OffsetDateTime.parse("2026-07-05T00:00:00Z"),
+          revokedAt = null,
+          lastUsedAt = null,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { loginCompletionService.adminScopes(user.id) } returns emptyList()
+
+      val view = runBlocking { service.switchTenant(principal, tenant.apiId.value) }
+
+      view.activeTenant shouldBe TenantSummary.from(tenant)
+    }
   })
 
 private fun sampleUser(): UserRecord =

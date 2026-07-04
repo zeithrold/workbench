@@ -98,6 +98,54 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
           .shouldBeEmpty()
       }
     }
+
+    "user bindings resolve direct policy rules" {
+      withPermissionPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val bindings = ExposedPermissionBindingRepository(database)
+        val user = users.create(CreateUserCommand("Bob", "bob-permissions@example.test"))
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "tenant-admin",
+              name = "Tenant Admin",
+              description = null,
+            )
+          )
+        policies.addRule(
+          CreatePermissionPolicyRuleCommand(
+            policyId = policy.id,
+            action = AuthorizationAction("project.read"),
+            resourcePattern = "project:*",
+          )
+        )
+        bindings.create(
+          CreatePermissionBindingCommand(
+            tenantId = tenantId,
+            projectId = null,
+            principalType = PermissionPrincipalType.USER,
+            principalUserId = user.id,
+            principalGroupId = null,
+            policyId = policy.id,
+            validFrom = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1),
+            createdBy = user.id,
+          )
+        )
+
+        val rules =
+          bindings.listActiveRulesForSubject(
+            subjectUserId = user.id,
+            tenantId = tenantId,
+            projectId = null,
+            at = OffsetDateTime.now(ZoneOffset.UTC),
+          )
+
+        rules.single().action.code shouldBe "project.read"
+      }
+    }
   })
 
 private fun withPermissionPostgresDatabase(block: suspend (Database) -> Unit) {

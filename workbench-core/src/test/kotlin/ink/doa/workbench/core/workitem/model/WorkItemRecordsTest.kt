@@ -90,4 +90,83 @@ class WorkItemRecordsTest :
         )
         .toStatusApiId shouldBe "sts_done"
     }
+
+    "work item response maps from record" {
+      val record =
+        WorkItemRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("wki"),
+          tenantId = tenantId,
+          projectId = projectId,
+          issueTypeApiId = PublicId.new("typ"),
+          issueTypeConfigApiId = PublicId.new("itc"),
+          key = "WB-9",
+          title = "Searchable",
+          description = null,
+          statusId = UUID.randomUUID(),
+          statusApiId = PublicId.new("sts"),
+          statusGroup = WorkItemStatusGroup.DONE,
+          reporterId = userId,
+          assigneeId = null,
+          priorityApiId = null,
+          reporterApiId = PublicId.new("usr"),
+          assigneeApiId = null,
+          sprintApiId = null,
+          properties = JsonObject(emptyMap()),
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      WorkItemResponse.from(record).statusGroup shouldBe "done"
+    }
+
+    "search and mutation models carry paging metadata" {
+      val hit =
+        WorkItemSearchHit(
+          apiId = "wki_abc",
+          key = "WB-1",
+          title = "Hit",
+          description = null,
+          projectApiId = "prj_abc",
+          issueTypeApiId = "typ_abc",
+          issueTypeConfigApiId = "itc_abc",
+          statusApiId = "sts_abc",
+          statusGroup = "todo",
+          priorityApiId = null,
+          reporterApiId = "usr_abc",
+          assigneeApiId = null,
+          sprintApiId = null,
+          createdAt = now,
+          updatedAt = now,
+          properties = JsonObject(emptyMap()),
+        )
+      WorkItemSearchPage(
+          result = WorkItemSearchResult(hits = listOf(hit), total = 1),
+          page = WorkItemSearchPageInfo(limit = 20, offset = 0, nextOffset = null),
+        )
+        .result
+        .hits
+        .single()
+        .key shouldBe "WB-1"
+    }
+
+    "comment and transition commands store actor metadata" {
+      TransitionWorkItemCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          workItemApiId = "wki_abc",
+          transitionApiId = "trn_abc",
+          actorUserId = userId,
+        )
+        .transitionApiId shouldBe "trn_abc"
+
+      CreateWorkItemCommentCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          workItemApiId = "wki_abc",
+          authorId = userId,
+          body = "Looks good",
+        )
+        .body shouldBe "Looks good"
+    }
   })

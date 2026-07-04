@@ -152,6 +152,37 @@ class LoginCompletionServiceTest :
       result.eligibleTenants.map { it.id }.toSet() shouldBe
         setOf(tenantA.apiId.value, tenantB.apiId.value)
     }
+
+    "adminScopes returns instance and tenant scopes" {
+      val userId = UUID.randomUUID()
+      val tenantId = UUID.randomUUID()
+      coEvery {
+        adminUserQueries.isActiveInstanceAdmin(
+          userId,
+          OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      } returns true
+      coEvery { adminUserQueries.listByUser(userId) } returns
+        listOf(
+          ink.doa.workbench.core.permission.AdminUserRecord(
+            id = UUID.randomUUID(),
+            apiId = PublicId.new("adm"),
+            userId = userId,
+            scope = ink.doa.workbench.core.permission.AdminScope.TENANT,
+            tenantId = tenantId,
+            status = ink.doa.workbench.core.permission.AdminUserStatus.ACTIVE,
+            grantedBy = null,
+            validFrom = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+            validTo = null,
+            createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+            updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          )
+        )
+
+      val scopes = runBlocking { service.adminScopes(userId) }
+
+      scopes shouldBe listOf("instance", "tenant:$tenantId")
+    }
   })
 
 private fun sampleUser(): UserRecord =

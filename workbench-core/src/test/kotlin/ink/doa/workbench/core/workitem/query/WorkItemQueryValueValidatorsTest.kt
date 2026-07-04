@@ -188,4 +188,68 @@ class WorkItemQueryValueValidatorsTest :
         ),
       )
     }
+
+    "rejects within without relative date object" {
+      shouldThrow<InvalidRequestException> {
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.DATE,
+          QueryOperator.WITHIN,
+          QueryValue.Literal(JsonPrimitive("2026-07-04")),
+        )
+      }
+    }
+
+    "rejects between without between object" {
+      shouldThrow<InvalidRequestException> {
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.BETWEEN,
+          QueryValue.Literal(JsonPrimitive(1)),
+        )
+      }
+    }
+
+    "accepts matches with string value" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.TEXT,
+        QueryOperator.MATCHES,
+        QueryValue.Literal(JsonPrimitive(".*")),
+      )
+    }
+
+    "accepts ends_with on multi-select with scalar value" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.MULTI_SELECT,
+        QueryOperator.ENDS_WITH,
+        QueryValue.Literal(JsonPrimitive("opt")),
+      )
+    }
+
+    "rejects not_contains without string literal" {
+      shouldThrow<InvalidRequestException> {
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.TEXT,
+          QueryOperator.NOT_CONTAINS,
+          QueryValue.Variable("user.currentUser"),
+        )
+      }
+    }
+
+    "accepts has_all with non-empty array" {
+      WorkItemQueryValueValidators.validateValueShape(
+        WorkItemQueryFieldType.MULTI_USER,
+        QueryOperator.HAS_ALL,
+        QueryValue.Literal(JsonArray(listOf(JsonPrimitive("usr_1")))),
+      )
+    }
+
+    "rejects structured value for eq operator" {
+      shouldThrow<InvalidRequestException> {
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.EQ,
+          QueryValue.Between(from = JsonPrimitive(1), to = JsonPrimitive(2)),
+        )
+      }
+    }
   })

@@ -6,6 +6,7 @@ import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.persistence.UsersTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -84,6 +85,85 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
         properties.single().code shouldBe "storyPoints"
       }
     }
+
+    "createIssueType persists and listIssueTypes returns it" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val repository = ExposedWorkItemCatalogRepository(database)
+        val actorId = seedUser(database)
+
+        repository.createIssueType(
+          ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand(
+            tenantId = tenantId,
+            scope = ink.doa.workbench.core.workitem.model.WorkItemConfigScope.TENANT,
+            code = "bug",
+            name = "Bug",
+          )
+        )
+
+        repository.listIssueTypes(tenantId).single().code shouldBe "bug"
+      }
+    }
+
+    "deactivateStatus marks status inactive" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val repository = ExposedWorkItemCatalogRepository(database)
+        val status =
+          repository.createStatus(
+            CreateIssueStatusCommand(
+              tenantId = tenantId,
+              code = "todo",
+              name = "To Do",
+              statusGroup = WorkItemStatusGroup.TODO,
+            )
+          )
+
+        repository.deactivateStatus(tenantId, status.apiId.value, actorId).isActive shouldBe false
+      }
+    }
+
+    "deactivateProperty marks property inactive" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val repository = ExposedWorkItemCatalogRepository(database)
+        val property =
+          repository.createProperty(
+            CreatePropertyDefinitionCommand(
+              tenantId = tenantId,
+              code = "points",
+              name = "Points",
+              description = null,
+              dataType = WorkItemPropertyDataType.NUMBER,
+            )
+          )
+
+        repository.deactivateProperty(tenantId, property.apiId.value, actorId).isActive shouldBe
+          false
+      }
+    }
+
+    "deactivateIssueType marks issue type inactive" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val repository = ExposedWorkItemCatalogRepository(database)
+        val issueType =
+          repository.createIssueType(
+            ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand(
+              tenantId = tenantId,
+              scope = ink.doa.workbench.core.workitem.model.WorkItemConfigScope.TENANT,
+              code = "task",
+              name = "Task",
+            )
+          )
+
+        repository.deactivateIssueType(tenantId, issueType.apiId.value, actorId).isActive shouldBe
+          false
+      }
+    }
   })
 
 private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
@@ -91,7 +171,7 @@ private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
     postgres.start()
     Flyway.configure()
       .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
+      .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
       .load()
       .migrate()
     val database =
@@ -121,4 +201,20 @@ private fun seedTenant(database: Database): UUID {
     }
   }
   return tenantId
+}
+
+private fun seedUser(database: Database): UUID {
+  val userId = UUID.randomUUID()
+  val now = OffsetDateTime.now(ZoneOffset.UTC)
+  transaction(database) {
+    UsersTable.insert {
+      it[id] = userId.toKotlinUuid()
+      it[apiId] = PublicId.new("usr").value
+      it[displayName] = "Ada"
+      it[primaryEmail] = "ada-${userId.toString().take(8)}@example.test"
+      it[createdAt] = now
+      it[updatedAt] = now
+    }
+  }
+  return userId
 }

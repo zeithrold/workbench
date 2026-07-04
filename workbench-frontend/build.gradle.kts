@@ -4,7 +4,9 @@ plugins {
 }
 
 node {
-    download.set(false)
+    version.set("24.15.0")
+    download.set(true)
+    distBaseUrl.unset()
     pnpmVersion.set("10.33.0")
     nodeProjectDir.set(projectDir)
 }

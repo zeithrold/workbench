@@ -62,6 +62,33 @@ class AuthenticationServiceTest :
         fixture.sessionCredentialService.issueSession(any(), any(), any(), any())
       }
     }
+
+    "login with bearer token issues token credential" {
+      val fixture = Fixture()
+      coEvery {
+        fixture.bearerCredentialService.issueBearerToken(
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+        )
+      } returns
+        IssuedCredential(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("btk"),
+          secret = "bearer-secret",
+          expiresAt = Fixture.now.plusDays(30),
+        )
+
+      val result = runBlocking {
+        fixture.service.login(fixture.loginCommand.copy(issueBearerToken = true))
+      }
+
+      result.bearerToken?.secret shouldBe "bearer-secret"
+    }
   })
 
 private class Fixture(authenticateFails: Boolean = false) {
