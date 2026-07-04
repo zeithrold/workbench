@@ -44,7 +44,11 @@ class LdapAuthIntegrationTest :
       val setting = tenantLoginSettings.findTenantSetting(fixture.tenant.tenantId, method.id)!!
       val subject =
         LdapAuthClient()
-          .authenticate(setting, InMemoryLdapTestServer.TEST_USER, InMemoryLdapTestServer.TEST_PASSWORD)
+          .authenticate(
+            setting,
+            InMemoryLdapTestServer.TEST_USER,
+            InMemoryLdapTestServer.TEST_PASSWORD,
+          )
       subject shouldBe InMemoryLdapTestServer.TEST_USER
     }
 

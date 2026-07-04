@@ -3,12 +3,12 @@ package ink.doa.workbench.service.project
 import ink.doa.workbench.agile.project.ProjectAccessService
 import ink.doa.workbench.agile.project.ProjectService
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
-import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.security.identity.UserLookupService
 import ink.doa.workbench.security.permission.PermissionBootstrapService
 import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
@@ -16,11 +16,9 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.justRun
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -48,23 +46,23 @@ class ProjectManagementApplicationServiceTest :
       val actorId = UUID.randomUUID()
       val record = sampleProject(tenantId, actorId)
       coEvery { projects.create(any()) } returns record
-      coEvery { permissionBootstrap.provisionProjectCreator(any(), any(), any(), any()) } returns Unit
+      coEvery { permissionBootstrap.provisionProjectCreator(any(), any(), any(), any()) } returns
+        Unit
       coEvery { userLookupService.requireUser(actorId) } returns sampleUser(actorId)
 
-      val view =
-        runBlocking {
-          service.create(
-            CreateProjectCommand(
-              tenantId = tenantId,
-              identifier = "WB",
-              name = "Workbench",
-              description = "Main project",
-              createdBy = actorId,
-              leadUserId = actorId,
-            ),
-            actorUserId = actorId,
-          )
-        }
+      val view = runBlocking {
+        service.create(
+          CreateProjectCommand(
+            tenantId = tenantId,
+            identifier = "WB",
+            name = "Workbench",
+            description = "Main project",
+            createdBy = actorId,
+            leadUserId = actorId,
+          ),
+          actorUserId = actorId,
+        )
+      }
 
       view.identifier shouldBe "WB"
       coVerify(exactly = 1) {

@@ -1,14 +1,20 @@
-package ink.doa.workbench.web.workitem
+package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.agile.workitem.WorkItemQueryService
-import ink.doa.workbench.agile.workitem.WorkItemService
-import ink.doa.workbench.agile.workitem.WorkItemTransitionService
+import ink.doa.workbench.core.permission.model.PermissionService
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
+import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.security.permission.PermissionPolicyManagementService
+import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
+import ink.doa.workbench.web.api.GlobalExceptionHandler
+import ink.doa.workbench.web.api.InfrastructureAspect
+import ink.doa.workbench.web.api.RequestContextResolver
+import ink.doa.workbench.web.api.TenantRequestContextResolver
 import io.mockk.mockk
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
@@ -17,29 +23,39 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(ProjectWorkItemController::class)
+@WebMvcTest(ManagePermissionPolicyController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
+  AopAutoConfiguration::class,
+  InfrastructureAspect::class,
+  RequestContextResolver::class,
+  TenantRequestContextResolver::class,
   ink.doa.workbench.web.support.ContextWebMvcSupport::class,
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
-  ProjectWorkItemControllerTest.TestBeans::class,
+  GlobalExceptionHandler::class,
+  ManagePermissionPolicyControllerTest.TestBeans::class,
 )
-class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list work items rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/projects/prj_test/work-items")).andExpect(status().isUnauthorized())
-  }
-
-  @Test
-  fun `get work item rejects unauthenticated requests`() {
-    mockMvc
-      .perform(get("/api/projects/prj_test/work-items/iss_test"))
-      .andExpect(status().isUnauthorized())
+  fun `list permission policies rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/manage/permission-policies")).andExpect(status().isUnauthorized())
   }
 
   @TestConfiguration
   class TestBeans {
+    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
+
+    @Bean
+    fun permissionPolicyManagementService(): PermissionPolicyManagementService =
+      mockk(relaxed = true)
+
+    @Bean fun permissionService(): PermissionService = mockk(relaxed = true)
+
+    @Bean fun tenantOperationalGuard(): TenantOperationalGuard = mockk(relaxed = true)
+
+    @Bean fun publicIdResolver(): PublicIdResolver = mockk(relaxed = true)
+
     @Bean
     fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
       object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
@@ -51,14 +67,6 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
       object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
-
-    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
-
-    @Bean fun workItemService(): WorkItemService = mockk(relaxed = true)
-
-    @Bean fun workItemQueryService(): WorkItemQueryService = mockk(relaxed = true)
-
-    @Bean fun workItemTransitionService(): WorkItemTransitionService = mockk(relaxed = true)
 
     @Bean
     fun clock(): java.time.Clock =

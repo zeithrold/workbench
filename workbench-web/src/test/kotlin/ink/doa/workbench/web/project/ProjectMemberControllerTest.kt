@@ -1,8 +1,5 @@
-package ink.doa.workbench.web.workitem
+package ink.doa.workbench.web.project
 
-import ink.doa.workbench.agile.workitem.WorkItemQueryService
-import ink.doa.workbench.agile.workitem.WorkItemService
-import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
@@ -17,29 +14,24 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
-@WebMvcTest(ProjectWorkItemController::class)
+@WebMvcTest(ProjectMemberController::class)
 @Import(
   SecurityConfiguration::class,
   WorkbenchAuthenticationFilter::class,
   ink.doa.workbench.web.support.ContextWebMvcSupport::class,
   ink.doa.workbench.web.support.ProjectWebMvcSupport::class,
-  ProjectWorkItemControllerTest.TestBeans::class,
+  ProjectMemberControllerTest.TestBeans::class,
 )
-class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
+class ProjectMemberControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list work items rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/projects/prj_test/work-items")).andExpect(status().isUnauthorized())
-  }
-
-  @Test
-  fun `get work item rejects unauthenticated requests`() {
-    mockMvc
-      .perform(get("/api/projects/prj_test/work-items/iss_test"))
-      .andExpect(status().isUnauthorized())
+  fun `list members rejects unauthenticated requests`() {
+    mockMvc.perform(get("/api/projects/prj_test/members")).andExpect(status().isUnauthorized())
   }
 
   @TestConfiguration
   class TestBeans {
+    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
+
     @Bean
     fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
       object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
@@ -51,14 +43,6 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
       object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
-
-    @Bean fun sessionService(): SessionService = mockk(relaxed = true)
-
-    @Bean fun workItemService(): WorkItemService = mockk(relaxed = true)
-
-    @Bean fun workItemQueryService(): WorkItemQueryService = mockk(relaxed = true)
-
-    @Bean fun workItemTransitionService(): WorkItemTransitionService = mockk(relaxed = true)
 
     @Bean
     fun clock(): java.time.Clock =

@@ -3,8 +3,8 @@ package ink.doa.workbench.web.identity
 import ink.doa.workbench.core.identity.model.LoginMethodKind
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
-import ink.doa.workbench.security.identity.auth.support.LdapAuthFixture
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
+import ink.doa.workbench.security.identity.auth.support.LdapAuthFixture
 import ink.doa.workbench.web.identity.support.AuthIntegrationContainers
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database

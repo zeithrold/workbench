@@ -64,12 +64,12 @@ class WorkItemQueryValueValidatorsTest :
 
     "requires at least one bound for between" {
       shouldThrow<InvalidRequestException> {
-          WorkItemQueryValueValidators.validateValueShape(
-            WorkItemQueryFieldType.NUMBER,
-            QueryOperator.BETWEEN,
-            QueryValue.Between(from = null, to = null),
-          )
-        }
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.NUMBER,
+          QueryOperator.BETWEEN,
+          QueryValue.Between(from = null, to = null),
+        )
+      }
     }
 
     "accepts between with from bound only" {
@@ -82,17 +82,17 @@ class WorkItemQueryValueValidatorsTest :
 
     "rejects relative date with non-positive amount" {
       shouldThrow<InvalidRequestException> {
-          WorkItemQueryValueValidators.validateValueShape(
-            WorkItemQueryFieldType.DATETIME,
-            QueryOperator.WITHIN,
-            QueryValue.RelativeDate(
-              amount = 0,
-              unit = RelativeDateUnit.DAY,
-              direction = DateDirection.PAST,
-              anchor = "date.now",
-            ),
-          )
-        }
+        WorkItemQueryValueValidators.validateValueShape(
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.WITHIN,
+          QueryValue.RelativeDate(
+            amount = 0,
+            unit = RelativeDateUnit.DAY,
+            direction = DateDirection.PAST,
+            anchor = "date.now",
+          ),
+        )
+      }
     }
 
     "rejects relative date with unknown anchor" {

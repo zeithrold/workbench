@@ -8,7 +8,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.template.TransitionFieldsLegacyMigrator
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -57,10 +56,11 @@ class WorkItemTransitionOptionBuilderTest :
       val buildContext = sampleBuildContext()
       val missingStatusId = UUID.randomUUID()
       val transition =
-        sampleTransition(buildContext.config, buildContext.issue.statusId).copy(
-          toStatusId = missingStatusId,
-          toStatusApiId = PublicId.new("sts"),
-        )
+        sampleTransition(buildContext.config, buildContext.issue.statusId)
+          .copy(
+            toStatusId = missingStatusId,
+            toStatusApiId = PublicId.new("sts"),
+          )
       coEvery { mutationSupport.templateContext(any()) } returns templateContext(buildContext)
       coEvery {
         fieldPermissions.isFormFieldEditable(any(), any(), any())
