@@ -241,6 +241,18 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
           (IssuesTable.statusId eq fromStatusId.toKotlinUuid())
       }) {
         it[IssuesTable.statusId] = toStatusId.toKotlinUuid()
+        command.title?.let { value -> it[IssuesTable.title] = value }
+        command.description?.let { value -> it[IssuesTable.description] = value }
+        command.assigneeApiId?.let { value ->
+          it[IssuesTable.assigneeId] = resolveUser(value).toKotlinUuid()
+        }
+        command.priorityApiId?.let { value ->
+          it[IssuesTable.priorityId] = resolvePriority(command.tenantId, value).toKotlinUuid()
+        }
+        command.sprintApiId?.let { value ->
+          it[IssuesTable.sprintId] =
+            resolveSprint(command.tenantId, command.projectId, value).toKotlinUuid()
+        }
         it[IssuesTable.propertiesSnapshot] = snapshot
         it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
         it[IssuesTable.updatedAt] = now
@@ -285,6 +297,27 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
           requireStatus(row[IssuesTable.statusId].toJavaUuid()).group !in terminalGroups
         }
         .toLong()
+    }
+
+  override suspend fun resolveUserApiId(userId: UUID): PublicId? =
+    suspendTransaction(db = database) {
+      UsersTable.selectAll()
+        .where { UsersTable.id eq userId.toKotlinUuid() }
+        .singleOrNull()
+        ?.get(UsersTable.apiId)
+        ?.let(::PublicId)
+    }
+
+  override suspend fun resolveProjectApiId(tenantId: UUID, projectId: UUID): PublicId? =
+    suspendTransaction(db = database) {
+      ProjectsTable.selectAll()
+        .where {
+          (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+            (ProjectsTable.id eq projectId.toKotlinUuid())
+        }
+        .singleOrNull()
+        ?.get(ProjectsTable.apiId)
+        ?.let(::PublicId)
     }
 
   private fun allocateSequence(projectId: UUID): Long {

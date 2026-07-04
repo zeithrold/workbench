@@ -70,6 +70,11 @@ data class TransitionWorkItemCommand(
   val transitionApiId: String,
   val actorUserId: UUID,
   val properties: Map<String, JsonElement> = emptyMap(),
+  val title: String? = null,
+  val description: String? = null,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
 )
 
 data class WorkItemPropertyValue(
