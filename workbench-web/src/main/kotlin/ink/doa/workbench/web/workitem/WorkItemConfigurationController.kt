@@ -59,6 +59,7 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Work Item Configuration", description = "Tenant-scoped work item catalog management.")
 @SessionSecured
 @StandardErrorResponses
+@Suppress("TooManyFunctions")
 class WorkItemConfigurationController(
   private val catalog: WorkItemCatalogService,
   private val configs: IssueTypeConfigService,

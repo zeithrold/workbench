@@ -210,7 +210,9 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
           )
       rejectIfActiveConfigsUseProperty(tenantId, row[PropertyDefinitionsTable.id].toJavaUuid())
       val now = now()
-      PropertyDefinitionsTable.update({ PropertyDefinitionsTable.id eq row[PropertyDefinitionsTable.id] }) {
+      PropertyDefinitionsTable.update({
+        PropertyDefinitionsTable.id eq row[PropertyDefinitionsTable.id]
+      }) {
         it[PropertyDefinitionsTable.isActive] = false
         it[PropertyDefinitionsTable.updatedAt] = now
       }
@@ -484,7 +486,9 @@ class ExposedWorkItemConfigurationRepository(private val database: Database) :
             WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
           )
       val now = now()
-      WorkflowTransitionsTable.update({ WorkflowTransitionsTable.id eq row[WorkflowTransitionsTable.id] }) {
+      WorkflowTransitionsTable.update({
+        WorkflowTransitionsTable.id eq row[WorkflowTransitionsTable.id]
+      }) {
         it[WorkflowTransitionsTable.isActive] = false
         it[WorkflowTransitionsTable.updatedAt] = now
       }

@@ -16,6 +16,7 @@ import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import java.time.OffsetDateTime
 import java.util.UUID
 
+@Suppress("TooManyFunctions")
 interface WorkItemCatalogRepository {
   suspend fun createStatus(command: CreateIssueStatusCommand): IssueStatusRecord
 
