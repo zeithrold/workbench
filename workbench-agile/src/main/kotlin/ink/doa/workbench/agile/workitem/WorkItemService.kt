@@ -14,7 +14,6 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
@@ -192,6 +191,7 @@ class WorkItemService(
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =
     repository.softDelete(command).also { publish(it) }
 
+  @Suppress("LongMethod")
   suspend fun availableTransitions(
     tenantId: UUID,
     projectId: UUID,
@@ -217,7 +217,8 @@ class WorkItemService(
             workItem = issue,
             currentProperties = currentProperties,
           )
-        val targetStatusAvailable = transition.toStatusId in config.statuses.map { it.statusId }.toSet()
+        val targetStatusAvailable =
+          transition.toStatusId in config.statuses.map { it.statusId }.toSet()
         val permissionCondition =
           checkCondition(
             transition.permissionCondition,
@@ -260,7 +261,8 @@ class WorkItemService(
             .orEmpty()
         val reason =
           when {
-            !targetStatusAvailable -> "Transition target status is not available in this type config."
+            !targetStatusAvailable ->
+              "Transition target status is not available in this type config."
             permissionCondition.reason != null -> permissionCondition.reason
             precondition.reason != null -> precondition.reason
             fieldsTemplate.isFailure -> "Transition field requirements are invalid."
@@ -281,9 +283,9 @@ class WorkItemService(
           editableFields = editableFields,
           fieldMeta = fieldMeta,
           commentMeta =
-            fieldsTemplate
-              .getOrNull()
-              ?.let { fieldMutationReconciler.buildCommentMeta(it.comment, templateContext) },
+            fieldsTemplate.getOrNull()?.let {
+              fieldMutationReconciler.buildCommentMeta(it.comment, templateContext)
+            },
         )
       }
   }

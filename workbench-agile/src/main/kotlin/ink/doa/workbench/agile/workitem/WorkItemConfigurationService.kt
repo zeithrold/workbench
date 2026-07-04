@@ -104,6 +104,7 @@ class WorkflowConfigurationService(
     actorUserId: UUID,
   ): WorkflowRecord = repository.deactivateWorkflow(tenantId, workflowApiIdOrCode, actorUserId)
 
+  @Suppress("ThrowsCount")
   suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord {
     val workflow =
       repository.findWorkflow(command.tenantId, command.workflowApiId)
@@ -126,6 +127,7 @@ class WorkflowConfigurationService(
     return repository.createTransition(canonicalCommand)
   }
 
+  @Suppress("ThrowsCount")
   suspend fun deactivateTransition(
     tenantId: UUID,
     workflowApiIdOrCode: String,
@@ -154,18 +156,17 @@ class WorkflowConfigurationService(
   ) {
     val template = transitionFieldsParser.parse(command.fields)
     val activeConfigs =
-      configs
-        .listConfigs(command.tenantId)
-        .filter {
-          it.config.workflowId == workflow.id && it.config.isActive && it.config.validTo == null
-        }
+      configs.listConfigs(command.tenantId).filter {
+        it.config.workflowId == workflow.id && it.config.isActive && it.config.validTo == null
+      }
     if (activeConfigs.isEmpty()) {
       TransitionFieldsValidator.validateEnvelope(template)
       return
     }
     activeConfigs.forEach { config ->
       val statusIds = config.statuses.map { it.statusApiId.value }.toSet()
-      val fromStatusAvailable = command.fromStatusApiId == null || command.fromStatusApiId in statusIds
+      val fromStatusAvailable =
+        command.fromStatusApiId == null || command.fromStatusApiId in statusIds
       if (command.toStatusApiId !in statusIds || !fromStatusAvailable) {
         throw InvalidRequestException(
           WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE,

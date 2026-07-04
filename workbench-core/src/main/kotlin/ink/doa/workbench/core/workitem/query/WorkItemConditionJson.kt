@@ -17,40 +17,39 @@ object WorkItemConditionJson {
     return parser.parseCondition(toCanonicalElement(element))
   }
 
-  fun canonicalize(element: JsonObject): JsonObject {
-    if (element.isEmpty()) return element
-    val condition = parse(element) ?: return JsonObject(emptyMap())
-    return condition.toJsonObject()
-  }
+  fun canonicalize(element: JsonObject): JsonObject =
+    when {
+      element.isEmpty() -> element
+      else -> parse(element)?.toJsonObject() ?: JsonObject(emptyMap())
+    }
 
-  private fun toCanonicalElement(element: JsonElement): JsonElement {
-    val obj = element as? JsonObject ?: return element
-    if (!obj.isLegacyCondition()) return obj
-    return when {
-      "all" in obj ->
+  private fun toCanonicalElement(element: JsonElement): JsonElement =
+    when {
+      element !is JsonObject -> element
+      !element.isLegacyCondition() -> element
+      "all" in element ->
         JsonObject(
           mapOf(
             "op" to JsonPrimitive("and"),
-            "args" to JsonArray(obj.array("all").map(::toCanonicalElement)),
+            "args" to JsonArray(element.array("all").map(::toCanonicalElement)),
           )
         )
-      "any" in obj ->
+      "any" in element ->
         JsonObject(
           mapOf(
             "op" to JsonPrimitive("or"),
-            "args" to JsonArray(obj.array("any").map(::toCanonicalElement)),
+            "args" to JsonArray(element.array("any").map(::toCanonicalElement)),
           )
         )
-      "not" in obj ->
+      "not" in element ->
         JsonObject(
           mapOf(
             "op" to JsonPrimitive("not"),
-            "arg" to toCanonicalElement(obj.getValue("not")),
+            "arg" to toCanonicalElement(element.getValue("not")),
           )
         )
-      else -> canonicalPredicate(obj)
+      else -> canonicalPredicate(element)
     }
-  }
 
   private fun canonicalPredicate(obj: JsonObject): JsonObject {
     val op = obj.getValue("op").jsonPrimitive.content
@@ -141,12 +140,14 @@ object WorkItemConditionJson {
     "all" in this || "any" in this || ("not" in this && this["op"] == null) || legacyPredicate()
 
   private fun JsonObject.legacyPredicate(): Boolean {
-    if ("field" !in this) return false
-    val op = this["op"]?.jsonPrimitive?.contentOrNull ?: return false
+    val op = this["op"]?.jsonPrimitive?.contentOrNull
     val value = this["value"]
-    return op in setOf("ne", "==", "!=", "exists", "missing") ||
-      (value is JsonPrimitive && value.contentOrNull in legacyVariables) ||
-      (value is JsonArray && value.any { it is JsonPrimitive && it.contentOrNull in legacyVariables })
+    return "field" in this &&
+      op != null &&
+      (op in setOf("ne", "==", "!=", "exists", "missing") ||
+        (value is JsonPrimitive && value.contentOrNull in legacyVariables) ||
+        (value is JsonArray &&
+          value.any { it is JsonPrimitive && it.contentOrNull in legacyVariables }))
   }
 
   private fun JsonObject.array(name: String): JsonArray = getValue(name) as JsonArray

@@ -39,7 +39,10 @@ class WorkItemConditionEvaluator {
     }
 
   @Suppress("CyclomaticComplexMethod")
-  private fun evaluatePredicate(predicate: ConditionNode.Predicate, context: WorkItemConditionContext): Boolean {
+  private fun evaluatePredicate(
+    predicate: ConditionNode.Predicate,
+    context: WorkItemConditionContext,
+  ): Boolean {
     val left = resolveField(predicate.field, context)
     val right = predicate.value?.let { resolveValue(it, context) }
     return when (predicate.op) {
@@ -66,6 +69,7 @@ class WorkItemConditionEvaluator {
     }
   }
 
+  @Suppress("CyclomaticComplexMethod")
   private fun resolveField(field: QueryField, context: WorkItemConditionContext): JsonElement? {
     if (field is QueryField.Property) {
       return field.apiId?.let { context.properties[it] ?: context.workItem.properties[it] }

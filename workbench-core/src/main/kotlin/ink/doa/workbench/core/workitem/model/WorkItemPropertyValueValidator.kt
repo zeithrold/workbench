@@ -13,6 +13,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 
 object WorkItemPropertyValueValidator {
+  @Suppress("CyclomaticComplexMethod")
   fun validate(property: IssueTypeConfigPropertyRecord, value: JsonElement) {
     if (value is JsonNull) return
     val valid =
