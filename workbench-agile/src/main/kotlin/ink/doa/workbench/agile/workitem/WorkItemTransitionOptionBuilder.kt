@@ -139,10 +139,9 @@ class WorkItemTransitionOptionBuilder(
           )
         }
         .orEmpty()
-    val commentMeta =
-      fieldsTemplate?.let {
-        fieldMutationReconciler.buildCommentMeta(it.comment, templateContext)
-      }
+    val commentMeta = fieldsTemplate?.let {
+      fieldMutationReconciler.buildCommentMeta(it.comment, templateContext)
+    }
     return TransitionFormDetails(
       editableFields = editableFields,
       fieldMeta = fieldMeta,

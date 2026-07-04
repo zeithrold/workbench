@@ -91,7 +91,11 @@ class GlobalExceptionHandler {
 
   @ExceptionHandler(InfrastructureUnavailableException::class)
   fun infrastructure(error: InfrastructureUnavailableException): ProblemDetail =
-    ProblemDetailSupport.problem(HttpStatus.SERVICE_UNAVAILABLE, "Infrastructure Unavailable", error)
+    ProblemDetailSupport.problem(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "Infrastructure Unavailable",
+        error,
+      )
       .apply {
         setProperty("component", error.component)
       }

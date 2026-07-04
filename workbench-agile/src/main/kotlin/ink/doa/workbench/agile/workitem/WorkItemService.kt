@@ -64,7 +64,8 @@ class WorkItemService(
       )
     val effectiveCommand =
       WorkItemPropertySupport.applyCreateSystemFields(command, reconciled.systemFields)
-    val values = WorkItemPropertySupport.normalizeProperties(config.config, reconciled.propertyValues)
+    val values =
+      WorkItemPropertySupport.normalizeProperties(config.config, reconciled.propertyValues)
     return repository
       .create(
         command = effectiveCommand,

@@ -32,7 +32,8 @@ class PermissionBindingManagementService(
       )
     }
     val userId = command.userPublicId?.let { publicIds.resolveUser(it).id }
-    val groupId = command.groupPublicId?.let { groupManagement.requireGroup(command.tenantId, it).id }
+    val groupId =
+      command.groupPublicId?.let { groupManagement.requireGroup(command.tenantId, it).id }
     val policy = policyManagement.requirePolicy(command.tenantId, command.policyPublicId)
     val projectId =
       command.projectPublicId?.let { publicIds.resolveProject(command.tenantId, it).id }

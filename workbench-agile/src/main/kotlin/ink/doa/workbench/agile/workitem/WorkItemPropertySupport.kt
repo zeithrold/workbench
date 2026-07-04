@@ -44,8 +44,9 @@ internal object WorkItemPropertySupport {
     }
   }
 
-  fun Map<String, JsonElement>.filterPropertyInputs(): Map<String, JsonElement> =
-    filterKeys { it !in systemTemplateFields }
+  fun Map<String, JsonElement>.filterPropertyInputs(): Map<String, JsonElement> = filterKeys {
+    it !in systemTemplateFields
+  }
 
   fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {
     val inputs = mutableMapOf<String, JsonElement>("title" to JsonPrimitive(command.title))

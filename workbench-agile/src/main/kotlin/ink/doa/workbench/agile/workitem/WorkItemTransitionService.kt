@@ -31,7 +31,8 @@ class WorkItemTransitionService(
     actorUserId: UUID,
   ): List<WorkItemTransitionOption> {
     val issue = get(tenantId, projectId, workItemApiId)
-    val config = collaborators.mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value)
+    val config =
+      collaborators.mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value)
     val currentProperties = repository.listPropertyValues(tenantId, issue.id)
     val context =
       collaborators.transitionValidator.conditionContext(issue, actorUserId, currentProperties)
@@ -57,7 +58,10 @@ class WorkItemTransitionService(
   suspend fun transition(command: TransitionWorkItemCommand): WorkItemMutationResult {
     val issue = get(command.tenantId, command.projectId, command.workItemApiId)
     val config =
-      collaborators.mutationSupport.requireConfig(command.tenantId, issue.issueTypeConfigApiId.value)
+      collaborators.mutationSupport.requireConfig(
+        command.tenantId,
+        issue.issueTypeConfigApiId.value,
+      )
     val transition =
       workflows.findTransition(command.tenantId, command.transitionApiId)
         ?: throw ResourceNotFoundException(
@@ -67,7 +71,11 @@ class WorkItemTransitionService(
 
     val currentProperties = repository.listPropertyValues(command.tenantId, issue.id)
     val context =
-      collaborators.transitionValidator.conditionContext(issue, command.actorUserId, currentProperties)
+      collaborators.transitionValidator.conditionContext(
+        issue,
+        command.actorUserId,
+        currentProperties,
+      )
     collaborators.transitionValidator.requireTransitionPermission(transition, context)
     collaborators.transitionValidator.requireTransitionPrecondition(transition, context)
 

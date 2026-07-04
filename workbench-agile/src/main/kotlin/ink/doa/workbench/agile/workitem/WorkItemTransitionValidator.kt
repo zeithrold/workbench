@@ -13,9 +13,7 @@ import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Component
 
 @Component
-class WorkItemTransitionValidator(
-  private val repository: WorkItemRepository,
-) {
+class WorkItemTransitionValidator(private val repository: WorkItemRepository) {
   private val conditions = WorkItemConditionEvaluator()
 
   suspend fun conditionContext(
