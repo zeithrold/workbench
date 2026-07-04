@@ -72,8 +72,8 @@ class AuthOidcIntegrationTest(
     val authorizeResponse =
       mockMvc.perform(asyncDispatch(authorizeStarted)).andExpect(status().isOk()).andReturn()
     val authorizeJson: JsonNode = objectMapper.readTree(authorizeResponse.response.contentAsString)
-    val authorizationUrl = authorizeJson.get("authorizationUrl").asText()
-    val state = authorizeJson.get("state").asText()
+    val authorizationUrl = authorizeJson.get("authorizationUrl").asString()
+    val state = authorizeJson.get("state").asString()
     val code =
       OAuthAuthorizationCodeClient.obtainAuthorizationCode(
         authorizationUrl = authorizationUrl,
