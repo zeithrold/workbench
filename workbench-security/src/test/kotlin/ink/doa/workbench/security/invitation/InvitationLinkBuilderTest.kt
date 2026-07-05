@@ -31,7 +31,7 @@ class InvitationLinkBuilderTest :
     }
 
     "build requires request host when base url is not configured" {
-      val builder = InvitationLinkBuilder(InvitationLinkProperties())
+      val builder = InvitationLinkBuilder(InvitationLinkProperties(publicBaseUrl = null))
 
       shouldThrow<IllegalArgumentException> {
         builder.buildInvitationLink("token", null)

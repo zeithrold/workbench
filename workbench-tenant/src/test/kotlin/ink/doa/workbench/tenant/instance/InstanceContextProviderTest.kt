@@ -9,7 +9,12 @@ class InstanceContextProviderTest :
     "current uses configured instance id and name" {
       val provider =
         InstanceContextProvider(
-          instanceProperties = InstanceProperties(id = "instance-1", name = "Workbench Dev"),
+          instanceProperties =
+            InstanceProperties(
+              setupToken = null,
+              id = "instance-1",
+              name = "Workbench Dev",
+            ),
           applicationName = "workbench-web",
         )
 
@@ -19,7 +24,8 @@ class InstanceContextProviderTest :
     "current falls back to application name when instance name is blank" {
       val provider =
         InstanceContextProvider(
-          instanceProperties = InstanceProperties(id = "instance-1", name = "  "),
+          instanceProperties =
+            InstanceProperties(setupToken = null, id = "instance-1", name = "  "),
           applicationName = "workbench-web",
         )
 
@@ -29,7 +35,7 @@ class InstanceContextProviderTest :
     "current falls back to host name when instance id is blank" {
       val provider =
         InstanceContextProvider(
-          instanceProperties = InstanceProperties(id = null, name = "Workbench"),
+          instanceProperties = InstanceProperties(setupToken = null, id = null, name = "Workbench"),
           applicationName = "workbench-web",
         )
 

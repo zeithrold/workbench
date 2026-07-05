@@ -12,7 +12,8 @@ class ContextWebMvcSupport {
   @Bean
   fun instanceContextProvider(): InstanceContextProvider =
     InstanceContextProvider(
-      instanceProperties = InstanceProperties(id = "test-instance", name = "workbench"),
+      instanceProperties =
+        InstanceProperties(setupToken = null, id = "test-instance", name = "workbench"),
       applicationName = "workbench",
     )
 
