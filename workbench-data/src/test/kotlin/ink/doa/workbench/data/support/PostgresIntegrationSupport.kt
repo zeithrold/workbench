@@ -14,9 +14,11 @@ import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.repository.workitem.ExposedIssueTypeConfigRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemActivityRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCommentRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemTimelineRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
 import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
 import java.time.OffsetDateTime
@@ -185,4 +187,12 @@ internal fun workItemCommentRepository(database: Database): ExposedWorkItemComme
   val codec = WorkItemActivityCodec()
   val factory = WorkItemActivityFactory()
   return ExposedWorkItemCommentRepository(database, factory, codec)
+}
+
+internal fun workItemTimelineRepository(database: Database): ExposedWorkItemTimelineRepository {
+  val codec = WorkItemActivityCodec()
+  val factory = WorkItemActivityFactory()
+  val activities = ExposedWorkItemActivityRepository(database, codec)
+  val comments = ExposedWorkItemCommentRepository(database, factory, codec)
+  return ExposedWorkItemTimelineRepository(database, activities, comments)
 }

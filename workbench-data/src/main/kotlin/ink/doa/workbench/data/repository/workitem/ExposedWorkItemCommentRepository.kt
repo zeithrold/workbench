@@ -5,6 +5,7 @@ package ink.doa.workbench.data.repository.workitem
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.pagination.WorkbenchTimelineEntryKind
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
@@ -13,17 +14,19 @@ import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentCreateResult
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.persistence.postgres.workitem.InsertTimelineEntryCommand
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueCommentsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.insertTimelineEntry
 import ink.doa.workbench.data.persistence.postgres.workitem.now
 import ink.doa.workbench.data.persistence.postgres.workitem.preparePendingWorkItemActivity
+import ink.doa.workbench.data.persistence.postgres.workitem.softDeleteTimelineEntryByComment
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
@@ -40,25 +43,6 @@ class ExposedWorkItemCommentRepository(
   private val activityFactory: WorkItemActivityFactory,
   private val activityCodec: WorkItemActivityCodec,
 ) : WorkItemCommentRepository {
-  override suspend fun listByWorkItem(
-    tenantId: UUID,
-    issueId: UUID,
-    limit: Int,
-    offset: Long,
-  ): List<WorkItemCommentRecord> =
-    suspendTransaction(db = database) {
-      IssueCommentsTable.selectAll()
-        .where {
-          (IssueCommentsTable.tenantId eq tenantId.toKotlinUuid()) and
-            (IssueCommentsTable.issueId eq issueId.toKotlinUuid()) and
-            IssueCommentsTable.deletedAt.isNull()
-        }
-        .orderBy(IssueCommentsTable.createdAt to SortOrder.DESC)
-        .limit(limit)
-        .offset(offset)
-        .map { it.toRecord() }
-    }
-
   @Suppress("LongMethod")
   override suspend fun create(
     command: CreateWorkItemCommentCommand,
@@ -106,6 +90,16 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.createdAt] = now
         it[IssueCommentsTable.updatedAt] = now
       }
+      insertTimelineEntry(
+        InsertTimelineEntryCommand(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          workItemId = issueId,
+          entryKind = WorkbenchTimelineEntryKind.COMMENT,
+          sourceId = commentId,
+          occurredAt = now,
+        )
+      )
       WorkItemCommentCreateResult(
         record =
           WorkItemCommentRecord(
@@ -206,6 +200,11 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.deleteReason] = command.deleteReason
         it[IssueCommentsTable.updatedAt] = now
       }
+      softDeleteTimelineEntryByComment(
+        tenantId = command.tenantId,
+        commentId = row[IssueCommentsTable.id].toJavaUuid(),
+        deletedAt = now,
+      )
       IssueCommentsTable.selectAll()
         .where { IssueCommentsTable.id eq row[IssueCommentsTable.id] }
         .single()
@@ -230,6 +229,15 @@ class ExposedWorkItemCommentRepository(
         ?.get(IssuesTable.id)
         ?.toJavaUuid()
     }
+
+  internal fun loadRecord(commentId: UUID): WorkItemCommentRecord? =
+    IssueCommentsTable.selectAll()
+      .where {
+        (IssueCommentsTable.id eq commentId.toKotlinUuid()) and
+          IssueCommentsTable.deletedAt.isNull()
+      }
+      .singleOrNull()
+      ?.toRecord()
 
   private fun ResultRow.toRecord(includeDeleted: Boolean = false): WorkItemCommentRecord {
     if (!includeDeleted && this[IssueCommentsTable.deletedAt] != null) {

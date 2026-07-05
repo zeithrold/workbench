@@ -36,21 +36,3 @@ data class WorkItemActivityRecord(
   val sourceType: WorkItemActivitySourceType,
   val createdAt: OffsetDateTime,
 )
-
-data class ListWorkItemActivitiesQuery(
-  val tenantId: UUID,
-  val projectId: UUID,
-  val workItemApiId: String,
-  val limit: Int = 50,
-  val before: OffsetDateTime? = null,
-)
-
-data class WorkItemActivityPageInfo(
-  val limit: Int,
-  val nextBefore: OffsetDateTime?,
-)
-
-data class WorkItemActivityListPage(
-  val items: List<WorkItemActivityRecord>,
-  val page: WorkItemActivityPageInfo,
-)

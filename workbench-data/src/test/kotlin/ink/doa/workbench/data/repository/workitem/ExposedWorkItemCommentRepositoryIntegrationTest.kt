@@ -12,7 +12,6 @@ import ink.doa.workbench.data.support.workItemCommentRepository
 import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -64,7 +63,6 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
             .record
 
         comment.body shouldBe "<p>First comment</p>"
-        comments.listByWorkItem(stack.tenantId, issueId, limit = 50, offset = 0L).shouldHaveSize(1)
         comments.findByApiId(stack.tenantId, issueId, comment.apiId.value).shouldNotBeNull()
 
         val updated =
@@ -96,7 +94,6 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
           issueId = issueId,
         )
 
-        comments.listByWorkItem(stack.tenantId, issueId, limit = 50, offset = 0L).shouldHaveSize(0)
         comments.findByApiId(stack.tenantId, issueId, comment.apiId.value).shouldBeNull()
       }
     }

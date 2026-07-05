@@ -218,3 +218,17 @@ object WorkItemActivitiesTable : Table("work_item_activities") {
   val createdAt = timestampWithTimeZone("created_at")
   override val primaryKey = PrimaryKey(id)
 }
+
+object WorkItemTimelineEntriesTable : Table("work_item_timeline_entries") {
+  val id = uuid("id")
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val projectId = uuid("project_id").references(ProjectsTable.id)
+  val workItemId = uuid("work_item_id").references(IssuesTable.id)
+  val entryKind = text("entry_kind")
+  val entryKindRank = short("entry_kind_rank")
+  val sourceId = uuid("source_id")
+  val occurredAt = timestampWithTimeZone("occurred_at")
+  val deletedAt = timestampWithTimeZone("deleted_at").nullable()
+  val createdAt = timestampWithTimeZone("created_at")
+  override val primaryKey = PrimaryKey(id)
+}

@@ -2,17 +2,17 @@ package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.WorkItemActivityRepository
+import ink.doa.workbench.core.common.pagination.WorkbenchCursor
 import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.activity.ListWorkItemActivitiesQuery
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityListPage
-import java.time.OffsetDateTime
+import ink.doa.workbench.core.workitem.WorkItemTimelineRepository
+import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
+import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
 import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
-class WorkItemActivityService(
-  private val activities: WorkItemActivityRepository,
+class WorkItemTimelineService(
+  private val timeline: WorkItemTimelineRepository,
   private val workItems: WorkItemRepository,
 ) {
   suspend fun list(
@@ -20,16 +20,17 @@ class WorkItemActivityService(
     projectId: UUID,
     workItemApiId: String,
     limit: Int = 50,
-    before: OffsetDateTime? = null,
-  ): WorkItemActivityListPage {
+    cursorToken: String? = null,
+  ): WorkItemTimelinePage {
     requireWorkItem(tenantId, projectId, workItemApiId)
-    return activities.listByWorkItem(
-      ListWorkItemActivitiesQuery(
+    val cursor = cursorToken?.let(WorkbenchCursor::decode)
+    return timeline.listByWorkItem(
+      ListWorkItemTimelineQuery(
         tenantId = tenantId,
         projectId = projectId,
         workItemApiId = workItemApiId,
         limit = limit,
-        before = before,
+        cursor = cursor,
       )
     )
   }

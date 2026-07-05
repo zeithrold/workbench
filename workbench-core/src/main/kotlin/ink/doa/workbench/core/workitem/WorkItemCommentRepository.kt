@@ -8,13 +8,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import java.util.UUID
 
 interface WorkItemCommentRepository {
-  suspend fun listByWorkItem(
-    tenantId: UUID,
-    issueId: UUID,
-    limit: Int,
-    offset: Long,
-  ): List<WorkItemCommentRecord>
-
   suspend fun create(
     command: CreateWorkItemCommentCommand,
     issueId: UUID,
