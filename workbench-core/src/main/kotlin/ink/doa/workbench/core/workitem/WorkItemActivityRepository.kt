@@ -1,9 +1,7 @@
 package ink.doa.workbench.core.workitem
 
 import ink.doa.workbench.core.workitem.activity.CreateWorkItemActivityCommand
-import ink.doa.workbench.core.workitem.activity.ListWorkItemActivitiesQuery
 import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityListPage
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecord
 
 interface WorkItemActivityRepository {
@@ -14,6 +12,4 @@ interface WorkItemActivityRepository {
   suspend fun createAll(
     commands: List<CreateWorkItemActivityCommand<*>>
   ): List<WorkItemActivityRecord>
-
-  suspend fun listByWorkItem(query: ListWorkItemActivitiesQuery): WorkItemActivityListPage
 }

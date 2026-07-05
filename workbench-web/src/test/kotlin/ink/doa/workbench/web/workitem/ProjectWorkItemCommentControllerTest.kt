@@ -30,7 +30,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
@@ -54,15 +53,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   ProjectWorkItemCommentControllerTest.TestBeans::class,
 )
 class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockMvc) {
-  @Test
-  fun `list comments rejects unauthenticated requests`() {
-    mockMvc
-      .perform(
-        get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments")
-      )
-      .andExpect(status().isUnauthorized())
-  }
-
   @Test
   fun `create comment returns created comment for authenticated user`() {
     val result =
@@ -128,25 +118,6 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
     mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
   }
 
-  @Test
-  fun `list comments returns work item comments for authenticated user`() {
-    val result =
-      mockMvc
-        .perform(
-          get(
-              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments"
-            )
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
-    mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].body").value("Looks good"))
-  }
-
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -182,15 +153,6 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
 
     @Bean
     fun workItemCommentServiceSetup(service: WorkItemCommentService): Boolean {
-      coEvery {
-        service.list(
-          TenantWebMvcFixtures.TENANT_ID,
-          TenantWebMvcFixtures.PROJECT_ID,
-          "iss_test",
-          50,
-          0,
-        )
-      } returns listOf(SAMPLE_COMMENT)
       coEvery {
         service.create(
           ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand(

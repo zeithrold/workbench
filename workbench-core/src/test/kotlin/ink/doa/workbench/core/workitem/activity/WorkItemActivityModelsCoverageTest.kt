@@ -46,7 +46,7 @@ class WorkItemActivityModelsCoverageTest :
       WorkItemActivityDomainEvents.RecordRequested.topic shouldBe DomainTopics.WORK_ITEM_ACTIVITY
     }
 
-    "activity records and queries store pagination metadata" {
+    "activity records store actor and payload metadata" {
       val payload =
         WorkItemActivityPayload.Created(
           WorkItemCreatedPayload(
@@ -76,24 +76,6 @@ class WorkItemActivityModelsCoverageTest :
           createdAt = now,
         )
       record.summary shouldBe "Created"
-
-      val query =
-        ListWorkItemActivitiesQuery(
-          tenantId = tenantId,
-          projectId = projectId,
-          workItemApiId = "iss_test",
-          limit = 25,
-          before = now,
-        )
-      query.limit shouldBe 25
-
-      val page =
-        WorkItemActivityListPage(
-          items = listOf(record),
-          page = WorkItemActivityPageInfo(limit = 25, nextBefore = now),
-        )
-      page.items.single().activityType shouldBe WorkItemActivityType.CREATED
-      page.page.nextBefore shouldBe now
     }
 
     "create activity command stores actor and source metadata" {

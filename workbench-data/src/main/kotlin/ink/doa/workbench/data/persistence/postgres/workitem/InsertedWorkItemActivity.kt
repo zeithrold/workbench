@@ -1,10 +1,12 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.pagination.WorkbenchTimelineEntryKind
 import ink.doa.workbench.core.workitem.activity.CreateWorkItemActivityCommand
 import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityType
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.eq
@@ -68,6 +70,19 @@ internal fun insertWorkItemActivityWithId(
     it[WorkItemActivitiesTable.correlationId] = command.correlationId
     it[WorkItemActivitiesTable.requestId] = command.requestId
     it[WorkItemActivitiesTable.createdAt] = createdAt
+  }
+  if (command.spec.type != WorkItemActivityType.COMMENT_CREATED) {
+    insertTimelineEntry(
+      InsertTimelineEntryCommand(
+        tenantId = command.tenantId,
+        projectId = command.projectId,
+        workItemId = command.workItemId,
+        entryKind = WorkbenchTimelineEntryKind.ACTIVITY,
+        sourceId = activityId,
+        occurredAt = command.occurredAt,
+        createdAt = createdAt,
+      )
+    )
   }
   return InsertedWorkItemActivity(id = activityId, apiId = apiId)
 }

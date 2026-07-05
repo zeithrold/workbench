@@ -17,7 +17,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemCommentCreateResult
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.mockk.coEvery
@@ -174,18 +173,6 @@ class WorkItemCommentServiceTest :
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_BODY_REQUIRED
-    }
-
-    "list returns comments for work item" {
-      val tenantId = UUID.randomUUID()
-      val projectId = UUID.randomUUID()
-      val issueId = UUID.randomUUID()
-      val authorId = UUID.randomUUID()
-      val record = commentRecord(tenantId, issueId, authorId, clock)
-      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns issueId
-      coEvery { comments.listByWorkItem(tenantId, issueId, 25, 0) } returns listOf(record)
-
-      service.list(tenantId, projectId, "iss_01", limit = 25, offset = 0).shouldHaveSize(1)
     }
 
     "update converts body and persists comment" {

@@ -27,17 +27,6 @@ class WorkItemCommentService(
   private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val clock: Clock,
 ) {
-  suspend fun list(
-    tenantId: UUID,
-    projectId: UUID,
-    workItemApiId: String,
-    limit: Int = 50,
-    offset: Long = 0,
-  ): List<WorkItemCommentRecord> {
-    val issueId = requireIssueId(tenantId, projectId, workItemApiId)
-    return comments.listByWorkItem(tenantId, issueId, limit, offset)
-  }
-
   suspend fun create(command: CreateWorkItemCommentCommand): WorkItemCommentRecord {
     requirePermission(command.tenantId, command.projectId, command.authorId, CREATE_ACTION)
     val processed = processBody(command.body)

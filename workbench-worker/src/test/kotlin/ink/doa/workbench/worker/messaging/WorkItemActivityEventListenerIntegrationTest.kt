@@ -7,12 +7,10 @@ import ink.doa.workbench.core.messaging.DomainTopics
 import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.workitem.WorkItemActivityRepository
 import ink.doa.workbench.core.workitem.activity.CreateWorkItemActivityCommand
-import ink.doa.workbench.core.workitem.activity.ListWorkItemActivitiesQuery
 import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityDomainEvents
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityListPage
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecord
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecordRequestedEvent
 import ink.doa.workbench.core.workitem.activity.WorkItemActivitySpecs
@@ -98,12 +96,6 @@ class WorkItemActivityEventListenerIntegrationTest :
         override suspend fun createAll(
           commands: List<CreateWorkItemActivityCommand<*>>
         ): List<WorkItemActivityRecord> {
-          error("not used")
-        }
-
-        override suspend fun listByWorkItem(
-          query: ListWorkItemActivitiesQuery
-        ): WorkItemActivityListPage {
           error("not used")
         }
       }
