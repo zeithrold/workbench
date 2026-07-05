@@ -128,7 +128,7 @@ Workflow: [.github/workflows/quality-gate.yml](../../../.github/workflows/qualit
 6. (nightly only) `fuzzTest`, `mutationTest`
 7. `koverXmlReport`
 8. (CI push/PR only, after successful `check`) `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage`
-9. `render-quality-summary.py` → Step Summary (Kover, diff coverage, PIT)
+9. `uv run check-diff-coverage` → Step Summary (diff coverage); `uv run render-quality-summary` → Step Summary (Kover, PIT)
 10. Upload artifacts: Kover, PIT, diff-cover HTML, `diff-coverage-results.json`, frontend `coverage/` (14-day retention)
 
 ### Job: docker (after quality-gate)

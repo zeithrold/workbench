@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import subprocess
@@ -338,48 +337,6 @@ def render_coverage_section(root: Path) -> list[str]:
     return lines
 
 
-def render_diff_coverage_section(root: Path) -> list[str]:
-    results_path = root / "scripts" / "ci" / "diff-coverage-results.json"
-    if not results_path.is_file():
-        lines = ["### Diff Coverage (changed lines)", ""]
-        lines.append(
-            "_No diff coverage report found. Run `pnpmCoverage` and "
-            "`uv run check-diff-coverage` after `./gradlew check`._"
-        )
-        lines.append("")
-        return lines
-
-    try:
-        payload = json.loads(results_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        lines = ["### Diff Coverage (changed lines)", ""]
-        lines.append("_Diff coverage results file is invalid JSON._")
-        lines.append("")
-        return lines
-
-    lines = ["### Diff Coverage (changed lines)", ""]
-    lines.append("| Stack | Status | Changed-line % | Threshold |")
-    lines.append("|-------|--------|------------------|-----------|")
-
-    for stack in ("backend", "frontend"):
-        entry = payload.get(stack)
-        if not isinstance(entry, dict):
-            continue
-        percent_value = entry.get("percent")
-        percent = "N/A" if percent_value is None else f"{float(percent_value):.1f}%"
-        fail_under = entry.get("fail_under")
-        threshold = "N/A" if fail_under is None else f"{float(fail_under):.0f}%"
-        lines.append(f"| {stack} | {entry.get('status', 'unknown')} | {percent} | {threshold} |")
-
-    lines.append("")
-    for stack in ("backend", "frontend"):
-        html = root / "scripts" / "ci" / f"diff-cover-{stack}.html"
-        if html.is_file():
-            lines.append(f"- {stack} HTML report: `{html.relative_to(root)}`")
-    lines.append("")
-    return lines
-
-
 def discover_pit_modules(root: Path) -> list[str]:
     modules: list[str] = []
     for child in sorted(root.iterdir()):
@@ -499,7 +456,6 @@ def main() -> int:
     output: list[str] = ["## Quality Gate Report", ""]
 
     output.extend(render_coverage_section(root))
-    output.extend(render_diff_coverage_section(root))
 
     mutation_lines, module_metrics, aggregate = render_mutation_section(root)
     output.extend(mutation_lines)

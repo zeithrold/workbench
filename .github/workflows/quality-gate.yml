@@ -124,9 +124,11 @@ jobs:
 
       - name: Publish quality gate report
         if: always()
+        working-directory: scripts/ci
         env:
           EXTENDED_TESTS: ${{ inputs.extended-tests }}
-        run: python3 scripts/ci/render-quality-summary.py >> "$GITHUB_STEP_SUMMARY"
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run render-quality-summary >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload quality reports
         if: always()
