@@ -2,14 +2,6 @@ package ink.doa.workbench.security.identity.auth
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.LoginAccountStore
-import ink.doa.workbench.core.identity.LoginMethodRepository
-import ink.doa.workbench.core.identity.TenantLoginMethodSettingRepository
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.UserLoginAccountRepository
-import ink.doa.workbench.core.identity.auth.CredentialHasher
-import ink.doa.workbench.core.identity.auth.CredentialSecretGenerator
-import ink.doa.workbench.core.identity.auth.MagicLinkTokenRepository
 import ink.doa.workbench.core.tenantconfig.model.MailSmtpTenantConfig
 import ink.doa.workbench.tenant.tenantconfig.TenantConfigService
 import java.time.Clock
@@ -21,14 +13,8 @@ import org.springframework.stereotype.Service
 
 @Service
 class MagicLinkAuthService(
-  private val loginMethods: LoginMethodRepository,
-  private val tenantLoginSettings: TenantLoginMethodSettingRepository,
-  private val loginAccounts: LoginAccountStore,
-  private val userLoginAccounts: UserLoginAccountRepository,
-  private val tenants: TenantRepository,
-  private val magicLinkTokens: MagicLinkTokenRepository,
-  private val credentialHasher: CredentialHasher,
-  private val secretGenerator: CredentialSecretGenerator,
+  private val repositories: MagicLinkAuthRepositories,
+  private val crypto: CredentialCryptoSupport,
   private val tenantConfig: TenantConfigService,
   private val clock: Clock,
 ) {
@@ -36,16 +22,18 @@ class MagicLinkAuthService(
 
   suspend fun requestMagicLink(email: String, tenantId: String, loginMethodId: String) {
     val normalizedEmail = normalizeSubject(email)
-    val tenant = requireTenantByApiId(tenants, tenantId)
-    val method = requireLoginMethodByApiId(loginMethods, loginMethodId)
+    val tenant = requireTenantByApiId(repositories.tenants, tenantId)
+    val method = requireLoginMethodByApiId(repositories.loginMethods, loginMethodId)
     requireMagicLinkMethod(method, loginMethodId)
-    requireEnabledTenantSetting(tenantLoginSettings.findTenantSetting(tenant.id, method.id))
+    requireEnabledTenantSetting(
+      repositories.tenantLoginSettings.findTenantSetting(tenant.id, method.id)
+    )
     val mailConfig = requireMagicLinkMailConfig(tenantConfig, tenant.id)
 
-    val secret = secretGenerator.generate()
+    val secret = crypto.secretGenerator.generate()
     val now = OffsetDateTime.now(clock)
-    magicLinkTokens.create(
-      tokenHash = credentialHasher.hash(secret),
+    repositories.magicLinkTokens.create(
+      tokenHash = crypto.credentialHasher.hash(secret),
       loginMethodId = method.id,
       tenantId = tenant.id,
       normalizedSubject = normalizedEmail,
@@ -66,9 +54,9 @@ class MagicLinkAuthService(
   suspend fun resolveToken(token: String): MagicLinkIdentity {
     val now = OffsetDateTime.now(clock)
     val record =
-      magicLinkTokens.findActiveByHash(credentialHasher.hash(token), now)
+      repositories.magicLinkTokens.findActiveByHash(crypto.credentialHasher.hash(token), now)
         ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_INVALID)
-    magicLinkTokens.consume(record.id, now)
+    repositories.magicLinkTokens.consume(record.id, now)
     return resolveMagicLinkIdentity(record.loginMethodId, record.normalizedSubject, record.tenantId)
   }
 
@@ -78,13 +66,13 @@ class MagicLinkAuthService(
     tenantId: java.util.UUID,
   ): MagicLinkIdentity {
     val method =
-      loginMethods.findLoginMethodById(loginMethodId)
+      repositories.loginMethods.findLoginMethodById(loginMethodId)
         ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_NOT_CONFIGURED)
     val account =
-      loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
+      repositories.loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
         ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_ACCOUNT_NOT_FOUND)
     val user =
-      userLoginAccounts.findLinkedUser(account.id)
+      repositories.userLoginAccounts.findLinkedUser(account.id)
         ?: throw InvalidRequestException(WorkbenchErrorCode.IDENTITY_MAGIC_LINK_USER_NOT_FOUND)
     return MagicLinkIdentity(user = user, loginAccount = account, tenantId = tenantId)
   }

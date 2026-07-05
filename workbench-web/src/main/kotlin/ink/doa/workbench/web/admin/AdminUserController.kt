@@ -6,6 +6,7 @@ import ink.doa.workbench.core.permission.GrantScope
 import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.security.permission.AccessGrantManagementService
 import ink.doa.workbench.security.permission.AdminUserService
+import ink.doa.workbench.security.permission.CreateManagedAccessGrantCommand
 import ink.doa.workbench.security.permission.PermissionActionService
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
@@ -118,14 +119,16 @@ class AdminUserController(
   ): AccessGrantResponse =
     AccessGrantResponse.from(
       accessGrantService.createGrant(
-        scope = request.scope,
-        tenantId = tenantContext.tenant.id,
-        userPublicId = request.userId,
-        actionCode = request.action,
-        resourcePattern = request.resourcePattern,
-        effect = request.effect,
-        projectPublicId = request.projectId,
-        actorUserId = tenantContext.actor?.id,
+        CreateManagedAccessGrantCommand(
+          scope = request.scope,
+          tenantId = tenantContext.tenant.id,
+          userPublicId = request.userId,
+          actionCode = request.action,
+          resourcePattern = request.resourcePattern,
+          effect = request.effect,
+          projectPublicId = request.projectId,
+          actorUserId = tenantContext.actor?.id,
+        )
       )
     )
 

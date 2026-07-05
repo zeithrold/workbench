@@ -13,7 +13,6 @@ import ink.doa.workbench.core.identity.model.CredentialType
 import ink.doa.workbench.core.identity.model.LoginCommand
 import java.time.Clock
 import java.time.OffsetDateTime
-import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
@@ -27,7 +26,14 @@ class AuthenticationService(
 ) {
   suspend fun login(command: LoginCommand): AuthenticationResult {
     val identity = authenticate(command)
-    return completeLogin(identity, command.issueBearerToken, command.ipAddress, command.userAgent)
+    return completeLogin(
+      LoginCompletionRequest(
+        identity = identity,
+        issueBearerToken = command.issueBearerToken,
+        ipAddress = command.ipAddress,
+        userAgent = command.userAgent,
+      )
+    )
   }
 
   suspend fun authenticate(command: LoginCommand): AuthenticatedIdentity =
@@ -38,52 +44,47 @@ class AuthenticationService(
       throw error
     }
 
-  suspend fun completeLogin(
-    identity: AuthenticatedIdentity,
-    issueBearerToken: Boolean,
-    ipAddress: String?,
-    userAgent: String?,
-    tenantIdForAudit: UUID? = null,
-    activeTenantId: UUID? = null,
-  ): AuthenticationResult {
+  suspend fun completeLogin(request: LoginCompletionRequest): AuthenticationResult {
     val now = now()
     val session =
       sessionCredentialService.issueSession(
-        identity.user.id,
-        identity.loginAccount.id,
+        request.identity.user.id,
+        request.identity.loginAccount.id,
         now,
-        activeTenantId,
+        request.activeTenantId,
       )
     val bearerToken =
-      if (issueBearerToken) {
+      if (request.issueBearerToken) {
         bearerCredentialService.issueBearerToken(
-          userId = identity.user.id,
-          loginAccountId = identity.loginAccount.id,
-          tenantId = tenantIdForAudit,
-          name = null,
-          scopes = setOf("workbench.api"),
-          createdBy = identity.user.id,
-          now = now,
+          IssueBearerTokenCommand(
+            userId = request.identity.user.id,
+            loginAccountId = request.identity.loginAccount.id,
+            tenantId = request.tenantIdForAudit,
+            name = null,
+            scopes = setOf("workbench.api"),
+            createdBy = request.identity.user.id,
+            now = now,
+          )
         )
       } else null
-    loginAccounts.touchLastUsed(identity.loginAccount.id, now)
+    loginAccounts.touchLastUsed(request.identity.loginAccount.id, now)
     authEvents.append(
       CreateAuthEventCommand(
-        tenantId = tenantIdForAudit,
-        userId = identity.user.id,
-        loginAccountId = identity.loginAccount.id,
-        loginMethodId = identity.loginAccount.loginMethodId,
+        tenantId = request.tenantIdForAudit,
+        userId = request.identity.user.id,
+        loginAccountId = request.identity.loginAccount.id,
+        loginMethodId = request.identity.loginAccount.loginMethodId,
         eventType = AuthEventType.LOGIN_SUCCESS,
         result = AuditEventResult.SUCCESS,
-        ipAddress = ipAddress,
-        userAgent = userAgent,
+        ipAddress = request.ipAddress,
+        userAgent = request.userAgent,
       )
     )
     return AuthenticationResult(
       principal =
         AuthenticatedPrincipal(
-          user = identity.user,
-          loginAccountId = identity.loginAccount.id,
+          user = request.identity.user,
+          loginAccountId = request.identity.loginAccount.id,
           sessionId = session.id.toString(),
           bearerTokenId = bearerToken?.id?.toString(),
           credentialType = CredentialType.SESSION,

@@ -1,21 +1,11 @@
 package ink.doa.workbench.security.invitation
 
-import ink.doa.workbench.core.common.context.RequestHost
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.InvitationRepository
-import ink.doa.workbench.core.identity.LoginAccountStore
-import ink.doa.workbench.core.identity.LoginMethodRepository
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.UserLoginAccountRepository
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.identity.auth.CredentialHasher
-import ink.doa.workbench.core.identity.auth.CredentialSecretGenerator
-import ink.doa.workbench.core.identity.auth.PasswordHasher
 import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
 import ink.doa.workbench.core.identity.model.CreateInvitationCommand
 import ink.doa.workbench.core.identity.model.CreateLoginAccountCommand
@@ -29,7 +19,6 @@ import ink.doa.workbench.core.identity.model.UpdateTenantCommand
 import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.security.identity.auth.normalizeSubject
-import ink.doa.workbench.security.permission.AdminUserService
 import java.time.Clock
 import java.time.Duration
 import java.time.OffsetDateTime
@@ -40,54 +29,39 @@ private const val PASSWORD_METHOD_CODE = "password"
 
 @Service
 class InvitationService(
-  private val invitations: InvitationRepository,
-  private val tenants: TenantRepository,
-  private val users: UserRepository,
-  private val loginMethods: LoginMethodRepository,
-  private val loginAccounts: LoginAccountStore,
-  private val userLoginAccounts: UserLoginAccountRepository,
-  private val adminUserService: AdminUserService,
-  private val credentialHasher: CredentialHasher,
-  private val secretGenerator: CredentialSecretGenerator,
-  private val passwordHasher: PasswordHasher,
-  private val invitationLinkBuilder: InvitationLinkBuilder,
+  private val identity: InvitationIdentitySupport,
+  private val collaborators: InvitationCollaborators,
   private val clock: Clock,
 ) {
   private val invitationTtl = Duration.ofDays(7)
 
-  suspend fun create(
-    type: InvitationType,
-    tenantId: UUID,
-    email: String,
-    displayName: String?,
-    invitedBy: UUID,
-    requestHost: RequestHost?,
-  ): CreateInvitationResult {
-    val normalizedEmail = normalizeSubject(email)
-    val secret = secretGenerator.generate()
+  suspend fun create(command: CreateManagedInvitationCommand): CreateInvitationResult {
+    val normalizedEmail = normalizeSubject(command.email)
+    val secret = collaborators.secretGenerator.generate()
     val now = now()
-    invitations.create(
+    collaborators.invitations.create(
       CreateInvitationCommand(
-        type = type,
-        tenantId = tenantId,
-        email = email.trim(),
+        type = command.type,
+        tenantId = command.tenantId,
+        email = command.email.trim(),
         normalizedEmail = normalizedEmail,
-        displayName = displayName,
-        tokenHash = credentialHasher.hash(secret),
-        invitedBy = invitedBy,
+        displayName = command.displayName,
+        tokenHash = collaborators.credentialHasher.hash(secret),
+        invitedBy = command.invitedBy,
         expiresAt = now.plus(invitationTtl),
       )
     )
     return CreateInvitationResult(
       token = secret,
-      invitationLink = invitationLinkBuilder.buildInvitationLink(secret, requestHost),
+      invitationLink =
+        collaborators.invitationLinkBuilder.buildInvitationLink(secret, command.requestHost),
     )
   }
 
   suspend fun preview(token: String): InvitationPreviewView {
     val invitation = requireActiveInvitation(token)
     val tenant =
-      tenants.findById(invitation.tenantId)
+      identity.tenants.findById(invitation.tenantId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
     return InvitationPreviewView(
       type = invitation.type,
@@ -113,19 +87,19 @@ class InvitationService(
     val tenant = requirePendingTenant(invitation.tenantId)
     ensureEmailAvailable(invitation.normalizedEmail)
     val user = createInvitedUser(invitation, command)
-    adminUserService.provisionTenantAdmin(
+    collaborators.adminUserService.provisionTenantAdmin(
       tenantId = tenant.id,
       userId = user.id,
       actorUserId = invitation.invitedBy,
     )
     val activatedTenant =
-      tenants.update(
+      identity.tenants.update(
         UpdateTenantCommand(
           tenantId = tenant.id,
           status = TenantStatus.ACTIVE,
         )
       )
-    invitations.consume(invitation.id, now())
+    collaborators.invitations.consume(invitation.id, now())
     return InvitationAcceptView(
       type = InvitationType.TENANT_ADMIN,
       tenant = TenantSummary.from(activatedTenant),
@@ -134,11 +108,11 @@ class InvitationService(
   }
 
   private suspend fun requirePendingTenant(tenantId: UUID) =
-    tenants.findById(tenantId)?.takeIf { it.status == TenantStatus.PENDING_ACTIVATION }
+    identity.tenants.findById(tenantId)?.takeIf { it.status == TenantStatus.PENDING_ACTIVATION }
       ?: throw InvalidRequestException(WorkbenchErrorCode.TENANT_PENDING_ACTIVATION_REQUIRED)
 
   private suspend fun ensureEmailAvailable(normalizedEmail: String) {
-    if (users.findByPrimaryEmail(normalizedEmail) != null) {
+    if (identity.users.findByPrimaryEmail(normalizedEmail) != null) {
       throw ResourceConflictException(WorkbenchErrorCode.USER_EMAIL_ALREADY_EXISTS)
     }
   }
@@ -148,19 +122,19 @@ class InvitationService(
     command: AcceptInvitationCommand,
   ): UserRecord {
     val passwordMethod =
-      loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
+      identity.loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
         ?: throw ResourceNotFoundException(
           WorkbenchErrorCode.RESOURCE_PASSWORD_LOGIN_METHOD_NOT_FOUND
         )
     val user =
-      users.create(
+      identity.users.create(
         CreateUserCommand(
           displayName = command.displayName,
           primaryEmail = invitation.normalizedEmail,
         )
       )
     val loginAccount =
-      loginAccounts.createLoginAccount(
+      identity.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = passwordMethod.id,
           subject = invitation.email,
@@ -168,14 +142,14 @@ class InvitationService(
           displayName = command.displayName,
         )
       )
-    loginAccounts.upsertParameter(
+    identity.loginAccounts.upsertParameter(
       UpsertLoginAccountParameterCommand(
         loginAccountId = loginAccount.id,
         parameterKey = LoginAccountParameterKey.PasswordHash,
-        parameterValue = passwordHasher.hash(command.password),
+        parameterValue = identity.passwordHasher.hash(command.password),
       )
     )
-    userLoginAccounts.linkUser(
+    identity.userLoginAccounts.linkUser(
       LinkUserLoginAccountCommand(
         userId = user.id,
         loginAccountId = loginAccount.id,
@@ -186,7 +160,7 @@ class InvitationService(
   }
 
   private suspend fun requireActiveInvitation(token: String) =
-    invitations.findActiveByHash(credentialHasher.hash(token), now())
+    collaborators.invitations.findActiveByHash(collaborators.credentialHasher.hash(token), now())
       ?: throw InvalidRequestException(WorkbenchErrorCode.INVITATION_INVALID_OR_EXPIRED)
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)

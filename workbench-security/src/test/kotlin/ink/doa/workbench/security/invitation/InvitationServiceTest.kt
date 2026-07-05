@@ -58,17 +58,21 @@ class InvitationServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
       InvitationService(
-        invitations,
-        tenants,
-        users,
-        loginMethods,
-        loginAccounts,
-        userLoginAccounts,
-        adminUserService,
-        credentialHasher,
-        secretGenerator,
-        passwordHasher,
-        invitationLinkBuilder,
+        InvitationIdentitySupport(
+          tenants,
+          users,
+          loginMethods,
+          loginAccounts,
+          userLoginAccounts,
+          passwordHasher,
+        ),
+        InvitationCollaborators(
+          invitations,
+          credentialHasher,
+          secretGenerator,
+          invitationLinkBuilder,
+          adminUserService,
+        ),
         clock,
       )
 
@@ -84,12 +88,14 @@ class InvitationServiceTest :
 
       val result = runBlocking {
         service.create(
-          type = InvitationType.TENANT_ADMIN,
-          tenantId = tenantId,
-          email = "admin@example.test",
-          displayName = "Admin",
-          invitedBy = invitedBy,
-          requestHost = null,
+          CreateManagedInvitationCommand(
+            type = InvitationType.TENANT_ADMIN,
+            tenantId = tenantId,
+            email = "admin@example.test",
+            displayName = "Admin",
+            invitedBy = invitedBy,
+            requestHost = null,
+          )
         )
       }
 

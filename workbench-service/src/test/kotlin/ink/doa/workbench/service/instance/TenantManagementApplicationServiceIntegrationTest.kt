@@ -45,13 +45,16 @@ class TenantManagementApplicationServiceIntegrationTest :
       val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
       service =
         TenantManagementApplicationService(
-          tenants = TenantService(tenants),
-          tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
-          userLookupService = UserLookupService(deps.users),
-          adminUserService = mockk(relaxed = true),
-          invitationService = mockk(relaxed = true),
+          dependencies =
+            TenantManagementDependencies(
+              tenants = TenantService(tenants),
+              tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+              userLookupService = UserLookupService(deps.users),
+              adminUserService = mockk(relaxed = true),
+              invitationService = mockk(relaxed = true),
+              clock = clock,
+            ),
           domainEventPublisher = RecordingDomainEventPublisher(),
-          clock = clock,
         )
     }
 

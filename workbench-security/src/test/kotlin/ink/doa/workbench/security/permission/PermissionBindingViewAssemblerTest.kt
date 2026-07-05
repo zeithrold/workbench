@@ -83,7 +83,14 @@ class PermissionBindingViewAssemblerTest :
       )
 
     "assemble maps user principal binding" {
-      val binding = sampleBinding(tenantId, userId = userId, policyId = policyId)
+      val binding =
+        sampleBinding(
+          SampleBindingParams(
+            tenantId = tenantId,
+            userId = userId,
+            policyId = policyId,
+          )
+        )
       coEvery { policies.findById(tenantId, policyId) } returns policy
       coEvery { users.findById(userId) } returns user
 
@@ -98,11 +105,13 @@ class PermissionBindingViewAssemblerTest :
     "assemble maps group and project principals" {
       val binding =
         sampleBinding(
-          tenantId,
-          groupId = groupId,
-          policyId = policyId,
-          projectId = projectId,
-          principalType = PermissionPrincipalType.GROUP,
+          SampleBindingParams(
+            tenantId = tenantId,
+            groupId = groupId,
+            policyId = policyId,
+            projectId = projectId,
+            principalType = PermissionPrincipalType.GROUP,
+          )
         )
       coEvery { policies.findById(tenantId, policyId) } returns policy
       coEvery { groups.findById(tenantId, groupId) } returns group
@@ -115,7 +124,14 @@ class PermissionBindingViewAssemblerTest :
     }
 
     "assemble throws when policy missing" {
-      val binding = sampleBinding(tenantId, userId = userId, policyId = policyId)
+      val binding =
+        sampleBinding(
+          SampleBindingParams(
+            tenantId = tenantId,
+            userId = userId,
+            policyId = policyId,
+          )
+        )
       coEvery { policies.findById(tenantId, policyId) } returns null
 
       shouldThrow<ResourceNotFoundException> {
@@ -125,25 +141,29 @@ class PermissionBindingViewAssemblerTest :
     }
   })
 
-private fun sampleBinding(
-  tenantId: UUID,
-  userId: UUID? = null,
-  groupId: UUID? = null,
-  policyId: UUID = UUID.randomUUID(),
-  projectId: UUID? = null,
-  principalType: PermissionPrincipalType =
-    if (userId != null) PermissionPrincipalType.USER else PermissionPrincipalType.GROUP,
-): PermissionBindingRecord {
+private data class SampleBindingParams(
+  val tenantId: UUID,
+  val userId: UUID? = null,
+  val groupId: UUID? = null,
+  val policyId: UUID = UUID.randomUUID(),
+  val projectId: UUID? = null,
+  val principalType: PermissionPrincipalType? = null,
+)
+
+private fun sampleBinding(params: SampleBindingParams): PermissionBindingRecord {
+  val principalType =
+    params.principalType
+      ?: if (params.userId != null) PermissionPrincipalType.USER else PermissionPrincipalType.GROUP
   val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
   return PermissionBindingRecord(
     id = UUID.randomUUID(),
     apiId = PublicId.new("pbd"),
-    tenantId = tenantId,
+    tenantId = params.tenantId,
     principalType = principalType,
-    principalUserId = userId,
-    principalGroupId = groupId,
-    policyId = policyId,
-    projectId = projectId,
+    principalUserId = params.userId,
+    principalGroupId = params.groupId,
+    policyId = params.policyId,
+    projectId = params.projectId,
     validFrom = now,
     validTo = null,
     createdBy = null,

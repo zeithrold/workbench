@@ -41,10 +41,10 @@ class OAuthFederatedClient(private val secretResolver: SecretResolver) {
           "client_id missing in config.",
         )
     val issuer = config.stringValue("issuer") ?: config.stringValue("authorization_endpoint_base")
+    val authorizationEndpoint = config.stringValue("authorization_endpoint")
     val authorizeEndpoint =
       when {
-        config.stringValue("authorization_endpoint") != null ->
-          config.stringValue("authorization_endpoint")!!
+        authorizationEndpoint != null -> authorizationEndpoint
         issuer != null && kind == LoginMethodKind.OIDC -> "$issuer/oauth2/v2.0/authorize"
         issuer != null -> "$issuer/oauth2/authorize"
         else ->

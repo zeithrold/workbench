@@ -47,20 +47,18 @@ class FederatedAuthServiceTest :
     val oauthClient = mockk<OAuthFederatedClient>()
     val samlClient = mockk<SamlFederatedClient>()
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-    val service =
-      FederatedAuthService(
+    val repositories =
+      FederatedAuthRepositories(
         loginMethods,
         tenantLoginSettings,
         loginAccounts,
         userLoginAccounts,
         tenants,
         loginStates,
-        secretGenerator,
-        credentialHasher,
-        oauthClient,
-        samlClient,
-        clock,
       )
+    val clients = FederatedAuthClients(oauthClient, samlClient)
+    val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
+    val service = FederatedAuthService(repositories, clients, crypto, clock)
 
     val tenantId = UUID.randomUUID()
     val methodId = UUID.randomUUID()

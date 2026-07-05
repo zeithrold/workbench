@@ -4,10 +4,13 @@ import ink.doa.workbench.core.common.errors.AuthenticationFailedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.core.identity.model.IssuedCredential
 import ink.doa.workbench.core.identity.model.LoginCommand
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.auth.AuthenticationService
 import ink.doa.workbench.security.identity.auth.BearerCredentialService
+import ink.doa.workbench.security.identity.auth.CreateManagedBearerTokenCommand
+import ink.doa.workbench.security.identity.auth.LoginCompletionRequest
 import org.springframework.stereotype.Service
 
 @Service
@@ -23,12 +26,14 @@ class AuthApplicationService(
     val completion = loginCompletionService.resolve(identity, command)
     val result =
       authenticationService.completeLogin(
-        identity = identity,
-        issueBearerToken = command.issueBearerToken,
-        ipAddress = command.ipAddress,
-        userAgent = command.userAgent,
-        tenantIdForAudit = completion.activeTenantId,
-        activeTenantId = completion.activeTenantId,
+        LoginCompletionRequest(
+          identity = identity,
+          issueBearerToken = command.issueBearerToken,
+          ipAddress = command.ipAddress,
+          userAgent = command.userAgent,
+          tenantIdForAudit = completion.activeTenantId,
+          activeTenantId = completion.activeTenantId,
+        )
       )
     return toLoginView(result, completion)
   }
@@ -57,16 +62,18 @@ class AuthApplicationService(
         ?: sessionService.requireActiveTenantId(principal)
     val token =
       bearerCredentialService.createBearerToken(
-        userId = principal.user.id,
-        loginAccountId = loginAccountId,
-        tenantId = resolvedTenantId,
-        name = name,
-        scopes = scopes.toSet(),
-        ipAddress = client.ipAddress,
-        userAgent = client.userAgent,
+        CreateManagedBearerTokenCommand(
+          userId = principal.user.id,
+          loginAccountId = loginAccountId,
+          tenantId = resolvedTenantId,
+          name = name,
+          scopes = scopes.toSet(),
+          ipAddress = client.ipAddress,
+          userAgent = client.userAgent,
+        )
       )
     return IssuedTokenView(
-      id = token.apiId!!.value,
+      id = requireBearerTokenApiId(token),
       token = token.secret,
       expiresAt = token.expiresAt,
     )
@@ -96,7 +103,7 @@ class AuthApplicationService(
       bearerToken =
         result.bearerToken?.let {
           IssuedTokenView(
-            id = it.apiId!!.value,
+            id = requireBearerTokenApiId(it),
             token = it.secret,
             expiresAt = it.expiresAt,
           )
@@ -105,4 +112,7 @@ class AuthApplicationService(
       activeTenant = completion.activeTenant,
       eligibleTenants = completion.eligibleTenants,
     )
+
+  private fun requireBearerTokenApiId(token: IssuedCredential): String =
+    requireNotNull(token.apiId) { "Bearer token is missing api id." }.value
 }

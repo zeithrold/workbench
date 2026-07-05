@@ -15,13 +15,19 @@ import ink.doa.workbench.data.identity.ExposedUserRepository
 import ink.doa.workbench.data.permission.ExposedAccessGrantRepository
 import ink.doa.workbench.data.permission.ExposedAdminUserCommandRepository
 import ink.doa.workbench.data.permission.ExposedAdminUserQueryRepository
+import ink.doa.workbench.security.common.PublicIdIdentitySupport
+import ink.doa.workbench.security.common.PublicIdPermissionSupport
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.AuthApplicationService
+import ink.doa.workbench.security.identity.BootstrapAccountSupport
+import ink.doa.workbench.security.identity.BootstrapAdminSupport
 import ink.doa.workbench.security.identity.InstanceBootstrapService
 import ink.doa.workbench.security.identity.LoginCompletionService
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.security.identity.auth.AuthCredentialSupport
 import ink.doa.workbench.security.identity.auth.AuthenticationService
 import ink.doa.workbench.security.identity.auth.BearerCredentialService
+import ink.doa.workbench.security.identity.auth.CredentialCryptoSupport
 import ink.doa.workbench.security.identity.auth.LoginOrchestrator
 import ink.doa.workbench.security.identity.auth.PasswordLoginAuthenticator
 import ink.doa.workbench.security.identity.auth.SecureRandomCredentialSecretGenerator
@@ -77,24 +83,20 @@ class InstanceSetupApplicationServiceIntegrationTest :
       val tenantMembers = ExposedTenantMemberRepository(database)
       val secretGenerator = SecureRandomCredentialSecretGenerator()
       val credentialHasher = Sha256CredentialHasher()
+      val credentials = AuthCredentialSupport(users, loginAccounts, authEvents)
+      val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
       val sessionCredentialService =
         SessionCredentialService(
-          users = users,
-          loginAccounts = loginAccounts,
-          authEvents = authEvents,
+          credentials = credentials,
+          crypto = crypto,
           sessions = sessions,
-          secretGenerator = secretGenerator,
-          credentialHasher = credentialHasher,
           clock = clock,
         )
       val bearerCredentialService =
         BearerCredentialService(
-          users = users,
-          loginAccounts = loginAccounts,
-          authEvents = authEvents,
+          credentials = credentials,
+          crypto = crypto,
           bearerTokens = bearerTokens,
-          secretGenerator = secretGenerator,
-          credentialHasher = credentialHasher,
           clock = clock,
         )
       val authenticationService =
@@ -118,12 +120,8 @@ class InstanceSetupApplicationServiceIntegrationTest :
         )
       val publicIds =
         PublicIdResolver(
-          tenants = tenants,
-          users = users,
-          loginMethods = loginMethods,
-          bearerTokens = bearerTokens,
-          adminUserQueries = adminUserQueries,
-          accessGrants = accessGrants,
+          identity = PublicIdIdentitySupport(tenants, users, loginMethods, bearerTokens),
+          permission = PublicIdPermissionSupport(adminUserQueries, accessGrants),
           projects = deps.projects,
         )
       val loginCompletionService =
@@ -155,14 +153,20 @@ class InstanceSetupApplicationServiceIntegrationTest :
         InstanceSetupApplicationService(
           instanceBootstrapService =
             InstanceBootstrapService(
-              users = users,
-              loginMethods = loginMethods,
-              loginAccounts = loginAccounts,
-              userLoginAccounts = userLoginAccounts,
-              adminUserCommands = adminUserCommands,
-              adminUserQueries = adminUserQueries,
-              accessGrants = accessGrants,
-              passwordHasher = passwordHasher,
+              accounts =
+                BootstrapAccountSupport(
+                  users = users,
+                  loginMethods = loginMethods,
+                  loginAccounts = loginAccounts,
+                  userLoginAccounts = userLoginAccounts,
+                  passwordHasher = passwordHasher,
+                ),
+              admin =
+                BootstrapAdminSupport(
+                  adminUserCommands = adminUserCommands,
+                  adminUserQueries = adminUserQueries,
+                  accessGrants = accessGrants,
+                ),
               clock = clock,
             ),
           instanceProperties = InstanceProperties(),

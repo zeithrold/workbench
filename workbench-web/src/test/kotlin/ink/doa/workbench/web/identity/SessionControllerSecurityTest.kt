@@ -22,6 +22,8 @@ import ink.doa.workbench.core.project.ProjectRepository
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
+import ink.doa.workbench.security.common.PublicIdIdentitySupport
+import ink.doa.workbench.security.common.PublicIdPermissionSupport
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.LoginCompletionService
 import ink.doa.workbench.security.identity.SessionService
@@ -89,12 +91,18 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     @Bean
     fun publicIdResolver(): PublicIdResolver =
       PublicIdResolver(
-        tenants = TestTenants,
-        users = UnusedUserRepository,
-        loginMethods = UnusedLoginMethodRepository,
-        bearerTokens = UnusedBearerTokenRepository,
-        adminUserQueries = UnusedAdminUserQueryRepository,
-        accessGrants = UnusedAccessGrantRepository,
+        identity =
+          PublicIdIdentitySupport(
+            tenants = TestTenants,
+            users = UnusedUserRepository,
+            loginMethods = UnusedLoginMethodRepository,
+            bearerTokens = UnusedBearerTokenRepository,
+          ),
+        permission =
+          PublicIdPermissionSupport(
+            adminUserQueries = UnusedAdminUserQueryRepository,
+            accessGrants = UnusedAccessGrantRepository,
+          ),
         projects = UnusedProjectRepository,
       )
 

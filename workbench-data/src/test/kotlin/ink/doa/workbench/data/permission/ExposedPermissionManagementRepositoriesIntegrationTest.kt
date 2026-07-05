@@ -264,10 +264,8 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     "policy and group update persist renamed metadata" {
       withPermissionPostgresDatabase { database ->
         val tenantId = seedTenant(database)
-        val users = ExposedUserRepository(database)
         val groups = ExposedPermissionGroupRepository(database)
         val policies = ExposedPermissionPolicyRepository(database)
-        val user = users.create(CreateUserCommand("Dana", "dana-permissions@example.test"))
         val group =
           groups.create(
             CreatePermissionGroupCommand(

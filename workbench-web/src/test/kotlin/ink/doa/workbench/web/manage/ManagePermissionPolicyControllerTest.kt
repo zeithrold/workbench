@@ -4,6 +4,7 @@ import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.security.permission.AddPolicyRuleCommand
 import ink.doa.workbench.security.permission.PermissionPolicyManagementService
 import ink.doa.workbench.security.permission.PermissionPolicyView
 import ink.doa.workbench.web.api.GlobalExceptionHandler
@@ -207,12 +208,14 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
         )
       coEvery {
         service.addPolicyRule(
-          tenantId = TenantWebMvcFixtures.TENANT_ID,
-          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
-          action = "issue.update",
-          resourcePattern = "issue:*",
-          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
-          conditionJson = null,
+          AddPolicyRuleCommand(
+            tenantId = TenantWebMvcFixtures.TENANT_ID,
+            policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            action = "issue.update",
+            resourcePattern = "issue:*",
+            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            conditionJson = null,
+          )
         )
       } returns
         samplePolicy.copy(
@@ -227,12 +230,14 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
         )
       coEvery {
         service.addPolicyRule(
-          tenantId = TenantWebMvcFixtures.TENANT_ID,
-          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
-          action = "issue.view",
-          resourcePattern = "issue:*",
-          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
-          conditionJson = match { it != null && it.contains("statusGroup") },
+          match { command ->
+            command.tenantId == TenantWebMvcFixtures.TENANT_ID &&
+              command.policyPublicId == "pol_01JABCDEFGHJKMNPQRSTVWXYZ0" &&
+              command.action == "issue.view" &&
+              command.resourcePattern == "issue:*" &&
+              command.effect == ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW &&
+              command.conditionJson?.contains("statusGroup") == true
+          }
         )
       } returns
         samplePolicy.copy(

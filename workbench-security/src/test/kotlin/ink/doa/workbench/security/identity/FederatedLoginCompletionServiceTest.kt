@@ -58,16 +58,7 @@ class FederatedLoginCompletionServiceTest :
           secret = "session-secret",
           expiresAt = OffsetDateTime.parse("2026-07-04T12:00:00Z"),
         )
-      coEvery {
-        authenticationService.completeLogin(
-          identity = any(),
-          issueBearerToken = false,
-          ipAddress = "127.0.0.1",
-          userAgent = "agent",
-          tenantIdForAudit = tenantId,
-          activeTenantId = tenantId,
-        )
-      } returns
+      coEvery { authenticationService.completeLogin(any()) } returns
         AuthenticationResult(
           principal =
             AuthenticatedPrincipal(

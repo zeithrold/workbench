@@ -33,7 +33,7 @@ class SessionCookieWriter(private val clock: Clock) {
       )
       .body(body)
 
-  fun logoutResponse(): ResponseEntity<Void> =
+  fun logoutResponse(): ResponseEntity<Unit> =
     ResponseEntity.noContent()
       .header(HttpHeaders.SET_COOKIE, expiredSessionCookie().toString())
       .build()

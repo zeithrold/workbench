@@ -69,14 +69,16 @@ class AccessGrantManagementServiceTest :
 
       val result = runBlocking {
         service.createGrant(
-          scope = GrantScope.TENANT,
-          tenantId = tenantId,
-          userPublicId = user.apiId.value,
-          actionCode = "tenant.read",
-          resourcePattern = "tenant:*",
-          effect = PermissionEffect.ALLOW,
-          projectPublicId = null,
-          actorUserId = UUID.randomUUID(),
+          CreateManagedAccessGrantCommand(
+            scope = GrantScope.TENANT,
+            tenantId = tenantId,
+            userPublicId = user.apiId.value,
+            actionCode = "tenant.read",
+            resourcePattern = "tenant:*",
+            effect = PermissionEffect.ALLOW,
+            projectPublicId = null,
+            actorUserId = UUID.randomUUID(),
+          )
         )
       }
 

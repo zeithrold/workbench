@@ -2,15 +2,10 @@ package ink.doa.workbench.security.permission
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.TenantMemberRepository
-import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
 import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.AccessGrantRepository
 import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.AdminUserCommandRepository
-import ink.doa.workbench.core.permission.AdminUserQueryRepository
 import ink.doa.workbench.core.permission.CreateAccessGrantCommand
 import ink.doa.workbench.core.permission.CreateAdminUserCommand
 import ink.doa.workbench.core.permission.GrantScope
@@ -34,20 +29,18 @@ private val DEFAULT_TENANT_ADMIN_GRANTS =
 
 @Service
 class AdminUserService(
-  private val adminUserCommands: AdminUserCommandRepository,
-  private val adminUserQueries: AdminUserQueryRepository,
-  private val accessGrants: AccessGrantRepository,
-  private val userRepository: UserRepository,
-  private val tenantMembers: TenantMemberRepository,
+  private val persistence: AdminUserPersistenceSupport,
   private val publicIds: PublicIdResolver,
   private val clock: Clock,
   private val permissionBootstrapService: PermissionBootstrapService? = null,
 ) {
   suspend fun listInstanceAdmins(): List<AdminUserView> =
-    adminUserQueries.listInstanceAdmins().map { AdminUserView.from(it, requireUser(it.userId)) }
+    persistence.adminUserQueries.listInstanceAdmins().map {
+      AdminUserView.from(it, requireUser(it.userId))
+    }
 
   suspend fun listTenantAdmins(tenantId: UUID): List<AdminUserView> =
-    adminUserQueries.listTenantAdmins(tenantId).map {
+    persistence.adminUserQueries.listTenantAdmins(tenantId).map {
       AdminUserView.from(it, requireUser(it.userId))
     }
 
@@ -55,7 +48,7 @@ class AdminUserService(
     val user = publicIds.resolveUser(userPublicId)
     val now = now()
     val record =
-      adminUserCommands.create(
+      persistence.adminUserCommands.create(
         CreateAdminUserCommand(
           userId = user.id,
           scope = AdminScope.INSTANCE,
@@ -74,7 +67,7 @@ class AdminUserService(
     val user = publicIds.resolveUser(userPublicId)
     val now = now()
     val record =
-      adminUserCommands.create(
+      persistence.adminUserCommands.create(
         CreateAdminUserCommand(
           userId = user.id,
           scope = AdminScope.TENANT,
@@ -94,7 +87,7 @@ class AdminUserService(
   ): AdminUserView {
     val user = requireUser(userId)
     val now = now()
-    tenantMembers.create(
+    persistence.tenantMembers.create(
       CreateTenantMemberCommand(
         tenantId = tenantId,
         userId = userId,
@@ -104,7 +97,7 @@ class AdminUserService(
       )
     )
     val record =
-      adminUserCommands.create(
+      persistence.adminUserCommands.create(
         CreateAdminUserCommand(
           userId = userId,
           scope = AdminScope.TENANT,
@@ -114,7 +107,7 @@ class AdminUserService(
         )
       )
     DEFAULT_TENANT_ADMIN_GRANTS.forEach { (action, pattern) ->
-      accessGrants.create(
+      persistence.accessGrants.create(
         CreateAccessGrantCommand(
           scope = GrantScope.TENANT,
           tenantId = tenantId,
@@ -135,12 +128,12 @@ class AdminUserService(
   }
 
   suspend fun revokeAdmin(publicId: String): Boolean {
-    val admin = adminUserQueries.findByApiId(publicId) ?: return false
-    return adminUserCommands.revoke(admin.id, now())
+    val admin = persistence.adminUserQueries.findByApiId(publicId) ?: return false
+    return persistence.adminUserCommands.revoke(admin.id, now())
   }
 
   private suspend fun requireUser(userId: UUID): UserRecord =
-    userRepository.findById(userId)
+    persistence.userRepository.findById(userId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)

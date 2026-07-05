@@ -33,16 +33,9 @@ class SessionCredentialServiceTest :
     val credentialHasher = mockk<CredentialHasher>()
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
-    val service =
-      SessionCredentialService(
-        users,
-        loginAccounts,
-        authEvents,
-        sessions,
-        secretGenerator,
-        credentialHasher,
-        clock,
-      )
+    val credentials = AuthCredentialSupport(users, loginAccounts, authEvents)
+    val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
+    val service = SessionCredentialService(credentials, crypto, sessions, clock)
 
     "issueSession returns issued credential" {
       val user = sampleUser()
