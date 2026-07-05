@@ -106,7 +106,7 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.TENANT))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "missing_membership"
+      decision.reason.code shouldBe "missing_membership"
     }
 
     test("tenant scope allows matching grant for active member") {
@@ -143,7 +143,7 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.INSTANCE))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "grant_denied"
+      decision.reason.code shouldBe "grant_denied"
     }
 
     test("instance scope denies when no matching grant") {
@@ -154,7 +154,7 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.INSTANCE))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "no_matching_grant"
+      decision.reason.code shouldBe "no_matching_grant"
     }
 
     test("instance scope denies bearer token without matching scope") {
@@ -187,13 +187,13 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(bearerRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "token_scope_denied"
+      decision.reason.code shouldBe "token_scope_denied"
     }
 
     test("tenant scope denies without tenant id") {
       val decision = service.decide(request(AuthorizationScope.TENANT).copy(tenantId = null))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "missing_tenant"
+      decision.reason.code shouldBe "missing_tenant"
     }
 
     test("tenant scope denies inactive membership") {
@@ -202,7 +202,7 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.TENANT))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "inactive_membership"
+      decision.reason.code shouldBe "inactive_membership"
     }
 
     test("tenant scope denies matching deny binding") {
@@ -221,7 +221,7 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.TENANT))
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
-      (decision as AuthorizationDecision.Deny).reason.code shouldBe "binding_denied"
+      decision.reason.code shouldBe "binding_denied"
     }
 
     test("tenant scope allows bearer token with workbench api scope") {
