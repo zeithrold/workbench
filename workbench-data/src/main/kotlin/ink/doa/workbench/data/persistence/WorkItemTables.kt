@@ -178,7 +178,7 @@ object AttachmentsTable : Table("attachments") {
   override val primaryKey = PrimaryKey(id)
 }
 
-object SavedFiltersTable : Table("saved_filters") {
+object WorkItemViewsTable : Table("work_item_views") {
   val id = uuid("id")
   val apiId = text("api_id").uniqueIndex()
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
@@ -186,9 +186,11 @@ object SavedFiltersTable : Table("saved_filters") {
   val ownerId = uuid("owner_id").references(UsersTable.id)
   val name = text("name")
   val description = text("description").nullable()
+  val visibility = text("visibility")
   val filterAst = jsonb("filter_ast", Json.Default, JsonElement.serializer())
   val sortAst = jsonb("sort_ast", Json.Default, JsonElement.serializer())
-  val isShared = bool("is_shared")
+  val groupAst = jsonb("group_ast", Json.Default, JsonElement.serializer())
+  val displayFields = jsonb("display_fields", Json.Default, JsonElement.serializer())
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
   override val primaryKey = PrimaryKey(id)

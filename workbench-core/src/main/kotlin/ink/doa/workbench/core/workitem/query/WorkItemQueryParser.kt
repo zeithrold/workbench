@@ -62,6 +62,8 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     }
   }
 
+  fun parseSortTerms(element: JsonElement): List<SortTerm> = parseSort(element)
+
   private fun parseSort(element: JsonElement): List<SortTerm> =
     element.asArray("sort").map { item ->
       val obj = item.asObject("sort term")
@@ -83,7 +85,9 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
       SortTerm(field = parseField(obj.required("field")), direction = direction, nulls = nulls)
     }
 
-  private fun parseField(element: JsonElement): QueryField =
+  fun parseField(element: JsonElement): QueryField = parseFieldInternal(element)
+
+  private fun parseFieldInternal(element: JsonElement): QueryField =
     when (element) {
       is JsonPrimitive -> parseFieldPath(element.content)
       is JsonObject -> {

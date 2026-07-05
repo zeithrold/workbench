@@ -705,6 +705,54 @@ enum class WorkbenchErrorCode(
     "resource.work_item_attachment.not_found",
     "Work item attachment not found.",
   ),
+  RESOURCE_WORK_ITEM_VIEW_NOT_FOUND(
+    "resource.work_item_view.not_found",
+    "Work item view not found.",
+  ),
+  WORK_ITEM_VIEW_READ_DENIED(
+    "work_item.view.read_denied",
+    "Work item view read permission denied.",
+  ),
+  WORK_ITEM_VIEW_CREATE_DENIED(
+    "work_item.view.create_denied",
+    "Work item view create permission denied.",
+  ),
+  WORK_ITEM_VIEW_MANAGE_DENIED(
+    "work_item.view.manage_denied",
+    "Work item view manage permission denied.",
+  ),
+  WORK_ITEM_VIEW_VISIBILITY_UNKNOWN(
+    "work_item.view.visibility_unknown",
+    "Unknown work item view visibility.",
+  ),
+  WORK_ITEM_VIEW_VISIBILITY_PROJECT_FORBIDDEN(
+    "work_item.view.visibility_project_forbidden",
+    "Tenant-scoped views cannot use project visibility.",
+  ),
+  WORK_ITEM_VIEW_LAYOUT_OBJECT_REQUIRED(
+    "work_item.view.layout_object_required",
+    "Work item view layout value must be an object.",
+  ),
+  WORK_ITEM_VIEW_LAYOUT_ARRAY_REQUIRED(
+    "work_item.view.layout_array_required",
+    "Work item view layout value must be an array.",
+  ),
+  WORK_ITEM_VIEW_LAYOUT_STRING_REQUIRED(
+    "work_item.view.layout_string_required",
+    "Work item view layout value must be a string.",
+  ),
+  WORK_ITEM_VIEW_LAYOUT_FIELD_REQUIRED(
+    "work_item.view.layout_field_required",
+    "Work item view layout is missing a required field.",
+  ),
+  WORK_ITEM_VIEW_GROUP_DIRECTION_UNKNOWN(
+    "work_item.view.group_direction_unknown",
+    "Unknown work item view group direction.",
+  ),
+  WORK_ITEM_VIEW_DISPLAY_FIELD_WIDTH_INVALID(
+    "work_item.view.display_field_width_invalid",
+    "Work item view display field width must be an integer.",
+  ),
   WORK_ITEM_ATTACHMENT_CREATE_DENIED(
     "work_item.attachment.create_denied",
     "Work item attachment create permission denied.",

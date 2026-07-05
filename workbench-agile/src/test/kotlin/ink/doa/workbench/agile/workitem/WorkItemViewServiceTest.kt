@@ -1,0 +1,184 @@
+package ink.doa.workbench.agile.workitem
+
+import ink.doa.workbench.core.common.errors.PermissionDeniedException
+import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.identity.UserRepository
+import ink.doa.workbench.core.identity.model.UserRecord
+import ink.doa.workbench.core.project.ProjectRepository
+import ink.doa.workbench.core.project.model.ProjectRecord
+import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.core.workitem.view.CreateWorkItemViewCommand
+import ink.doa.workbench.core.workitem.view.DeleteWorkItemViewCommand
+import ink.doa.workbench.core.workitem.view.UpdateWorkItemViewCommand
+import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
+import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
+import ink.doa.workbench.core.workitem.view.WorkItemViewRepository
+import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.coEvery
+import io.mockk.mockk
+import java.time.OffsetDateTime
+import java.util.UUID
+
+class WorkItemViewServiceTest :
+  FunSpec({
+    val views = mockk<WorkItemViewRepository>()
+    val access = mockk<WorkItemViewAccessService>()
+    val users = mockk<UserRepository>()
+    val projects = mockk<ProjectRepository>()
+    val service = WorkItemViewService(views, access, users, projects)
+
+    val tenantId = UUID.randomUUID()
+    val projectId = UUID.randomUUID()
+    val actorId = UUID.randomUUID()
+    val now = OffsetDateTime.parse("2026-01-01T00:00:00Z")
+
+    val sampleRecord =
+      WorkItemViewRecord(
+        id = UUID.randomUUID(),
+        apiId = PublicId("wiv_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        tenantId = tenantId,
+        projectId = projectId,
+        ownerId = actorId,
+        ownerApiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+        name = "Backlog",
+        description = null,
+        visibility = WorkItemViewVisibility.PRIVATE,
+        filterAst = WorkItemViewDefaults.EMPTY_FILTER,
+        sortAst = WorkItemViewDefaults.EMPTY_SORT,
+        groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+        displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
+        createdAt = now,
+        updatedAt = now,
+      )
+
+    beforeTest {
+      coEvery { users.findById(actorId) } returns
+        UserRecord(
+          id = actorId,
+          apiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+          displayName = "Ada",
+          primaryEmail = "ada@example.test",
+        )
+      coEvery { projects.findById(tenantId, projectId) } returns
+        ProjectRecord(
+          id = projectId,
+          apiId = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+          tenantId = tenantId,
+          identifier = "CORE",
+          name = "Core",
+          description = null,
+          status = ProjectStatus.ACTIVE,
+          leadUserId = actorId,
+          createdBy = actorId,
+        )
+    }
+
+    test("list filters views by read access") {
+      val hidden =
+        sampleRecord.copy(
+          apiId = PublicId("wiv_01JABCDEFGHJKMNPQRSTVWXYZ2"),
+          ownerId = UUID.randomUUID(),
+        )
+      coEvery { views.listByProject(tenantId, projectId) } returns listOf(sampleRecord, hidden)
+      coEvery { access.canRead(sampleRecord, actorId) } returns true
+      coEvery { access.canRead(hidden, actorId) } returns false
+
+      service.list(tenantId, projectId, actorId).single().id shouldBe sampleRecord.apiId.value
+    }
+
+    test("create validates access and persists view") {
+      val command =
+        CreateWorkItemViewCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          ownerId = actorId,
+          name = "Backlog",
+          description = null,
+          visibility = WorkItemViewVisibility.PRIVATE,
+          filterAst = WorkItemViewDefaults.EMPTY_FILTER,
+          sortAst = WorkItemViewDefaults.EMPTY_SORT,
+          groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+          displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
+        )
+      coEvery { access.requireCreate(tenantId, projectId, actorId) } returns Unit
+      coEvery { views.create(command) } returns sampleRecord
+
+      service.create(command).name shouldBe "Backlog"
+    }
+
+    test("get returns assembled view") {
+      coEvery { views.findByApiId(tenantId, sampleRecord.apiId.value, projectId) } returns
+        sampleRecord
+      coEvery { access.requireRead(sampleRecord, actorId) } returns Unit
+
+      service.get(tenantId, projectId, sampleRecord.apiId.value, actorId).name shouldBe "Backlog"
+    }
+
+    test("update persists changes when allowed") {
+      coEvery { views.findByApiId(tenantId, sampleRecord.apiId.value, projectId) } returns
+        sampleRecord
+      coEvery { access.requireManage(sampleRecord, actorId) } returns Unit
+      coEvery { views.update(any()) } returns sampleRecord.copy(name = "Renamed")
+
+      service
+        .update(
+          UpdateWorkItemViewCommand(
+            tenantId = tenantId,
+            viewApiId = sampleRecord.apiId.value,
+            projectId = projectId,
+            actorUserId = actorId,
+            name = "Renamed",
+          )
+        )
+        .name shouldBe "Renamed"
+    }
+
+    test("update requires manage permission") {
+      coEvery { views.findByApiId(tenantId, sampleRecord.apiId.value, projectId) } returns
+        sampleRecord
+      coEvery { access.requireManage(sampleRecord, actorId) } throws
+        PermissionDeniedException(
+          ink.doa.workbench.core.common.errors.WorkbenchErrorCode.WORK_ITEM_VIEW_MANAGE_DENIED
+        )
+
+      shouldThrow<PermissionDeniedException> {
+        service.update(
+          UpdateWorkItemViewCommand(
+            tenantId = tenantId,
+            viewApiId = sampleRecord.apiId.value,
+            projectId = projectId,
+            actorUserId = actorId,
+            name = "Renamed",
+          )
+        )
+      }
+    }
+
+    test("delete removes view after manage check") {
+      coEvery { views.findByApiId(tenantId, sampleRecord.apiId.value, projectId) } returns
+        sampleRecord
+      coEvery { access.requireManage(sampleRecord, actorId) } returns Unit
+      coEvery {
+        views.delete(
+          DeleteWorkItemViewCommand(
+            tenantId = tenantId,
+            viewApiId = sampleRecord.apiId.value,
+            projectId = projectId,
+            actorUserId = actorId,
+          )
+        )
+      } returns true
+
+      service.delete(
+        DeleteWorkItemViewCommand(
+          tenantId = tenantId,
+          viewApiId = sampleRecord.apiId.value,
+          projectId = projectId,
+          actorUserId = actorId,
+        )
+      )
+    }
+  })

@@ -27,11 +27,11 @@ import ink.doa.workbench.data.persistence.ProjectIdentifierAliasesTable
 import ink.doa.workbench.data.persistence.ProjectsTable
 import ink.doa.workbench.data.persistence.PropertyDefinitionsTable
 import ink.doa.workbench.data.persistence.PropertyOptionsTable
-import ink.doa.workbench.data.persistence.SavedFiltersTable
 import ink.doa.workbench.data.persistence.SprintsTable
 import ink.doa.workbench.data.persistence.TenantConfigEntriesTable
 import ink.doa.workbench.data.persistence.TenantLoginMethodSettingsTable
 import ink.doa.workbench.data.persistence.TenantMembersTable
+import ink.doa.workbench.data.persistence.WorkItemViewsTable
 import ink.doa.workbench.data.persistence.WorkflowTransitionsTable
 import ink.doa.workbench.data.persistence.WorkflowsTable
 import java.time.OffsetDateTime
@@ -225,7 +225,7 @@ class ExposedTenantDestructionRepository(private val database: Database) :
     IssuePropertyValuesTable.deleteWhere { IssuePropertyValuesTable.tenantId eq tenantUuid }
     IssueStatusHistoryTable.deleteWhere { IssueStatusHistoryTable.tenantId eq tenantUuid }
     IssueSprintHistoryTable.deleteWhere { IssueSprintHistoryTable.tenantId eq tenantUuid }
-    SavedFiltersTable.deleteWhere { SavedFiltersTable.tenantId eq tenantUuid }
+    WorkItemViewsTable.deleteWhere { WorkItemViewsTable.tenantId eq tenantUuid }
     PrioritiesTable.deleteWhere { PrioritiesTable.tenantId eq tenantUuid }
     IssueStatusesTable.deleteWhere { IssueStatusesTable.tenantId eq tenantUuid }
     PropertyOptionsTable.deleteWhere { PropertyOptionsTable.tenantId eq tenantUuid }
