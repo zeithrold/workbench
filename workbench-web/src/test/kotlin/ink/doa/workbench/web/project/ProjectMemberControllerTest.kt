@@ -207,26 +207,8 @@ class ProjectMemberControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery {
         service.listMembers(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID)
       } returns listOf(memberView.copy(policies = emptyList()))
-      coEvery {
-        service.addMember(
-          tenantId = TenantWebMvcFixtures.TENANT_ID,
-          projectId = TenantWebMvcFixtures.PROJECT_ID,
-          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-          policyPublicId = null,
-          role = null,
-          actorUserId = TenantWebMvcFixtures.USER_ID,
-        )
-      } returns memberView.copy(policies = emptyList())
-      coEvery {
-        service.attachPolicy(
-          tenantId = TenantWebMvcFixtures.TENANT_ID,
-          projectId = TenantWebMvcFixtures.PROJECT_ID,
-          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
-          role = null,
-          actorUserId = TenantWebMvcFixtures.USER_ID,
-        )
-      } returns memberView
+      coEvery { service.addMember(any()) } returns memberView.copy(policies = emptyList())
+      coEvery { service.attachPolicy(any()) } returns memberView
       coJustRun {
         service.removePolicy(TenantWebMvcFixtures.TENANT_ID, "bnd_01JABCDEFGHJKMNPQRSTVWXYZ0")
       }

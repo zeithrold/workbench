@@ -46,13 +46,18 @@ class ProjectManagementApplicationServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
       ProjectManagementApplicationService(
-        projects,
-        userLookupService,
-        projectAccess,
-        permissionBootstrap,
-        publisher,
-        warningCollector,
-        clock,
+        ProjectManagementDependencies(
+          projects = projects,
+          userLookupService = userLookupService,
+          projectAccess = projectAccess,
+          permissionBootstrap = permissionBootstrap,
+          infrastructure =
+            ProjectManagementInfrastructure(
+              domainEventPublisher = publisher,
+              warningCollector = warningCollector,
+              clock = clock,
+            ),
+        )
       )
 
     "create provisions project creator permissions" {
@@ -272,13 +277,18 @@ class ProjectManagementApplicationServiceTest :
       val failingPublisher = mockk<DomainEventPublisher>()
       val failingService =
         ProjectManagementApplicationService(
-          projects,
-          userLookupService,
-          projectAccess,
-          permissionBootstrap,
-          failingPublisher,
-          warningCollector,
-          clock,
+          ProjectManagementDependencies(
+            projects = projects,
+            userLookupService = userLookupService,
+            projectAccess = projectAccess,
+            permissionBootstrap = permissionBootstrap,
+            infrastructure =
+              ProjectManagementInfrastructure(
+                domainEventPublisher = failingPublisher,
+                warningCollector = warningCollector,
+                clock = clock,
+              ),
+          )
         )
       coEvery { projects.get(tenantId, record.apiId.value) } returns record
       coEvery { userLookupService.requireAuthenticatedUser(actorId) } returns sampleUser(actorId)

@@ -50,6 +50,20 @@ class ProjectMemberServiceTest :
     val service = ProjectMemberService(bindings, policies, projects, users, tenantMembers, clock)
 
     val userPublicId = PublicId.new("usr")
+
+    fun memberCommand(
+      policyPublicId: String? = null,
+      role: String? = null,
+    ) =
+      ProjectMemberMutationCommand(
+        tenantId = tenantId,
+        projectId = projectId,
+        userPublicId = userPublicId.value,
+        policyPublicId = policyPublicId,
+        role = role,
+        actorUserId = actorUserId,
+      )
+
     val user =
       UserRecord(
         id = userId,
@@ -144,8 +158,7 @@ class ProjectMemberServiceTest :
       coEvery { bindings.create(capture(commandSlot)) } returns binding
       stubListMembers()
 
-      val member =
-        service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+      val member = service.addMember(memberCommand(role = "member"))
 
       member.user.id shouldBe userPublicId.value
       commandSlot.captured.policyId shouldBe memberPolicyId
@@ -159,14 +172,7 @@ class ProjectMemberServiceTest :
       coEvery { bindings.create(any()) } returns binding
       stubListMembers()
 
-      service.addMember(
-        tenantId,
-        projectId,
-        userPublicId.value,
-        memberPolicyPublicId.value,
-        null,
-        actorUserId,
-      )
+      service.addMember(memberCommand(policyPublicId = memberPolicyPublicId.value))
 
       coVerify { policies.findByApiId(tenantId, memberPolicyPublicId.value) }
     }
@@ -175,7 +181,7 @@ class ProjectMemberServiceTest :
       coEvery { users.findByApiId(userPublicId.value) } returns null
 
       shouldThrow<ResourceNotFoundException> {
-          service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+          service.addMember(memberCommand(role = "member"))
         }
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND
     }
@@ -186,7 +192,7 @@ class ProjectMemberServiceTest :
         activeMembership().copy(status = TenantMemberStatus.SUSPENDED)
 
       shouldThrow<InvalidRequestException> {
-          service.addMember(tenantId, projectId, userPublicId.value, null, "member", actorUserId)
+          service.addMember(memberCommand(role = "member"))
         }
         .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_INACTIVE_TENANT_MEMBER
     }
@@ -195,7 +201,7 @@ class ProjectMemberServiceTest :
       stubActiveMemberLookup()
 
       shouldThrow<InvalidRequestException> {
-          service.addMember(tenantId, projectId, userPublicId.value, null, "owner", actorUserId)
+          service.addMember(memberCommand(role = "owner"))
         }
         .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_UNKNOWN_ROLE
     }
@@ -204,7 +210,7 @@ class ProjectMemberServiceTest :
       stubActiveMemberLookup()
 
       shouldThrow<InvalidRequestException> {
-          service.addMember(tenantId, projectId, userPublicId.value, null, null, actorUserId)
+          service.addMember(memberCommand())
         }
         .errorCode shouldBe WorkbenchErrorCode.PROJECT_MEMBER_POLICY_OR_ROLE_REQUIRED
     }
@@ -216,7 +222,7 @@ class ProjectMemberServiceTest :
       coEvery { bindings.create(any()) } returns binding
       stubListMembers()
 
-      service.attachPolicy(tenantId, projectId, userPublicId.value, null, "viewer", actorUserId)
+      service.attachPolicy(memberCommand(role = "viewer"))
 
       coVerify { policies.findByCode(tenantId, "project-viewer") }
     }

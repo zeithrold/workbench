@@ -1,7 +1,5 @@
 package ink.doa.workbench.service.project
 
-import ink.doa.workbench.agile.project.ProjectAccessService
-import ink.doa.workbench.agile.project.ProjectService
 import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -9,33 +7,28 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
 import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
 import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
 import ink.doa.workbench.core.project.events.ProjectDomainEvents
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
-import ink.doa.workbench.security.identity.UserLookupService
-import ink.doa.workbench.security.permission.PermissionBootstrapService
-import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
-class ProjectManagementApplicationService(
-  private val projects: ProjectService,
-  private val userLookupService: UserLookupService,
-  private val projectAccess: ProjectAccessService,
-  private val permissionBootstrap: PermissionBootstrapService,
-  private val domainEventPublisher: DomainEventPublisher,
-  private val warningCollector: WorkbenchWarningCollector,
-  private val clock: Clock,
-) {
+class ProjectManagementApplicationService(private val dependencies: ProjectManagementDependencies) {
+  private val projects = dependencies.projects
+  private val userLookupService = dependencies.userLookupService
+  private val projectAccess = dependencies.projectAccess
+  private val permissionBootstrap = dependencies.permissionBootstrap
+  private val domainEventPublisher = dependencies.infrastructure.domainEventPublisher
+  private val warningCollector = dependencies.infrastructure.warningCollector
+  private val clock = dependencies.infrastructure.clock
+
   suspend fun create(
     command: CreateProjectCommand,
     actorUserId: UUID,
