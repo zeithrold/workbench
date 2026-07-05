@@ -11,8 +11,6 @@ class PermissionConditionEvaluatorTest :
     val evaluator = PermissionConditionEvaluator()
     val actorId = UUID.randomUUID()
     val reporterId = UUID.randomUUID()
-    val assigneeId = UUID.randomUUID()
-
     fun context(attributes: Map<String, String> = emptyMap()) =
       PermissionConditionContext(actorUserId = actorId, resourceAttributes = attributes)
 

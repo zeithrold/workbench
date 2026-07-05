@@ -245,9 +245,11 @@ class WorkItemValueTemplateEvaluatorTest :
         context.copy(
           workItem =
             workItemRecord(
-              title = "Previous title",
-              projectId = context.projectId,
-              tenantId = context.tenantId,
+              WorkItemRecordFixtures(
+                title = "Previous title",
+                projectId = context.projectId,
+                tenantId = context.tenantId,
+              )
             )
         )
       val expression = TemplateValueExpression.Variable("workItem.previous.title")
@@ -291,15 +293,18 @@ class WorkItemValueTemplateEvaluatorTest :
         context.copy(
           workItem =
             workItemRecord(
-              title = "Fix login regression",
-              description = "Steps to reproduce",
-              assigneeApiId = PublicId.new("usr"),
-              priorityApiId = PublicId.new("pri"),
-              sprintApiId = PublicId.new("spr"),
-              projectId = context.projectId,
-              tenantId = context.tenantId,
+              WorkItemRecordFixtures(
+                title = "Fix login regression",
+                description = "Steps to reproduce",
+                assigneeApiId = PublicId.new("usr"),
+                priorityApiId = PublicId.new("pri"),
+                sprintApiId = PublicId.new("spr"),
+                projectId = context.projectId,
+                tenantId = context.tenantId,
+              )
             )
         )
+      val workItem = checkNotNull(workItemContext.workItem)
       val template =
         parser.parse(
           """
@@ -321,9 +326,9 @@ class WorkItemValueTemplateEvaluatorTest :
       evaluator.evaluate(template, config, workItemContext) shouldBe
         mapOf(
           "description" to JsonPrimitive("Steps to reproduce"),
-          "assignee" to JsonPrimitive(workItemContext.workItem!!.assigneeApiId!!.value),
-          "priority" to JsonPrimitive(workItemContext.workItem!!.priorityApiId!!.value),
-          "sprint" to JsonPrimitive(workItemContext.workItem!!.sprintApiId!!.value),
+          "assignee" to JsonPrimitive(checkNotNull(workItem.assigneeApiId).value),
+          "priority" to JsonPrimitive(checkNotNull(workItem.priorityApiId).value),
+          "sprint" to JsonPrimitive(checkNotNull(workItem.sprintApiId).value),
         )
     }
 
@@ -351,9 +356,11 @@ class WorkItemValueTemplateEvaluatorTest :
         context.copy(
           workItem =
             workItemRecord(
-              title = "Fix login regression",
-              projectId = context.projectId,
-              tenantId = context.tenantId,
+              WorkItemRecordFixtures(
+                title = "Fix login regression",
+                projectId = context.projectId,
+                tenantId = context.tenantId,
+              )
             )
         )
       val template =
@@ -420,37 +427,39 @@ private fun config(): IssueTypeConfigDetails {
   )
 }
 
-private fun workItemRecord(
-  title: String,
-  projectId: UUID,
-  tenantId: UUID,
-  description: String? = null,
-  assigneeApiId: PublicId? = null,
-  priorityApiId: PublicId? = null,
-  sprintApiId: PublicId? = null,
-  properties: JsonObject = JsonObject(emptyMap()),
-): WorkItemRecord {
+private data class WorkItemRecordFixtures(
+  val title: String,
+  val projectId: UUID,
+  val tenantId: UUID,
+  val description: String? = null,
+  val assigneeApiId: PublicId? = null,
+  val priorityApiId: PublicId? = null,
+  val sprintApiId: PublicId? = null,
+  val properties: JsonObject = JsonObject(emptyMap()),
+)
+
+private fun workItemRecord(fixtures: WorkItemRecordFixtures): WorkItemRecord {
   val now = OffsetDateTime.parse("2026-07-04T10:15:30Z")
   return WorkItemRecord(
     id = UUID.randomUUID(),
     apiId = PublicId.new("wki"),
-    tenantId = tenantId,
-    projectId = projectId,
+    tenantId = fixtures.tenantId,
+    projectId = fixtures.projectId,
     issueTypeApiId = PublicId.new("typ"),
     issueTypeConfigApiId = PublicId.new("itc"),
     key = "PROJ-1",
-    title = title,
-    description = description,
+    title = fixtures.title,
+    description = fixtures.description,
     statusId = UUID.randomUUID(),
     statusApiId = PublicId.new("sts"),
     statusGroup = WorkItemStatusGroup.TODO,
     reporterId = UUID.randomUUID(),
-    assigneeId = assigneeApiId?.let { UUID.randomUUID() },
-    priorityApiId = priorityApiId,
+    assigneeId = fixtures.assigneeApiId?.let { UUID.randomUUID() },
+    priorityApiId = fixtures.priorityApiId,
     reporterApiId = PublicId.new("usr"),
-    assigneeApiId = assigneeApiId,
-    sprintApiId = sprintApiId,
-    properties = properties,
+    assigneeApiId = fixtures.assigneeApiId,
+    sprintApiId = fixtures.sprintApiId,
+    properties = fixtures.properties,
     createdAt = now,
     updatedAt = now,
   )

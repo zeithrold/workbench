@@ -33,7 +33,7 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
         version = obj.requiredInt("version"),
         resource = obj.requiredString("resource"),
         where = obj["where"]?.let(::parseCondition),
-        sort = obj["sort"]?.let(::parseSort) ?: emptyList(),
+        sort = obj["sort"]?.let(::parseSort).orEmpty(),
       )
     WorkItemQueryValidator().validateEnvelope(query)
     return query

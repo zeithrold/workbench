@@ -101,7 +101,7 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
           )
         }
         val direction = if (term.direction == SortDirection.ASC) "ASC" else "DESC"
-        val nulls = term.nulls?.wireName?.uppercase()?.let { " NULLS $it" } ?: ""
+        val nulls = term.nulls?.wireName?.uppercase()?.let { " NULLS $it" }.orEmpty()
         "${field.sortSql} $direction$nulls"
       }
     return "ORDER BY ${terms.joinToString(", ")}, i.api_id ASC"

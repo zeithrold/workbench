@@ -44,7 +44,7 @@ data class AuthorizationResource(
   val attributes: Map<String, String> = emptyMap(),
 ) {
   val canonical: String
-    get() = listOfNotNull(type, id ?: "*").joinToString(":")
+    get() = listOf(type, id ?: "*").joinToString(":")
 }
 
 data class AuthorizationEnvironment(
