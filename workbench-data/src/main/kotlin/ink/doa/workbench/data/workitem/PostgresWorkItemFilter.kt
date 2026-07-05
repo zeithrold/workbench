@@ -50,7 +50,16 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
       )
     }
     val condition =
-      operatorCompiler.compile(field.valueSql, field.definition.type, predicate.op, predicate.value)
+      if (field is PostgresWorkItemField.System && field.predicateCompiler != null) {
+        field.predicateCompiler.invoke(predicate.op, predicate.value)
+      } else {
+        operatorCompiler.compile(
+          field.valueSql,
+          field.definition.type,
+          predicate.op,
+          predicate.value,
+        )
+      }
     return when (field) {
       is PostgresWorkItemField.System -> condition
       is PostgresWorkItemField.Property -> {

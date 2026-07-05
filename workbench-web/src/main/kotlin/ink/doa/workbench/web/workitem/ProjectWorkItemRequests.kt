@@ -16,6 +16,7 @@ data class CreateWorkItemRequest(
   val assigneeId: String? = null,
   val priorityId: String? = null,
   val sprintId: String? = null,
+  val parentId: String? = null,
   val properties: JsonNode? = null,
 ) {
   fun toCommand(context: ProjectRequestContext, actorUserId: UUID): CreateWorkItemCommand =
@@ -30,6 +31,7 @@ data class CreateWorkItemRequest(
       assigneeApiId = assigneeId,
       priorityApiId = priorityId,
       sprintApiId = sprintId,
+      parentWorkItemApiId = parentId,
       properties = properties.toJsonObject().toMap(),
     )
 }

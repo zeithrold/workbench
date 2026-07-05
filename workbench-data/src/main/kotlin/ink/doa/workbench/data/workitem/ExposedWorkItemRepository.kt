@@ -40,6 +40,7 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
     issueTypeConfigId: UUID,
     initialStatusId: UUID,
     propertyValues: List<WorkItemPropertyValue>,
+    parentIssueId: UUID?,
   ): WorkItemMutationResult =
     suspendTransaction(db = database) {
       val project = requireProject(command.tenantId, command.projectId)
@@ -87,6 +88,16 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         it[IssueKeyAliasesTable.createdBy] = command.actorUserId.toKotlinUuid()
       }
       insertPropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
+      parentIssueId?.let {
+        insertHierarchyLink(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          parentIssueId = it,
+          childIssueId = issueId,
+          actorUserId = command.actorUserId,
+          createdAt = now,
+        )
+      }
       insertStatusHistory(
         tenantId = command.tenantId,
         issueId = issueId,
@@ -101,6 +112,22 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         eventType = "work_item.created",
       )
     }
+
+  suspend fun create(
+    command: CreateWorkItemCommand,
+    issueTypeId: UUID,
+    issueTypeConfigId: UUID,
+    initialStatusId: UUID,
+    propertyValues: List<WorkItemPropertyValue>,
+  ): WorkItemMutationResult =
+    create(
+      command = command,
+      issueTypeId = issueTypeId,
+      issueTypeConfigId = issueTypeConfigId,
+      initialStatusId = initialStatusId,
+      propertyValues = propertyValues,
+      parentIssueId = null,
+    )
 
   override suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord? =
     suspendTransaction(db = database) {
@@ -333,4 +360,35 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         ?.get(ProjectsTable.apiId)
         ?.let(::PublicId)
     }
+
+  private fun insertHierarchyLink(
+    tenantId: UUID,
+    projectId: UUID,
+    parentIssueId: UUID,
+    childIssueId: UUID,
+    actorUserId: UUID,
+    createdAt: java.time.OffsetDateTime,
+  ) {
+    val nextRank =
+      IssueHierarchyTable.selectAll()
+        .where {
+          (IssueHierarchyTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssueHierarchyTable.parentIssueId eq parentIssueId.toKotlinUuid())
+        }
+        .orderBy(IssueHierarchyTable.rank to SortOrder.DESC)
+        .limit(1)
+        .singleOrNull()
+        ?.get(IssueHierarchyTable.rank)
+        ?.plus(100) ?: 100
+    IssueHierarchyTable.insert {
+      it[IssueHierarchyTable.id] = UUID.randomUUID().toKotlinUuid()
+      it[IssueHierarchyTable.tenantId] = tenantId.toKotlinUuid()
+      it[IssueHierarchyTable.projectId] = projectId.toKotlinUuid()
+      it[IssueHierarchyTable.parentIssueId] = parentIssueId.toKotlinUuid()
+      it[IssueHierarchyTable.childIssueId] = childIssueId.toKotlinUuid()
+      it[IssueHierarchyTable.rank] = nextRank
+      it[IssueHierarchyTable.createdBy] = actorUserId.toKotlinUuid()
+      it[IssueHierarchyTable.createdAt] = createdAt
+    }
+  }
 }

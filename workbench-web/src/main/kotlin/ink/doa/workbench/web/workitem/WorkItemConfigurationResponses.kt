@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
+import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
@@ -76,6 +77,15 @@ data class CreateIssueTypeConfigRequest(
   val createFields: JsonNode,
   val statuses: List<TypeConfigStatusRequest>,
   val properties: List<TypeConfigPropertyRequest>? = null,
+)
+
+data class CreateIssueSubtypeConstraintRequest(
+  val projectId: String? = null,
+  @field:NotBlank val parentIssueTypeId: String,
+  @field:NotBlank val childIssueTypeId: String,
+  val isDefault: Boolean? = null,
+  val minChildren: Int? = null,
+  val maxChildren: Int? = null,
 )
 
 data class TypeConfigStatusRequest(
@@ -299,6 +309,29 @@ data class EffectiveIssueTypeConfigResponse(
       EffectiveIssueTypeConfigResponse(
         resolvedFrom = record.resolvedFrom.dbValue,
         config = IssueTypeConfigResponse.from(record.config),
+      )
+  }
+}
+
+data class IssueSubtypeConstraintResponse(
+  val id: String,
+  val projectId: String?,
+  val parentIssueTypeId: String,
+  val childIssueTypeId: String,
+  val isDefault: Boolean,
+  val minChildren: Int?,
+  val maxChildren: Int?,
+) {
+  companion object {
+    fun from(record: IssueSubtypeConstraintRecord): IssueSubtypeConstraintResponse =
+      IssueSubtypeConstraintResponse(
+        id = record.id.toString(),
+        projectId = record.projectId?.toString(),
+        parentIssueTypeId = record.parentIssueTypeApiId.value,
+        childIssueTypeId = record.childIssueTypeApiId.value,
+        isDefault = record.isDefault,
+        minChildren = record.minChildren,
+        maxChildren = record.maxChildren,
       )
   }
 }

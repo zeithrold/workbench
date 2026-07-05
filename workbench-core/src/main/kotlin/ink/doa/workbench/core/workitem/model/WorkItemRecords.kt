@@ -17,6 +17,7 @@ data class WorkItemRecord(
   val apiId: PublicId,
   val tenantId: UUID,
   val projectId: UUID,
+  val issueTypeId: UUID = UUID(0L, 0L),
   val issueTypeApiId: PublicId,
   val issueTypeConfigApiId: PublicId,
   val key: String,
@@ -48,6 +49,7 @@ data class CreateWorkItemCommand(
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
   val sprintApiId: String? = null,
+  val parentWorkItemApiId: String? = null,
   val properties: Map<String, JsonElement> = emptyMap(),
 )
 

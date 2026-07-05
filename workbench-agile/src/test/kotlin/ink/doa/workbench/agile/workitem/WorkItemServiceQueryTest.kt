@@ -1,6 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
@@ -22,6 +23,7 @@ class WorkItemServiceQueryTest :
     "get and list delegate to repository" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
+      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>(relaxed = true)
       val mutationSupport = mockk<WorkItemMutationSupport>(relaxed = true)
       val reconciler = mockk<WorkItemFieldMutationReconciler>(relaxed = true)
       val fieldPermissions = mockk<WorkItemFieldPermissionService>(relaxed = true)
@@ -53,7 +55,14 @@ class WorkItemServiceQueryTest :
       coEvery { repository.findByApiId(tenantId, projectId, "WB-1") } returns record
       coEvery { repository.listByProject(tenantId, projectId, 50, 0L) } returns listOf(record)
       val service =
-        WorkItemService(repository, configs, mutationSupport, reconciler, fieldPermissions)
+        WorkItemService(
+          repository,
+          configs,
+          subtypeConstraints,
+          mutationSupport,
+          reconciler,
+          fieldPermissions,
+        )
 
       service.get(tenantId, projectId, "WB-1") shouldBe record
       service.list(tenantId, projectId).single().key shouldBe "WB-1"

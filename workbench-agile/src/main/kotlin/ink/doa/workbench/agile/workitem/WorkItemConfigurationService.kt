@@ -7,9 +7,11 @@ import ink.doa.workbench.core.common.errors.requireFound
 import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
+import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
@@ -17,6 +19,7 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
+import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
@@ -76,6 +79,46 @@ class WorkItemCatalogService(private val repository: WorkItemCatalogRepository) 
     projectId: UUID? = null,
   ): IssueTypeRecord =
     repository.deactivateIssueType(tenantId, issueTypeApiIdOrCode, actorUserId, projectId)
+}
+
+@Service
+class IssueSubtypeConstraintService(
+  private val repository: IssueSubtypeConstraintRepository,
+  private val catalog: WorkItemCatalogRepository,
+) {
+  suspend fun create(command: CreateIssueSubtypeConstraintCommand): IssueSubtypeConstraintRecord {
+    command.projectId?.let {
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, it) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, it) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+    } ?: run {
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, null) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, null) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+    }
+    return repository.create(command)
+  }
+
+  suspend fun list(
+    tenantId: UUID,
+    projectId: UUID? = null,
+  ): List<IssueSubtypeConstraintRecord> = repository.list(tenantId, projectId)
+
+  suspend fun deactivate(
+    tenantId: UUID,
+    constraintId: UUID,
+    actorUserId: UUID,
+  ): IssueSubtypeConstraintRecord = repository.deactivate(tenantId, constraintId, actorUserId)
 }
 
 @Service

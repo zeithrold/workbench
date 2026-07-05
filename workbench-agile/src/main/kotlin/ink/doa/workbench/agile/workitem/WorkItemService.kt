@@ -3,6 +3,7 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service
 class WorkItemService(
   private val repository: WorkItemRepository,
   private val configs: IssueTypeConfigRepository,
+  private val subtypeConstraints: IssueSubtypeConstraintRepository,
   private val mutationSupport: WorkItemMutationSupport,
   private val fieldMutationReconciler: WorkItemFieldMutationReconciler,
   private val fieldPermissions: WorkItemFieldPermissionService,
@@ -37,6 +39,33 @@ class WorkItemService(
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED
         )
+    val parentIssue =
+      command.parentWorkItemApiId?.let {
+        repository.findByApiId(command.tenantId, it)
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
+      }
+    if (parentIssue == null) {
+      if (
+        subtypeConstraints.isChildOnlyType(
+          command.tenantId,
+          command.projectId,
+          config.config.config.issueTypeId,
+        )
+      ) {
+        throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_PARENT_REQUIRED)
+      }
+    } else {
+      if (parentIssue.projectId != command.projectId) {
+        throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CROSS_PROJECT_FORBIDDEN)
+      }
+      subtypeConstraints.findAllowedChildType(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          parentIssueTypeId = parentIssue.issueTypeId,
+          childIssueTypeId = config.config.config.issueTypeId,
+        )
+        ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_NOT_ALLOWED)
+    }
     val permissionContext =
       fieldPermissionContext(
         command.tenantId,
@@ -72,6 +101,7 @@ class WorkItemService(
         issueTypeId = config.config.config.issueTypeId,
         issueTypeConfigId = config.config.config.id,
         initialStatusId = initial.statusId,
+        parentIssueId = parentIssue?.id,
         propertyValues = values,
       )
       .also { mutationSupport.publish(it) }

@@ -1,6 +1,7 @@
 package ink.doa.workbench.core.workitem
 
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
@@ -8,6 +9,7 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
+import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
@@ -103,4 +105,32 @@ interface IssueTypeConfigRepository {
     projectId: UUID,
     issueTypeApiIdOrCode: String,
   ): EffectiveIssueTypeConfig?
+}
+
+interface IssueSubtypeConstraintRepository {
+  suspend fun create(command: CreateIssueSubtypeConstraintCommand): IssueSubtypeConstraintRecord
+
+  suspend fun list(
+    tenantId: UUID,
+    projectId: UUID? = null,
+  ): List<IssueSubtypeConstraintRecord>
+
+  suspend fun deactivate(
+    tenantId: UUID,
+    constraintId: UUID,
+    actorUserId: UUID,
+  ): IssueSubtypeConstraintRecord
+
+  suspend fun findAllowedChildType(
+    tenantId: UUID,
+    projectId: UUID,
+    parentIssueTypeId: UUID,
+    childIssueTypeId: UUID,
+  ): IssueSubtypeConstraintRecord?
+
+  suspend fun isChildOnlyType(
+    tenantId: UUID,
+    projectId: UUID,
+    issueTypeId: UUID,
+  ): Boolean
 }

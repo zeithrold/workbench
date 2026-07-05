@@ -20,6 +20,7 @@ interface WorkItemRepository {
     issueTypeConfigId: UUID,
     initialStatusId: UUID,
     propertyValues: List<WorkItemPropertyValue>,
+    parentIssueId: UUID? = null,
   ): WorkItemMutationResult
 
   suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord?
