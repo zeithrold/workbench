@@ -31,6 +31,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch compare branches
+        run: |
+          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]; then
+            git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -55,6 +64,18 @@ jobs:
         with:
           gradle-version: wrapper
           cache-provider: basic
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: scripts/ci/uv.lock
+
+      - name: Lint CI Python scripts
+        working-directory: scripts/ci
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
 
       - name: Static checks, tests, and coverage gate
         run: ./gradlew check --no-daemon
@@ -82,6 +103,25 @@ jobs:
         if: success() || failure()
         run: ./gradlew koverXmlReport --no-daemon
 
+      - name: Frontend coverage report
+        if: success() && !inputs.extended-tests
+        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+
+      - name: Check diff coverage
+        if: success() && !inputs.extended-tests
+        working-directory: scripts/ci
+        env:
+          COMPARE_BRANCH: >-
+            ${{
+              github.event_name == 'pull_request'
+              && format('origin/{0}', github.base_ref)
+              || format('origin/{0}', github.event.repository.default_branch)
+            }}
+          FAIL_UNDER_BACKEND: "90"
+          FAIL_UNDER_FRONTEND: "70"
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run check-diff-coverage --target all
+
       - name: Publish quality gate report
         if: always()
         env:
@@ -96,6 +136,10 @@ jobs:
           path: |
             build/reports/kover/
             build/reports/pitest/
+            scripts/ci/diff-cover-backend.html
+            scripts/ci/diff-cover-frontend.html
+            scripts/ci/diff-coverage-results.json
+            workbench-frontend/coverage/
           retention-days: 14
 
   docker:

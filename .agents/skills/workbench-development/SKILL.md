@@ -30,6 +30,7 @@ Copy and track progress:
 - [ ] API changes: OpenAPI annotated + `pnpm openapi` (backend running)
 - [ ] Schema changes: Flyway migration + Exposed tables + migration test count
 - [ ] `./gradlew check` passes
+- [ ] Diff coverage passes (Kotlin → unit/integration tests; frontend → Vitest; see Verification)
 - [ ] PR opened; CI quality gate green
 ```
 
@@ -37,11 +38,11 @@ Copy and track progress:
 
 | Change | Modules (order) | Required steps | Skill |
 |--------|-----------------|----------------|-------|
-| New/changed API | core → service → web | OpenAPI; regen client | [api-design](../api-design/SKILL.md) |
+| New/changed API | core → service → web | OpenAPI; regen client; changed Kotlin lines ≥ 90% diff coverage | [api-design](../api-design/SKILL.md) |
 | Schema / persistence | workbench-data | `V{n}__*.sql`; Exposed; bump migration test | [kotlin-exposed-patterns](../kotlin-exposed-patterns/SKILL.md) |
-| Business logic | workbench-service, workbench-agile | Unit tests without Spring | [kotlin-patterns](../kotlin-patterns/SKILL.md), [kotlin-testing](../kotlin-testing/SKILL.md) |
-| Frontend UI | workbench-frontend | Lint + Vitest (in `check`) | [svelte](../svelte/SKILL.md) |
-| Background / Kafka | workbench-worker | integration profile + Testcontainers | [springboot-patterns](../springboot-patterns/SKILL.md) |
+| Business logic | workbench-service, workbench-agile | Unit tests without Spring; changed Kotlin lines ≥ 90% diff coverage | [kotlin-patterns](../kotlin-patterns/SKILL.md), [kotlin-testing](../kotlin-testing/SKILL.md) |
+| Frontend UI | workbench-frontend | Lint + Vitest (in `check`); changed TS/Svelte lines ≥ 70% diff coverage | [svelte](../svelte/SKILL.md) |
+| Background / Kafka | workbench-worker | integration profile + Testcontainers; changed Kotlin lines ≥ 90% diff coverage | [springboot-patterns](../springboot-patterns/SKILL.md) |
 
 **API + frontend:** implement backend first → start web → `cd workbench-frontend && pnpm openapi` → wire UI to generated client.
 
@@ -101,6 +102,37 @@ Run in separate terminals:
 
 `check` includes Spotless, Detekt, backend tests (excludes fuzz), Kover, and frontend ESLint + Vitest.
 
+**Pre-PR diff coverage (matches CI quality gate):**
+
+CI enforces **changed-line** coverage (in addition to the full `./gradlew check` gate) on push and PR when `check` succeeds. Nightly skips diff coverage (fuzz/mutation only).
+
+| Stack | Report | Threshold | When skipped |
+|-------|--------|-----------|--------------|
+| Backend Kotlin | Kover XML (`build/reports/kover/report.xml`) | 90% | No `workbench-*/src/main/**/*.kt` changes vs base |
+| Frontend | Vitest LCOV (`workbench-frontend/coverage/lcov.info`) | 70% | No `workbench-frontend/src/**/*.{ts,js,svelte}` changes vs base |
+
+Install [uv](https://docs.astral.sh/uv/) once (`curl -LsSf https://astral.sh/uv/install.sh | sh`). Python tooling lives in `scripts/ci/` (Ruff lint/format included in CI).
+
+```bash
+./gradlew check --no-daemon
+./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+git fetch origin main
+uv run --directory scripts/ci check-diff-coverage              # both stacks
+uv run --directory scripts/ci check-diff-coverage --target backend
+uv run --directory scripts/ci check-diff-coverage --target frontend
+```
+
+Lint/format CI Python scripts:
+
+```bash
+uv run --directory scripts/ci ruff check .
+uv run --directory scripts/ci ruff format .
+```
+
+Override compare branch or thresholds: `COMPARE_BRANCH=origin/develop FAIL_UNDER_BACKEND=90 FAIL_UNDER_FRONTEND=70`.
+
+HTML reports: `scripts/ci/diff-cover-backend.html`, `scripts/ci/diff-cover-frontend.html`.
+
 **Fix formatting locally:**
 
 ```bash
@@ -130,17 +162,22 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 | Trigger | Workflow | What runs |
 |---------|----------|-----------|
 | Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → quality-gate | `check`, bootJar, Docker build (no push on PR) |
-| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | quality-gate + fuzz + mutation |
+| Push / PR | quality-gate (after `check`) | `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage` (backend 90% / frontend 70% on changed lines) |
+| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | quality-gate + fuzz + mutation (no diff coverage) |
 
-Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover/PIT).
+Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover, diff coverage, PIT). Diff coverage runs on CI push/PR when `./gradlew check` succeeds.
 
 ## PR Checklist
 
 - [ ] `./gradlew check` passes locally
+- [ ] Diff coverage passes locally when Kotlin or frontend source changed (`uv run --directory scripts/ci check-diff-coverage`)
+- [ ] Kotlin changes: unit/integration tests added; backend diff ≥ 90%
+- [ ] Frontend changes: Vitest tests added; frontend diff ≥ 70%
 - [ ] API changes: `pnpm openapi` run; generated client committed
 - [ ] New Flyway version: `PostgresMigrationIntegrationTest` expected count updated
 - [ ] No secrets or debug logging left in diff
 - [ ] Commit messages follow [git-commit](../git-commit/SKILL.md) (Conventional Commits)
+- [ ] If CI diff coverage fails: download `quality-reports-*` artifact and open `scripts/ci/diff-cover-*.html` to find uncovered changed lines
 
 ## Anti-patterns
 
@@ -149,6 +186,8 @@ Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover/P
 - OpenAPI field changes without regen frontend client
 - New migration without updating integration test count
 - PR with only module `test` — skips Spotless, Detekt, frontend lint
+- Opening a PR after only `./gradlew check` when source changed but diff coverage was not run locally
+- Changing Kotlin or frontend business logic without tests for the new/changed lines
 
 ## Additional Resources
 

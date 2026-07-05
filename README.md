@@ -49,6 +49,17 @@ OpenAPI is available at `http://localhost:8080/v3/api-docs`. Scalar is available
 ./gradlew :workbench-frontend:pnpmE2e
 ```
 
+**Diff coverage** (same gate as CI; requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+./gradlew check
+./gradlew :workbench-frontend:pnpmCoverage
+git fetch origin main
+uv run --directory scripts/ci check-diff-coverage
+```
+
+Thresholds: backend changed lines ≥ 90%, frontend changed lines ≥ 70%. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md) for details.
+
 Unit tests must not start Spring. Integration tests may use Testcontainers.
 
 ## Architecture Notes

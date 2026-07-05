@@ -20,6 +20,7 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 ### Lint / test caveats
 - Run `./gradlew check` for the JVM build, static analysis, and tests, and `./gradlew :workbench-frontend:pnpmDev|pnpmCoverage|pnpmE2e` for the frontend.
+- **Diff coverage:** after `./gradlew check`, run `./gradlew :workbench-frontend:pnpmCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this on push/PR (not nightly) when `check` succeeds. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
 - Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
 

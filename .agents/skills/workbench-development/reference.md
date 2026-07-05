@@ -19,6 +19,12 @@ Detailed paths and commands. Read when implementing a specific change type.
 | Fuzz tests | `./gradlew fuzzTest` |
 | Mutation tests | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
 | Frontend coverage | `./gradlew :workbench-frontend:pnpmCoverage` |
+| Diff coverage (all stacks) | `uv run --directory scripts/ci check-diff-coverage` |
+| Diff coverage (backend) | `uv run --directory scripts/ci check-diff-coverage --target backend` |
+| Diff coverage (frontend) | `uv run --directory scripts/ci check-diff-coverage --target frontend` |
+| Install uv | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+| Lint CI Python | `uv run --directory scripts/ci ruff check .` |
+| Format CI Python | `uv run --directory scripts/ci ruff format .` |
 | Frontend E2E | `./gradlew :workbench-frontend:pnpmE2e` |
 | Frontend build | `./gradlew :workbench-frontend:pnpmBuild` |
 | Module unit tests | `./gradlew :workbench-<module>:test` |
@@ -33,6 +39,7 @@ Detailed paths and commands. Read when implementing a specific change type.
 | Gradle | 9 |
 | Node | 24 (CI) |
 | pnpm | 10.33.0 |
+| uv | Python ≥ 3.12; deps in `scripts/ci/pyproject.toml` |
 
 Cloud VM: set `JAVA_HOME` to JDK 25 if toolchain resolution fails — see [AGENTS.md](../../../AGENTS.md).
 
@@ -90,6 +97,21 @@ Field renames in OpenAPI are breaking — coordinate backend and frontend in one
 
 **Static analysis (via `check`):** Spotless (ktfmt Google), Detekt (`config/detekt/detekt.yml`), Kover coverage gate.
 
+**Incremental (diff) coverage (CI gate, local pre-PR):**
+
+| Item | Value |
+|------|-------|
+| Tool | `diff-cover` via `scripts/ci/check_diff_coverage.py` (UV-managed) |
+| Backend report | `build/reports/kover/report.xml` |
+| Frontend report | `workbench-frontend/coverage/lcov.info` |
+| Backend threshold | 90% changed lines (`FAIL_UNDER_BACKEND`) |
+| Frontend threshold | 70% changed lines (`FAIL_UNDER_FRONTEND`) |
+| Compare branch | `origin/main` by default (`COMPARE_BRANCH`) |
+| HTML reports | `scripts/ci/diff-cover-backend.html`, `scripts/ci/diff-cover-frontend.html` |
+| CI results JSON | `scripts/ci/diff-coverage-results.json` |
+
+Full-project Kover (90%) and Vitest thresholds (70%) remain separate from the diff coverage gate. Diff coverage skips a stack when git diff has no matching source changes.
+
 **Mutation testing:** PIT config in `config/pitest/pitest.properties`; per-module debug: `./gradlew :workbench-core:pitest`.
 
 ## CI Pipeline Stages
@@ -98,13 +120,16 @@ Workflow: [.github/workflows/quality-gate.yml](../../../.github/workflows/qualit
 
 ### Job: quality-gate
 
-1. Checkout, JDK 25, pnpm 10.33, Node 24
-2. `./gradlew check --no-daemon`
-3. `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon`
-4. Upload boot jars artifact
-5. (nightly only) `fuzzTest`, `mutationTest`
-6. `koverXmlReport` + `render-quality-summary.py` → Step Summary
-7. Upload Kover/PIT artifacts (14-day retention)
+1. Checkout (`fetch-depth: 0`), fetch PR base branch, JDK 25, pnpm 10.33, Node 24, Gradle, uv
+2. `uv run ruff check` + `uv run ruff format --check` in `scripts/ci/`
+3. `./gradlew check --no-daemon`
+4. `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon`
+5. Upload boot jars artifact
+6. (nightly only) `fuzzTest`, `mutationTest`
+7. `koverXmlReport`
+8. (CI push/PR only, after successful `check`) `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage`
+9. `render-quality-summary.py` → Step Summary (Kover, diff coverage, PIT)
+10. Upload artifacts: Kover, PIT, diff-cover HTML, `diff-coverage-results.json`, frontend `coverage/` (14-day retention)
 
 ### Job: docker (after quality-gate)
 
