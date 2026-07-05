@@ -52,7 +52,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list workflows rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/workflows")).andExpect(status().isUnauthorized())
+    mockMvc.perform(get("/api/work-item-catalog/workflows")).andExpect(status().isUnauthorized())
   }
 
   @Test
@@ -60,7 +60,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows")
+          get("/api/work-item-catalog/workflows")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -77,7 +77,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows")
+          post("/api/work-item-catalog/workflows")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
@@ -104,7 +104,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/publish")
+          post("/api/work-item-catalog/workflows/${SAMPLE_WORKFLOW.apiId.value}/publish")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -121,7 +121,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          patch("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/deactivate")
+          patch("/api/work-item-catalog/workflows/${SAMPLE_WORKFLOW.apiId.value}/deactivate")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -138,7 +138,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
+          get("/api/work-item-catalog/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -155,7 +155,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
+          post("/api/work-item-catalog/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
@@ -183,7 +183,7 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
       mockMvc
         .perform(
           patch(
-              "/api/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions/${SAMPLE_TRANSITION.apiId.value}/deactivate"
+              "/api/work-item-catalog/workflows/${SAMPLE_WORKFLOW.apiId.value}/transitions/${SAMPLE_TRANSITION.apiId.value}/deactivate"
             )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )

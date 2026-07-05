@@ -448,19 +448,7 @@ class ExposedPermissionBindingRepository(private val database: Database) :
               (GroupMembersTable.status eq GroupMemberStatus.ACTIVE.dbValue)
           }
           .map { it[GroupMembersTable.groupId] }
-      val principalFilter =
-        (PermissionBindingsTable.principalType eq PermissionPrincipalType.USER.dbValue) and
-          (PermissionBindingsTable.principalUserId eq subjectUserId.toKotlinUuid()) or
-          ((PermissionBindingsTable.principalType eq
-            PermissionPrincipalType.TENANT_MEMBER.dbValue) and
-            PermissionBindingsTable.principalUserId.isNull() and
-            PermissionBindingsTable.principalGroupId.isNull()) or
-          if (activeGroupIds.isEmpty()) {
-            Op.FALSE
-          } else {
-            (PermissionBindingsTable.principalType eq PermissionPrincipalType.GROUP.dbValue) and
-              (PermissionBindingsTable.principalGroupId inList activeGroupIds)
-          }
+      val principalFilter = permissionBindingPrincipalFilter(subjectUserId, activeGroupIds)
       val projectFilter =
         PermissionBindingsTable.projectId.isNull() or
           (projectId?.let { PermissionBindingsTable.projectId eq it.toKotlinUuid() } ?: Op.FALSE)
@@ -502,3 +490,19 @@ class ExposedPermissionBindingRepository(private val database: Database) :
       }
     }
 }
+
+private fun permissionBindingPrincipalFilter(
+  subjectUserId: UUID,
+  activeGroupIds: List<kotlin.uuid.Uuid>,
+): Op<Boolean> =
+  (PermissionBindingsTable.principalType eq PermissionPrincipalType.USER.dbValue) and
+    (PermissionBindingsTable.principalUserId eq subjectUserId.toKotlinUuid()) or
+    ((PermissionBindingsTable.principalType eq PermissionPrincipalType.TENANT_MEMBER.dbValue) and
+      PermissionBindingsTable.principalUserId.isNull() and
+      PermissionBindingsTable.principalGroupId.isNull()) or
+    if (activeGroupIds.isEmpty()) {
+      Op.FALSE
+    } else {
+      (PermissionBindingsTable.principalType eq PermissionPrincipalType.GROUP.dbValue) and
+        (PermissionBindingsTable.principalGroupId inList activeGroupIds)
+    }

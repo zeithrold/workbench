@@ -187,7 +187,7 @@ class ProjectWorkItemController(
       )
       .map(WorkItemTransitionResponse::from)
 
-  @PostMapping("/{workItemId}/transition")
+  @PostMapping("/{workItemId}/transitions")
   @Authenticated
   @TenantScoped
   @ProjectScoped

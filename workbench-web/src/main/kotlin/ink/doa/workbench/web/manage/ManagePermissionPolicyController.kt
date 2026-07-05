@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.manage
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.core.common.context.TenantRequestContext
 import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.security.permission.PermissionPolicyManagementService
@@ -8,7 +9,6 @@ import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -31,9 +31,10 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 @Tag(name = "Tenant Management", description = "Current tenant foreground management APIs.")
 class ManagePermissionPolicyController(
-  private val permissionPolicyManagementService: PermissionPolicyManagementService,
+  private val permissionPolicyManagementService: PermissionPolicyManagementService
 ) {
   private val objectMapper = ObjectMapper()
+
   @GetMapping("/permission-policies")
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List permission policies")

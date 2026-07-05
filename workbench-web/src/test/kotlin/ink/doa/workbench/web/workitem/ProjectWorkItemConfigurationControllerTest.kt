@@ -57,7 +57,7 @@ class ProjectWorkItemConfigurationControllerTest(@Autowired private val mockMvc:
     mockMvc
       .perform(
         get(
-          "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item/type-configs/effective/typ_01JABCDEFGHJKMNPQRSTVWXYZ0"
+          "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item-types/typ_01JABCDEFGHJKMNPQRSTVWXYZ0/effective-config"
         )
       )
       .andExpect(status().isUnauthorized())
@@ -69,7 +69,7 @@ class ProjectWorkItemConfigurationControllerTest(@Autowired private val mockMvc:
       mockMvc
         .perform(
           get(
-              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item/type-configs/effective/typ_01JABCDEFGHJKMNPQRSTVWXYZ0"
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-item-types/typ_01JABCDEFGHJKMNPQRSTVWXYZ0/effective-config"
             )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )

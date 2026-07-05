@@ -33,7 +33,12 @@ class IssueAuthorizationResourceAttributeResolverTest :
 
     "supports issue resources with id" {
       resolver.supports(
-        AuthorizationResource(type = "issue", id = "iss_01", tenantId = tenantId, projectId = projectId)
+        AuthorizationResource(
+          type = "issue",
+          id = "iss_01",
+          tenantId = tenantId,
+          projectId = projectId,
+        )
       ) shouldBe true
       resolver.supports(AuthorizationResource(type = "project", id = "prj_01")) shouldBe false
     }
@@ -65,33 +70,32 @@ class IssueAuthorizationResourceAttributeResolverTest :
         )
       coEvery { workItems.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
 
-      val attributes =
-        runBlocking {
-          resolver.resolveAttributes(
-            AuthorizationRequest(
-              scope = AuthorizationScope.TENANT,
-              subject =
-                AuthorizationSubject(
-                  userId = userId,
-                  loginAccountId = null,
-                  credentialType = CredentialType.SESSION,
-                  credentialId = null,
-                  credentialTenantId = tenantId,
-                  credentialScopes = emptySet(),
-                ),
-              tenantId = tenantId,
-              action = AuthorizationAction("issue.view"),
-              resource =
-                AuthorizationResource(
-                  type = "issue",
-                  id = issue.apiId.value,
-                  tenantId = tenantId,
-                  projectId = projectId,
-                ),
-              environment = AuthorizationEnvironment(requestId = "req", occurredAt = Instant.now()),
-            )
+      val attributes = runBlocking {
+        resolver.resolveAttributes(
+          AuthorizationRequest(
+            scope = AuthorizationScope.TENANT,
+            subject =
+              AuthorizationSubject(
+                userId = userId,
+                loginAccountId = null,
+                credentialType = CredentialType.SESSION,
+                credentialId = null,
+                credentialTenantId = tenantId,
+                credentialScopes = emptySet(),
+              ),
+            tenantId = tenantId,
+            action = AuthorizationAction("issue.view"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = issue.apiId.value,
+                tenantId = tenantId,
+                projectId = projectId,
+              ),
+            environment = AuthorizationEnvironment(requestId = "req", occurredAt = Instant.now()),
           )
-        }
+        )
+      }
 
       attributes shouldContain ("reporter" to userId.toString())
       attributes shouldContain ("assignee" to userId.toString())
