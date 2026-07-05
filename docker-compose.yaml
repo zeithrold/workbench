@@ -45,6 +45,16 @@ services:
     ports:
       - "9200:9200"
 
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: workbench
+      MINIO_ROOT_PASSWORD: workbench
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
   debezium:
     image: quay.io/debezium/connect:3.1.2.Final
     depends_on:

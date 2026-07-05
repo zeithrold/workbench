@@ -10,6 +10,7 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
@@ -366,6 +367,63 @@ data class WorkItemCommentResponse(
         createdAt = record.createdAt.toString(),
         updatedAt = record.updatedAt.toString(),
         editedAt = record.editedAt?.toString(),
+      )
+  }
+}
+
+data class InitiateWorkItemAttachmentUploadRequest(
+  @field:NotBlank val filename: String,
+  val contentType: String?,
+  val byteSize: Long,
+  val purpose: String = "standalone",
+  val commentId: String? = null,
+)
+
+data class WorkItemAttachmentUploadSessionResponse(
+  val id: String,
+  val uploadUrl: String,
+  val uploadMethod: String,
+  val expiresAt: String,
+  val requiredHeaders: Map<String, String>,
+) {
+  companion object {
+    fun from(session: ink.doa.workbench.agile.workitem.WorkItemAttachmentUploadSession) =
+      WorkItemAttachmentUploadSessionResponse(
+        id = session.attachmentApiId,
+        uploadUrl = session.presigned.url,
+        uploadMethod = session.presigned.method,
+        expiresAt = session.presigned.expiresAt.toString(),
+        requiredHeaders = session.presigned.headers,
+      )
+  }
+}
+
+data class WorkItemAttachmentResponse(
+  val id: String,
+  val filename: String,
+  val contentType: String?,
+  val byteSize: Long,
+  val purpose: String,
+  val commentId: String?,
+  val uploadedBy: String,
+  val createdAt: String,
+  val downloadUrl: String,
+) {
+  companion object {
+    fun from(
+      record: WorkItemAttachmentRecord,
+      downloadUrl: String,
+    ): WorkItemAttachmentResponse =
+      WorkItemAttachmentResponse(
+        id = record.apiId.value,
+        filename = record.filename,
+        contentType = record.contentType,
+        byteSize = record.byteSize,
+        purpose = record.purpose.wireValue,
+        commentId = record.commentApiId?.value,
+        uploadedBy = record.uploadedByApiId.value,
+        createdAt = record.createdAt.toString(),
+        downloadUrl = downloadUrl,
       )
   }
 }

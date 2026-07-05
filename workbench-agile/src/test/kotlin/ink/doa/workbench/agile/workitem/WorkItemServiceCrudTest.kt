@@ -350,6 +350,11 @@ private fun workItemService(
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
   coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
   val mutationSupport = WorkItemMutationSupport(repository, configs, events)
+  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>()
+  coEvery { descriptionAttachmentValidator.rejectCreateDescriptionReferences(any()) } returns Unit
+  coEvery {
+    descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
+  } returns Unit
   return WorkItemService(
     repository = repository,
     configs = configs,
@@ -361,6 +366,7 @@ private fun workItemService(
         Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC),
       ),
     fieldPermissions = fieldPermissions,
+    descriptionAttachmentValidator = descriptionAttachmentValidator,
   )
 }
 

@@ -14,3 +14,12 @@ workbench:
     url: http://localhost:9200
   debezium:
     connect-url: http://localhost:8083
+  storage:
+    endpoint: http://localhost:9000
+    access-key: workbench
+    secret-key: workbench
+    bucket: workbench-attachments
+    region: us-east-1
+    max-file-size: 25MB
+    auto-create-bucket: true
+    path-style-access: true

@@ -4,7 +4,6 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.SerializationParseSupport
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 
 class DomainEventDecoder(private val json: Json = DomainEventEncoder.defaultJson) {
   fun parseEnvelope(raw: String): DomainEventEnvelope =

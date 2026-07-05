@@ -4,6 +4,8 @@ plugins {
 
 dependencies {
   implementation(project(":workbench-core"))
+  implementation(libs.aws.s3)
+  implementation("org.springframework.boot:spring-boot-starter")
   implementation(libs.exposed.core)
   implementation(libs.exposed.jdbc)
   implementation(libs.exposed.json)
@@ -20,4 +22,5 @@ dependencies {
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.kafka)
   testImplementation(libs.testcontainers.elasticsearch)
+  testImplementation(libs.testcontainers.minio)
 }

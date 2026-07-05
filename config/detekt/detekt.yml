@@ -4,6 +4,7 @@
 # - Flyway ClassNaming: inline @Suppress on migration classes (required by Flyway naming)
 # - AOP context UnusedParameter: inline @Suppress on @TenantScoped/@InstanceScoped controllers
 # - Test LongMethod/LargeClass: disabled via config/detekt/detekt-test.yml on test source sets
+# - UnusedImport: off by default in detekt; requires type resolution (wired by detekt 2.x per-source-set tasks)
 
 config:
   validation: true
@@ -35,6 +36,8 @@ exceptions:
       - com.fasterxml.jackson.core.JsonProcessingException
 
 style:
+  UnusedImport:
+    active: true
   MagicNumber:
     active: false
   MaxLineLength:

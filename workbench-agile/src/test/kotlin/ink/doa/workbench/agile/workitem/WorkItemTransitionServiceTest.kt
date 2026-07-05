@@ -54,7 +54,15 @@ class WorkItemTransitionServiceTest :
         transitionValidator,
         transitionOptions,
       )
-    val service = WorkItemTransitionService(repository, workflows, collaborators)
+    val descriptionAttachmentValidator =
+      mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
+    val service =
+      WorkItemTransitionService(
+        repository,
+        workflows,
+        collaborators,
+        descriptionAttachmentValidator,
+      )
     val json = Json { ignoreUnknownKeys = true }
 
     "availableTransitions returns options for current status" {

@@ -701,6 +701,58 @@ enum class WorkbenchErrorCode(
     "resource.work_item_comment.not_found",
     "Work item comment not found.",
   ),
+  RESOURCE_WORK_ITEM_ATTACHMENT_NOT_FOUND(
+    "resource.work_item_attachment.not_found",
+    "Work item attachment not found.",
+  ),
+  WORK_ITEM_ATTACHMENT_CREATE_DENIED(
+    "work_item.attachment.create_denied",
+    "Work item attachment create permission denied.",
+  ),
+  WORK_ITEM_ATTACHMENT_DELETE_DENIED(
+    "work_item.attachment.delete_denied",
+    "Work item attachment delete permission denied.",
+  ),
+  WORK_ITEM_ATTACHMENT_TOO_LARGE(
+    "work_item.attachment.too_large",
+    "Work item attachment exceeds the maximum allowed size.",
+  ),
+  WORK_ITEM_ATTACHMENT_CONTENT_TYPE_UNSUPPORTED(
+    "work_item.attachment.content_type_unsupported",
+    "Work item attachment content type is not supported.",
+  ),
+  WORK_ITEM_ATTACHMENT_COMMENT_REQUIRED(
+    "work_item.attachment.comment_required",
+    "Comment attachment requires a comment id.",
+  ),
+  WORK_ITEM_ATTACHMENT_FILE_REQUIRED(
+    "work_item.attachment.file_required",
+    "Attachment file is required.",
+  ),
+  WORK_ITEM_ATTACHMENT_PURPOSE_INVALID(
+    "work_item.attachment.purpose_invalid",
+    "Work item attachment purpose is invalid.",
+  ),
+  WORK_ITEM_ATTACHMENT_UPLOAD_INCOMPLETE(
+    "work_item.attachment.upload_incomplete",
+    "Work item attachment upload has not been completed in object storage.",
+  ),
+  WORK_ITEM_ATTACHMENT_UPLOAD_SIZE_MISMATCH(
+    "work_item.attachment.upload_size_mismatch",
+    "Uploaded object size does not match the declared file size.",
+  ),
+  WORK_ITEM_ATTACHMENT_UPLOAD_EXPIRED(
+    "work_item.attachment.upload_expired",
+    "Work item attachment upload session has expired.",
+  ),
+  WORK_ITEM_DESCRIPTION_ATTACHMENT_REFERENCE_INVALID(
+    "work_item.description.attachment_reference_invalid",
+    "Description references an invalid work item attachment.",
+  ),
+  WORK_ITEM_DESCRIPTION_ATTACHMENT_CREATE_UNSUPPORTED(
+    "work_item.description.attachment_create_unsupported",
+    "Description attachments are not supported during work item creation.",
+  ),
   WORK_ITEM_CONFIG_SCOPE_UNKNOWN(
     "work_item.config.scope_unknown",
     "Unknown work item config scope.",

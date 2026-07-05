@@ -1,6 +1,8 @@
 package ink.doa.workbench.data.project
 
 import ink.doa.workbench.core.project.ProjectDestructionRepository
+import ink.doa.workbench.data.persistence.AttachmentsTable
+import ink.doa.workbench.data.persistence.IssueCommentsTable
 import ink.doa.workbench.data.persistence.IssueHierarchyTable
 import ink.doa.workbench.data.persistence.IssuesTable
 import ink.doa.workbench.data.persistence.PermissionBindingsTable
@@ -11,9 +13,11 @@ import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
@@ -58,6 +62,7 @@ class ExposedProjectDestructionRepository(private val database: Database) :
         it[IssuesTable.deleteReason] = deleteReason
         it[IssuesTable.updatedAt] = deletedAt
       }
+      softDeleteIssueRelatedData(tenantUuid, projectUuid, deletedAt, deletedByUuid, deleteReason)
       SprintsTable.update({
         (SprintsTable.tenantId eq tenantUuid) and
           (SprintsTable.projectId eq projectUuid) and
@@ -80,4 +85,39 @@ class ExposedProjectDestructionRepository(private val database: Database) :
           (IssueHierarchyTable.projectId eq projectUuid)
       }
     }
+
+  private fun softDeleteIssueRelatedData(
+    tenantUuid: kotlin.uuid.Uuid,
+    projectUuid: kotlin.uuid.Uuid,
+    deletedAt: OffsetDateTime,
+    deletedByUuid: kotlin.uuid.Uuid,
+    deleteReason: String?,
+  ) {
+    val projectIssueIds =
+      IssuesTable.selectAll()
+        .where {
+          (IssuesTable.tenantId eq tenantUuid) and (IssuesTable.projectId eq projectUuid)
+        }
+        .map { it[IssuesTable.id] }
+    if (projectIssueIds.isEmpty()) return
+    IssueCommentsTable.update({
+      (IssueCommentsTable.tenantId eq tenantUuid) and
+        (IssueCommentsTable.issueId inList projectIssueIds) and
+        IssueCommentsTable.deletedAt.isNull()
+    }) {
+      it[IssueCommentsTable.deletedAt] = deletedAt
+      it[IssueCommentsTable.deletedBy] = deletedByUuid
+      it[IssueCommentsTable.deleteReason] = deleteReason
+      it[IssueCommentsTable.updatedAt] = deletedAt
+    }
+    AttachmentsTable.update({
+      (AttachmentsTable.tenantId eq tenantUuid) and
+        (AttachmentsTable.issueId inList projectIssueIds) and
+        AttachmentsTable.deletedAt.isNull()
+    }) {
+      it[AttachmentsTable.deletedAt] = deletedAt
+      it[AttachmentsTable.deletedBy] = deletedByUuid
+      it[AttachmentsTable.deleteReason] = deleteReason
+    }
+  }
 }
