@@ -8,6 +8,7 @@ import ink.doa.workbench.core.common.errors.AuthenticationFailedException
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.core.permission.AuthorizationResourceAttributeResolver
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.AuthorizationDecision
 import ink.doa.workbench.core.permission.model.AuthorizationEnvironment
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Component
 class InfrastructureAspect(
   private val permissionService: PermissionService,
   private val tenantOperationalGuard: TenantOperationalGuard,
+  private val attributeResolvers: List<AuthorizationResourceAttributeResolver>,
   private val clock: Clock,
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
@@ -72,7 +74,8 @@ class InfrastructureAspect(
     tenantId?.let { id ->
       runBlocking { tenantOperationalGuard.ensureOperational(id) }
     }
-    val request = authorizationRequest(joinPoint, authorize)
+    val request =
+      runBlocking { enrichAuthorizationRequest(authorizationRequest(joinPoint, authorize)) }
     val decision = runBlocking { permissionService.decide(request) }
     if (decision is AuthorizationDecision.Deny) {
       logger.warn(
@@ -146,6 +149,26 @@ class InfrastructureAspect(
           requestId = scopedContext.requestId,
           occurredAt = clock.instant(),
         ),
+    )
+  }
+
+  private suspend fun enrichAuthorizationRequest(
+    request: AuthorizationRequest,
+  ): AuthorizationRequest {
+    val actorAttributes =
+      mapOf(
+        "actor" to request.subject.userId.toString(),
+        "actorId" to request.subject.userId.toString(),
+      )
+    val resolvedAttributes =
+      attributeResolvers
+        .firstOrNull { it.supports(request.resource) }
+        ?.resolveAttributes(request)
+        .orEmpty()
+    val attributes = actorAttributes + resolvedAttributes
+    if (attributes == request.resource.attributes) return request
+    return request.copy(
+      resource = request.resource.copy(attributes = attributes),
     )
   }
 

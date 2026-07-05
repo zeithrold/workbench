@@ -299,6 +299,10 @@ enum class WorkbenchErrorCode(
     "permission.policy.rules_builtin_change_forbidden",
     "Built-in policy rules cannot be changed.",
   ),
+  PERMISSION_POLICY_RULE_CONDITION_INVALID(
+    "permission.policy.rule_condition_invalid",
+    "Policy rule condition must be valid JSON condition AST.",
+  ),
   PERMISSION_BINDING_EFFECT_OVERRIDE_UNSUPPORTED(
     "permission.binding.effect_override_unsupported",
     "Binding effect overrides are not supported; use policy rules.",

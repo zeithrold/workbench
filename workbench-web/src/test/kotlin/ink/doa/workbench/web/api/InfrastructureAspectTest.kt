@@ -20,7 +20,7 @@ class InfrastructureAspectTest :
     val permissionService = mockk<PermissionService>()
     val tenantOperationalGuard = mockk<TenantOperationalGuard>(relaxed = true)
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-    val aspect = InfrastructureAspect(permissionService, tenantOperationalGuard, clock)
+    val aspect = InfrastructureAspect(permissionService, tenantOperationalGuard, emptyList(), clock)
 
     "audit proceeds and returns join point result" {
       val joinPoint = mockJoinPoint(result = "ok")

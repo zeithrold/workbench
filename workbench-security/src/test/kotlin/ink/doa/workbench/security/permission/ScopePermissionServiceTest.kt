@@ -294,6 +294,185 @@ class ScopePermissionServiceTest :
       val decision = service.decide(bearerRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
     }
+
+    test("tenant scope allows when allow condition matches") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "issue.update",
+            pattern = "issue:*",
+            effect = PermissionEffect.ALLOW,
+            conditionJson =
+              """
+              {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}}
+              """
+                .trimIndent(),
+          )
+        )
+
+      val issueRequest =
+        request(AuthorizationScope.TENANT, projectId).copy(
+          action = AuthorizationAction("issue.update"),
+          resource =
+            AuthorizationResource(
+              type = "issue",
+              id = "iss_01",
+              tenantId = tenantId,
+              projectId = projectId,
+              attributes = mapOf("assignee" to userId.toString()),
+            ),
+        )
+
+      val decision = service.decide(issueRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
+
+    test("tenant scope denies allow rule when condition does not match") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "issue.update",
+            pattern = "issue:*",
+            effect = PermissionEffect.ALLOW,
+            conditionJson =
+              """
+              {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}}
+              """
+                .trimIndent(),
+          )
+        )
+
+      val issueRequest =
+        request(AuthorizationScope.TENANT, projectId).copy(
+          action = AuthorizationAction("issue.update"),
+          resource =
+            AuthorizationResource(
+              type = "issue",
+              id = "iss_01",
+              tenantId = tenantId,
+              projectId = projectId,
+              attributes = mapOf("assignee" to UUID.randomUUID().toString()),
+            ),
+        )
+
+      val decision = service.decide(issueRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      decision.reason.code shouldBe "no_matching_binding"
+    }
+
+    test("tenant scope denies when deny condition matches") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "issue.update",
+            pattern = "issue:*",
+            effect = PermissionEffect.DENY,
+            conditionJson =
+              """
+              {"field":"statusGroup","op":"eq","value":"done"}
+              """
+                .trimIndent(),
+          )
+        )
+
+      val issueRequest =
+        request(AuthorizationScope.TENANT, projectId).copy(
+          action = AuthorizationAction("issue.update"),
+          resource =
+            AuthorizationResource(
+              type = "issue",
+              id = "iss_01",
+              tenantId = tenantId,
+              projectId = projectId,
+              attributes = mapOf("statusGroup" to "done"),
+            ),
+        )
+
+      val decision = service.decide(issueRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      decision.reason.code shouldBe "binding_denied"
+    }
+
+    test("tenant scope does not deny when deny condition does not match") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "issue.update",
+            pattern = "issue:*",
+            effect = PermissionEffect.DENY,
+            conditionJson =
+              """
+              {"field":"statusGroup","op":"eq","value":"done"}
+              """
+                .trimIndent(),
+          )
+        )
+
+      val issueRequest =
+        request(AuthorizationScope.TENANT, projectId).copy(
+          action = AuthorizationAction("issue.update"),
+          resource =
+            AuthorizationResource(
+              type = "issue",
+              id = "iss_01",
+              tenantId = tenantId,
+              projectId = projectId,
+              attributes = mapOf("statusGroup" to "todo"),
+            ),
+        )
+
+      val decision = service.decide(issueRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      decision.reason.code shouldBe "no_matching_binding"
+    }
+
+    test("tenant scope denies with invalid deny condition json") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "issue.update",
+            pattern = "issue:*",
+            effect = PermissionEffect.DENY,
+            conditionJson = "{invalid",
+          )
+        )
+
+      val issueRequest =
+        request(AuthorizationScope.TENANT, projectId).copy(
+          action = AuthorizationAction("issue.update"),
+          resource =
+            AuthorizationResource(
+              type = "issue",
+              id = "iss_01",
+              tenantId = tenantId,
+              projectId = projectId,
+            ),
+        )
+
+      val decision = service.decide(issueRequest)
+      decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      decision.reason.code shouldBe "binding_condition_invalid"
+    }
   })
 
 private fun membership(status: TenantMemberStatus) =
@@ -336,10 +515,12 @@ private fun rule(
   action: String,
   pattern: String,
   effect: PermissionEffect,
+  conditionJson: String? = null,
 ): ResolvedPermissionRule =
   ResolvedPermissionRule(
     bindingId = UUID.randomUUID(),
     action = AuthorizationAction(action),
     resourcePattern = pattern,
     effect = effect,
+    conditionJson = conditionJson,
   )

@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
+import ink.doa.workbench.core.permission.PermissionConditionJson
 import ink.doa.workbench.core.permission.PermissionPolicyRecord
 import ink.doa.workbench.core.permission.PermissionPolicyRepository
 import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
@@ -85,6 +86,7 @@ class PermissionPolicyManagementService(
     action: String,
     resourcePattern: String,
     effect: PermissionEffect,
+    conditionJson: String? = null,
   ): PermissionPolicyView {
     val policy = requirePolicy(tenantId, policyPublicId)
     if (policy.builtin) {
@@ -92,12 +94,14 @@ class PermissionPolicyManagementService(
         WorkbenchErrorCode.PERMISSION_POLICY_RULES_BUILTIN_CHANGE_FORBIDDEN
       )
     }
+    val canonicalCondition = PermissionConditionJson.validateAndCanonicalize(conditionJson)
     policies.addRule(
       CreatePermissionPolicyRuleCommand(
         policyId = policy.id,
         action = AuthorizationAction(action),
         resourcePattern = resourcePattern,
         effect = effect,
+        conditionJson = canonicalCondition,
       )
     )
     return PermissionPolicyView.from(policy, policies.listRules(policy.id))

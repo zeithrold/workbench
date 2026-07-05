@@ -495,6 +495,7 @@ class ExposedPermissionBindingRepository(private val database: Database) :
                     ),
                   resourcePattern = ruleRow[PermissionPolicyRulesTable.resourcePattern],
                   effect = permissionEffectOf(ruleRow[PermissionPolicyRulesTable.effect]),
+                  conditionJson = ruleRow[PermissionPolicyRulesTable.conditionJson],
                 )
               }
           }

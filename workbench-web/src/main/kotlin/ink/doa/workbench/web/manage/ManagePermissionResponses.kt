@@ -1,5 +1,7 @@
 package ink.doa.workbench.web.manage
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.permission.PermissionPrincipalType
@@ -37,6 +39,7 @@ data class CreatePermissionPolicyRuleRequest(
   @field:NotBlank val action: String,
   @field:NotBlank val resourcePattern: String,
   val effect: String? = null,
+  val condition: Map<String, Any>? = null,
 )
 
 data class AddGroupMemberRequest(@field:NotBlank val userId: String)
@@ -99,13 +102,20 @@ data class PermissionPolicyRuleResponse(
   val action: String,
   val resourcePattern: String,
   val effect: String,
+  val condition: Map<String, Any>? = null,
 ) {
   companion object {
+    private val objectMapper = ObjectMapper()
+
     fun from(view: PermissionPolicyRuleView) =
       PermissionPolicyRuleResponse(
         action = view.action,
         resourcePattern = view.resourcePattern,
         effect = view.effect,
+        condition =
+          view.condition?.let {
+            objectMapper.readValue(it, object : TypeReference<Map<String, Any>>() {})
+          },
       )
   }
 }

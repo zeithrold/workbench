@@ -48,11 +48,14 @@ class ManagePermissionResponsesTest :
                 action = "project.manage",
                 resourcePattern = "project:*",
                 effect = "ALLOW",
+                condition = """{"field":"statusGroup","op":"eq","value":"todo"}""",
               )
             ),
         )
 
-      PermissionPolicyResponse.from(view).rules.single().action shouldBe "project.manage"
+      val response = PermissionPolicyResponse.from(view)
+      response.rules.single().action shouldBe "project.manage"
+      response.rules.single().condition?.get("field") shouldBe "statusGroup"
     }
 
     "permission binding response maps nested summaries" {

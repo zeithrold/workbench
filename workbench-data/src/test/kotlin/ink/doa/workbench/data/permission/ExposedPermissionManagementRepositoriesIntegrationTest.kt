@@ -151,6 +151,60 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
       }
     }
 
+    "policy rules persist condition json through active bindings" {
+      withPermissionPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val bindings = ExposedPermissionBindingRepository(database)
+        val user = users.create(CreateUserCommand("Finn", "finn-permissions@example.test"))
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "conditional-reader",
+              name = "Conditional Reader",
+              description = null,
+            )
+          )
+        val conditionJson =
+          """
+          {"field":"statusGroup","op":"eq","value":"todo"}
+          """
+            .trimIndent()
+        policies.addRule(
+          CreatePermissionPolicyRuleCommand(
+            policyId = policy.id,
+            action = AuthorizationAction("issue.view"),
+            resourcePattern = "issue:*",
+            conditionJson = conditionJson,
+          )
+        )
+        bindings.create(
+          CreatePermissionBindingCommand(
+            tenantId = tenantId,
+            projectId = null,
+            principalType = PermissionPrincipalType.USER,
+            principalUserId = user.id,
+            principalGroupId = null,
+            policyId = policy.id,
+            validFrom = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1),
+            createdBy = user.id,
+          )
+        )
+
+        val rules =
+          bindings.listActiveRulesForSubject(
+            subjectUserId = user.id,
+            tenantId = tenantId,
+            projectId = null,
+            at = OffsetDateTime.now(ZoneOffset.UTC),
+          )
+
+        rules.single().conditionJson shouldBe conditionJson
+      }
+    }
+
     "project bindings resolve project ids for subject" {
       withPermissionPostgresDatabase { database ->
         val tenantId = seedTenant(database)

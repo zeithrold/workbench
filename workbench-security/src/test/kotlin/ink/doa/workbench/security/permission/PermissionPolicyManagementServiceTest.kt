@@ -172,6 +172,60 @@ class PermissionPolicyManagementServiceTest :
 
       result.rules.single().action shouldBe "project.read"
     }
+
+    "addPolicyRule validates condition json" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking {
+          service.addPolicyRule(
+            tenantId,
+            policy.apiId.value,
+            "project.read",
+            "project:*",
+            ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            conditionJson = "{invalid",
+          )
+        }
+      }
+    }
+
+    "addPolicyRule stores canonical condition json" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      val conditionJson =
+        """
+        {"field":"statusGroup","op":"eq","value":"todo"}
+        """
+          .trimIndent()
+      val rule =
+        ink.doa.workbench.core.permission.PermissionPolicyRuleRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("prr"),
+          policyId = policy.id,
+          action = ink.doa.workbench.core.permission.model.AuthorizationAction("issue.view"),
+          resourcePattern = "issue:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = conditionJson,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.addRule(any()) } returns rule
+      coEvery { policies.listRules(policy.id) } returns listOf(rule)
+
+      val result = runBlocking {
+        service.addPolicyRule(
+          tenantId,
+          policy.apiId.value,
+          "issue.view",
+          "issue:*",
+          ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = conditionJson,
+        )
+      }
+
+      result.rules.single().condition shouldBe conditionJson
+    }
   })
 
 private fun samplePolicy(

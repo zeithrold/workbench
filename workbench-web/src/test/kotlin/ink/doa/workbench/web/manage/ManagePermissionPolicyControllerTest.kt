@@ -123,6 +123,34 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       .andExpect(jsonPath("$.rules[0].action").value("issue.update"))
   }
 
+  @Test
+  fun `add policy rule accepts optional condition`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/manage/permission-policies/pol_01JABCDEFGHJKMNPQRSTVWXYZ0/rules")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "action": "issue.view",
+                "resourcePattern": "issue:*",
+                "condition": {"field":"statusGroup","op":"eq","value":"todo"}
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.rules[0].condition.field").value("statusGroup"))
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -184,6 +212,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
           action = "issue.update",
           resourcePattern = "issue:*",
           effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = null,
         )
       } returns
         samplePolicy.copy(
@@ -193,6 +222,27 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
                 action = "issue.update",
                 resourcePattern = "issue:*",
                 effect = "ALLOW",
+              )
+            )
+        )
+      coEvery {
+        service.addPolicyRule(
+          tenantId = TenantWebMvcFixtures.TENANT_ID,
+          policyPublicId = "pol_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          action = "issue.view",
+          resourcePattern = "issue:*",
+          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          conditionJson = match { it != null && it.contains("statusGroup") },
+        )
+      } returns
+        samplePolicy.copy(
+          rules =
+            listOf(
+              ink.doa.workbench.security.permission.PermissionPolicyRuleView(
+                action = "issue.view",
+                resourcePattern = "issue:*",
+                effect = "ALLOW",
+                condition = """{"field":"statusGroup","op":"eq","value":"todo"}""",
               )
             )
         )
