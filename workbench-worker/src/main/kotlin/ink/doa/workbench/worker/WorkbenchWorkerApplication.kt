@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableAsync
 class WorkbenchWorkerApplication
 
 fun main(args: Array<String>) {
-  runApplication<WorkbenchWorkerApplication>(*args) {
+  runApplication<WorkbenchWorkerApplication>(args = args) {
     setAdditionalProfiles("worker")
   }
 }
