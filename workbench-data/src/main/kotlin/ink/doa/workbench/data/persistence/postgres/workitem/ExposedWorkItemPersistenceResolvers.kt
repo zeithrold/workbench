@@ -9,6 +9,7 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.selectAll
 
@@ -34,11 +35,13 @@ internal fun resolveSprint(tenantId: UUID, projectId: UUID, apiId: String): UUID
     .where {
       (SprintsTable.tenantId eq tenantId.toKotlinUuid()) and
         (SprintsTable.projectId eq projectId.toKotlinUuid()) and
-        (SprintsTable.apiId eq apiId)
+        (SprintsTable.apiId eq apiId) and
+        SprintsTable.deletedAt.isNull() and
+        SprintsTable.archivedAt.isNull()
     }
     .singleOrNull()
     ?.get(SprintsTable.id)
-    ?.toJavaUuid() ?: throw ResourceNotFoundException(WorkbenchErrorCode.REQUEST_INVALID)
+    ?.toJavaUuid() ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_SPRINT_NOT_FOUND)
 
 internal fun resolveProject(tenantId: UUID, apiId: String): UUID =
   ProjectsTable.selectAll()

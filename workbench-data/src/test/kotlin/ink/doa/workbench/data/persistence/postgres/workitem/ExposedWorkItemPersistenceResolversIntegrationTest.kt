@@ -116,6 +116,32 @@ class ExposedWorkItemPersistenceResolversIntegrationTest :
       }
     }
 
+    "resolveSprint ignores deleted sprints" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val sprintApiId = PublicId.new("spr").value
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+
+        transaction(database) {
+          SprintsTable.insert {
+            it[id] = UUID.randomUUID().toKotlinUuid()
+            it[apiId] = sprintApiId
+            it[tenantId] = stack.tenantId.toKotlinUuid()
+            it[projectId] = stack.projectId.toKotlinUuid()
+            it[name] = "Deleted sprint"
+            it[status] = "planned"
+            it[deletedAt] = now
+            it[createdAt] = now
+            it[updatedAt] = now
+          }
+
+          shouldThrow<ResourceNotFoundException> {
+            resolveSprint(stack.tenantId, stack.projectId, sprintApiId)
+          }
+        }
+      }
+    }
+
     "resolveOption maps option api id to database id" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
