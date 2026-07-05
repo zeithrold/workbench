@@ -8,20 +8,22 @@ import ink.doa.workbench.core.workitem.model.WorkItemSearchPageInfo
 import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemQueryValidator
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 
 @Repository
-class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) :
-  WorkItemQueryRepository {
+class JdbcWorkItemQueryRepository(
+  private val jdbcTemplate: JdbcTemplate,
+  private val ioDispatcher: CoroutineDispatcher,
+) : WorkItemQueryRepository {
   override suspend fun search(
     scope: WorkItemSearchScope,
     query: WorkItemQuery,
     page: WorkItemSearchPageRequest,
   ): WorkItemSearchPage =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       val resolver = JdbcPostgresWorkItemFieldResolver(jdbcTemplate, scope.tenantId)
       WorkItemQueryValidator(resolver).validate(query)
       val plan = PostgresWorkItemFilter(resolver).build(scope, query)
@@ -51,10 +53,9 @@ class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) :
         """
           .trimIndent()
       val params = plan.params + listOf(page.limit, page.offset)
-      val hits = jdbcTemplate.query(selectSql, WorkItemSearchHitRowMapper, *params.toTypedArray())
+      val hits = queryRows(selectSql, params, WorkItemSearchHitRowMapper)
       val countSql = "SELECT COUNT(*) ${plan.fromSql} WHERE ${plan.where.sql}"
-      val total =
-        jdbcTemplate.queryForObject(countSql, Long::class.java, *plan.params.toTypedArray())
+      val total = queryForLong(countSql, plan.params)
       WorkItemSearchPage(
         result = WorkItemSearchResult(hits = hits, total = total),
         page =
@@ -65,4 +66,16 @@ class JdbcWorkItemQueryRepository(private val jdbcTemplate: JdbcTemplate) :
           ),
       )
     }
+
+  // Spread is isolated here so repository search stays free of detekt SpreadOperator noise.
+  @Suppress("SpreadOperator")
+  private fun <T> queryRows(
+    sql: String,
+    params: List<Any?>,
+    rowMapper: org.springframework.jdbc.core.RowMapper<T>,
+  ): List<T> = jdbcTemplate.query(sql, rowMapper, *params.toTypedArray())
+
+  @Suppress("SpreadOperator")
+  private fun queryForLong(sql: String, params: List<Any?>): Long =
+    checkNotNull(jdbcTemplate.queryForObject(sql, Long::class.java, *params.toTypedArray()))
 }

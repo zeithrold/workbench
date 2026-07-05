@@ -16,13 +16,7 @@ class JdbcPostgresWorkItemFieldResolver(
       return StaticPostgresWorkItemFieldResolver().resolvePostgresField(field)
     val property = field as QueryField.Property
     val dataType =
-      jdbcTemplate
-        .query(
-          propertyLookupSql(property),
-          { rs, _ -> rs.getString("data_type") },
-          *propertyLookupParams(property).toTypedArray(),
-        )
-        .singleOrNull()
+      queryPropertyDataType(property)
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_UNKNOWN,
           "Unknown work item query property: ${field.canonicalName}",
@@ -33,6 +27,22 @@ class JdbcPostgresWorkItemFieldResolver(
       )
       .resolvePostgresField(field)
   }
+
+  private fun queryPropertyDataType(property: QueryField.Property): String? {
+    val params = propertyLookupParams(property)
+    return queryWithParams(propertyLookupSql(property), params) { rs, _ ->
+        rs.getString("data_type")
+      }
+      .singleOrNull()
+  }
+
+  // Spread is isolated here so field resolution stays free of detekt SpreadOperator noise.
+  @Suppress("SpreadOperator")
+  private fun <T> queryWithParams(
+    sql: String,
+    params: List<Any?>,
+    rowMapper: (java.sql.ResultSet, Int) -> T,
+  ): List<T> = jdbcTemplate.query(sql, rowMapper, *params.toTypedArray())
 
   private fun propertyLookupSql(property: QueryField.Property): String {
     val identitySql =
