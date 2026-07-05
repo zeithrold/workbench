@@ -2,9 +2,11 @@ plugins {
   alias(libs.plugins.spring.boot)
   alias(libs.plugins.spring.dependency.management)
   alias(libs.plugins.kotlin.spring)
+  kotlin("kapt")
 }
 
 dependencies {
+  kapt("org.springframework.boot:spring-boot-configuration-processor")
   implementation(project(":workbench-core"))
   implementation(project(":workbench-service"))
   implementation(project(":workbench-agile"))

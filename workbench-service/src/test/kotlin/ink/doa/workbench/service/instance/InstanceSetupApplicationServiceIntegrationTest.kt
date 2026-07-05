@@ -169,7 +169,7 @@ class InstanceSetupApplicationServiceIntegrationTest :
                 ),
               clock = clock,
             ),
-          instanceProperties = InstanceProperties(),
+          instanceProperties = InstanceProperties(setupToken = null, id = null, name = null),
           authApplicationService = authApplicationService,
         )
     }

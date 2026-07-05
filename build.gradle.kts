@@ -207,6 +207,7 @@ configure(backendProjects) {
     dependencies {
         "implementation"(platform(springBootBom))
         "testImplementation"(platform(springBootBom))
+        "annotationProcessor"(platform(springBootBom))
         "implementation"(kotlinReflectDependency)
         "implementation"(coroutinesCoreDependency)
         "implementation"(serializationJsonDependency)

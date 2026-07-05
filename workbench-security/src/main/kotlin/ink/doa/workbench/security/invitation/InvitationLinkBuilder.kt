@@ -3,10 +3,17 @@ package ink.doa.workbench.security.invitation
 import ink.doa.workbench.core.common.context.RequestHost
 import ink.doa.workbench.core.invitation.InvitationLinkPaths
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 import org.springframework.stereotype.Component
 
+/** Public base URL settings for invitation links sent by email or other channels. */
 @ConfigurationProperties(prefix = "workbench.invitation-link")
-data class InvitationLinkProperties(val publicBaseUrl: String? = null)
+data class InvitationLinkProperties
+@ConstructorBinding
+constructor(
+  /** Absolute base URL prepended to invitation paths when the request host is unavailable. */
+  val publicBaseUrl: String?
+)
 
 @Component
 class InvitationLinkBuilder(private val properties: InvitationLinkProperties) {

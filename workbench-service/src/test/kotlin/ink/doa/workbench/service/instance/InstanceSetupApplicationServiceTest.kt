@@ -74,7 +74,8 @@ class InstanceSetupApplicationServiceTest :
         service(
           InstanceSetupServiceFixtures(
             adminUserQueries = adminUserQueries,
-            instanceProperties = InstanceProperties(setupToken = "expected-token"),
+            instanceProperties =
+              InstanceProperties(setupToken = "expected-token", id = null, name = null),
           )
         )
 
@@ -197,7 +198,8 @@ private data class InstanceSetupServiceFixtures(
   val adminUserQueries: AdminUserQueryRepository = mockk(),
   val accessGrants: AccessGrantRepository = mockk(),
   val passwordHasher: PasswordHasher = mockk(),
-  val instanceProperties: InstanceProperties = InstanceProperties(),
+  val instanceProperties: InstanceProperties =
+    InstanceProperties(setupToken = null, id = null, name = null),
   val authApplicationService: AuthApplicationService = mockk(),
 )
 

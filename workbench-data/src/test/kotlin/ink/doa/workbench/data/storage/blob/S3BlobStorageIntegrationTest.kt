@@ -30,6 +30,9 @@ class S3BlobStorageIntegrationTest :
               region = "us-east-1",
               maxFileSize = DataSize.ofMegabytes(25),
               autoCreateBucket = true,
+              pathStyleAccess = true,
+              presignUploadTtl = java.time.Duration.ofMinutes(15),
+              presignDownloadTtl = java.time.Duration.ofMinutes(15),
             )
           val client = S3BlobStorage.createClient(properties)
           val presigner = S3BlobStorage.createPresigner(properties)
