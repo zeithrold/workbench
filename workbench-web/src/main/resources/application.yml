@@ -19,19 +19,41 @@ spring:
       max-request-size: 25MB
 server:
   port: 8080
+  error:
+    path: /api/error
 management:
   endpoints:
     web:
+      base-path: /api/actuator
       exposure:
         include: health,info,metrics
+  tracing:
+    export:
+      enabled: true
+      otlp:
+        enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
+  opentelemetry:
+    resource-attributes:
+      service.name: ${spring.application.name}
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api/openapi
 scalar:
   enabled: true
-  path: /scalar
-  url: /v3/api-docs
+  path: /api/scalar
+  url: /api/openapi
 workbench:
+  tracing:
+    echo-traceparent:
+      enabled: true
   instance:
     setup-token: ${WORKBENCH_SETUP_TOKEN:}
     id: ${WORKBENCH_INSTANCE_ID:}

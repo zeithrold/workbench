@@ -347,7 +347,7 @@ suspend fun create(
 - `@StandardErrorResponses` (or explicit `@ApiResponse`) for 400, 401, 403, 404, 409
 - `@SessionSecured` / `@SecurityRequirement` when not public
 - Config: `workbench-web/.../api/OpenApiConfiguration.kt` — Session + Bearer schemes
-- Frontend Orval reads `/v3/api-docs` — field renames are breaking
+- Frontend Orval reads `/api/openapi` — field renames are breaking
 
 ## Pagination (future)
 

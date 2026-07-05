@@ -16,6 +16,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-security")
   implementation("org.springframework.boot:spring-boot-starter-aspectj")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation(libs.jackson.module.kotlin)
   implementation(libs.springdoc.openapi)
@@ -34,6 +35,8 @@ dependencies {
   testImplementation(project(":workbench-test-support"))
   testImplementation(libs.redisson)
 }
+
+sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))
 
 sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))
 

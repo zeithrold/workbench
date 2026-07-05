@@ -74,8 +74,8 @@ Cloud VM: set `JAVA_HOME` to JDK 25 if toolchain resolution fails — see [AGENT
 
 | Item | Value |
 |------|-------|
-| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
-| Scalar UI | `http://localhost:8080/scalar` |
+| OpenAPI JSON | `http://localhost:8080/api/openapi` |
+| Scalar UI | `http://localhost:8080/api/scalar` |
 | OpenAPI config | `workbench-web/.../api/OpenApiConfiguration.kt` |
 | Examples | `workbench-web/.../api/OpenApiExamples.kt` |
 | Orval config | `workbench-frontend/orval.config.ts` |

@@ -37,7 +37,7 @@ Start the frontend:
 ./gradlew :workbench-frontend:pnpmDev
 ```
 
-OpenAPI is available at `http://localhost:8080/v3/api-docs`. Scalar is available at `http://localhost:8080/scalar`.
+OpenAPI is available at `http://localhost:8080/api/openapi`. Scalar is available at `http://localhost:8080/api/scalar`.
 
 ## Verification
 

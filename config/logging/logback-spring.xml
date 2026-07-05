@@ -9,7 +9,12 @@
         <threadName />
         <message />
         <stackTrace />
-        <mdc />
+        <provider class="net.logstash.logback.composite.loggingevent.MdcJsonProvider">
+          <includeMdcKeyName>traceId</includeMdcKeyName>
+          <includeMdcKeyName>spanId</includeMdcKeyName>
+          <mdcKeyFieldName>traceId=trace.id</mdcKeyFieldName>
+          <mdcKeyFieldName>spanId=span.id</mdcKeyFieldName>
+        </provider>
       </providers>
     </encoder>
   </appender>

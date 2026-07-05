@@ -23,3 +23,8 @@ workbench:
     max-file-size: 25MB
     auto-create-bucket: true
     path-style-access: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0

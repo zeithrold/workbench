@@ -446,7 +446,7 @@ data class CreateProjectRequest(
 
 ## Frontend Contract
 
-- Orval generates client from `http://localhost:8080/v3/api-docs`
+- Orval generates client from `http://localhost:8080/api/openapi`
 - Field renames (`apiId` → `id`) are **breaking** — coordinate with frontend
 - Run `pnpm openapi` in `workbench-frontend` after backend OpenAPI changes (backend must be running)
 

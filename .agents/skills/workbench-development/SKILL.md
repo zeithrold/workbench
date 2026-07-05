@@ -87,7 +87,7 @@ Run in separate terminals:
 ./gradlew :workbench-frontend:pnpmDev
 ```
 
-`./gradlew dev` prints the same commands. OpenAPI: `http://localhost:8080/v3/api-docs`; Scalar: `/scalar`.
+`./gradlew dev` prints the same commands. OpenAPI: `http://localhost:8080/api/openapi`; Scalar: `/api/scalar`.
 
 **Cursor Cloud VM:** JDK 25 `JAVA_HOME`, Docker daemon, and Orval caveats — see [AGENTS.md](../../../AGENTS.md).
 

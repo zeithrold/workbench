@@ -80,6 +80,9 @@ dependencies {
 extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
     reports {
         total {
+            html {
+                onCheck = true
+            }
             xml {
                 onCheck = true
             }
@@ -95,6 +98,21 @@ extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kov
             }
         }
     }
+}
+
+tasks.register("check") {
+    group = "verification"
+    description = "Runs all checks."
+    dependsOn(subprojects.map { it.tasks.named("check") })
+    dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
+}
+
+tasks.named("koverHtmlReport") {
+    mustRunAfter(backendProjects.map { "${it.path}:check" })
+}
+
+tasks.named("koverXmlReport") {
+    mustRunAfter(backendProjects.map { "${it.path}:check" })
 }
 
 fun pitestEnabledProjects(): List<org.gradle.api.Project> =
@@ -166,6 +184,9 @@ configure(backendProjects) {
     extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
         reports {
             total {
+                html {
+                    onCheck = true
+                }
                 xml {
                     onCheck = true
                 }
