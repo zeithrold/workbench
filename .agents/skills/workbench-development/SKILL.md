@@ -165,7 +165,7 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 | Push / PR | quality-gate (after `check`) | `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage` (backend 90% / frontend 70% on changed lines) |
 | Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | quality-gate + fuzz + mutation (no diff coverage) |
 
-Reports: `scripts/ci/render-quality-summary.py` → GitHub Step Summary (Kover, diff coverage, PIT). Diff coverage runs on CI push/PR when `./gradlew check` succeeds.
+Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary; `uv run render-quality-summary` writes Kover/PIT. Diff coverage runs on CI push/PR when `./gradlew check` succeeds.
 
 ## PR Checklist
 

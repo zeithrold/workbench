@@ -308,6 +308,16 @@ def write_results(root: Path, results: list[StackResult]) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def append_github_step_summary(markdown: str) -> None:
+    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_path:
+        return
+    with open(summary_path, "a", encoding="utf-8") as handle:
+        handle.write(markdown)
+        if not markdown.endswith("\n"):
+            handle.write("\n")
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -338,6 +348,7 @@ def main(argv: list[str] | None = None) -> int:
 
     summary = render_summary(results)
     print(summary)
+    append_github_step_summary(summary)
 
     failed = [result for result in results if result.status == "fail"]
     for result in results:
