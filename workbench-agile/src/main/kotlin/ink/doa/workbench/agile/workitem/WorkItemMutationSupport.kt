@@ -34,6 +34,14 @@ class WorkItemMutationSupport(
     )
   }
 
+  fun publishAndEnqueue(
+    result: WorkItemMutationResult,
+    activityEnqueueSupport: WorkItemActivityEnqueueSupport,
+  ) {
+    publish(result)
+    activityEnqueueSupport.enqueue(result)
+  }
+
   suspend fun requireConfig(tenantId: UUID, configApiId: String): IssueTypeConfigDetails =
     configs.findConfig(tenantId, configApiId)
       ?: throw ResourceNotFoundException(

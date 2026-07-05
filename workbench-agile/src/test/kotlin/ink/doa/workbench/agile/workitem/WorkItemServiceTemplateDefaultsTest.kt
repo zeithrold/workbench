@@ -492,6 +492,7 @@ private fun workItemService(
     configs,
     subtypeConstraints,
     WorkItemMutationSupport(repository, configs, events),
+    mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
     WorkItemFieldMutationSupport(
       reconciler,
       fieldPermissions,
@@ -515,6 +516,7 @@ private fun workItemTransitionService(
   val reconciler = WorkItemFieldMutationReconciler(fixtures.fieldPermissions, fixtures.clock)
   val mutationSupport =
     WorkItemMutationSupport(fixtures.repository, fixtures.configs, fixtures.events)
+  val activityEnqueueSupport = mockk<WorkItemActivityEnqueueSupport>(relaxed = true)
   val transitionValidator = WorkItemTransitionValidator(fixtures.repository)
   val transitionOptions =
     WorkItemTransitionOptionBuilder(
@@ -526,6 +528,7 @@ private fun workItemTransitionService(
   val collaborators =
     WorkItemTransitionCollaborators(
       mutationSupport,
+      activityEnqueueSupport,
       reconciler,
       mockk(relaxed = true),
       transitionValidator,

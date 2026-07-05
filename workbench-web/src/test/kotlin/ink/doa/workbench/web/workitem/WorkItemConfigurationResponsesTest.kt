@@ -254,6 +254,7 @@ class WorkItemConfigurationResponsesTest :
           bodyFormat = "html",
           transitionId = null,
           statusHistoryId = null,
+          activityId = null,
           editedAt = null,
           createdAt = now,
           updatedAt = now,

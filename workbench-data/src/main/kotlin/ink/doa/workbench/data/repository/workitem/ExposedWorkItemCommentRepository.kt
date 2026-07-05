@@ -6,14 +6,17 @@ import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.WorkItemCommentCreateResult
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueCommentsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.data.persistence.postgres.workitem.preparePendingWorkItemActivity
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -32,7 +35,11 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-class ExposedWorkItemCommentRepository(private val database: Database) : WorkItemCommentRepository {
+class ExposedWorkItemCommentRepository(
+  private val database: Database,
+  private val activityFactory: WorkItemActivityFactory,
+  private val activityCodec: WorkItemActivityCodec,
+) : WorkItemCommentRepository {
   override suspend fun listByWorkItem(
     tenantId: UUID,
     issueId: UUID,
@@ -52,14 +59,38 @@ class ExposedWorkItemCommentRepository(private val database: Database) : WorkIte
         .map { it.toRecord() }
     }
 
+  @Suppress("LongMethod")
   override suspend fun create(
     command: CreateWorkItemCommentCommand,
     issueId: UUID,
-  ): WorkItemCommentRecord =
+  ): WorkItemCommentCreateResult =
     suspendTransaction(db = database) {
       val now = now()
       val commentId = UUID.randomUUID()
       val apiId = PublicId.new("icm")
+      val pendingActivity =
+        if (command.activityId == null && command.transitionId == null) {
+          preparePendingWorkItemActivity(
+            activityCodec,
+            activityFactory.commentCreated(
+              WorkItemCommentCreatedInput(
+                context =
+                  WorkItemActivityContext(
+                    tenantId = command.tenantId,
+                    projectId = command.projectId,
+                    workItemId = issueId,
+                    actorUserId = command.authorId,
+                    occurredAt = now,
+                  ),
+                commentApiId = apiId.value,
+                plainTextPreview = command.bodyPlainText,
+              )
+            ),
+          )
+        } else {
+          null
+        }
+      val linkedActivityId = command.activityId ?: pendingActivity?.id
       IssueCommentsTable.insert {
         it[IssueCommentsTable.id] = commentId.toKotlinUuid()
         it[IssueCommentsTable.apiId] = apiId.value
@@ -71,24 +102,30 @@ class ExposedWorkItemCommentRepository(private val database: Database) : WorkIte
         it[IssueCommentsTable.bodyFormat] = command.bodyFormat
         it[IssueCommentsTable.transitionId] = command.transitionId?.toKotlinUuid()
         it[IssueCommentsTable.statusHistoryId] = command.statusHistoryId?.toKotlinUuid()
+        it[IssueCommentsTable.activityId] = linkedActivityId?.toKotlinUuid()
         it[IssueCommentsTable.createdAt] = now
         it[IssueCommentsTable.updatedAt] = now
       }
-      WorkItemCommentRecord(
-        id = commentId,
-        apiId = apiId,
-        tenantId = command.tenantId,
-        issueId = issueId,
-        authorId = command.authorId,
-        authorApiId = requireUserApiId(command.authorId),
-        body = command.body,
-        bodyPlainText = command.bodyPlainText,
-        bodyFormat = command.bodyFormat,
-        transitionId = command.transitionId,
-        statusHistoryId = command.statusHistoryId,
-        editedAt = null,
-        createdAt = now,
-        updatedAt = now,
+      WorkItemCommentCreateResult(
+        record =
+          WorkItemCommentRecord(
+            id = commentId,
+            apiId = apiId,
+            tenantId = command.tenantId,
+            issueId = issueId,
+            authorId = command.authorId,
+            authorApiId = requireUserApiId(command.authorId),
+            body = command.body,
+            bodyPlainText = command.bodyPlainText,
+            bodyFormat = command.bodyFormat,
+            transitionId = command.transitionId,
+            statusHistoryId = command.statusHistoryId,
+            activityId = linkedActivityId,
+            editedAt = null,
+            createdAt = now,
+            updatedAt = now,
+          ),
+        pendingActivity = pendingActivity,
       )
     }
 
@@ -211,6 +248,7 @@ class ExposedWorkItemCommentRepository(private val database: Database) : WorkIte
       bodyFormat = this[IssueCommentsTable.bodyFormat],
       transitionId = this[IssueCommentsTable.transitionId]?.toJavaUuid(),
       statusHistoryId = this[IssueCommentsTable.statusHistoryId]?.toJavaUuid(),
+      activityId = this[IssueCommentsTable.activityId]?.toJavaUuid(),
       editedAt = this[IssueCommentsTable.editedAt],
       createdAt = this[IssueCommentsTable.createdAt],
       updatedAt = this[IssueCommentsTable.updatedAt],

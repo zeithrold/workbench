@@ -3,6 +3,7 @@ package ink.doa.workbench.data.repository.workitem
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.WorkItemRepository
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
@@ -25,6 +26,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.insertHierarchyLink
 import ink.doa.workbench.data.persistence.postgres.workitem.insertStatusHistory
 import ink.doa.workbench.data.persistence.postgres.workitem.insertWorkItemRows
 import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.data.persistence.postgres.workitem.preparePendingWorkItemActivity
 import ink.doa.workbench.data.persistence.postgres.workitem.prepareWorkItemInsert
 import ink.doa.workbench.data.persistence.postgres.workitem.propertyCode
 import ink.doa.workbench.data.persistence.postgres.workitem.recordIssueSprintChange
@@ -55,7 +57,12 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-class ExposedWorkItemRepository(private val database: Database) : WorkItemRepository {
+class ExposedWorkItemRepository(
+  private val database: Database,
+  private val activityFactory: WorkItemActivityFactory,
+  private val activityCodec: WorkItemActivityCodec,
+) : WorkItemRepository {
+  @Suppress("LongMethod")
   override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
     suspendTransaction(db = database) {
       val prepared = prepareWorkItemInsert(command.command, command.propertyValues)
@@ -104,6 +111,22 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
           )
         )
       }
+      val pendingActivity =
+        preparePendingWorkItemActivity(
+          activityCodec,
+          activityFactory.created(
+            context =
+              WorkItemActivityContext(
+                tenantId = command.command.tenantId,
+                projectId = command.command.projectId,
+                workItemId = prepared.issueId,
+                actorUserId = command.command.actorUserId,
+                occurredAt = prepared.now,
+              ),
+            issueTypeId = command.issueTypeId,
+            initialStatusId = command.initialStatusId,
+          ),
+        )
       WorkItemMutationResult(
         workItem =
           requireWorkItem(
@@ -112,6 +135,8 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
             prepared.issueApiId.value,
           ),
         eventType = "work_item.created",
+        activityId = pendingActivity.id,
+        pendingActivity = pendingActivity,
       )
     }
 
@@ -182,12 +207,14 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         }
     }
 
+  @Suppress("LongMethod")
   override suspend fun update(
     command: UpdateWorkItemCommand,
     propertyValues: List<WorkItemPropertyValue>,
   ): WorkItemMutationResult =
     suspendTransaction(db = database) {
       val issue = requireIssueRow(command.tenantId, command.projectId, command.workItemApiId)
+      val before = issue.toWorkItemRecord()
       val issueId = issue[IssuesTable.id].toJavaUuid()
       val previousSprintId = issue[IssuesTable.sprintId]?.toJavaUuid()
       val current = issue[IssuesTable.propertiesSnapshot].asObject()
@@ -235,9 +262,31 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         )
       }
       replacePropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
+      val after = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId)
+      val pendingActivity =
+        activityFactory
+          .updated(
+            WorkItemUpdateActivityInput(
+              context =
+                WorkItemActivityContext(
+                  tenantId = command.tenantId,
+                  projectId = command.projectId,
+                  workItemId = issueId,
+                  actorUserId = command.actorUserId,
+                  occurredAt = now,
+                ),
+              before = before,
+              after = after,
+              command = command,
+              propertyValues = propertyValues,
+            )
+          )
+          ?.let { preparePendingWorkItemActivity(activityCodec, it) }
       WorkItemMutationResult(
-        workItem = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId),
+        workItem = after,
         eventType = "work_item.updated",
+        activityId = pendingActivity?.id,
+        pendingActivity = pendingActivity,
       )
     }
 
@@ -294,7 +343,9 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
           previousSprintId = previousSprintId,
           nextSprintId = nextSprintId,
           now = now,
-        )
+        ),
+        activityFactory = activityFactory,
+        activityCodec = activityCodec,
       )
     }
 

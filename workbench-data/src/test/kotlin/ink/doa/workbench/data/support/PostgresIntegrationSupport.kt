@@ -2,6 +2,7 @@ package ink.doa.workbench.data.support
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.project.model.CreateProjectCommand
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
@@ -14,7 +15,10 @@ import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.repository.workitem.ExposedIssueTypeConfigRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCommentRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
+import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -169,4 +173,16 @@ internal suspend fun seedWorkItemStack(database: Database): WorkItemStack {
     doneStatus = doneStatus,
     config = config,
   )
+}
+
+internal fun workItemRepository(database: Database): ExposedWorkItemRepository {
+  val codec = WorkItemActivityCodec()
+  val factory = WorkItemActivityFactory()
+  return ExposedWorkItemRepository(database, factory, codec)
+}
+
+internal fun workItemCommentRepository(database: Database): ExposedWorkItemCommentRepository {
+  val codec = WorkItemActivityCodec()
+  val factory = WorkItemActivityFactory()
+  return ExposedWorkItemCommentRepository(database, factory, codec)
 }

@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
@@ -22,6 +23,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.justRun
 import io.mockk.mockk
+import io.mockk.slot
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -35,6 +37,7 @@ class WorkItemTransitionServiceTest :
     val repository = mockk<WorkItemRepository>()
     val workflows = mockk<WorkflowConfigurationRepository>()
     val mutationSupport = mockk<WorkItemMutationSupport>()
+    val activityEnqueueSupport = mockk<WorkItemActivityEnqueueSupport>(relaxed = true)
     val fieldMutationReconciler = mockk<WorkItemFieldMutationReconciler>()
     val commentService = mockk<WorkItemCommentService>()
     val fieldPermissions = mockk<WorkItemFieldPermissionService>()
@@ -49,6 +52,7 @@ class WorkItemTransitionServiceTest :
     val collaborators =
       WorkItemTransitionCollaborators(
         mutationSupport,
+        activityEnqueueSupport,
         fieldMutationReconciler,
         commentService,
         transitionValidator,
@@ -207,7 +211,7 @@ class WorkItemTransitionServiceTest :
       coEvery {
         repository.transition(any(), any(), any(), any(), any())
       } returns mutationResult
-      justRun { mutationSupport.publish(any()) }
+      justRun { mutationSupport.publishAndEnqueue(any(), any()) }
 
       val result = runBlocking {
         service.transition(
@@ -222,7 +226,66 @@ class WorkItemTransitionServiceTest :
       }
 
       result.eventType shouldBe "work_item.transitioned"
-      coVerify { mutationSupport.publish(mutationResult) }
+      coVerify { mutationSupport.publishAndEnqueue(mutationResult, activityEnqueueSupport) }
+    }
+
+    "transition comment links to status activity id" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = sampleConfig(tenantId)
+      val issue = sampleIssue(tenantId, projectId, config, actorId)
+      val transition = sampleTransition(config)
+      val activityId = UUID.randomUUID()
+      val mutationResult =
+        ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
+          issue,
+          "work_item.transitioned",
+          statusHistoryId = UUID.randomUUID(),
+          activityId = activityId,
+        )
+
+      coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
+        config
+      coEvery { workflows.findTransition(tenantId, transition.apiId.value) } returns transition
+      coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done"))
+      } returns 0
+      coEvery { mutationSupport.templateContext(any()) } returns mockk(relaxed = true)
+      coEvery { fieldMutationReconciler.buildFieldMeta(any(), any(), any(), any()) } returns
+        emptyList()
+      coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
+      coEvery {
+        fieldMutationReconciler.reconcileFields(any())
+      } returns
+        TransitionFieldReconcileResult(propertyValues = emptyMap(), systemFields = emptyMap())
+      coEvery {
+        fieldMutationReconciler.reconcileTransitionComment(any(), any(), any())
+      } returns "Looks good"
+      coEvery {
+        repository.transition(any(), any(), any(), any(), any())
+      } returns mutationResult
+      justRun { mutationSupport.publishAndEnqueue(any(), any()) }
+      val commentSlot = slot<CreateWorkItemCommentCommand>()
+      coEvery { commentService.create(capture(commentSlot)) } returns mockk(relaxed = true)
+
+      runBlocking {
+        service.transition(
+          TransitionWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = issue.apiId.value,
+            transitionApiId = transition.apiId.value,
+            actorUserId = actorId,
+            comment = "Looks good",
+          )
+        )
+      }
+
+      commentSlot.captured.activityId shouldBe activityId
+      commentSlot.captured.statusHistoryId shouldBe mutationResult.statusHistoryId
     }
   })
 

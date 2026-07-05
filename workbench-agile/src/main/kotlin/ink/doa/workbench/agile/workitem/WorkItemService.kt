@@ -24,6 +24,7 @@ class WorkItemService(
   private val configs: IssueTypeConfigRepository,
   private val subtypeConstraints: IssueSubtypeConstraintRepository,
   private val mutationSupport: WorkItemMutationSupport,
+  private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val fieldMutationSupport: WorkItemFieldMutationSupport,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
@@ -84,7 +85,7 @@ class WorkItemService(
           propertyValues = values,
         )
       )
-      .also { mutationSupport.publish(it) }
+      .also { mutationSupport.publishAndEnqueue(it, activityEnqueueSupport) }
   }
 
   suspend fun availableCreateForm(
@@ -190,7 +191,9 @@ class WorkItemService(
       issueId = issue.id,
       descriptionHtml = effectiveCommand.description,
     )
-    return repository.update(effectiveCommand, values).also { mutationSupport.publish(it) }
+    return repository.update(effectiveCommand, values).also {
+      mutationSupport.publishAndEnqueue(it, activityEnqueueSupport)
+    }
   }
 
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =

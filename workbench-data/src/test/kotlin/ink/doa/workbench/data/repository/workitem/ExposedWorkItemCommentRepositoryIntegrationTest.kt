@@ -8,6 +8,8 @@ import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemCommentRepository
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -22,8 +24,8 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
     "create list update and soft delete comments for a work item" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val workItems = ExposedWorkItemRepository(database)
-        val comments = ExposedWorkItemCommentRepository(database)
+        val workItems = workItemRepository(database)
+        val comments = workItemCommentRepository(database)
         val created =
           workItems.create(
             CreateWorkItemPersistenceCommand(
@@ -47,17 +49,19 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
         val workItemApiId = created.workItem.apiId.value
 
         val comment =
-          comments.create(
-            CreateWorkItemCommentCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              workItemApiId = workItemApiId,
-              authorId = stack.actorId,
-              body = "<p>First comment</p>",
-              bodyPlainText = "First comment",
-            ),
-            issueId = issueId,
-          )
+          comments
+            .create(
+              CreateWorkItemCommentCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                workItemApiId = workItemApiId,
+                authorId = stack.actorId,
+                body = "<p>First comment</p>",
+                bodyPlainText = "First comment",
+              ),
+              issueId = issueId,
+            )
+            .record
 
         comment.body shouldBe "<p>First comment</p>"
         comments.listByWorkItem(stack.tenantId, issueId, limit = 50, offset = 0L).shouldHaveSize(1)
@@ -100,8 +104,8 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
     "resolveIssueId returns api id for active work item" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val workItems = ExposedWorkItemRepository(database)
-        val comments = ExposedWorkItemCommentRepository(database)
+        val workItems = workItemRepository(database)
+        val comments = workItemCommentRepository(database)
         val created =
           workItems.create(
             CreateWorkItemPersistenceCommand(
@@ -134,7 +138,7 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
     "update throws when comment does not exist" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val comments = ExposedWorkItemCommentRepository(database)
+        val comments = workItemCommentRepository(database)
 
         shouldThrow<ResourceNotFoundException> {
           comments.update(

@@ -59,6 +59,7 @@ class WorkItemServiceQueryTest :
           configs,
           subtypeConstraints,
           mutationSupport,
+          mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
           fieldMutationSupport,
         )
 

@@ -639,6 +639,10 @@ enum class WorkbenchErrorCode(
     "work_item.comment.delete_denied",
     "Work item comment delete permission denied.",
   ),
+  WORK_ITEM_ACTIVITY_PAYLOAD_INVALID(
+    "work_item.activity.payload_invalid",
+    "Work item activity payload is invalid.",
+  ),
   WORK_ITEM_CREATE_FIELDS_REQUIRED(
     "work_item.create_fields.required",
     "Create fields template is required and must define at least one field.",
