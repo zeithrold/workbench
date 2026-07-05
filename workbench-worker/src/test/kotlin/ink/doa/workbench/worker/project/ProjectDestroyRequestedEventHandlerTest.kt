@@ -43,16 +43,15 @@ class ProjectDestroyRequestedEventHandlerTest :
         ): T = block()
       }
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-    val handler =
-      ProjectDestroyRequestedEventHandler(
-        tenants,
-        projects,
-        users,
+    val lookup = ProjectDestroyLookupSupport(tenants, projects, users)
+    val runtime =
+      ProjectDestroyRuntimeSupport(
         projectDestructionService,
         publisher,
         distributedLockService,
         clock,
       )
+    val handler = ProjectDestroyRequestedEventHandler(lookup, runtime)
 
     beforeTest {
       publisher.clear()

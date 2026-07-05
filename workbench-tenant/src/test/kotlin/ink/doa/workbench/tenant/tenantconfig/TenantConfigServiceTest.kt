@@ -51,9 +51,11 @@ class TenantConfigServiceTest :
       val tenantId = UUID.randomUUID()
       repository.records[tenantId to TenantConfigSpecs.MailSmtp.key] =
         tenantConfigRecord(
-          tenantId = tenantId,
-          key = TenantConfigSpecs.MailSmtp.key,
-          value = JsonObject(mapOf("port" to JsonPrimitive("not-a-number"))),
+          TenantConfigFixtures(
+            tenantId = tenantId,
+            key = TenantConfigSpecs.MailSmtp.key,
+            value = JsonObject(mapOf("port" to JsonPrimitive("not-a-number"))),
+          )
         )
 
       shouldThrow<InvalidRequestException> {
@@ -84,36 +86,40 @@ private class FakeTenantConfigRepository : TenantConfigRepository {
     val existing = records[command.tenantId to command.key]
     val record =
       tenantConfigRecord(
-        id = existing?.id ?: UUID.randomUUID(),
-        tenantId = command.tenantId,
-        key = command.key,
-        value = command.value,
-        secretRef = command.secretRef,
-        createdBy = existing?.createdBy ?: command.actorUserId,
-        updatedBy = command.actorUserId,
+        TenantConfigFixtures(
+          id = existing?.id ?: UUID.randomUUID(),
+          tenantId = command.tenantId,
+          key = command.key,
+          value = command.value,
+          secretRef = command.secretRef,
+          createdBy = existing?.createdBy ?: command.actorUserId,
+          updatedBy = command.actorUserId,
+        )
       )
     records[command.tenantId to command.key] = record
     return record
   }
 }
 
-private fun tenantConfigRecord(
-  id: UUID = UUID.randomUUID(),
-  tenantId: UUID = UUID.randomUUID(),
-  key: TenantConfigKey = TenantConfigSpecs.MailSmtp.key,
-  value: kotlinx.serialization.json.JsonElement = JsonObject(emptyMap()),
-  secretRef: String? = null,
-  createdBy: UUID? = null,
-  updatedBy: UUID? = null,
-) =
+private data class TenantConfigFixtures(
+  val id: UUID = UUID.randomUUID(),
+  val tenantId: UUID = UUID.randomUUID(),
+  val key: TenantConfigKey = TenantConfigSpecs.MailSmtp.key,
+  val value: kotlinx.serialization.json.JsonElement = JsonObject(emptyMap()),
+  val secretRef: String? = null,
+  val createdBy: UUID? = null,
+  val updatedBy: UUID? = null,
+)
+
+private fun tenantConfigRecord(fixtures: TenantConfigFixtures) =
   TenantConfigRecord(
-    id = id,
-    tenantId = tenantId,
-    key = key,
-    value = value,
-    secretRef = secretRef,
-    createdBy = createdBy,
-    updatedBy = updatedBy,
+    id = fixtures.id,
+    tenantId = fixtures.tenantId,
+    key = fixtures.key,
+    value = fixtures.value,
+    secretRef = fixtures.secretRef,
+    createdBy = fixtures.createdBy,
+    updatedBy = fixtures.updatedBy,
     createdAt = OffsetDateTime.parse("2026-07-02T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-07-02T00:00:00Z"),
   )
