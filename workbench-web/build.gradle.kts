@@ -31,6 +31,7 @@ dependencies {
   testImplementation(libs.exposed.jdbc)
   testImplementation(testFixtures(project(":workbench-service")))
   testImplementation(testFixtures(project(":workbench-security")))
+  testImplementation(project(":workbench-test-support"))
   testImplementation(libs.redisson)
 }
 

@@ -7,6 +7,7 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.seedUser
+import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -16,12 +17,10 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class ExposedWorkflowConfigurationRepositoryIntegrationTest :
@@ -187,25 +186,6 @@ class ExposedWorkflowConfigurationRepositoryIntegrationTest :
       }
     }
   })
-
-private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
-      .load()
-      .migrate()
-    val database =
-      Database.connect(
-        url = postgres.jdbcUrl,
-        driver = "org.postgresql.Driver",
-        user = postgres.username,
-        password = postgres.password,
-      )
-    kotlinx.coroutines.runBlocking { block(database) }
-  }
-}
 
 private fun seedTenant(database: Database): UUID {
   val tenantId = UUID.randomUUID()

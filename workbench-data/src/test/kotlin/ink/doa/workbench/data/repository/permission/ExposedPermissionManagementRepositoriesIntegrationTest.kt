@@ -15,6 +15,7 @@ import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
+import ink.doa.workbench.data.support.withCorePostgresDatabase
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
@@ -23,19 +24,16 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
-import kotlinx.coroutines.runBlocking
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class ExposedPermissionManagementRepositoriesIntegrationTest :
   StringSpec({
     "group bindings resolve active member policy rules" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val groups = ExposedPermissionGroupRepository(database)
@@ -104,7 +102,7 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     }
 
     "user bindings resolve direct policy rules" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val policies = ExposedPermissionPolicyRepository(database)
@@ -152,7 +150,7 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     }
 
     "policy rules persist condition json through active bindings" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val policies = ExposedPermissionPolicyRepository(database)
@@ -206,7 +204,7 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     }
 
     "project bindings resolve project ids for subject" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val projects = ExposedProjectRepository(database)
@@ -262,7 +260,7 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     }
 
     "policy and group update persist renamed metadata" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val groups = ExposedPermissionGroupRepository(database)
         val policies = ExposedPermissionPolicyRepository(database)
@@ -297,7 +295,7 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
     }
 
     "binding expire and listByProject return project scoped bindings" {
-      withPermissionPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val users = ExposedUserRepository(database)
         val projects = ExposedProjectRepository(database)
@@ -351,25 +349,6 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
       }
     }
   })
-
-private fun withPermissionPostgresDatabase(block: suspend (Database) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
-      .load()
-      .migrate()
-    val database =
-      Database.connect(
-        url = postgres.jdbcUrl,
-        driver = "org.postgresql.Driver",
-        user = postgres.username,
-        password = postgres.password,
-      )
-    runBlocking { block(database) }
-  }
-}
 
 private fun seedTenant(database: Database): UUID {
   val tenantId = UUID.randomUUID()

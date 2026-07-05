@@ -12,6 +12,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-mail")
   implementation("org.springframework:spring-web")
   testImplementation(project(":workbench-data"))
+  testImplementation(project(":workbench-test-support"))
   testImplementation(testFixtures(project(":workbench-security")))
   testImplementation(libs.exposed.jdbc)
   testImplementation(libs.testcontainers.junit)

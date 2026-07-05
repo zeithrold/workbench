@@ -36,6 +36,7 @@ import ink.doa.workbench.security.identity.auth.Sha256CredentialHasher
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import ink.doa.workbench.tenant.instance.InstanceProperties
+import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -47,17 +48,16 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Tag
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class InstanceSetupApplicationServiceIntegrationTest :
   StringSpec({
-    val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
+    val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()
     lateinit var database: Database
     lateinit var service: InstanceSetupApplicationService
 
     beforeSpec {
-      database = AuthIntegrationFixtures.connectDatabase(postgres)
+      database = postgresLease.database
       val users = ExposedUserRepository(database)
       val loginMethods = ExposedLoginMethodRepository(database)
       val loginAccounts = ExposedLoginAccountStore(database)
@@ -175,7 +175,7 @@ class InstanceSetupApplicationServiceIntegrationTest :
     }
 
     afterSpec {
-      postgres.stop()
+      postgresLease.close()
     }
 
     "bootstrap creates system administrator and session" {

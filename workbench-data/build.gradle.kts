@@ -18,6 +18,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-jdbc")
   implementation("org.springframework.boot:spring-boot-starter-data-redis")
   implementation("org.springframework.kafka:spring-kafka")
+  testImplementation(project(":workbench-test-support"))
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.kafka)

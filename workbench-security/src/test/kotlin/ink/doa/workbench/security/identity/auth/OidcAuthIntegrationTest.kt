@@ -13,6 +13,7 @@ import ink.doa.workbench.security.identity.auth.support.FederatedAuthFixture
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
 import ink.doa.workbench.security.identity.auth.support.OAuthAuthorizationCodeClient
+import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -21,20 +22,19 @@ import java.time.Clock
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class OidcAuthIntegrationTest :
   StringSpec({
     val keycloak: KeycloakContainer = KeycloakTestContainer.create()
-    val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
+    val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()
     lateinit var database: Database
     lateinit var fixture: FederatedAuthFixture
     lateinit var federatedAuthService: FederatedAuthService
 
     beforeSpec {
       keycloak.start()
-      database = AuthIntegrationFixtures.connectDatabase(postgres)
+      database = postgresLease.database
       fixture = runBlocking { AuthIntegrationFixtures.seedFederatedFixture(database, keycloak) }
       val secretResolver = MapSecretResolver(AuthIntegrationFixtures.keycloakSecrets())
       val loginMethods = ExposedLoginMethodRepository(database)
@@ -68,7 +68,7 @@ class OidcAuthIntegrationTest :
 
     afterSpec {
       keycloak.stop()
-      postgres.stop()
+      postgresLease.close()
     }
 
     "beginAuthorize returns a Keycloak authorization URL with PKCE parameters" {

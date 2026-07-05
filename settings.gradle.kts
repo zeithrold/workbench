@@ -29,6 +29,7 @@ rootProject.name = "workbench"
 
 include(
     ":workbench-core",
+    ":workbench-test-support",
     ":workbench-service",
     ":workbench-agile",
     ":workbench-tenant",

@@ -8,6 +8,7 @@ import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.support.withCorePostgresDatabase
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -17,18 +18,16 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class ExposedProjectRepositoryIntegrationTest :
   StringSpec({
     "create find update and list projects" {
-      withPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val actorId = seedUser(database)
         val repository = ExposedProjectRepository(database)
@@ -68,7 +67,7 @@ class ExposedProjectRepositoryIntegrationTest :
     }
 
     "archive reactivate rename identifier and find by id" {
-      withPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val actorId = seedUser(database)
         val repository = ExposedProjectRepository(database)
@@ -115,7 +114,7 @@ class ExposedProjectRepositoryIntegrationTest :
     }
 
     "markDestroying finalizeDestroy and updateStatus manage lifecycle" {
-      withPostgresDatabase { database ->
+      withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val actorId = seedUser(database)
         val repository = ExposedProjectRepository(database)
@@ -156,25 +155,6 @@ class ExposedProjectRepositoryIntegrationTest :
       }
     }
   })
-
-private fun withPostgresDatabase(block: suspend (Database) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
-      .load()
-      .migrate()
-    val database =
-      Database.connect(
-        url = postgres.jdbcUrl,
-        driver = "org.postgresql.Driver",
-        user = postgres.username,
-        password = postgres.password,
-      )
-    kotlinx.coroutines.runBlocking { block(database) }
-  }
-}
 
 private fun seedTenant(database: Database): UUID {
   val tenantId = UUID.randomUUID()
