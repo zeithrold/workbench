@@ -9,6 +9,7 @@ import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.flywaydb.core.Flyway
@@ -23,7 +24,7 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
     "search filters work items and maps PostgreSQL rows to common result container" {
       withPostgresJdbc { jdbc ->
         val seed = seedWorkItem(jdbc)
-        val repository = JdbcWorkItemQueryRepository(jdbc)
+        val repository = jdbcWorkItemQueryRepository(jdbc)
 
         val page = runBlocking {
           repository.search(
@@ -234,3 +235,7 @@ private fun seedWorkItem(jdbc: JdbcTemplate): SeededWorkItem {
   )
   return SeededWorkItem(tenantId = tenantId, projectId = projectId, issueApiId = issueApiId)
 }
+
+@Suppress("InjectDispatcher")
+private fun jdbcWorkItemQueryRepository(jdbc: JdbcTemplate) =
+  JdbcWorkItemQueryRepository(jdbc, Dispatchers.IO)

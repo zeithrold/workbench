@@ -2,6 +2,7 @@ package ink.doa.workbench.data.storage
 
 import ink.doa.workbench.core.storage.BlobStorage
 import ink.doa.workbench.core.storage.StorageLimits
+import kotlinx.coroutines.CoroutineDispatcher
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -36,5 +37,6 @@ class StorageConfiguration {
     s3Client: S3Client,
     s3Presigner: S3Presigner,
     properties: StorageProperties,
-  ): BlobStorage = S3BlobStorage(s3Client, s3Presigner, properties)
+    ioDispatcher: CoroutineDispatcher,
+  ): BlobStorage = S3BlobStorage(s3Client, s3Presigner, properties, ioDispatcher)
 }

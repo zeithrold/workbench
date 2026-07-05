@@ -7,6 +7,7 @@ import ink.doa.workbench.core.storage.PresignedBlobRequest
 import java.net.URI
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
@@ -31,6 +32,7 @@ class S3BlobStorage(
   private val s3Client: S3Client,
   private val s3Presigner: S3Presigner,
   private val properties: StorageProperties,
+  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BlobStorage {
   init {
     if (properties.autoCreateBucket) {
@@ -43,7 +45,7 @@ class S3BlobStorage(
     contentType: String?,
     contentLength: Long,
   ): PresignedBlobRequest =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       val expiresAt = OffsetDateTime.now(ZoneOffset.UTC).plus(properties.presignUploadTtl)
       val putObjectRequest =
         PutObjectRequest.builder()
@@ -71,7 +73,7 @@ class S3BlobStorage(
     }
 
   override suspend fun presignGet(key: String): PresignedBlobRequest =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       val expiresAt = OffsetDateTime.now(ZoneOffset.UTC).plus(properties.presignDownloadTtl)
       val getObjectRequest = GetObjectRequest.builder().bucket(properties.bucket).key(key).build()
       val presigned =
@@ -89,7 +91,7 @@ class S3BlobStorage(
     }
 
   override suspend fun head(key: String): BlobObjectHead =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       try {
         val response =
           s3Client.headObject(
@@ -106,7 +108,7 @@ class S3BlobStorage(
     }
 
   override suspend fun delete(key: String): Unit =
-    withContext(Dispatchers.IO) {
+    withContext(ioDispatcher) {
       s3Client.deleteObject(
         DeleteObjectRequest.builder().bucket(properties.bucket).key(key).build()
       )

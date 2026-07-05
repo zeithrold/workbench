@@ -7,6 +7,7 @@ import ink.doa.workbench.core.storage.PresignedBlobRequest
 import java.security.MessageDigest
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryBlobStorage : BlobStorage {
@@ -67,7 +68,7 @@ class InMemoryBlobStorage : BlobStorage {
 
   private fun sha256(bytes: ByteArray): String {
     val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
-    return digest.joinToString("") { byte -> "%02x".format(byte) }
+    return digest.joinToString("") { byte -> String.format(Locale.ROOT, "%02x", byte) }
   }
 
   data class StoredObject(
