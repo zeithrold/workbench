@@ -12,16 +12,12 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.mockk
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 
 class ProjectOperationalGuardTest :
   StringSpec({
     val tenantId = UUID.randomUUID()
     val projectId = UUID.randomUUID()
-    val now = OffsetDateTime.now(ZoneOffset.UTC)
-
     fun project(status: ProjectStatus) =
       ProjectRecord(
         id = projectId,

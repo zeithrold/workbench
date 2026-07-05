@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.project
 
+import ink.doa.workbench.agile.project.ProjectMemberMutationCommand
 import ink.doa.workbench.agile.project.ProjectMemberPolicyView
 import ink.doa.workbench.agile.project.ProjectMemberService
 import ink.doa.workbench.agile.project.ProjectMemberView
@@ -55,12 +56,14 @@ class ProjectMemberController(private val service: ProjectMemberService) {
   ): ProjectMemberResponse =
     ProjectMemberResponse.from(
       service.addMember(
-        tenantId = projectContext.tenant.id,
-        projectId = projectContext.project.id,
-        userPublicId = request.userId,
-        policyPublicId = request.policyId,
-        role = request.role,
-        actorUserId = projectContext.actor?.id,
+        ProjectMemberMutationCommand(
+          tenantId = projectContext.tenant.id,
+          projectId = projectContext.project.id,
+          userPublicId = request.userId,
+          policyPublicId = request.policyId,
+          role = request.role,
+          actorUserId = projectContext.actor?.id,
+        )
       )
     )
 
@@ -75,12 +78,14 @@ class ProjectMemberController(private val service: ProjectMemberService) {
   ): ProjectMemberResponse =
     ProjectMemberResponse.from(
       service.attachPolicy(
-        tenantId = projectContext.tenant.id,
-        projectId = projectContext.project.id,
-        userPublicId = userId,
-        policyPublicId = request.policyId,
-        role = request.role,
-        actorUserId = projectContext.actor?.id,
+        ProjectMemberMutationCommand(
+          tenantId = projectContext.tenant.id,
+          projectId = projectContext.project.id,
+          userPublicId = userId,
+          policyPublicId = request.policyId,
+          role = request.role,
+          actorUserId = projectContext.actor?.id,
+        )
       )
     )
 

@@ -42,7 +42,10 @@ class ProjectMemberService(
         it.principalType == PermissionPrincipalType.USER && it.principalUserId != null
       }
     return bindingViews
-      .groupBy { it.principalUserId!! }
+      .mapNotNull { binding ->
+        binding.principalUserId?.let { userId -> userId to binding }
+      }
+      .groupBy({ it.first }, { it.second })
       .map { (userId, memberBindings) ->
         val user =
           users.findById(userId)?.let(UserSummary::from)
@@ -67,42 +70,30 @@ class ProjectMemberService(
       }
   }
 
-  suspend fun addMember(
-    tenantId: UUID,
-    projectId: UUID,
-    userPublicId: String,
-    policyPublicId: String?,
-    role: String?,
-    actorUserId: UUID?,
-  ): ProjectMemberView {
-    val user = requireUser(userPublicId)
-    requireActiveTenantMember(tenantId, user.id)
-    val policy = resolvePolicy(tenantId, policyPublicId, role)
+  suspend fun addMember(command: ProjectMemberMutationCommand): ProjectMemberView {
+    val user = requireUser(command.userPublicId)
+    requireActiveTenantMember(command.tenantId, user.id)
+    val policy = resolvePolicy(command.tenantId, command.policyPublicId, command.role)
     bindings.create(
       CreatePermissionBindingCommand(
-        tenantId = tenantId,
-        projectId = projectId,
+        tenantId = command.tenantId,
+        projectId = command.projectId,
         principalType = PermissionPrincipalType.USER,
         principalUserId = user.id,
         principalGroupId = null,
         policyId = policy.id,
         validFrom = OffsetDateTime.now(clock),
-        createdBy = actorUserId,
+        createdBy = command.actorUserId,
       )
     )
-    return listMembers(tenantId, projectId).single { it.user.id == user.apiId.value }
+    return listMembers(command.tenantId, command.projectId).single {
+      it.user.id == user.apiId.value
+    }
   }
 
-  suspend fun attachPolicy(
-    tenantId: UUID,
-    projectId: UUID,
-    userPublicId: String,
-    policyPublicId: String?,
-    role: String?,
-    actorUserId: UUID?,
-  ): ProjectMemberView {
-    requireActiveTenantMember(tenantId, requireUser(userPublicId).id)
-    return addMember(tenantId, projectId, userPublicId, policyPublicId, role, actorUserId)
+  suspend fun attachPolicy(command: ProjectMemberMutationCommand): ProjectMemberView {
+    requireActiveTenantMember(command.tenantId, requireUser(command.userPublicId).id)
+    return addMember(command)
   }
 
   suspend fun removePolicy(
