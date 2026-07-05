@@ -1,6 +1,7 @@
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
@@ -25,19 +26,22 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
         val comments = ExposedWorkItemCommentRepository(database)
         val created =
           workItems.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Comment target",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Comment target",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
         val issueId = created.workItem.id
         val workItemApiId = created.workItem.apiId.value
@@ -100,19 +104,22 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
         val comments = ExposedWorkItemCommentRepository(database)
         val created =
           workItems.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Resolvable",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Resolvable",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         comments.resolveIssueId(

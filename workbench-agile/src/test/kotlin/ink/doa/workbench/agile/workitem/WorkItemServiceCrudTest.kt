@@ -7,6 +7,7 @@ import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
+import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
@@ -144,7 +145,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<ResourceNotFoundException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "missing",
@@ -167,7 +168,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<InvalidRequestException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "typ_task",
@@ -194,7 +195,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<InvalidRequestException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "typ_task",
@@ -228,11 +229,11 @@ class WorkItemServiceCrudTest :
       } returns subtypeConstraint(tenantId, parent.issueTypeId, config.config.issueTypeId)
       coEvery { repository.resolveUserApiId(actorId) } returns PublicId.new("usr")
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns PublicId.new("prj")
-      coEvery { repository.create(any(), any(), any(), any(), any(), parent.id) } returns created
+      coEvery { repository.create(match { it.parentIssueId == parent.id }) } returns created
       val service = workItemService(repository, configs, subtypeConstraints = subtypeConstraints)
 
       service.create(
-        ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+        CreateWorkItemCommand(
           tenantId = tenantId,
           projectId = projectId,
           issueTypeApiId = "typ_task",
@@ -244,7 +245,7 @@ class WorkItemServiceCrudTest :
         )
       )
 
-      coVerify { repository.create(any(), any(), any(), any(), any(), parent.id) }
+      coVerify { repository.create(match { it.parentIssueId == parent.id }) }
     }
 
     "create throws when parent work item is missing" {
@@ -258,7 +259,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<ResourceNotFoundException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "typ_task",
@@ -285,7 +286,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<InvalidRequestException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "typ_task",
@@ -320,7 +321,7 @@ class WorkItemServiceCrudTest :
 
       shouldThrow<InvalidRequestException> {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          CreateWorkItemCommand(
             tenantId = tenantId,
             projectId = projectId,
             issueTypeApiId = "typ_task",
@@ -355,18 +356,19 @@ private fun workItemService(
   coEvery {
     descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
   } returns Unit
+  val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
+  val fieldMutationSupport =
+    WorkItemFieldMutationSupport(
+      WorkItemFieldMutationReconciler(fieldPermissions, clock),
+      fieldPermissions,
+      descriptionAttachmentValidator,
+    )
   return WorkItemService(
     repository = repository,
     configs = configs,
     subtypeConstraints = effectiveSubtypeConstraints,
     mutationSupport = mutationSupport,
-    fieldMutationReconciler =
-      WorkItemFieldMutationReconciler(
-        fieldPermissions,
-        Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC),
-      ),
-    fieldPermissions = fieldPermissions,
-    descriptionAttachmentValidator = descriptionAttachmentValidator,
+    fieldMutationSupport = fieldMutationSupport,
   )
 }
 

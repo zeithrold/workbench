@@ -6,75 +6,61 @@ import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 
-internal object TransitionFieldReconcileSupport {
-  private typealias GrantHandler =
+internal data class ReconcileFieldParams(
+  val spec: TransitionFieldSpec,
+  val currentValue: JsonElement?,
+  val templateValue: JsonElement?,
+  val userValue: JsonElement?,
+  val canWrite: Boolean,
+  val handleUnauthorized:
     (
       spec: TransitionFieldSpec,
       currentValue: JsonElement?,
       templateValue: JsonElement?,
-      userValue: JsonElement?,
-      canWrite: Boolean,
-      handleUnauthorized:
-        (
-          spec: TransitionFieldSpec,
-          currentValue: JsonElement?,
-          templateValue: JsonElement?,
-          userSubmitted: Boolean,
-        ) -> JsonElement?,
-    ) -> JsonElement?
+      userSubmitted: Boolean,
+    ) -> JsonElement?,
+)
+
+internal object TransitionFieldReconcileSupport {
+  private typealias GrantHandler = (ReconcileFieldParams) -> JsonElement?
 
   private val grantHandlers: Map<FieldWriteGrant, GrantHandler> =
     mapOf(
-      FieldWriteGrant.IMMUTABLE to { _, currentValue, _, _, _, _ -> currentValue },
+      FieldWriteGrant.IMMUTABLE to { params -> params.currentValue },
       FieldWriteGrant.SYSTEM_ONLY to
-        { _, currentValue, templateValue, _, _, _ ->
-          templateValue ?: currentValue
+        { params ->
+          params.templateValue ?: params.currentValue
         },
       FieldWriteGrant.TRANSITION_WRITABLE to
-        { _, currentValue, templateValue, userValue, _, _ ->
-          firstNonNullValue(userValue, templateValue, currentValue)
+        { params ->
+          firstNonNullValue(params.userValue, params.templateValue, params.currentValue)
         },
       FieldWriteGrant.INHERIT to
-        { spec, currentValue, templateValue, userValue, canWrite, handleUnauthorized ->
-          val userSubmitted = userValue != null && userValue !is JsonNull
-          if (canWrite) {
-            firstNonNullValue(userValue, templateValue, currentValue)
+        { params ->
+          val userSubmitted = params.userValue != null && params.userValue !is JsonNull
+          if (params.canWrite) {
+            firstNonNullValue(params.userValue, params.templateValue, params.currentValue)
           } else if (userSubmitted) {
-            handleUnauthorized(spec, currentValue, templateValue, true)
+            params.handleUnauthorized(
+              params.spec,
+              params.currentValue,
+              params.templateValue,
+              true,
+            )
           } else {
-            templateValue ?: currentValue
+            params.templateValue ?: params.currentValue
           }
         },
     )
 
-  fun reconcileField(
-    spec: TransitionFieldSpec,
-    currentValue: JsonElement?,
-    templateValue: JsonElement?,
-    userValue: JsonElement?,
-    canWrite: Boolean,
-    handleUnauthorized:
-      (
-        spec: TransitionFieldSpec,
-        currentValue: JsonElement?,
-        templateValue: JsonElement?,
-        userSubmitted: Boolean,
-      ) -> JsonElement?,
-  ): JsonElement? {
+  fun reconcileField(params: ReconcileFieldParams): JsonElement? {
     if (
-      spec.participation == FieldParticipation.AUTOMATIC ||
-        spec.writeGrant == FieldWriteGrant.SYSTEM_ONLY
+      params.spec.participation == FieldParticipation.AUTOMATIC ||
+        params.spec.writeGrant == FieldWriteGrant.SYSTEM_ONLY
     ) {
-      return templateValue ?: currentValue
+      return params.templateValue ?: params.currentValue
     }
-    return grantHandlers.getValue(spec.writeGrant)(
-      spec,
-      currentValue,
-      templateValue,
-      userValue,
-      canWrite,
-      handleUnauthorized,
-    )
+    return grantHandlers.getValue(params.spec.writeGrant)(params)
   }
 
   private fun firstNonNullValue(

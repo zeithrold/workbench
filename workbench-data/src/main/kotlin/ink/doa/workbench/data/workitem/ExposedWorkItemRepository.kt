@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
@@ -32,45 +32,49 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class ExposedWorkItemRepository(private val database: Database) : WorkItemRepository {
-  override suspend fun create(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-    issueTypeConfigId: UUID,
-    initialStatusId: UUID,
-    propertyValues: List<WorkItemPropertyValue>,
-    parentIssueId: UUID?,
-  ): WorkItemMutationResult =
+  override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
     suspendTransaction(db = database) {
-      val prepared = prepareWorkItemInsert(command, propertyValues)
+      val prepared = prepareWorkItemInsert(command.command, command.propertyValues)
       insertWorkItemRows(
-        command = command,
-        prepared = prepared,
-        issueTypeId = issueTypeId,
-        issueTypeConfigId = issueTypeConfigId,
-        initialStatusId = initialStatusId,
-        propertyValues = propertyValues,
+        InsertWorkItemRowsCommand(
+          command = command.command,
+          prepared = prepared,
+          issueTypeId = command.issueTypeId,
+          issueTypeConfigId = command.issueTypeConfigId,
+          initialStatusId = command.initialStatusId,
+          propertyValues = command.propertyValues,
+        )
       )
-      parentIssueId?.let {
+      command.parentIssueId?.let { parentIssueId ->
         insertHierarchyLink(
-          tenantId = command.tenantId,
-          projectId = command.projectId,
-          parentIssueId = it,
-          childIssueId = prepared.issueId,
-          actorUserId = command.actorUserId,
-          createdAt = prepared.now,
+          InsertHierarchyLinkCommand(
+            tenantId = command.command.tenantId,
+            projectId = command.command.projectId,
+            parentIssueId = parentIssueId,
+            childIssueId = prepared.issueId,
+            actorUserId = command.command.actorUserId,
+            createdAt = prepared.now,
+          )
         )
       }
       insertStatusHistory(
-        tenantId = command.tenantId,
-        issueId = prepared.issueId,
-        fromStatusId = null,
-        toStatusId = initialStatusId,
-        transitionId = null,
-        actorUserId = command.actorUserId,
-        changedAt = prepared.now,
+        StatusHistoryEntry(
+          tenantId = command.command.tenantId,
+          issueId = prepared.issueId,
+          fromStatusId = null,
+          toStatusId = command.initialStatusId,
+          transitionId = null,
+          actorUserId = command.command.actorUserId,
+          changedAt = prepared.now,
+        )
       )
       WorkItemMutationResult(
-        workItem = requireWorkItem(command.tenantId, command.projectId, prepared.issueApiId.value),
+        workItem =
+          requireWorkItem(
+            command.command.tenantId,
+            command.command.projectId,
+            prepared.issueApiId.value,
+          ),
         eventType = "work_item.created",
       )
     }
@@ -223,13 +227,15 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
       replacePropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
       val statusHistoryId =
         insertStatusHistory(
-          tenantId = command.tenantId,
-          issueId = issueId,
-          fromStatusId = fromStatusId,
-          toStatusId = toStatusId,
-          transitionId = transitionId,
-          actorUserId = command.actorUserId,
-          changedAt = now,
+          StatusHistoryEntry(
+            tenantId = command.tenantId,
+            issueId = issueId,
+            fromStatusId = fromStatusId,
+            toStatusId = toStatusId,
+            transitionId = transitionId,
+            actorUserId = command.actorUserId,
+            changedAt = now,
+          )
         )
       WorkItemMutationResult(
         workItem = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId),

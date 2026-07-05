@@ -30,6 +30,16 @@ data class TransitionFieldReconcileResult(
   val systemFields: Map<String, String?>,
 )
 
+data class FieldReconciliationContext(
+  val template: WorkItemTransitionFieldsTemplate,
+  val expectedTarget: WorkItemValueTemplateTarget,
+  val config: IssueTypeConfigDetails,
+  val templateContext: WorkItemValueTemplateContext,
+  val currentProperties: Map<String, JsonElement>,
+  val userProperties: Map<String, JsonElement>,
+  val permissionContext: WorkItemFieldPermissionContext,
+)
+
 @Service
 @Suppress("TooManyFunctions")
 class WorkItemFieldMutationReconciler(
@@ -38,64 +48,28 @@ class WorkItemFieldMutationReconciler(
 ) {
   private val templates = WorkItemValueTemplateEvaluator(clock)
 
-  suspend fun reconcileTransition(
-    template: WorkItemTransitionFieldsTemplate,
-    config: IssueTypeConfigDetails,
-    templateContext: WorkItemValueTemplateContext,
-    currentProperties: Map<String, JsonElement>,
-    userProperties: Map<String, JsonElement>,
-    permissionContext: WorkItemFieldPermissionContext,
-  ): TransitionFieldReconcileResult =
-    reconcileFields(
-      template = template,
-      expectedTarget = WorkItemValueTemplateTarget.TRANSITION,
-      config = config,
-      templateContext = templateContext,
-      currentProperties = currentProperties,
-      userProperties = userProperties,
-      permissionContext = permissionContext.copy(operation = FieldPermissionOperation.UPDATE),
+  suspend fun reconcileFields(context: FieldReconciliationContext): TransitionFieldReconcileResult {
+    TransitionFieldsValidator.validate(context.template, context.config, context.expectedTarget)
+    assertMutationRequestAllowed(
+      context.template,
+      context.config,
+      context.userProperties,
+      context.permissionContext,
     )
-
-  suspend fun reconcileCreate(
-    template: WorkItemTransitionFieldsTemplate,
-    config: IssueTypeConfigDetails,
-    templateContext: WorkItemValueTemplateContext,
-    userProperties: Map<String, JsonElement>,
-    permissionContext: WorkItemFieldPermissionContext,
-  ): TransitionFieldReconcileResult =
-    reconcileFields(
-      template = template,
-      expectedTarget = WorkItemValueTemplateTarget.CREATE,
-      config = config,
-      templateContext = templateContext,
-      currentProperties = emptyMap(),
-      userProperties = userProperties,
-      permissionContext = permissionContext.copy(operation = FieldPermissionOperation.CREATE),
-    )
-
-  suspend fun reconcileFields(
-    template: WorkItemTransitionFieldsTemplate,
-    expectedTarget: WorkItemValueTemplateTarget,
-    config: IssueTypeConfigDetails,
-    templateContext: WorkItemValueTemplateContext,
-    currentProperties: Map<String, JsonElement>,
-    userProperties: Map<String, JsonElement>,
-    permissionContext: WorkItemFieldPermissionContext,
-  ): TransitionFieldReconcileResult {
-    TransitionFieldsValidator.validate(template, config, expectedTarget)
-    assertMutationRequestAllowed(template, config, userProperties, permissionContext)
     val propertyValues = mutableMapOf<String, JsonElement>()
     val systemFields = mutableMapOf<String, String?>()
 
-    template.fields.forEach { (field, spec) ->
-      val outputKey = fieldOutputKey(field, config)
-      val currentValue = currentValue(field, outputKey, currentProperties, templateContext)
-      val templateValue = evaluateTemplateValue(field, spec, config, templateContext)
+    context.template.fields.forEach { (field, spec) ->
+      val outputKey = fieldOutputKey(field, context.config)
+      val currentValue =
+        currentValue(field, outputKey, context.currentProperties, context.templateContext)
+      val templateValue =
+        evaluateTemplateValue(field, spec, context.config, context.templateContext)
       val userValue =
         if (spec.participation == FieldParticipation.AUTOMATIC) {
           null
         } else {
-          userValueForField(field, outputKey, userProperties)
+          userValueForField(field, outputKey, context.userProperties)
         }
 
       val effective =
@@ -104,7 +78,7 @@ class WorkItemFieldMutationReconciler(
           currentValue = currentValue,
           templateValue = templateValue,
           userValue = userValue,
-          canWrite = fieldPermissions.canWriteField(permissionContext, field),
+          canWrite = fieldPermissions.canWriteField(context.permissionContext, field),
         )
 
       if (spec.participation == FieldParticipation.REQUIRED && !effective.isNonNullValue()) {
@@ -169,12 +143,14 @@ class WorkItemFieldMutationReconciler(
     canWrite: Boolean,
   ): JsonElement? =
     TransitionFieldReconcileSupport.reconcileField(
-      spec = spec,
-      currentValue = currentValue,
-      templateValue = templateValue,
-      userValue = userValue,
-      canWrite = canWrite,
-      handleUnauthorized = ::handleUnauthorized,
+      ReconcileFieldParams(
+        spec = spec,
+        currentValue = currentValue,
+        templateValue = templateValue,
+        userValue = userValue,
+        canWrite = canWrite,
+        handleUnauthorized = ::handleUnauthorized,
+      )
     )
 
   private suspend fun assertMutationRequestAllowed(
@@ -299,7 +275,9 @@ class WorkItemFieldMutationReconciler(
       is TemplateField.Property ->
         config.properties
           .singleOrNull { it.code == field.code || it.propertyApiId.value == field.apiId }
-          ?.code ?: field.code ?: field.apiId!!
+          ?.code
+          ?: field.code
+          ?: checkNotNull(field.apiId) { "Property field must have code or apiId" }
     }
 
   private fun propertyField(key: String, config: IssueTypeConfigDetails): TemplateField {

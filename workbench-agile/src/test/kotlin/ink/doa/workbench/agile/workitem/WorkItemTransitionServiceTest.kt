@@ -63,8 +63,6 @@ class WorkItemTransitionServiceTest :
         collaborators,
         descriptionAttachmentValidator,
       )
-    val json = Json { ignoreUnknownKeys = true }
-
     "availableTransitions returns options for current status" {
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
@@ -200,7 +198,7 @@ class WorkItemTransitionServiceTest :
         emptyList()
       coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
       coEvery {
-        fieldMutationReconciler.reconcileTransition(any(), any(), any(), any(), any(), any())
+        fieldMutationReconciler.reconcileFields(any())
       } returns
         TransitionFieldReconcileResult(propertyValues = emptyMap(), systemFields = emptyMap())
       coEvery {

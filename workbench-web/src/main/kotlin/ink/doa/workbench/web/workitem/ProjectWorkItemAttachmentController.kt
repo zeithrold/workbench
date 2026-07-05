@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.workitem
 
+import ink.doa.workbench.agile.workitem.ListWorkItemAttachmentsRequest
 import ink.doa.workbench.agile.workitem.WorkItemAttachmentService
 import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -28,7 +29,6 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
@@ -48,22 +48,21 @@ class ProjectWorkItemAttachmentController(
   @Operation(summary = "List work item attachments")
   suspend fun list(
     @PathVariable @ResourceId workItemId: String,
-    @RequestParam(required = false) purpose: String?,
-    @RequestParam(required = false) commentId: String?,
-    @RequestParam(defaultValue = "50") limit: Int,
-    @RequestParam(defaultValue = "0") offset: Long,
+    query: ListWorkItemAttachmentsQueryParams,
     projectContext: ProjectRequestContext,
   ): List<WorkItemAttachmentResponse> {
-    val parsedPurpose = purpose?.let(::parsePurpose)
+    val parsedPurpose = query.purpose?.let(::parsePurpose)
     return attachmentService
       .list(
-        tenantId = projectContext.tenant.id,
-        projectId = projectContext.project.id,
-        workItemApiId = workItemId,
-        purpose = parsedPurpose,
-        commentApiId = commentId,
-        limit = limit,
-        offset = offset,
+        ListWorkItemAttachmentsRequest(
+          tenantId = projectContext.tenant.id,
+          projectId = projectContext.project.id,
+          workItemApiId = workItemId,
+          purpose = parsedPurpose,
+          commentApiId = query.commentId,
+          limit = query.limit,
+          offset = query.offset,
+        )
       )
       .map { record -> toResponse(record, workItemId, projectContext) }
   }
@@ -159,7 +158,7 @@ class ProjectWorkItemAttachmentController(
     @PathVariable @ResourceId workItemId: String,
     @PathVariable @ResourceId attachmentId: String,
     projectContext: ProjectRequestContext,
-  ): ResponseEntity<Void> {
+  ): ResponseEntity<Unit> {
     val redirectUrl =
       attachmentService.contentRedirectUrl(
         tenantId = projectContext.tenant.id,

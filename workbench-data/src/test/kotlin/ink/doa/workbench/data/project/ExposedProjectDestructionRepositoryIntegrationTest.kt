@@ -6,6 +6,7 @@ import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
 import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.core.permission.model.AuthorizationAction
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.data.permission.ExposedPermissionBindingRepository
 import ink.doa.workbench.data.permission.ExposedPermissionGroupRepository
@@ -33,19 +34,22 @@ class ExposedProjectDestructionRepositoryIntegrationTest :
         val deletedAt = OffsetDateTime.now(ZoneOffset.UTC)
 
         workItems.create(
-          CreateWorkItemCommand(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            issueTypeApiId = stack.issueType.apiId.value,
-            title = "To delete",
-            description = null,
-            reporterId = stack.actorId,
-            actorUserId = stack.actorId,
-          ),
-          issueTypeId = stack.issueType.id,
-          issueTypeConfigId = stack.config.config.id,
-          initialStatusId = stack.todoStatus.id,
-          propertyValues = emptyList(),
+          CreateWorkItemPersistenceCommand(
+            command =
+              CreateWorkItemCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                issueTypeApiId = stack.issueType.apiId.value,
+                title = "To delete",
+                description = null,
+                reporterId = stack.actorId,
+                actorUserId = stack.actorId,
+              ),
+            issueTypeId = stack.issueType.id,
+            issueTypeConfigId = stack.config.config.id,
+            initialStatusId = stack.todoStatus.id,
+            propertyValues = emptyList(),
+          )
         )
 
         val group =

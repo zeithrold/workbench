@@ -1,5 +1,6 @@
 package ink.doa.workbench.data.workitem
 
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
@@ -79,19 +80,22 @@ class WorkItemPropertyPersistenceIntegrationTest :
 
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Typed properties",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = propertyValues,
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Typed properties",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = propertyValues,
+            )
           )
 
         val loaded =

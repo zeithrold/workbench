@@ -25,8 +25,7 @@ class WorkItemServiceQueryTest :
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
       val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>(relaxed = true)
       val mutationSupport = mockk<WorkItemMutationSupport>(relaxed = true)
-      val reconciler = mockk<WorkItemFieldMutationReconciler>(relaxed = true)
-      val fieldPermissions = mockk<WorkItemFieldPermissionService>(relaxed = true)
+      val fieldMutationSupport = mockk<WorkItemFieldMutationSupport>(relaxed = true)
       val now = OffsetDateTime.now(ZoneOffset.UTC)
       val record =
         WorkItemRecord(
@@ -54,17 +53,13 @@ class WorkItemServiceQueryTest :
         )
       coEvery { repository.findByApiId(tenantId, projectId, "WB-1") } returns record
       coEvery { repository.listByProject(tenantId, projectId, 50, 0L) } returns listOf(record)
-      val descriptionAttachmentValidator =
-        mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
       val service =
         WorkItemService(
           repository,
           configs,
           subtypeConstraints,
           mutationSupport,
-          reconciler,
-          fieldPermissions,
-          descriptionAttachmentValidator,
+          fieldMutationSupport,
         )
 
       service.get(tenantId, projectId, "WB-1") shouldBe record

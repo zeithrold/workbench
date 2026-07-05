@@ -13,15 +13,17 @@ import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 
+data class CreateWorkItemPersistenceCommand(
+  val command: CreateWorkItemCommand,
+  val issueTypeId: UUID,
+  val issueTypeConfigId: UUID,
+  val initialStatusId: UUID,
+  val propertyValues: List<WorkItemPropertyValue>,
+  val parentIssueId: UUID? = null,
+)
+
 interface WorkItemRepository {
-  suspend fun create(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-    issueTypeConfigId: UUID,
-    initialStatusId: UUID,
-    propertyValues: List<WorkItemPropertyValue>,
-    parentIssueId: UUID? = null,
-  ): WorkItemMutationResult
+  suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult
 
   suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord?
 

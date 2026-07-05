@@ -12,9 +12,21 @@ import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 import org.springframework.stereotype.Service
+
+private data class TransitionFieldReconciliationCommand(
+  val command: TransitionWorkItemCommand,
+  val config: IssueTypeConfigDetails,
+  val fieldsTemplate: WorkItemTransitionFieldsTemplate,
+  val templateContext: WorkItemValueTemplateContext,
+  val currentProperties: Map<String, JsonElement>,
+  val permissionContext: WorkItemFieldPermissionContext,
+)
 
 @Service
 class WorkItemTransitionService(
@@ -109,13 +121,15 @@ class WorkItemTransitionService(
         FieldPermissionOperation.UPDATE,
       )
     val reconciled =
-      collaborators.fieldMutationReconciler.reconcileTransition(
-        template = fieldsTemplate,
-        config = config,
-        templateContext = templateContext,
-        currentProperties = currentProperties,
-        userProperties = WorkItemPropertySupport.transitionFieldInputs(command),
-        permissionContext = permissionContext,
+      reconcileTransitionFields(
+        TransitionFieldReconciliationCommand(
+          command = command,
+          config = config,
+          fieldsTemplate = fieldsTemplate,
+          templateContext = templateContext,
+          currentProperties = currentProperties,
+          permissionContext = permissionContext,
+        )
       )
     val commentBody =
       collaborators.fieldMutationReconciler.reconcileTransitionComment(
@@ -174,6 +188,22 @@ class WorkItemTransitionService(
   ): WorkItemRecord =
     repository.findByApiId(tenantId, projectId, workItemApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
+
+  private suspend fun reconcileTransitionFields(
+    reconciliation: TransitionFieldReconciliationCommand
+  ): TransitionFieldReconcileResult =
+    collaborators.fieldMutationReconciler.reconcileFields(
+      FieldReconciliationContext(
+        template = reconciliation.fieldsTemplate,
+        expectedTarget = WorkItemValueTemplateTarget.TRANSITION,
+        config = reconciliation.config,
+        templateContext = reconciliation.templateContext,
+        currentProperties = reconciliation.currentProperties,
+        userProperties = WorkItemPropertySupport.transitionFieldInputs(reconciliation.command),
+        permissionContext =
+          reconciliation.permissionContext.copy(operation = FieldPermissionOperation.UPDATE),
+      )
+    )
 
   private fun fieldPermissionContext(
     tenantId: UUID,

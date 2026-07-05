@@ -1,6 +1,7 @@
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
@@ -58,19 +59,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val result =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "First issue",
-              description = "Details",
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "First issue",
+                  description = "Details",
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         result.workItem.title shouldBe "First issue"
@@ -88,37 +92,43 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val parent =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Parent issue",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Parent issue",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         val child =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Child issue",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
-            parentIssueId = parent.workItem.id,
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Child issue",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+              parentIssueId = parent.workItem.id,
+            )
           )
 
         child.workItem.title shouldBe "Child issue"
@@ -151,19 +161,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Transition me",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Transition me",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         val result =
@@ -192,19 +205,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Original",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Original",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         val updated =
@@ -230,19 +246,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Delete me",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Delete me",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         val deleted =
@@ -267,19 +286,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val stack = seedWorkItemStack(database)
         val repository = ExposedWorkItemRepository(database)
         repository.create(
-          CreateWorkItemCommand(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            issueTypeApiId = stack.issueType.apiId.value,
-            title = "Listed issue",
-            description = null,
-            reporterId = stack.actorId,
-            actorUserId = stack.actorId,
-          ),
-          issueTypeId = stack.issueType.id,
-          issueTypeConfigId = stack.config.config.id,
-          initialStatusId = stack.todoStatus.id,
-          propertyValues = emptyList(),
+          CreateWorkItemPersistenceCommand(
+            command =
+              CreateWorkItemCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                issueTypeApiId = stack.issueType.apiId.value,
+                title = "Listed issue",
+                description = null,
+                reporterId = stack.actorId,
+                actorUserId = stack.actorId,
+              ),
+            issueTypeId = stack.issueType.id,
+            issueTypeConfigId = stack.config.config.id,
+            initialStatusId = stack.todoStatus.id,
+            propertyValues = emptyList(),
+          )
         )
 
         repository.listByProject(stack.tenantId, stack.projectId).single().title shouldBe
@@ -332,19 +354,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val result =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "With properties",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = propertyValues,
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "With properties",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = propertyValues,
+            )
           )
 
         val loaded =
@@ -391,22 +416,25 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Assigned issue",
-              description = "Body",
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-              assigneeApiId = assignee.apiId.value,
-              priorityApiId = priorityApiId,
-              sprintApiId = sprintApiId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Assigned issue",
+                  description = "Body",
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                  assigneeApiId = assignee.apiId.value,
+                  priorityApiId = priorityApiId,
+                  sprintApiId = sprintApiId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
 
         val loaded =
@@ -466,28 +494,31 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Before",
-              description = "Old",
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues =
-              listOf(
-                WorkItemPropertyValue(
-                  propertyId = points.id,
-                  propertyApiId = points.apiId,
-                  code = points.code,
-                  dataType = WorkItemPropertyDataType.NUMBER,
-                  value = JsonPrimitive("3"),
-                )
-              ),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Before",
+                  description = "Old",
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues =
+                listOf(
+                  WorkItemPropertyValue(
+                    propertyId = points.id,
+                    propertyApiId = points.apiId,
+                    code = points.code,
+                    dataType = WorkItemPropertyDataType.NUMBER,
+                    value = JsonPrimitive("3"),
+                  )
+                ),
+            )
           )
         val updatedProperty =
           WorkItemPropertyValue(
@@ -635,19 +666,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
         val repository = ExposedWorkItemRepository(database)
         val blocker =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Blocker",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Blocker",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
           )
         val typedValues =
           listOf(
@@ -710,19 +744,22 @@ class ExposedWorkItemRepositoryIntegrationTest :
           )
         val created =
           repository.create(
-            CreateWorkItemCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              issueTypeApiId = stack.issueType.apiId.value,
-              title = "Typed properties",
-              description = null,
-              reporterId = stack.actorId,
-              actorUserId = stack.actorId,
-            ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = typedValues,
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "Typed properties",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = typedValues,
+            )
           )
 
         val values = repository.listPropertyValues(stack.tenantId, created.workItem.id)
