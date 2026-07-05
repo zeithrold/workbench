@@ -42,5 +42,6 @@ object BuiltInWorkItemQueryFieldResolver : WorkItemQueryFieldResolver {
       "deletedAt" to (WorkItemQueryFieldType.DATETIME to false),
       "parent" to (WorkItemQueryFieldType.ISSUE to false),
       "children.count" to (WorkItemQueryFieldType.NUMBER to false),
+      "children.issueType" to (WorkItemQueryFieldType.SINGLE_SELECT to false),
     )
 }

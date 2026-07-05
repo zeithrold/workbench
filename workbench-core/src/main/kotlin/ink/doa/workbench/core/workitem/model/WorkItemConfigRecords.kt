@@ -208,6 +208,23 @@ data class EffectiveIssueTypeConfig(
   val resolvedFrom: WorkItemConfigScope,
 )
 
+data class IssueSubtypeConstraintRecord(
+  val id: UUID,
+  val tenantId: UUID,
+  val projectId: UUID?,
+  val parentIssueTypeId: UUID,
+  val parentIssueTypeApiId: PublicId,
+  val childIssueTypeId: UUID,
+  val childIssueTypeApiId: PublicId,
+  val isDefault: Boolean,
+  val minChildren: Int?,
+  val maxChildren: Int?,
+  val isActive: Boolean,
+  val createdBy: UUID?,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+)
+
 data class CreateIssueStatusCommand(
   val tenantId: UUID,
   val code: String,
@@ -289,4 +306,15 @@ data class CreateIssueTypeConfigCommand(
   val createFields: JsonObject,
   val statuses: List<IssueTypeConfigStatusInput>,
   val properties: List<IssueTypeConfigPropertyInput> = emptyList(),
+)
+
+data class CreateIssueSubtypeConstraintCommand(
+  val tenantId: UUID,
+  val projectId: UUID? = null,
+  val parentIssueTypeApiId: String,
+  val childIssueTypeApiId: String,
+  val isDefault: Boolean = false,
+  val minChildren: Int? = null,
+  val maxChildren: Int? = null,
+  val createdBy: UUID? = null,
 )

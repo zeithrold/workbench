@@ -127,6 +127,48 @@ class PostgresWorkItemFilterTest :
       plan.orderBySql shouldBe "ORDER BY i.updated_at DESC, i.api_id ASC"
     }
 
+    "compiles children issue type predicates as direct child existence checks" {
+      val plan =
+        filter.build(
+          WorkItemSearchScope(tenantId = tenantId),
+          WorkItemQuery(
+            where =
+              ConditionNode.Predicate(
+                field = QueryField.System("children.issueType"),
+                op = QueryOperator.IN,
+                value =
+                  QueryValue.Literal(
+                    JsonArray(listOf(JsonPrimitive("typ_bug"), JsonPrimitive("typ_task")))
+                  ),
+              )
+          ),
+        )
+
+      plan.where.sql shouldContain "FROM issue_hierarchy child_ih"
+      plan.where.sql shouldContain "JOIN issue_types child_type"
+      plan.where.sql shouldContain "child_type.api_id IN (?, ?)"
+      plan.params shouldBe listOf(tenantId, "typ_bug", "typ_task")
+    }
+
+    "compiles negative children issue type predicates as not exists" {
+      val plan =
+        filter.build(
+          WorkItemSearchScope(tenantId = tenantId),
+          WorkItemQuery(
+            where =
+              ConditionNode.Predicate(
+                field = QueryField.System("children.issueType"),
+                op = QueryOperator.NOT_IN,
+                value = QueryValue.Literal(JsonArray(listOf(JsonPrimitive("typ_bug")))),
+              )
+          ),
+        )
+
+      plan.where.sql shouldContain "NOT (EXISTS"
+      plan.where.sql shouldContain "child_type.api_id IN (?)"
+      plan.params shouldBe listOf(tenantId, "typ_bug")
+    }
+
     "compiles or not and property sort clauses" {
       val orPlan =
         filter.build(

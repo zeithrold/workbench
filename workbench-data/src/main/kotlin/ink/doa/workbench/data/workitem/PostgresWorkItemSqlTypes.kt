@@ -1,6 +1,8 @@
 package ink.doa.workbench.data.workitem
 
 import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
+import ink.doa.workbench.core.workitem.query.QueryOperator
+import ink.doa.workbench.core.workitem.query.QueryValue
 
 data class SqlFragment(val sql: String, val params: List<Any?> = emptyList()) {
   fun parenthesized(): SqlFragment = copy(sql = "($sql)")
@@ -22,6 +24,7 @@ sealed interface PostgresWorkItemField {
     override val definition: WorkItemFieldDefinition,
     override val valueSql: String,
     override val sortSql: String = valueSql,
+    val predicateCompiler: ((QueryOperator, QueryValue?) -> SqlFragment)? = null,
   ) : PostgresWorkItemField
 
   data class Property(

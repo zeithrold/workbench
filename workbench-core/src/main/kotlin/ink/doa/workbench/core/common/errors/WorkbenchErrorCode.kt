@@ -692,6 +692,10 @@ enum class WorkbenchErrorCode(
     "resource.work_item_type_config.not_found",
     "Work item type config not found.",
   ),
+  RESOURCE_WORK_ITEM_SUBTYPE_CONSTRAINT_NOT_FOUND(
+    "resource.work_item_subtype_constraint.not_found",
+    "Work item subtype constraint not found.",
+  ),
   RESOURCE_WORK_ITEM_NOT_FOUND("resource.work_item.not_found", "Work item not found."),
   RESOURCE_WORK_ITEM_COMMENT_NOT_FOUND(
     "resource.work_item_comment.not_found",
@@ -736,6 +740,22 @@ enum class WorkbenchErrorCode(
   WORK_ITEM_CONFIG_RESOURCE_IN_USE(
     "work_item.config.resource_in_use",
     "Work item configuration resource is still used by active configuration.",
+  ),
+  WORK_ITEM_SUBTYPE_CONSTRAINT_INVALID(
+    "work_item.subtype_constraint.invalid",
+    "Work item subtype constraint is invalid.",
+  ),
+  WORK_ITEM_SUBTYPE_NOT_ALLOWED(
+    "work_item.subtype.not_allowed",
+    "Work item type is not allowed under the selected parent type.",
+  ),
+  WORK_ITEM_SUBTYPE_PARENT_REQUIRED(
+    "work_item.subtype.parent_required",
+    "This work item type must be created under a parent work item.",
+  ),
+  WORK_ITEM_SUBTYPE_CROSS_PROJECT_FORBIDDEN(
+    "work_item.subtype.cross_project_forbidden",
+    "Cross-project child work items are not allowed.",
   ),
   WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN(
     "workflow.published_update_forbidden",

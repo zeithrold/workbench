@@ -24,6 +24,14 @@ class BuiltInWorkItemQueryFieldResolverTest :
       definition.sortable shouldBe false
     }
 
+    "resolves direct child issue type field as single select" {
+      val definition =
+        BuiltInWorkItemQueryFieldResolver.resolve(QueryField.System("children.issueType"))
+
+      definition.type shouldBe WorkItemQueryFieldType.SINGLE_SELECT
+      definition.sortable shouldBe false
+    }
+
     "rejects unknown system fields" {
       shouldThrow<InvalidRequestException> {
           BuiltInWorkItemQueryFieldResolver.resolve(QueryField.System("unknownField"))

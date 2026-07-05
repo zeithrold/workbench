@@ -26,6 +26,7 @@ internal fun ResultRow.toWorkItemRecord(): WorkItemRecord {
     apiId = PublicId(this[IssuesTable.apiId]),
     tenantId = this[IssuesTable.tenantId].toJavaUuid(),
     projectId = this[IssuesTable.projectId].toJavaUuid(),
+    issueTypeId = this[IssuesTable.issueTypeId].toJavaUuid(),
     issueTypeApiId = issueType,
     issueTypeConfigApiId = config,
     key = currentKey(this[IssuesTable.id].toJavaUuid()) ?: fallbackKey(this),

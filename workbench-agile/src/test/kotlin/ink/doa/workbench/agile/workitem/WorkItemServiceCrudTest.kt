@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
+import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
@@ -11,6 +12,7 @@ import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
+import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
@@ -177,13 +179,85 @@ class WorkItemServiceCrudTest :
         )
       }
     }
+
+    "create rejects root work item for child-only type" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
+      val config = configDetailsWithInitialStatus(tenantId, PublicId.new("itc"))
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery {
+        subtypeConstraints.isChildOnlyType(tenantId, projectId, config.config.issueTypeId)
+      } returns true
+      val service = workItemService(repository, configs, subtypeConstraints = subtypeConstraints)
+
+      shouldThrow<InvalidRequestException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+          )
+        )
+      }
+    }
+
+    "create child validates allowed subtype and passes parent id to repository" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
+      val config = configDetailsWithInitialStatus(tenantId, PublicId.new("itc"))
+      val parent = workItem(tenantId, projectId)
+      val created = WorkItemMutationResult(workItem(tenantId, projectId), "work_item.created")
+
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.findByApiId(tenantId, parent.apiId.value) } returns parent
+      coEvery {
+        subtypeConstraints.findAllowedChildType(
+          tenantId,
+          projectId,
+          parent.issueTypeId,
+          config.config.issueTypeId,
+        )
+      } returns subtypeConstraint(tenantId, parent.issueTypeId, config.config.issueTypeId)
+      coEvery { repository.resolveUserApiId(actorId) } returns PublicId.new("usr")
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns PublicId.new("prj")
+      coEvery { repository.create(any(), any(), any(), any(), any(), parent.id) } returns created
+      val service = workItemService(repository, configs, subtypeConstraints = subtypeConstraints)
+
+      service.create(
+        ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          issueTypeApiId = "typ_task",
+          title = "Task",
+          description = null,
+          reporterId = actorId,
+          actorUserId = actorId,
+          parentWorkItemApiId = parent.apiId.value,
+        )
+      )
+
+      coVerify { repository.create(any(), any(), any(), any(), any(), parent.id) }
+    }
   })
 
 private fun workItemService(
   repository: WorkItemRepository,
   configs: IssueTypeConfigRepository = mockk(relaxed = true),
   events: DomainEventPublisher = mockk(relaxed = true),
+  subtypeConstraints: IssueSubtypeConstraintRepository? = null,
 ): WorkItemService {
+  val effectiveSubtypeConstraints =
+    subtypeConstraints ?: mockk<IssueSubtypeConstraintRepository>().also {
+      coEvery { it.isChildOnlyType(any(), any(), any()) } returns false
+    }
   val fieldPermissions = mockk<WorkItemFieldPermissionService>()
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
   coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
@@ -191,6 +265,7 @@ private fun workItemService(
   return WorkItemService(
     repository = repository,
     configs = configs,
+    subtypeConstraints = effectiveSubtypeConstraints,
     mutationSupport = mutationSupport,
     fieldMutationReconciler =
       WorkItemFieldMutationReconciler(
@@ -227,6 +302,28 @@ private fun workItem(tenantId: UUID, projectId: UUID): WorkItemRecord {
     updatedAt = now,
   )
 }
+
+private fun subtypeConstraint(
+  tenantId: UUID,
+  parentIssueTypeId: UUID,
+  childIssueTypeId: UUID,
+): IssueSubtypeConstraintRecord =
+  IssueSubtypeConstraintRecord(
+    id = UUID.randomUUID(),
+    tenantId = tenantId,
+    projectId = null,
+    parentIssueTypeId = parentIssueTypeId,
+    parentIssueTypeApiId = PublicId.new("typ"),
+    childIssueTypeId = childIssueTypeId,
+    childIssueTypeApiId = PublicId.new("typ"),
+    isDefault = false,
+    minChildren = null,
+    maxChildren = null,
+    isActive = true,
+    createdBy = null,
+    createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+    updatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+  )
 
 private fun configDetails(tenantId: UUID, configApiId: PublicId): IssueTypeConfigDetails {
   val now = OffsetDateTime.now(ZoneOffset.UTC)

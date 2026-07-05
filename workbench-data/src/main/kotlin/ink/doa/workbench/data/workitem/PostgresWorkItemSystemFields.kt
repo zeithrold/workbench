@@ -3,6 +3,8 @@ package ink.doa.workbench.data.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.query.QueryField
+import ink.doa.workbench.core.workitem.query.QueryOperator
+import ink.doa.workbench.core.workitem.query.QueryValue
 import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldResolver
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
@@ -160,6 +162,14 @@ class StaticPostgresWorkItemFieldResolver(
             "(SELECT COUNT(*) FROM issue_hierarchy child_ih WHERE child_ih.parent_issue_id = i.id)",
             sortable = false,
           ),
+        "children.issueType" to
+          system(
+            "children.issueType",
+            WorkItemQueryFieldType.SINGLE_SELECT,
+            "NULL",
+            sortable = false,
+            predicateCompiler = ::childrenIssueTypePredicate,
+          ),
       )
 
     private fun system(
@@ -167,11 +177,83 @@ class StaticPostgresWorkItemFieldResolver(
       type: WorkItemQueryFieldType,
       valueSql: String,
       sortable: Boolean,
+      predicateCompiler: ((QueryOperator, QueryValue?) -> SqlFragment)? = null,
     ) =
       PostgresWorkItemField.System(
         definition = WorkItemFieldDefinition(QueryField.System(name), type, sortable),
         valueSql = valueSql,
+        predicateCompiler = predicateCompiler,
       )
+
+    private fun childrenIssueTypePredicate(op: QueryOperator, value: QueryValue?): SqlFragment =
+      when (op) {
+        QueryOperator.EQ -> childrenIssueTypeExists("=", listOf(value.requireStringLiteral()))
+        QueryOperator.NEQ ->
+          childrenIssueTypeExists("=", listOf(value.requireStringLiteral()), negated = true)
+        QueryOperator.IN ->
+          childrenIssueTypeExists("IN", value.asLiteralArray().map(::jsonToJdbcValue))
+        QueryOperator.NOT_IN ->
+          childrenIssueTypeExists(
+            "IN",
+            value.asLiteralArray().map(::jsonToJdbcValue),
+            negated = true,
+          )
+        QueryOperator.IS_EMPTY ->
+          SqlFragment(
+            """
+            NOT EXISTS (
+              SELECT 1
+              FROM issue_hierarchy child_ih
+              WHERE child_ih.parent_issue_id = i.id
+                AND child_ih.tenant_id = i.tenant_id
+            )
+            """
+              .trimIndent()
+          )
+        QueryOperator.IS_NOT_EMPTY ->
+          SqlFragment(
+            """
+            EXISTS (
+              SELECT 1
+              FROM issue_hierarchy child_ih
+              WHERE child_ih.parent_issue_id = i.id
+                AND child_ih.tenant_id = i.tenant_id
+            )
+            """
+              .trimIndent()
+          )
+        else -> error("Unsupported children.issueType operator: $op")
+      }
+
+    private fun childrenIssueTypeExists(
+      operator: String,
+      values: List<Any?>,
+      negated: Boolean = false,
+    ): SqlFragment {
+      val predicate =
+        if (operator == "IN" || operator == "NOT IN") {
+          val placeholders = values.joinToString(", ") { "?" }
+          "child_type.api_id $operator ($placeholders)"
+        } else {
+          "child_type.api_id $operator ?"
+        }
+      val existsSql =
+        """
+        EXISTS (
+          SELECT 1
+          FROM issue_hierarchy child_ih
+          JOIN issues child_issue ON child_issue.id = child_ih.child_issue_id
+          JOIN issue_types child_type ON child_type.id = child_issue.issue_type_id
+          WHERE child_ih.parent_issue_id = i.id
+            AND child_ih.tenant_id = i.tenant_id
+            AND child_issue.archived_at IS NULL
+            AND child_issue.deleted_at IS NULL
+            AND $predicate
+        )
+        """
+          .trimIndent()
+      return SqlFragment(if (negated) "NOT ($existsSql)" else existsSql, values)
+    }
 
     private fun propertyValueColumn(type: WorkItemQueryFieldType): String =
       when (type) {

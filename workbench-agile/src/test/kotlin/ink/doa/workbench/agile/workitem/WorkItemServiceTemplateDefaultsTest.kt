@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
+import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
@@ -70,7 +71,7 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
       coEvery {
-        repository.create(any(), any(), any(), any(), capture(values))
+        repository.create(any(), any(), any(), any(), capture(values), any())
       } returns WorkItemMutationResult(created, "work_item.created")
 
       workItemService(repository, configs, events, clock)
@@ -172,7 +173,7 @@ class WorkItemServiceTemplateDefaultsTest :
           field is TemplateField.System && field.canonicalName == "title"
         }
       coEvery {
-        repository.create(any(), any(), any(), any(), capture(values))
+        repository.create(any(), any(), any(), any(), capture(values), any())
       } returns WorkItemMutationResult(created, "work_item.created")
 
       workItemService(repository, configs, events, clock, fieldPermissions)
@@ -474,9 +475,12 @@ private fun workItemService(
   fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
 ): WorkItemService {
   val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+  val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
+  coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
   return WorkItemService(
     repository,
     configs,
+    subtypeConstraints,
     WorkItemMutationSupport(repository, configs, events),
     reconciler,
     fieldPermissions,
