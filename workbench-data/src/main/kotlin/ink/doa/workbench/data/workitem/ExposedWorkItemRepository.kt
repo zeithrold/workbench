@@ -10,7 +10,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.data.persistence.IssueHierarchyTable
-import ink.doa.workbench.data.persistence.IssueKeyAliasesTable
 import ink.doa.workbench.data.persistence.IssuePropertyValuesTable
 import ink.doa.workbench.data.persistence.IssuesTable
 import ink.doa.workbench.data.persistence.ProjectsTable
@@ -26,7 +25,6 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -43,91 +41,39 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
     parentIssueId: UUID?,
   ): WorkItemMutationResult =
     suspendTransaction(db = database) {
-      val project = requireProject(command.tenantId, command.projectId)
-      val sequence = allocateSequence(project.id)
-      val issueId = UUID.randomUUID()
-      val issueApiId = PublicId.new("iss")
-      val key = "${project.identifier}-$sequence"
-      val now = now()
-      val priorityId = command.priorityApiId?.let { resolvePriority(command.tenantId, it) }
-      val assigneeId = command.assigneeApiId?.let { resolveUser(it) }
-      val sprintId =
-        command.sprintApiId?.let { resolveSprint(command.tenantId, command.projectId, it) }
-      val snapshot = snapshot(propertyValues)
-      IssuesTable.insert {
-        it[IssuesTable.id] = issueId.toKotlinUuid()
-        it[IssuesTable.apiId] = issueApiId.value
-        it[IssuesTable.tenantId] = command.tenantId.toKotlinUuid()
-        it[IssuesTable.projectId] = command.projectId.toKotlinUuid()
-        it[IssuesTable.issueTypeId] = issueTypeId.toKotlinUuid()
-        it[IssuesTable.issueTypeConfigId] = issueTypeConfigId.toKotlinUuid()
-        it[IssuesTable.sequenceNo] = sequence
-        it[IssuesTable.title] = command.title
-        it[IssuesTable.description] = command.description
-        it[IssuesTable.descriptionPlainText] = command.descriptionPlainText
-        it[IssuesTable.statusId] = initialStatusId.toKotlinUuid()
-        it[IssuesTable.priorityId] = priorityId?.toKotlinUuid()
-        it[IssuesTable.reporterId] = command.reporterId.toKotlinUuid()
-        it[IssuesTable.assigneeId] = assigneeId?.toKotlinUuid()
-        it[IssuesTable.sprintId] = sprintId?.toKotlinUuid()
-        it[IssuesTable.propertiesSnapshot] = snapshot
-        it[IssuesTable.createdBy] = command.actorUserId.toKotlinUuid()
-        it[IssuesTable.createdAt] = now
-        it[IssuesTable.updatedAt] = now
-      }
-      IssueKeyAliasesTable.insert {
-        it[IssueKeyAliasesTable.id] = UUID.randomUUID().toKotlinUuid()
-        it[IssueKeyAliasesTable.tenantId] = command.tenantId.toKotlinUuid()
-        it[IssueKeyAliasesTable.projectId] = command.projectId.toKotlinUuid()
-        it[IssueKeyAliasesTable.issueId] = issueId.toKotlinUuid()
-        it[IssueKeyAliasesTable.issueKey] = key
-        it[IssueKeyAliasesTable.projectIdentifier] = project.identifier
-        it[IssueKeyAliasesTable.sequenceNo] = sequence
-        it[IssueKeyAliasesTable.isCurrent] = true
-        it[IssueKeyAliasesTable.createdAt] = now
-        it[IssueKeyAliasesTable.createdBy] = command.actorUserId.toKotlinUuid()
-      }
-      insertPropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
+      val prepared = prepareWorkItemInsert(command, propertyValues)
+      insertWorkItemRows(
+        command = command,
+        prepared = prepared,
+        issueTypeId = issueTypeId,
+        issueTypeConfigId = issueTypeConfigId,
+        initialStatusId = initialStatusId,
+        propertyValues = propertyValues,
+      )
       parentIssueId?.let {
         insertHierarchyLink(
           tenantId = command.tenantId,
           projectId = command.projectId,
           parentIssueId = it,
-          childIssueId = issueId,
+          childIssueId = prepared.issueId,
           actorUserId = command.actorUserId,
-          createdAt = now,
+          createdAt = prepared.now,
         )
       }
       insertStatusHistory(
         tenantId = command.tenantId,
-        issueId = issueId,
+        issueId = prepared.issueId,
         fromStatusId = null,
         toStatusId = initialStatusId,
         transitionId = null,
         actorUserId = command.actorUserId,
-        changedAt = now,
+        changedAt = prepared.now,
       )
       WorkItemMutationResult(
-        workItem = requireWorkItem(command.tenantId, command.projectId, issueApiId.value),
+        workItem = requireWorkItem(command.tenantId, command.projectId, prepared.issueApiId.value),
         eventType = "work_item.created",
       )
     }
-
-  suspend fun create(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-    issueTypeConfigId: UUID,
-    initialStatusId: UUID,
-    propertyValues: List<WorkItemPropertyValue>,
-  ): WorkItemMutationResult =
-    create(
-      command = command,
-      issueTypeId = issueTypeId,
-      issueTypeConfigId = issueTypeConfigId,
-      initialStatusId = initialStatusId,
-      propertyValues = propertyValues,
-      parentIssueId = null,
-    )
 
   override suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord? =
     suspendTransaction(db = database) {
@@ -360,35 +306,4 @@ class ExposedWorkItemRepository(private val database: Database) : WorkItemReposi
         ?.get(ProjectsTable.apiId)
         ?.let(::PublicId)
     }
-
-  private fun insertHierarchyLink(
-    tenantId: UUID,
-    projectId: UUID,
-    parentIssueId: UUID,
-    childIssueId: UUID,
-    actorUserId: UUID,
-    createdAt: java.time.OffsetDateTime,
-  ) {
-    val nextRank =
-      IssueHierarchyTable.selectAll()
-        .where {
-          (IssueHierarchyTable.tenantId eq tenantId.toKotlinUuid()) and
-            (IssueHierarchyTable.parentIssueId eq parentIssueId.toKotlinUuid())
-        }
-        .orderBy(IssueHierarchyTable.rank to SortOrder.DESC)
-        .limit(1)
-        .singleOrNull()
-        ?.get(IssueHierarchyTable.rank)
-        ?.plus(100) ?: 100
-    IssueHierarchyTable.insert {
-      it[IssueHierarchyTable.id] = UUID.randomUUID().toKotlinUuid()
-      it[IssueHierarchyTable.tenantId] = tenantId.toKotlinUuid()
-      it[IssueHierarchyTable.projectId] = projectId.toKotlinUuid()
-      it[IssueHierarchyTable.parentIssueId] = parentIssueId.toKotlinUuid()
-      it[IssueHierarchyTable.childIssueId] = childIssueId.toKotlinUuid()
-      it[IssueHierarchyTable.rank] = nextRank
-      it[IssueHierarchyTable.createdBy] = actorUserId.toKotlinUuid()
-      it[IssueHierarchyTable.createdAt] = createdAt
-    }
-  }
 }

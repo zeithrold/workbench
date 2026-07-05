@@ -45,7 +45,8 @@ class WorkItemSubtypeConstraintController(
     tenantContext: TenantRequestContext,
   ): List<IssueSubtypeConstraintResponse> {
     val resolvedProjectId = projectId?.let { projects.get(tenantContext.tenant.id, it).id }
-    return constraints.list(tenantContext.tenant.id, resolvedProjectId)
+    return constraints
+      .list(tenantContext.tenant.id, resolvedProjectId)
       .map(IssueSubtypeConstraintResponse::from)
   }
 

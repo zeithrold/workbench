@@ -1,9 +1,8 @@
 package ink.doa.workbench.data.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
 import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
@@ -45,8 +44,7 @@ class ExposedIssueSubtypeConstraintRepository(private val database: Database) :
         it[IssueSubtypeConstraintsTable.id] = id.toKotlinUuid()
         it[IssueSubtypeConstraintsTable.tenantId] = command.tenantId.toKotlinUuid()
         it[IssueSubtypeConstraintsTable.projectId] = command.projectId?.toKotlinUuid()
-        it[IssueSubtypeConstraintsTable.parentIssueTypeId] =
-          parentType[IssueTypesTable.id]
+        it[IssueSubtypeConstraintsTable.parentIssueTypeId] = parentType[IssueTypesTable.id]
         it[IssueSubtypeConstraintsTable.childIssueTypeId] = childType[IssueTypesTable.id]
         it[IssueSubtypeConstraintsTable.isDefault] = command.isDefault
         it[IssueSubtypeConstraintsTable.minChildren] = command.minChildren
@@ -157,9 +155,12 @@ class ExposedIssueSubtypeConstraintRepository(private val database: Database) :
 private fun requireValidCardinality(command: CreateIssueSubtypeConstraintCommand) {
   val min = command.minChildren
   val max = command.maxChildren
-  if ((min != null && min < 0) || (max != null && max < 0) || (min != null && max != null && min > max)) {
-    throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CONSTRAINT_INVALID)
-  }
+  requireValid(min == null || min >= 0, WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CONSTRAINT_INVALID)
+  requireValid(max == null || max >= 0, WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CONSTRAINT_INVALID)
+  requireValid(
+    min == null || max == null || min <= max,
+    WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CONSTRAINT_INVALID,
+  )
 }
 
 private fun findActiveIssueType(
@@ -168,8 +169,9 @@ private fun findActiveIssueType(
   projectId: UUID?,
 ): ResultRow? {
   val scope =
-    projectId?.let { IssueTypesTable.projectId.isNull() or (IssueTypesTable.projectId eq it.toKotlinUuid()) }
-      ?: IssueTypesTable.projectId.isNull()
+    projectId?.let {
+      IssueTypesTable.projectId.isNull() or (IssueTypesTable.projectId eq it.toKotlinUuid())
+    } ?: IssueTypesTable.projectId.isNull()
   return IssueTypesTable.selectAll()
     .where {
       (IssueTypesTable.tenantId eq tenantId.toKotlinUuid()) and

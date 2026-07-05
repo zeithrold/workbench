@@ -6,8 +6,8 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.errors.requireFound
 import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
+import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
@@ -96,16 +96,17 @@ class IssueSubtypeConstraintService(
         catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, it) != null,
         WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
       )
-    } ?: run {
-      requireFound(
-        catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, null) != null,
-        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
-      )
-      requireFound(
-        catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, null) != null,
-        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
-      )
     }
+      ?: run {
+        requireFound(
+          catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, null) != null,
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+        )
+        requireFound(
+          catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, null) != null,
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+        )
+      }
     return repository.create(command)
   }
 
