@@ -2,6 +2,7 @@ package ink.doa.workbench.web.invitation
 
 import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
 import ink.doa.workbench.security.invitation.InvitationService
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 class InvitationController(private val service: InvitationService) {
   @GetMapping("/preview")
+  @PublicEndpoint
   @Operation(
     summary = "Preview an invitation",
     description = "Returns invitation type and tenant summary for the given token.",
@@ -52,6 +54,7 @@ class InvitationController(private val service: InvitationService) {
   ): InvitationPreviewResponse = InvitationPreviewResponse.from(service.preview(token))
 
   @PostMapping("/accept")
+  @PublicEndpoint
   @ResponseStatus(HttpStatus.CREATED)
   @Operation(
     summary = "Accept an invitation",

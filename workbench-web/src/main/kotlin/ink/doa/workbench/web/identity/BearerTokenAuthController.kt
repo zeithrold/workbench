@@ -2,6 +2,7 @@ package ink.doa.workbench.web.identity
 
 import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
 import ink.doa.workbench.security.identity.AuthApplicationService
+import ink.doa.workbench.web.api.AuthenticatedOnly
 import ink.doa.workbench.web.api.OpenApiExamples
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 class BearerTokenAuthController(private val authApplicationService: AuthApplicationService) {
   @PostMapping("/tokens")
+  @AuthenticatedOnly
   @SessionSecured
   @Operation(
     summary = "Issue bearer token",
@@ -81,6 +83,7 @@ class BearerTokenAuthController(private val authApplicationService: AuthApplicat
   }
 
   @DeleteMapping("/tokens/{id}")
+  @AuthenticatedOnly
   @SessionSecured
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @Operation(

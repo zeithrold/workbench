@@ -3,6 +3,7 @@ package ink.doa.workbench.web.identity
 import ink.doa.workbench.security.identity.FederatedLoginCompletionService
 import ink.doa.workbench.security.identity.auth.FederatedAuthService
 import ink.doa.workbench.web.api.OpenApiExamples
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.http.HttpClientContext
 import ink.doa.workbench.web.api.http.SessionCookieWriter
@@ -40,6 +41,7 @@ class FederatedAuthController(
   private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @PostMapping("/federated/authorize")
+  @PublicEndpoint
   @Operation(
     summary = "Start federated login",
     description =
@@ -89,6 +91,7 @@ class FederatedAuthController(
   }
 
   @GetMapping("/oauth2/callback")
+  @PublicEndpoint
   @Operation(
     summary = "OAuth callback",
     description =
@@ -149,6 +152,7 @@ class FederatedAuthController(
   }
 
   @PostMapping("/saml2/acs")
+  @PublicEndpoint
   @Operation(
     summary = "SAML assertion consumer",
     description =

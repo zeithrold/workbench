@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="JavaScriptLibraryMappings">
-    <excludedPredefinedLibrary name="workbench/workbench-frontend/.gradle/pnpm/pnpm-v10.33.0/lib/node_modules" />
-  </component>
-</project>

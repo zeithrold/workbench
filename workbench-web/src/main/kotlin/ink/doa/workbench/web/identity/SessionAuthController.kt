@@ -3,7 +3,9 @@ package ink.doa.workbench.web.identity
 import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
 import ink.doa.workbench.security.identity.AuthApplicationService
 import ink.doa.workbench.security.identity.MembershipService
+import ink.doa.workbench.web.api.AuthenticatedOnly
 import ink.doa.workbench.web.api.OpenApiExamples
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.http.HttpClientContext
@@ -41,6 +43,7 @@ class SessionAuthController(
   private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @PostMapping("/login")
+  @PublicEndpoint
   @Operation(
     summary = "Sign in",
     description =
@@ -122,6 +125,7 @@ class SessionAuthController(
   }
 
   @PostMapping("/logout")
+  @AuthenticatedOnly
   @Operation(
     summary = "Sign out",
     description =
@@ -141,6 +145,7 @@ class SessionAuthController(
   }
 
   @GetMapping("/memberships")
+  @AuthenticatedOnly
   @SessionSecured
   @Operation(
     summary = "List memberships",

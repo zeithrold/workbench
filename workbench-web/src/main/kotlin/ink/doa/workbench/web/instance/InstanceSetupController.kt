@@ -1,6 +1,7 @@
 package ink.doa.workbench.web.instance
 
 import ink.doa.workbench.service.instance.InstanceSetupApplicationService
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.http.HttpClientContext
 import ink.doa.workbench.web.api.http.SessionCookieWriter
@@ -31,6 +32,7 @@ class InstanceSetupController(
   private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @GetMapping("/setup-status")
+  @PublicEndpoint
   @Operation(
     summary = "Get instance initialization status",
     description = "Returns whether a system administrator already exists.",
@@ -55,6 +57,7 @@ class InstanceSetupController(
   }
 
   @PostMapping("/setup")
+  @PublicEndpoint
   @Operation(
     summary = "Bootstrap instance administrator",
     description =

@@ -163,6 +163,8 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
               "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/${SAMPLE_WORK_ITEM.apiId.value}"
             )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"deleteReason":"duplicate"}""")
         )
         .andExpect(request().asyncStarted())
         .andReturn()

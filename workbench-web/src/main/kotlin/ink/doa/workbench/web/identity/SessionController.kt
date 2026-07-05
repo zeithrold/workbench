@@ -2,6 +2,7 @@ package ink.doa.workbench.web.identity
 
 import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
 import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.web.api.AuthenticatedOnly
 import ink.doa.workbench.web.api.OpenApiExamples
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController
   description =
     "Current session aggregate keyed by the WORKBENCH_SESSION cookie. Not a persistent CRUD resource.",
 )
+@AuthenticatedOnly
 @SessionSecured
 @StandardErrorResponses
 class SessionController(private val sessionService: SessionService) {
