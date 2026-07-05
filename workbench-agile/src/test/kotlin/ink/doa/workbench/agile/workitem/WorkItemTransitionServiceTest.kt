@@ -15,9 +15,12 @@ import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.justRun
 import io.mockk.mockk
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -106,6 +109,114 @@ class WorkItemTransitionServiceTest :
           }
         }
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
+    }
+
+    "transition rejects unknown workflow transition" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = sampleConfig(tenantId)
+      val issue = sampleIssue(tenantId, projectId, config, actorId)
+
+      coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
+        config
+      coEvery { workflows.findTransition(tenantId, "trn_missing") } returns null
+
+      shouldThrow<ResourceNotFoundException> {
+          runBlocking {
+            service.transition(
+              TransitionWorkItemCommand(
+                tenantId = tenantId,
+                projectId = projectId,
+                workItemApiId = issue.apiId.value,
+                transitionApiId = "trn_missing",
+                actorUserId = actorId,
+              )
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
+    }
+
+    "availableTransitions returns empty list when transitions do not match current status" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = sampleConfig(tenantId)
+      val issue = sampleIssue(tenantId, projectId, config, actorId)
+      val otherStatusId = UUID.randomUUID()
+      val mismatchedTransition =
+        sampleTransition(config)
+          .copy(fromStatusId = otherStatusId, fromStatusApiId = PublicId.new("sts"))
+
+      coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
+        config
+      coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done"))
+      } returns 0
+      coEvery { workflows.listTransitions(any(), any()) } returns listOf(mismatchedTransition)
+
+      val options = runBlocking {
+        service.availableTransitions(tenantId, projectId, issue.apiId.value, actorId)
+      }
+
+      options.shouldBeEmpty()
+    }
+
+    "transition executes and returns mutation result" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = sampleConfig(tenantId)
+      val issue = sampleIssue(tenantId, projectId, config, actorId)
+      val transition = sampleTransition(config)
+      val mutationResult =
+        ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
+          issue,
+          "work_item.transitioned",
+        )
+
+      coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
+        config
+      coEvery { workflows.findTransition(tenantId, transition.apiId.value) } returns transition
+      coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done"))
+      } returns 0
+      coEvery { mutationSupport.templateContext(any()) } returns mockk(relaxed = true)
+      coEvery { fieldMutationReconciler.buildFieldMeta(any(), any(), any(), any()) } returns
+        emptyList()
+      coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
+      coEvery {
+        fieldMutationReconciler.reconcileTransition(any(), any(), any(), any(), any(), any())
+      } returns
+        TransitionFieldReconcileResult(propertyValues = emptyMap(), systemFields = emptyMap())
+      coEvery {
+        fieldMutationReconciler.reconcileTransitionComment(any(), any(), any())
+      } returns null
+      coEvery {
+        repository.transition(any(), any(), any(), any(), any())
+      } returns mutationResult
+      justRun { mutationSupport.publish(any()) }
+
+      val result = runBlocking {
+        service.transition(
+          TransitionWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = issue.apiId.value,
+            transitionApiId = transition.apiId.value,
+            actorUserId = actorId,
+          )
+        )
+      }
+
+      result.eventType shouldBe "work_item.transitioned"
+      coVerify { mutationSupport.publish(mutationResult) }
     }
   })
 

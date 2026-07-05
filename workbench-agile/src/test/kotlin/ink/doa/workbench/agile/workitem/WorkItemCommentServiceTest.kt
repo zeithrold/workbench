@@ -1,6 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.PermissionDeniedException
+import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.permission.PermissionBindingRepository
@@ -10,9 +12,12 @@ import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotContain
 import io.mockk.coEvery
@@ -162,4 +167,206 @@ class WorkItemCommentServiceTest :
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_BODY_REQUIRED
     }
+
+    "list returns comments for work item" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val issueId = UUID.randomUUID()
+      val authorId = UUID.randomUUID()
+      val record = commentRecord(tenantId, issueId, authorId, clock)
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns issueId
+      coEvery { comments.listByWorkItem(tenantId, issueId, 25, 0) } returns listOf(record)
+
+      service.list(tenantId, projectId, "iss_01", limit = 25, offset = 0).shouldHaveSize(1)
+    }
+
+    "update converts body and persists comment" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val issueId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      allowCommentAction(bindings, "issue.comment.update")
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns issueId
+      coEvery { comments.update(any(), issueId) } answers
+        {
+          val command = firstArg<UpdateWorkItemCommentCommand>()
+          commentRecord(tenantId, issueId, actorId, clock).copy(body = command.body)
+        }
+
+      val updated =
+        service.update(
+          UpdateWorkItemCommentCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_01",
+            commentApiId = "icm_01",
+            actorUserId = actorId,
+            body = "Updated text",
+          )
+        )
+
+      updated.body shouldBe "<p>Updated text</p>"
+    }
+
+    "delete soft deletes comment" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val issueId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val record = commentRecord(tenantId, issueId, actorId, clock)
+      allowCommentAction(bindings, "issue.comment.delete")
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns issueId
+      coEvery { comments.softDelete(any(), issueId) } returns record
+
+      service
+        .delete(
+          DeleteWorkItemCommentCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_01",
+            commentApiId = "icm_01",
+            actorUserId = actorId,
+          )
+        )
+        .apiId shouldBe record.apiId
+    }
+
+    "create rejects when comment permission is missing" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      coEvery { bindings.listActiveRulesForSubject(any(), any(), any(), any()) } returns emptyList()
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns UUID.randomUUID()
+
+      shouldThrow<PermissionDeniedException> {
+          service.create(
+            CreateWorkItemCommentCommand(
+              tenantId = tenantId,
+              projectId = projectId,
+              workItemApiId = "iss_01",
+              authorId = UUID.randomUUID(),
+              body = "Denied",
+            )
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_CREATE_DENIED
+    }
+
+    "update rejects when comment permission is missing" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      coEvery { bindings.listActiveRulesForSubject(any(), any(), any(), any()) } returns emptyList()
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns UUID.randomUUID()
+
+      shouldThrow<PermissionDeniedException> {
+          service.update(
+            UpdateWorkItemCommentCommand(
+              tenantId = tenantId,
+              projectId = projectId,
+              workItemApiId = "iss_01",
+              commentApiId = "icm_01",
+              actorUserId = UUID.randomUUID(),
+              body = "Denied",
+            )
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_UPDATE_DENIED
+    }
+
+    "delete rejects when comment permission is missing" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      coEvery { bindings.listActiveRulesForSubject(any(), any(), any(), any()) } returns emptyList()
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns UUID.randomUUID()
+
+      shouldThrow<PermissionDeniedException> {
+          service.delete(
+            DeleteWorkItemCommentCommand(
+              tenantId = tenantId,
+              projectId = projectId,
+              workItemApiId = "iss_01",
+              commentApiId = "icm_01",
+              actorUserId = UUID.randomUUID(),
+            )
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_DELETE_DENIED
+    }
+
+    "create rejects when work item is missing" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      allowCommentAction(bindings)
+      coEvery { comments.resolveIssueId(tenantId, projectId, "missing") } returns null
+
+      shouldThrow<ResourceNotFoundException> {
+          service.create(
+            CreateWorkItemCommentCommand(
+              tenantId = tenantId,
+              projectId = projectId,
+              workItemApiId = "missing",
+              authorId = UUID.randomUUID(),
+              body = "Hello",
+            )
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
+    }
+
+    "create rejects body that exceeds max length" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      allowCommentAction(bindings)
+      coEvery { comments.resolveIssueId(tenantId, projectId, "iss_01") } returns UUID.randomUUID()
+
+      shouldThrow<InvalidRequestException> {
+          service.create(
+            CreateWorkItemCommentCommand(
+              tenantId = tenantId,
+              projectId = projectId,
+              workItemApiId = "iss_01",
+              authorId = UUID.randomUUID(),
+              body = "a".repeat(33_000),
+            )
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_COMMENT_BODY_TOO_LONG
+    }
   })
+
+private fun allowCommentAction(
+  bindings: PermissionBindingRepository,
+  action: String = "issue.comment.create",
+) {
+  coEvery { bindings.listActiveRulesForSubject(any(), any(), any(), any()) } returns
+    listOf(
+      ResolvedPermissionRule(
+        bindingId = UUID.randomUUID(),
+        action = AuthorizationAction(action),
+        resourcePattern = "issue:*",
+        effect = PermissionEffect.ALLOW,
+      )
+    )
+}
+
+private fun commentRecord(
+  tenantId: UUID,
+  issueId: UUID,
+  authorId: UUID,
+  clock: Clock,
+): WorkItemCommentRecord =
+  WorkItemCommentRecord(
+    id = UUID.randomUUID(),
+    apiId = PublicId.new("icm"),
+    tenantId = tenantId,
+    issueId = issueId,
+    authorId = authorId,
+    authorApiId = PublicId.new("usr"),
+    body = "<p>Body</p>",
+    bodyPlainText = "Body",
+    bodyFormat = CreateWorkItemCommentCommand.HTML_FORMAT,
+    transitionId = null,
+    statusHistoryId = null,
+    editedAt = null,
+    createdAt = OffsetDateTime.now(clock),
+    updatedAt = OffsetDateTime.now(clock),
+  )

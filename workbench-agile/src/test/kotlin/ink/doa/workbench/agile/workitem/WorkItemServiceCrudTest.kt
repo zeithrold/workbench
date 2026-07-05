@@ -1,13 +1,16 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
+import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
@@ -15,6 +18,7 @@ import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -111,6 +115,68 @@ class WorkItemServiceCrudTest :
 
       coVerify { repository.softDelete(any()) }
     }
+
+    "availableCreateForm returns editable field metadata" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val record = workItem(tenantId, projectId)
+      val config = configDetailsWithInitialStatus(tenantId, record.issueTypeConfigApiId)
+      val effective = EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns effective
+      coEvery { repository.resolveUserApiId(actorId) } returns PublicId.new("usr")
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns PublicId.new("prj")
+      val service = workItemService(repository, configs)
+
+      val form = service.availableCreateForm(tenantId, projectId, "typ_task", actorId)
+
+      form.initialStatusId shouldBe config.statuses.single().statusApiId
+      form.editableFields.shouldContain("title")
+      form.fieldMeta.shouldContain(form.fieldMeta.single { it.path == "title" })
+    }
+
+    "create throws when effective config is missing" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      coEvery { configs.resolveEffective(tenantId, projectId, "missing") } returns null
+      val service = workItemService(repository, configs)
+
+      shouldThrow<ResourceNotFoundException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "missing",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+          )
+        )
+      }
+    }
+
+    "create throws when initial status is missing" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val config = configDetails(tenantId, PublicId.new("itc"))
+      val effective = EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns effective
+      val service = workItemService(repository, configs)
+
+      shouldThrow<InvalidRequestException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+          )
+        )
+      }
+    }
   })
 
 private fun workItemService(
@@ -120,6 +186,7 @@ private fun workItemService(
 ): WorkItemService {
   val fieldPermissions = mockk<WorkItemFieldPermissionService>()
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
+  coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
   val mutationSupport = WorkItemMutationSupport(repository, configs, events)
   return WorkItemService(
     repository = repository,
@@ -189,6 +256,72 @@ private fun configDetails(tenantId: UUID, configApiId: PublicId): IssueTypeConfi
         createFields = JsonObject(emptyMap()),
       ),
     statuses = emptyList(),
+    properties = emptyList(),
+  )
+}
+
+private fun configDetailsWithInitialStatus(
+  tenantId: UUID,
+  configApiId: PublicId,
+): IssueTypeConfigDetails {
+  val now = OffsetDateTime.now(ZoneOffset.UTC)
+  val configId = UUID.randomUUID()
+  val statusId = UUID.randomUUID()
+  return IssueTypeConfigDetails(
+    config =
+      IssueTypeConfigRecord(
+        id = configId,
+        apiId = configApiId,
+        tenantId = tenantId,
+        scope = WorkItemConfigScope.TENANT,
+        projectId = null,
+        issueTypeId = UUID.randomUUID(),
+        issueTypeApiId = PublicId.new("typ"),
+        workflowId = UUID.randomUUID(),
+        workflowApiId = PublicId.new("wfl"),
+        version = 1,
+        nameOverride = null,
+        iconOverride = null,
+        colorOverride = null,
+        rank = 100,
+        isActive = true,
+        validFrom = now,
+        validTo = null,
+        createdBy = null,
+        createdAt = now,
+        updatedAt = now,
+        createFields =
+          kotlinx.serialization.json.Json.parseToJsonElement(
+              """
+              {
+                "version": 1,
+                "resource": "work_item",
+                "target": "create",
+                "fields": {
+                  "title": { "participation": "required" }
+                }
+              }
+              """
+                .trimIndent()
+            )
+            .let { it as JsonObject },
+      ),
+    statuses =
+      listOf(
+        IssueTypeConfigStatusRecord(
+          id = UUID.randomUUID(),
+          tenantId = tenantId,
+          issueTypeConfigId = configId,
+          statusId = statusId,
+          statusApiId = PublicId.new("sts"),
+          code = "todo",
+          name = "Todo",
+          statusGroup = WorkItemStatusGroup.TODO,
+          isInitial = true,
+          isTerminal = false,
+          rank = 100,
+        )
+      ),
     properties = emptyList(),
   )
 }

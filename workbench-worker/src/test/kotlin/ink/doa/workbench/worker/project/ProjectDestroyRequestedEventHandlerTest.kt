@@ -105,6 +105,78 @@ class ProjectDestroyRequestedEventHandlerTest :
 
       publisher.published shouldBe emptyList()
     }
+
+    "handle skips when project is missing" {
+      val tenant = sampleTenant()
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { projects.findByApiId(tenant.id, "prj_missing") } returns null
+
+      runBlocking {
+        handler.handle(
+          ProjectDestroyRequestedEvent(
+            tenantId = tenant.apiId.value,
+            projectId = "prj_missing",
+            requestedBy = "usr_missing",
+            deleteReason = null,
+            requestedAt = "2026-07-04T00:00:00Z",
+          )
+        )
+      }
+
+      publisher.published shouldBe emptyList()
+    }
+
+    "handle skips when actor is missing" {
+      val tenant = sampleTenant()
+      val project = sampleProject(tenant.id)
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { projects.findByApiId(tenant.id, project.apiId.value) } returns project
+      coEvery { users.findByApiId("usr_missing") } returns null
+
+      runBlocking {
+        handler.handle(
+          ProjectDestroyRequestedEvent(
+            tenantId = tenant.apiId.value,
+            projectId = project.apiId.value,
+            requestedBy = "usr_missing",
+            deleteReason = null,
+            requestedAt = "2026-07-04T00:00:00Z",
+          )
+        )
+      }
+
+      publisher.published shouldBe emptyList()
+    }
+
+    "handle skips publishing when destruction does not complete" {
+      val tenant = sampleTenant()
+      val project = sampleProject(tenant.id)
+      val actor = sampleUser()
+      val payload =
+        ProjectDestroyRequestedEvent(
+          tenantId = tenant.apiId.value,
+          projectId = project.apiId.value,
+          requestedBy = actor.apiId.value,
+          deleteReason = "cleanup",
+          requestedAt = "2026-07-04T00:00:00Z",
+        )
+
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { projects.findByApiId(tenant.id, project.apiId.value) } returns project
+      coEvery { users.findByApiId(actor.apiId.value) } returns actor
+      coEvery {
+        projectDestructionService.execute(
+          tenantId = tenant.id,
+          projectId = project.id,
+          deletedBy = actor.id,
+          deleteReason = "cleanup",
+        )
+      } returns false
+
+      runBlocking { handler.handle(payload) }
+
+      publisher.published shouldBe emptyList()
+    }
   })
 
 private fun sampleTenant(): TenantRecord =

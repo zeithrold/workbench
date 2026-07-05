@@ -51,4 +51,41 @@ class StaticPostgresWorkItemFieldResolverTest :
       field.identitySql shouldBe "pd.api_id = ? AND pd.code = ?"
       field.identityParams shouldBe listOf("fld_abc", "storyPoints")
     }
+
+    "resolves additional system fields" {
+      val assignee =
+        resolver.resolvePostgresField(QueryField.System("assignee")) as PostgresWorkItemField.System
+      assignee.definition.type shouldBe WorkItemQueryFieldType.USER
+      assignee.valueSql shouldContain "assignee.api_id"
+
+      val title =
+        resolver.resolvePostgresField(QueryField.System("title")) as PostgresWorkItemField.System
+      title.definition.sortable shouldBe true
+    }
+
+    "resolves property fields with all configured data types" {
+      val resolverWithTypes =
+        StaticPostgresWorkItemFieldResolver(
+          mapOf(
+            "owner" to WorkItemQueryFieldType.USER,
+            "linkedProject" to WorkItemQueryFieldType.PROJECT,
+            "linkedIssue" to WorkItemQueryFieldType.ISSUE,
+            "dueDate" to WorkItemQueryFieldType.DATE,
+          )
+        )
+      (resolverWithTypes.resolvePostgresField(QueryField.Property(apiId = null, code = "owner"))
+          as PostgresWorkItemField.Property)
+        .valueSql shouldContain "user_value.api_id"
+      (resolverWithTypes.resolvePostgresField(
+          QueryField.Property(apiId = null, code = "linkedProject")
+        ) as PostgresWorkItemField.Property)
+        .valueSql shouldContain "project_value.api_id"
+      (resolverWithTypes.resolvePostgresField(
+          QueryField.Property(apiId = null, code = "linkedIssue")
+        ) as PostgresWorkItemField.Property)
+        .valueSql shouldContain "issue_value.api_id"
+      (resolverWithTypes.resolvePostgresField(QueryField.Property(apiId = null, code = "dueDate"))
+          as PostgresWorkItemField.Property)
+        .valueSql shouldContain "ipv.value_date"
+    }
   })

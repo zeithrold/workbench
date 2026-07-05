@@ -9,6 +9,8 @@ import ink.doa.workbench.data.persistence.TenantsTable
 import ink.doa.workbench.data.support.seedUser
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -75,7 +77,9 @@ class ExposedWorkflowConfigurationRepositoryIntegrationTest :
           )
         val now = OffsetDateTime.now(ZoneOffset.UTC)
 
-        repository.publishWorkflow(tenantId, workflow.id, now).publishedAt shouldBe now
+        val published = repository.publishWorkflow(tenantId, workflow.id, now)
+        published.publishedAt.shouldNotBeNull()
+        published.publishedAt!!.toInstant().epochSecond shouldBe now.toInstant().epochSecond
       }
     }
 
@@ -136,6 +140,50 @@ class ExposedWorkflowConfigurationRepositoryIntegrationTest :
 
         repository.deactivateWorkflow(tenantId, workflow.apiId.value, actorId).isActive shouldBe
           false
+      }
+    }
+
+    "deactivateTransition marks transition inactive" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val catalog = ExposedWorkItemCatalogRepository(database)
+        val repository = ExposedWorkflowConfigurationRepository(database, catalog)
+        val workflow =
+          repository.createWorkflow(
+            CreateWorkflowCommand(tenantId = tenantId, code = "default", name = "Default")
+          )
+        val todo =
+          catalog.createStatus(
+            CreateIssueStatusCommand(
+              tenantId = tenantId,
+              code = "todo",
+              name = "To Do",
+              statusGroup = WorkItemStatusGroup.TODO,
+            )
+          )
+        val done =
+          catalog.createStatus(
+            CreateIssueStatusCommand(
+              tenantId = tenantId,
+              code = "done",
+              name = "Done",
+              statusGroup = WorkItemStatusGroup.DONE,
+              isTerminal = true,
+            )
+          )
+        val transition =
+          repository.createTransition(
+            CreateWorkflowTransitionCommand(
+              tenantId = tenantId,
+              workflowApiId = workflow.apiId.value,
+              name = "Complete",
+              fromStatusApiId = todo.apiId.value,
+              toStatusApiId = done.apiId.value,
+            )
+          )
+
+        repository.deactivateTransition(tenantId, transition.apiId.value).isActive shouldBe false
+        repository.findTransition(tenantId, transition.apiId.value).shouldBeNull()
       }
     }
   })

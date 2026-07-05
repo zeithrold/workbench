@@ -223,4 +223,57 @@ class TransitionFieldsParserTest :
         }
         .message shouldBe "Transition fields missing required field: fields"
     }
+
+    "rejects create target when parsing create fields" {
+      shouldThrow<InvalidRequestException> {
+          parser.parseCreateFields(
+            kotlinx.serialization.json.Json.parseToJsonElement(
+              """
+              {
+                "version": 1,
+                "resource": "work_item",
+                "target": "transition",
+                "fields": {}
+              }
+              """
+            )
+          )
+        }
+        .message shouldBe "Fields template target must be create."
+    }
+
+    "rejects invalid comment participation" {
+      shouldThrow<InvalidRequestException> {
+          parser.parse(
+            """
+            {
+              "version": 1,
+              "resource": "work_item",
+              "target": "transition",
+              "fields": {},
+              "comment": { "participation": "hidden" }
+            }
+            """
+              .trimIndent()
+          )
+        }
+        .message shouldBe "Unknown comment participation: hidden"
+    }
+
+    "rejects non-object field specs" {
+      shouldThrow<InvalidRequestException> {
+          parser.parse(
+            """
+            {
+              "version": 1,
+              "resource": "work_item",
+              "target": "transition",
+              "fields": { "title": "plain" }
+            }
+            """
+              .trimIndent()
+          )
+        }
+        .message shouldBe "Transition fields field spec must be an object."
+    }
   })

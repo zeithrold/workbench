@@ -1,5 +1,8 @@
 package ink.doa.workbench.security.identity.auth
 
+import ink.doa.workbench.core.common.errors.AuthenticationFailedException
+import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.AuthEventRepository
 import ink.doa.workbench.core.identity.LoginAccountStore
@@ -11,6 +14,7 @@ import ink.doa.workbench.core.identity.model.AuthEventType
 import ink.doa.workbench.core.identity.model.BearerTokenRecord
 import ink.doa.workbench.core.identity.model.CredentialType
 import ink.doa.workbench.core.identity.model.UserRecord
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -109,6 +113,107 @@ class BearerCredentialServiceTest :
       coEvery { users.findById(token.userId) } returns null
 
       runBlocking { service.authenticateBearerToken("orphan-token") }.shouldBeNull()
+    }
+
+    "createBearerToken throws when user is missing" {
+      val userId = UUID.randomUUID()
+      coEvery { users.findById(userId) } returns null
+
+      shouldThrow<InvalidRequestException> {
+          runBlocking {
+            service.createBearerToken(
+              userId = userId,
+              loginAccountId = UUID.randomUUID(),
+              tenantId = null,
+              name = null,
+              scopes = emptySet(),
+              ipAddress = null,
+              userAgent = null,
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND
+    }
+
+    "revokeBearerToken revokes active token and records auth event" {
+      val user = sampleUser()
+      val token = sampleBearerToken(user.id, UUID.randomUUID())
+      coEvery { credentialHasher.hash("active-token") } returns token.tokenHash
+      coEvery {
+        bearerTokens.findActiveByHash(token.tokenHash, OffsetDateTime.parse("2026-07-04T00:00:00Z"))
+      } returns token
+      coEvery {
+        bearerTokens.revoke(token.id, OffsetDateTime.parse("2026-07-04T00:00:00Z"))
+      } returns true
+
+      runBlocking {
+        service.revokeBearerToken("active-token", ipAddress = "127.0.0.1", userAgent = "test")
+      } shouldBe true
+
+      coVerify { authEvents.append(match { it.eventType == AuthEventType.TOKEN_REVOKED }) }
+    }
+
+    "revokeBearerTokenByApiId throws when token is missing" {
+      coEvery { bearerTokens.findByApiId("btk_missing") } returns null
+
+      shouldThrow<AuthenticationFailedException> {
+          runBlocking {
+            service.revokeBearerTokenByApiId(
+              tokenApiId = "btk_missing",
+              actorUserId = UUID.randomUUID(),
+              ipAddress = null,
+              userAgent = null,
+            )
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.AUTH_TOKEN_NOT_FOUND
+    }
+
+    "revokeBearerTokenByApiId revokes token owned by actor" {
+      val user = sampleUser()
+      val token = sampleBearerToken(user.id, UUID.randomUUID())
+      coEvery { bearerTokens.findByApiId(token.apiId.value) } returns token
+      coEvery { bearerTokens.findById(token.id) } returns token
+      coEvery {
+        bearerTokens.revoke(token.id, OffsetDateTime.parse("2026-07-04T00:00:00Z"))
+      } returns true
+
+      runBlocking {
+        service.revokeBearerTokenByApiId(
+          tokenApiId = token.apiId.value,
+          actorUserId = user.id,
+          ipAddress = "127.0.0.1",
+          userAgent = "test",
+        )
+      } shouldBe true
+    }
+
+    "revokeBearerTokenById returns false when actor does not own token" {
+      val token = sampleBearerToken(UUID.randomUUID(), UUID.randomUUID())
+      coEvery { bearerTokens.findById(token.id) } returns token
+
+      runBlocking {
+        service.revokeBearerTokenById(
+          tokenId = token.id,
+          actorUserId = UUID.randomUUID(),
+          ipAddress = null,
+          userAgent = null,
+        )
+      } shouldBe false
+    }
+
+    "revokeBearerTokenById returns false when token is missing" {
+      val tokenId = UUID.randomUUID()
+      coEvery { bearerTokens.findById(tokenId) } returns null
+
+      runBlocking {
+        service.revokeBearerTokenById(
+          tokenId = tokenId,
+          actorUserId = UUID.randomUUID(),
+          ipAddress = null,
+          userAgent = null,
+        )
+      } shouldBe false
     }
   })
 

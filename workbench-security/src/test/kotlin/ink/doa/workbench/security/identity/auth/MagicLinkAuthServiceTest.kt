@@ -1,6 +1,8 @@
 package ink.doa.workbench.security.identity.auth
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.LoginAccountStore
 import ink.doa.workbench.core.identity.LoginMethodRepository
 import ink.doa.workbench.core.identity.TenantLoginMethodSettingRepository
@@ -9,17 +11,26 @@ import ink.doa.workbench.core.identity.UserLoginAccountRepository
 import ink.doa.workbench.core.identity.auth.CredentialHasher
 import ink.doa.workbench.core.identity.auth.CredentialSecretGenerator
 import ink.doa.workbench.core.identity.auth.MagicLinkTokenRepository
+import ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord
+import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.core.identity.model.TenantLoginMethodSettingRecord
+import ink.doa.workbench.core.identity.model.TenantRecord
+import ink.doa.workbench.core.tenantconfig.model.MailSmtpTenantConfig
+import ink.doa.workbench.core.tenantconfig.model.TenantConfigSpecs
 import ink.doa.workbench.tenant.tenantconfig.TenantConfigService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
 
 class MagicLinkAuthServiceTest :
   StringSpec({
@@ -176,6 +187,226 @@ class MagicLinkAuthServiceTest :
 
       shouldThrow<InvalidRequestException> {
         runBlocking { service.resolveToken("valid-token") }
+      }
+    }
+
+    "resolveToken throws when linked user is missing" {
+      val loginMethodId = UUID.randomUUID()
+      val accountId = UUID.randomUUID()
+      val account =
+        ink.doa.workbench.core.identity.model.LoginAccountRecord(
+          id = accountId,
+          apiId = PublicId.new("lac"),
+          loginMethodId = loginMethodId,
+          subject = "ada@example.test",
+          normalizedSubject = "ada@example.test",
+          displayName = "Ada",
+          lastUsedAt = null,
+          disabledAt = null,
+          disabledBy = null,
+          createdAt = now,
+          updatedAt = now,
+        )
+      val tokenRecord =
+        ink.doa.workbench.core.identity.model.MagicLinkTokenRecord(
+          id = UUID.randomUUID(),
+          tokenHash = "hashed-valid",
+          loginMethodId = loginMethodId,
+          tenantId = UUID.randomUUID(),
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(10),
+          consumedAt = null,
+          createdAt = now,
+        )
+      coEvery { credentialHasher.hash("valid-token") } returns "hashed-valid"
+      coEvery { magicLinkTokens.findActiveByHash("hashed-valid", now) } returns tokenRecord
+      coEvery { magicLinkTokens.consume(tokenRecord.id, now) } returns true
+      coEvery { loginMethods.findLoginMethodById(loginMethodId) } returns
+        LoginMethodDefinitionRecord(
+          id = loginMethodId,
+          apiId = PublicId.new("lmd"),
+          code = "magic_link",
+          kind = LoginMethodKind.EMAIL_MAGIC_LINK,
+          name = "Magic Link",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery {
+        loginAccounts.findLoginAccountByMethodAndSubject("magic_link", "ada@example.test")
+      } returns account
+      coEvery { userLoginAccounts.findLinkedUser(accountId) } returns null
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.resolveToken("valid-token") }
+      }
+    }
+
+    "requestMagicLink rejects non magic link methods" {
+      val tenant =
+        TenantRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("ten"),
+          slug = "acme",
+          name = "Acme",
+        )
+      val method =
+        LoginMethodDefinitionRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("lmd"),
+          code = "password",
+          kind = LoginMethodKind.PASSWORD,
+          name = "Password",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { loginMethods.findLoginMethodByApiId(method.apiId.value) } returns method
+
+      shouldThrow<InvalidRequestException> {
+          runBlocking {
+            service.requestMagicLink("ada@example.test", tenant.apiId.value, method.apiId.value)
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.IDENTITY_LOGIN_METHOD_NOT_MAGIC_LINK
+    }
+
+    "requestMagicLink rejects disabled tenant setting" {
+      val tenantId = UUID.randomUUID()
+      val methodId = UUID.randomUUID()
+      val tenant =
+        TenantRecord(
+          id = tenantId,
+          apiId = PublicId.new("ten"),
+          slug = "acme",
+          name = "Acme",
+        )
+      val method =
+        LoginMethodDefinitionRecord(
+          id = methodId,
+          apiId = PublicId.new("lmd"),
+          code = "magic_link",
+          kind = LoginMethodKind.EMAIL_MAGIC_LINK,
+          name = "Magic Link",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { loginMethods.findLoginMethodByApiId(method.apiId.value) } returns method
+      coEvery { tenantLoginSettings.findTenantSetting(tenantId, methodId) } returns
+        TenantLoginMethodSettingRecord(
+          id = UUID.randomUUID(),
+          tenantId = tenantId,
+          loginMethodId = methodId,
+          isEnabled = false,
+          allowSignup = true,
+          displayOrder = 0,
+          config = JsonObject(emptyMap()),
+          secretRef = null,
+          createdBy = null,
+          updatedBy = null,
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      shouldThrow<InvalidRequestException> {
+          runBlocking {
+            service.requestMagicLink("ada@example.test", tenant.apiId.value, method.apiId.value)
+          }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.IDENTITY_MAGIC_LINK_DISABLED
+    }
+
+    "requestMagicLink creates token before attempting delivery" {
+      val tenantId = UUID.randomUUID()
+      val methodId = UUID.randomUUID()
+      val tenant =
+        TenantRecord(
+          id = tenantId,
+          apiId = PublicId.new("ten"),
+          slug = "acme",
+          name = "Acme",
+        )
+      val method =
+        LoginMethodDefinitionRecord(
+          id = methodId,
+          apiId = PublicId.new("lmd"),
+          code = "magic_link",
+          kind = LoginMethodKind.EMAIL_MAGIC_LINK,
+          name = "Magic Link",
+          isBuiltin = true,
+          isEnabledGlobally = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+      val setting =
+        TenantLoginMethodSettingRecord(
+          id = UUID.randomUUID(),
+          tenantId = tenantId,
+          loginMethodId = methodId,
+          isEnabled = true,
+          allowSignup = true,
+          displayOrder = 0,
+          config = JsonObject(emptyMap()),
+          secretRef = null,
+          createdBy = null,
+          updatedBy = null,
+          createdAt = now,
+          updatedAt = now,
+        )
+      coEvery { tenants.findByApiId(tenant.apiId.value) } returns tenant
+      coEvery { loginMethods.findLoginMethodByApiId(method.apiId.value) } returns method
+      coEvery { tenantLoginSettings.findTenantSetting(tenantId, methodId) } returns setting
+      coEvery { tenantConfig.get(tenantId, TenantConfigSpecs.MailSmtp) } returns
+        MailSmtpTenantConfig(
+          enabled = true,
+          fromAddress = "noreply@acme.test",
+          host = "127.0.0.1",
+          port = 1,
+          username = null,
+          passwordSecretRef = null,
+        )
+      coEvery { secretGenerator.generate() } returns "magic-secret"
+      coEvery { credentialHasher.hash("magic-secret") } returns "magic-hash"
+      coEvery {
+        magicLinkTokens.create(
+          tokenHash = "magic-hash",
+          loginMethodId = methodId,
+          tenantId = tenantId,
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(15),
+        )
+      } returns
+        ink.doa.workbench.core.identity.model.MagicLinkTokenRecord(
+          id = UUID.randomUUID(),
+          tokenHash = "magic-hash",
+          loginMethodId = methodId,
+          tenantId = tenantId,
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(15),
+          consumedAt = null,
+          createdAt = now,
+        )
+
+      shouldThrow<Exception> {
+        runBlocking {
+          service.requestMagicLink("Ada@Example.Test", tenant.apiId.value, method.apiId.value)
+        }
+      }
+
+      coVerify(exactly = 1) {
+        magicLinkTokens.create(
+          tokenHash = "magic-hash",
+          loginMethodId = methodId,
+          tenantId = tenantId,
+          normalizedSubject = "ada@example.test",
+          expiresAt = now.plusMinutes(15),
+        )
       }
     }
   })
