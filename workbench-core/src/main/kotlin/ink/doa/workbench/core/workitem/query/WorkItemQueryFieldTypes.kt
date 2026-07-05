@@ -8,6 +8,7 @@ data class WorkItemFieldDefinition(
   val field: QueryField,
   val type: WorkItemQueryFieldType,
   val sortable: Boolean,
+  val groupable: Boolean = false,
 )
 
 enum class WorkItemQueryFieldType(val supportedOperators: Set<QueryOperator>) {

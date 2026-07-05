@@ -53,14 +53,26 @@ class StaticPostgresWorkItemFieldResolver(
           field,
           resolvedType,
           sortable = resolvedType in SORTABLE_PROPERTY_TYPES,
+          groupable = resolvedType in GROUPABLE_PROPERTY_TYPES,
         ),
       valueSql = propertyValueColumn(resolvedType),
       identitySql = identityParts.joinToString(" AND "),
       identityParams = identityParams,
+      groupSql =
+        propertyGroupSql(identityParts.joinToString(" AND "), propertyValueColumn(resolvedType)),
     )
   }
 
   companion object {
+    private data class SystemFieldSpec(
+      val name: String,
+      val type: WorkItemQueryFieldType,
+      val valueSql: String,
+      val sortable: Boolean,
+      val groupable: Boolean = false,
+      val predicateCompiler: ((QueryOperator, QueryValue?) -> SqlFragment)? = null,
+    )
+
     private val SORTABLE_PROPERTY_TYPES =
       setOf(
         WorkItemQueryFieldType.TEXT,
@@ -73,116 +85,217 @@ class StaticPostgresWorkItemFieldResolver(
         WorkItemQueryFieldType.PROJECT,
       )
 
+    private val GROUPABLE_PROPERTY_TYPES =
+      setOf(WorkItemQueryFieldType.SINGLE_SELECT, WorkItemQueryFieldType.USER)
+
     private val SYSTEM_FIELDS =
       mapOf(
-        "id" to system("id", WorkItemQueryFieldType.ID, "i.id", sortable = false),
-        "apiId" to system("apiId", WorkItemQueryFieldType.TEXT, "i.api_id", sortable = false),
+        "id" to system(SystemFieldSpec("id", WorkItemQueryFieldType.ID, "i.id", sortable = false)),
+        "apiId" to
+          system(
+            SystemFieldSpec("apiId", WorkItemQueryFieldType.TEXT, "i.api_id", sortable = false)
+          ),
         "key" to
           system(
-            "key",
-            WorkItemQueryFieldType.TEXT,
-            "COALESCE(keya.issue_key, p.identifier || '-' || i.sequence_no)",
-            sortable = true,
+            SystemFieldSpec(
+              "key",
+              WorkItemQueryFieldType.TEXT,
+              "COALESCE(keya.issue_key, p.identifier || '-' || i.sequence_no)",
+              sortable = true,
+            )
           ),
-        "tenant" to system("tenant", WorkItemQueryFieldType.ID, "i.tenant_id", sortable = false),
+        "tenant" to
+          system(
+            SystemFieldSpec("tenant", WorkItemQueryFieldType.ID, "i.tenant_id", sortable = false)
+          ),
         "project" to
-          system("project", WorkItemQueryFieldType.PROJECT, "p.api_id", sortable = false),
+          system(
+            SystemFieldSpec("project", WorkItemQueryFieldType.PROJECT, "p.api_id", sortable = false)
+          ),
         "issueType" to
           system(
-            "issueType",
-            WorkItemQueryFieldType.SINGLE_SELECT,
-            "itype.api_id",
-            sortable = true,
+            SystemFieldSpec(
+              "issueType",
+              WorkItemQueryFieldType.SINGLE_SELECT,
+              "itype.api_id",
+              sortable = true,
+              groupable = true,
+            )
           ),
-        "title" to system("title", WorkItemQueryFieldType.TEXT, "i.title", sortable = true),
+        "title" to
+          system(SystemFieldSpec("title", WorkItemQueryFieldType.TEXT, "i.title", sortable = true)),
         "description" to
           system(
-            "description",
-            WorkItemQueryFieldType.TEXT,
-            "i.description_plain_text",
-            sortable = false,
+            SystemFieldSpec(
+              "description",
+              WorkItemQueryFieldType.TEXT,
+              "i.description_plain_text",
+              sortable = false,
+            )
           ),
         "status" to
-          system("status", WorkItemQueryFieldType.SINGLE_SELECT, "st.api_id", sortable = true),
+          system(
+            SystemFieldSpec(
+              "status",
+              WorkItemQueryFieldType.SINGLE_SELECT,
+              "st.api_id",
+              sortable = true,
+              groupable = true,
+            )
+          ),
         "statusGroup" to
           system(
-            "statusGroup",
-            WorkItemQueryFieldType.SINGLE_SELECT,
-            "st.status_group",
-            sortable = true,
+            SystemFieldSpec(
+              "statusGroup",
+              WorkItemQueryFieldType.SINGLE_SELECT,
+              "st.status_group",
+              sortable = true,
+              groupable = true,
+            )
           ),
         "priority" to
-          system("priority", WorkItemQueryFieldType.SINGLE_SELECT, "pri.api_id", sortable = true),
+          system(
+            SystemFieldSpec(
+              "priority",
+              WorkItemQueryFieldType.SINGLE_SELECT,
+              "pri.api_id",
+              sortable = true,
+              groupable = true,
+            )
+          ),
         "reporter" to
-          system("reporter", WorkItemQueryFieldType.USER, "reporter.api_id", sortable = true),
+          system(
+            SystemFieldSpec(
+              "reporter",
+              WorkItemQueryFieldType.USER,
+              "reporter.api_id",
+              sortable = true,
+              groupable = true,
+            )
+          ),
         "assignee" to
-          system("assignee", WorkItemQueryFieldType.USER, "assignee.api_id", sortable = true),
-        "sprint" to system("sprint", WorkItemQueryFieldType.ID, "sprint.api_id", sortable = true),
+          system(
+            SystemFieldSpec(
+              "assignee",
+              WorkItemQueryFieldType.USER,
+              "assignee.api_id",
+              sortable = true,
+              groupable = true,
+            )
+          ),
+        "sprint" to
+          system(
+            SystemFieldSpec(
+              "sprint",
+              WorkItemQueryFieldType.ID,
+              "sprint.api_id",
+              sortable = true,
+              groupable = true,
+            )
+          ),
         "createdBy" to
           system(
-            "createdBy",
-            WorkItemQueryFieldType.USER,
-            "created_by_user.api_id",
-            sortable = false,
+            SystemFieldSpec(
+              "createdBy",
+              WorkItemQueryFieldType.USER,
+              "created_by_user.api_id",
+              sortable = false,
+            )
           ),
         "updatedBy" to
           system(
-            "updatedBy",
-            WorkItemQueryFieldType.USER,
-            "updated_by_user.api_id",
-            sortable = false,
+            SystemFieldSpec(
+              "updatedBy",
+              WorkItemQueryFieldType.USER,
+              "updated_by_user.api_id",
+              sortable = false,
+            )
           ),
         "createdAt" to
-          system("createdAt", WorkItemQueryFieldType.DATETIME, "i.created_at", sortable = true),
+          system(
+            SystemFieldSpec(
+              "createdAt",
+              WorkItemQueryFieldType.DATETIME,
+              "i.created_at",
+              sortable = true,
+            )
+          ),
         "updatedAt" to
-          system("updatedAt", WorkItemQueryFieldType.DATETIME, "i.updated_at", sortable = true),
+          system(
+            SystemFieldSpec(
+              "updatedAt",
+              WorkItemQueryFieldType.DATETIME,
+              "i.updated_at",
+              sortable = true,
+            )
+          ),
         "archivedAt" to
-          system("archivedAt", WorkItemQueryFieldType.DATETIME, "i.archived_at", sortable = false),
+          system(
+            SystemFieldSpec(
+              "archivedAt",
+              WorkItemQueryFieldType.DATETIME,
+              "i.archived_at",
+              sortable = false,
+            )
+          ),
         "deletedAt" to
-          system("deletedAt", WorkItemQueryFieldType.DATETIME, "i.deleted_at", sortable = false),
+          system(
+            SystemFieldSpec(
+              "deletedAt",
+              WorkItemQueryFieldType.DATETIME,
+              "i.deleted_at",
+              sortable = false,
+            )
+          ),
         "parent" to
           system(
-            "parent",
-            WorkItemQueryFieldType.ISSUE,
-            """
-            (
-              SELECT parent_issue.api_id
-              FROM issue_hierarchy ih
-              JOIN issues parent_issue ON parent_issue.id = ih.parent_issue_id
-              WHERE ih.child_issue_id = i.id
+            SystemFieldSpec(
+              "parent",
+              WorkItemQueryFieldType.ISSUE,
+              """
+              (
+                SELECT parent_issue.api_id
+                FROM issue_hierarchy ih
+                JOIN issues parent_issue ON parent_issue.id = ih.parent_issue_id
+                WHERE ih.child_issue_id = i.id
+              )
+              """
+                .trimIndent(),
+              sortable = false,
             )
-            """
-              .trimIndent(),
-            sortable = false,
           ),
         "children.count" to
           system(
-            "children.count",
-            WorkItemQueryFieldType.NUMBER,
-            "(SELECT COUNT(*) FROM issue_hierarchy child_ih WHERE child_ih.parent_issue_id = i.id)",
-            sortable = false,
+            SystemFieldSpec(
+              "children.count",
+              WorkItemQueryFieldType.NUMBER,
+              "(SELECT COUNT(*) FROM issue_hierarchy child_ih WHERE child_ih.parent_issue_id = i.id)",
+              sortable = false,
+            )
           ),
         "children.issueType" to
           system(
-            "children.issueType",
-            WorkItemQueryFieldType.SINGLE_SELECT,
-            "NULL",
-            sortable = false,
-            predicateCompiler = ::childrenIssueTypePredicate,
+            SystemFieldSpec(
+              "children.issueType",
+              WorkItemQueryFieldType.SINGLE_SELECT,
+              "NULL",
+              sortable = false,
+              predicateCompiler = ::childrenIssueTypePredicate,
+            )
           ),
       )
 
-    private fun system(
-      name: String,
-      type: WorkItemQueryFieldType,
-      valueSql: String,
-      sortable: Boolean,
-      predicateCompiler: ((QueryOperator, QueryValue?) -> SqlFragment)? = null,
-    ) =
+    private fun system(spec: SystemFieldSpec) =
       PostgresWorkItemField.System(
-        definition = WorkItemFieldDefinition(QueryField.System(name), type, sortable),
-        valueSql = valueSql,
-        predicateCompiler = predicateCompiler,
+        definition =
+          WorkItemFieldDefinition(
+            QueryField.System(spec.name),
+            spec.type,
+            sortable = spec.sortable,
+            groupable = spec.groupable,
+          ),
+        valueSql = spec.valueSql,
+        predicateCompiler = spec.predicateCompiler,
       )
 
     private fun childrenIssueTypePredicate(op: QueryOperator, value: QueryValue?): SqlFragment =
@@ -272,5 +385,23 @@ class StaticPostgresWorkItemFieldResolver(
         WorkItemQueryFieldType.ISSUE -> "issue_value.api_id"
         WorkItemQueryFieldType.ID -> "ipv.value_text"
       }
+
+    private fun propertyGroupSql(identitySql: String, valueSql: String): String =
+      """
+      (
+        SELECT $valueSql
+        FROM issue_property_values ipv
+        JOIN property_definitions pd ON pd.id = ipv.property_id
+        LEFT JOIN property_options option_value ON option_value.id = ipv.value_option_id
+        LEFT JOIN users user_value ON user_value.id = ipv.value_user_id
+        LEFT JOIN projects project_value ON project_value.id = ipv.value_project_id
+        LEFT JOIN issues issue_value ON issue_value.id = ipv.value_issue_id
+        WHERE ipv.issue_id = i.id
+          AND ipv.tenant_id = i.tenant_id
+          AND $identitySql
+        LIMIT 1
+      )
+      """
+        .trimIndent()
   }
 }

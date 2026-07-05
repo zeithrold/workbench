@@ -25,9 +25,7 @@ data class WorkItemViewView(
   val visibility: WorkItemViewVisibility,
   val owner: UserSummary,
   val project: ProjectSummary?,
-  val filter: JsonElement,
-  val sort: JsonElement,
-  val group: JsonElement,
+  val query: JsonElement,
   val displayFields: JsonElement,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
@@ -75,9 +73,7 @@ class WorkItemViewService(
     val nextVisibility = command.visibility ?: existing.visibility
     validator.validateVisibility(command.projectId, nextVisibility)
     validator.validateLayout(
-      filterAst = command.filterAst ?: existing.filterAst,
-      sortAst = command.sortAst ?: existing.sortAst,
-      groupAst = command.groupAst ?: existing.groupAst,
+      queryAst = command.queryAst ?: existing.queryAst,
       displayFields = command.displayFields ?: existing.displayFields,
     )
     return assemble(views.update(command))
@@ -92,9 +88,7 @@ class WorkItemViewService(
   private fun validateLayout(command: CreateWorkItemViewCommand) {
     validator.validateVisibility(command.projectId, command.visibility)
     validator.validateLayout(
-      filterAst = command.filterAst,
-      sortAst = command.sortAst,
-      groupAst = command.groupAst,
+      queryAst = command.queryAst,
       displayFields = command.displayFields,
     )
   }
@@ -123,9 +117,7 @@ class WorkItemViewService(
       visibility = record.visibility,
       owner = owner,
       project = project,
-      filter = record.filterAst,
-      sort = record.sortAst,
-      group = record.groupAst,
+      query = record.queryAst,
       displayFields = record.displayFields,
       createdAt = record.createdAt,
       updatedAt = record.updatedAt,

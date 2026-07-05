@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package ink.doa.workbench.core.workitem.query
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -34,6 +36,7 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
         resource = obj.requiredString("resource"),
         where = obj["where"]?.let(::parseCondition),
         sort = obj["sort"]?.let(::parseSort).orEmpty(),
+        group = obj["group"]?.let(::parseGroup),
       )
     WorkItemQueryValidator().validateEnvelope(query)
     return query
@@ -86,6 +89,40 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     }
 
   fun parseField(element: JsonElement): QueryField = parseFieldInternal(element)
+
+  fun parseGroupKey(element: JsonElement): WorkItemGroupKey {
+    val predicate = parseCondition(element)
+    if (predicate !is ConditionNode.Predicate) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_GROUP_KEY_OPERATOR_UNSUPPORTED,
+        "Work item group key must be a predicate.",
+      )
+    }
+    return predicate
+  }
+
+  fun parseGroupScope(element: JsonElement): WorkItemSearchGroupScope {
+    val obj = element.asObject("scope")
+    return WorkItemSearchGroupScope(
+      includeGroupKeys =
+        obj["includeGroupKeys"]?.asArray("includeGroupKeys")?.map(::parseGroupKey).orEmpty(),
+      excludeGroupKeys =
+        obj["excludeGroupKeys"]?.asArray("excludeGroupKeys")?.map(::parseGroupKey).orEmpty(),
+    )
+  }
+
+  private fun parseGroup(element: JsonElement): WorkItemGroupTerm {
+    val obj = element.asObject("group")
+    val direction =
+      obj["direction"]?.let {
+        SortDirection.fromWireName(it.asString("group direction"))
+          ?: throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_SORT_DIRECTION_UNKNOWN,
+            "Unknown work item group direction: ${it.asString("group direction")}",
+          )
+      } ?: SortDirection.ASC
+    return WorkItemGroupTerm(field = parseField(obj.required("field")), direction = direction)
+  }
 
   private fun parseFieldInternal(element: JsonElement): QueryField =
     when (element) {

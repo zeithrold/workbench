@@ -2,11 +2,17 @@ package ink.doa.workbench.core.workitem.query
 
 import kotlinx.serialization.json.JsonElement
 
+data class WorkItemGroupTerm(
+  val field: QueryField,
+  val direction: SortDirection = SortDirection.ASC,
+)
+
 data class WorkItemQuery(
   val version: Int = 1,
   val resource: String = RESOURCE,
   val where: ConditionNode? = null,
   val sort: List<SortTerm> = emptyList(),
+  val group: WorkItemGroupTerm? = null,
 ) {
   companion object {
     const val RESOURCE = "work_item"

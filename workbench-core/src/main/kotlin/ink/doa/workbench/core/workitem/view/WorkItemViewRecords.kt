@@ -15,9 +15,7 @@ data class WorkItemViewRecord(
   val name: String,
   val description: String?,
   val visibility: WorkItemViewVisibility,
-  val filterAst: JsonElement,
-  val sortAst: JsonElement,
-  val groupAst: JsonElement,
+  val queryAst: JsonElement,
   val displayFields: JsonElement,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
@@ -30,9 +28,7 @@ data class CreateWorkItemViewCommand(
   val name: String,
   val description: String?,
   val visibility: WorkItemViewVisibility,
-  val filterAst: JsonElement,
-  val sortAst: JsonElement,
-  val groupAst: JsonElement,
+  val queryAst: JsonElement,
   val displayFields: JsonElement,
 )
 
@@ -44,9 +40,7 @@ data class UpdateWorkItemViewCommand(
   val name: String? = null,
   val description: String? = null,
   val visibility: WorkItemViewVisibility? = null,
-  val filterAst: JsonElement? = null,
-  val sortAst: JsonElement? = null,
-  val groupAst: JsonElement? = null,
+  val queryAst: JsonElement? = null,
   val displayFields: JsonElement? = null,
 )
 

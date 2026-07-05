@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.serialization.json.Json
 
 class WorkItemQueryParserTest :
   StringSpec({
@@ -456,5 +457,38 @@ class WorkItemQueryParserTest :
           )
         }
         .message shouldBe "Work item query missing required field: resource"
+    }
+
+    "parses group term and group scope" {
+      val query =
+        parser.parse(
+          """
+          {
+            "version": 1,
+            "resource": "work_item",
+            "group": { "field": "statusGroup", "direction": "asc" }
+          }
+          """
+            .trimIndent()
+        )
+
+      query.group shouldBe
+        WorkItemGroupTerm(field = QueryField.System("statusGroup"), direction = SortDirection.ASC)
+
+      val scope =
+        parser.parseGroupScope(
+          Json.parseToJsonElement(
+            """
+            {
+              "includeGroupKeys": [
+                { "field": "statusGroup", "op": "eq", "value": "todo" }
+              ]
+            }
+            """
+              .trimIndent()
+          )
+        )
+
+      scope.includeGroupKeys.single().op shouldBe QueryOperator.EQ
     }
   })

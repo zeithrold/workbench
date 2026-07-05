@@ -67,9 +67,7 @@ class ProjectWorkItemViewController(private val viewService: WorkItemViewService
           name = request.name,
           description = request.description,
           visibility = request.visibilityEnum(),
-          filterAst = request.filter.toJsonElement(WorkItemViewDefaults.EMPTY_FILTER),
-          sortAst = request.sort.toJsonElement(WorkItemViewDefaults.EMPTY_SORT),
-          groupAst = request.group.toJsonElement(WorkItemViewDefaults.EMPTY_GROUP),
+          queryAst = request.query.toJsonElement(WorkItemViewDefaults.EMPTY_QUERY),
           displayFields =
             request.displayFields.toJsonElement(WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS),
         )
@@ -123,9 +121,7 @@ class ProjectWorkItemViewController(private val viewService: WorkItemViewService
           name = request.name,
           description = request.description,
           visibility = request.visibilityEnum(),
-          filterAst = request.filter?.toJsonElement(),
-          sortAst = request.sort?.toJsonElement(),
-          groupAst = request.group?.toJsonElement(),
+          queryAst = request.query?.toJsonElement(),
           displayFields = request.displayFields?.toJsonElement(),
         )
       )
@@ -188,9 +184,7 @@ class TenantWorkItemViewController(private val viewService: WorkItemViewService)
           name = request.name,
           description = request.description,
           visibility = request.visibilityEnum(),
-          filterAst = request.filter.toJsonElement(WorkItemViewDefaults.EMPTY_FILTER),
-          sortAst = request.sort.toJsonElement(WorkItemViewDefaults.EMPTY_SORT),
-          groupAst = request.group.toJsonElement(WorkItemViewDefaults.EMPTY_GROUP),
+          queryAst = request.query.toJsonElement(WorkItemViewDefaults.EMPTY_QUERY),
           displayFields =
             request.displayFields.toJsonElement(WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS),
         )
@@ -232,9 +226,7 @@ class TenantWorkItemViewController(private val viewService: WorkItemViewService)
           name = request.name,
           description = request.description,
           visibility = request.visibilityEnum(),
-          filterAst = request.filter?.toJsonElement(),
-          sortAst = request.sort?.toJsonElement(),
-          groupAst = request.group?.toJsonElement(),
+          queryAst = request.query?.toJsonElement(),
           displayFields = request.displayFields?.toJsonElement(),
         )
       )

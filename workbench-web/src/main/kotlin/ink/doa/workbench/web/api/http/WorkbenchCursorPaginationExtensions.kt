@@ -12,3 +12,13 @@ fun <T : Any> ResponseEntity.BodyBuilder.headersIfNext(
   }
   return ResponseEntity.ok().header(WORKBENCH_NEXT_CURSOR_HEADER, nextCursor.encode()).body(body)
 }
+
+fun <T : Any> ResponseEntity.BodyBuilder.headersIfNextToken(
+  nextCursorToken: String?,
+  body: T,
+): ResponseEntity<T> {
+  if (nextCursorToken == null) {
+    return ResponseEntity.ok(body)
+  }
+  return ResponseEntity.ok().header(WORKBENCH_NEXT_CURSOR_HEADER, nextCursorToken).body(body)
+}

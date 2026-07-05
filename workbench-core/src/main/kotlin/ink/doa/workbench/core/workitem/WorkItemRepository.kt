@@ -1,6 +1,8 @@
 package ink.doa.workbench.core.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
@@ -8,8 +10,10 @@ import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemSearchPage
+import ink.doa.workbench.core.workitem.model.WorkItemSearchGroupsPage
+import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
+import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 
@@ -75,8 +79,15 @@ interface WorkItemQueryRepository {
   suspend fun search(
     scope: WorkItemSearchScope,
     query: WorkItemQuery,
+    groupScope: WorkItemSearchGroupScope = WorkItemSearchGroupScope(),
     page: WorkItemSearchPageRequest = WorkItemSearchPageRequest(),
-  ): WorkItemSearchPage
+  ): WorkItemSearchResult
+
+  suspend fun searchGroups(
+    scope: WorkItemSearchScope,
+    query: WorkItemQuery,
+    page: WorkItemSearchGroupsPageRequest = WorkItemSearchGroupsPageRequest(),
+  ): WorkItemSearchGroupsPage
 }
 
 data class WorkItemSearchScope(
@@ -88,10 +99,18 @@ data class WorkItemSearchScope(
 
 data class WorkItemSearchPageRequest(
   val limit: Int = 50,
-  val offset: Long = 0,
+  val cursor: WorkItemSearchCursor? = null,
 ) {
   init {
     require(limit in 1..200) { "Work item search limit must be between 1 and 200." }
-    require(offset >= 0) { "Work item search offset must not be negative." }
+  }
+}
+
+data class WorkItemSearchGroupsPageRequest(
+  val groupLimit: Int = 20,
+  val groupCursor: WorkItemSearchGroupCursor? = null,
+) {
+  init {
+    require(groupLimit in 1..50) { "Work item search group limit must be between 1 and 50." }
   }
 }

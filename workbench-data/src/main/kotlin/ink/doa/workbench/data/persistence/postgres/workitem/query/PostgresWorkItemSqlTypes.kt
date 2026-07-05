@@ -15,15 +15,38 @@ data class PostgresWorkItemQueryPlan(
   val params: List<Any?>,
 )
 
+data class PostgresWorkItemSearchPlan(
+  val fromSql: String,
+  val where: SqlFragment,
+  val orderBySql: String,
+  val sortStack: List<PostgresSortSpec>,
+  val params: List<Any?>,
+  val sortParams: List<Any?>,
+)
+
+data class PostgresWorkItemGroupsPlan(
+  val fromSql: String,
+  val where: SqlFragment,
+  val groupSql: String,
+  val groupParams: List<Any?>,
+  val orderDirection: String,
+  val nullsClause: String,
+  val fetchLimit: Int,
+  val params: List<Any?>,
+  val cursorPredicate: SqlFragment?,
+)
+
 sealed interface PostgresWorkItemField {
   val definition: WorkItemFieldDefinition
   val valueSql: String
   val sortSql: String
+  val groupSql: String
 
   data class System(
     override val definition: WorkItemFieldDefinition,
     override val valueSql: String,
     override val sortSql: String = valueSql,
+    override val groupSql: String = sortSql,
     val predicateCompiler: ((QueryOperator, QueryValue?) -> SqlFragment)? = null,
   ) : PostgresWorkItemField
 
@@ -32,7 +55,8 @@ sealed interface PostgresWorkItemField {
     override val valueSql: String,
     val identitySql: String,
     val identityParams: List<Any?>,
+    override val groupSql: String,
   ) : PostgresWorkItemField {
-    override val sortSql: String = valueSql
+    override val sortSql: String = groupSql
   }
 }

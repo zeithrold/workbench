@@ -15,33 +15,49 @@ object BuiltInWorkItemQueryFieldResolver : WorkItemQueryFieldResolver {
           WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_UNKNOWN,
           "Unknown work item query field: $name",
         )
-    return WorkItemFieldDefinition(field, definition.first, definition.second)
+    return WorkItemFieldDefinition(
+      field = field,
+      type = definition.type,
+      sortable = definition.sortable,
+      groupable = definition.groupable,
+    )
   }
+
+  private data class SystemFieldMeta(
+    val type: WorkItemQueryFieldType,
+    val sortable: Boolean,
+    val groupable: Boolean = false,
+  )
 
   private val SYSTEM_FIELDS =
     mapOf(
-      "id" to (WorkItemQueryFieldType.ID to false),
-      "apiId" to (WorkItemQueryFieldType.TEXT to false),
-      "key" to (WorkItemQueryFieldType.TEXT to true),
-      "tenant" to (WorkItemQueryFieldType.ID to false),
-      "project" to (WorkItemQueryFieldType.PROJECT to false),
-      "issueType" to (WorkItemQueryFieldType.SINGLE_SELECT to true),
-      "title" to (WorkItemQueryFieldType.TEXT to true),
-      "description" to (WorkItemQueryFieldType.LONG_TEXT to false),
-      "status" to (WorkItemQueryFieldType.SINGLE_SELECT to true),
-      "statusGroup" to (WorkItemQueryFieldType.SINGLE_SELECT to true),
-      "priority" to (WorkItemQueryFieldType.SINGLE_SELECT to true),
-      "reporter" to (WorkItemQueryFieldType.USER to true),
-      "assignee" to (WorkItemQueryFieldType.USER to true),
-      "sprint" to (WorkItemQueryFieldType.ID to true),
-      "createdBy" to (WorkItemQueryFieldType.USER to false),
-      "updatedBy" to (WorkItemQueryFieldType.USER to false),
-      "createdAt" to (WorkItemQueryFieldType.DATETIME to true),
-      "updatedAt" to (WorkItemQueryFieldType.DATETIME to true),
-      "archivedAt" to (WorkItemQueryFieldType.DATETIME to false),
-      "deletedAt" to (WorkItemQueryFieldType.DATETIME to false),
-      "parent" to (WorkItemQueryFieldType.ISSUE to false),
-      "children.count" to (WorkItemQueryFieldType.NUMBER to false),
-      "children.issueType" to (WorkItemQueryFieldType.SINGLE_SELECT to false),
+      "id" to SystemFieldMeta(WorkItemQueryFieldType.ID, sortable = false),
+      "apiId" to SystemFieldMeta(WorkItemQueryFieldType.TEXT, sortable = false),
+      "key" to SystemFieldMeta(WorkItemQueryFieldType.TEXT, sortable = true),
+      "tenant" to SystemFieldMeta(WorkItemQueryFieldType.ID, sortable = false),
+      "project" to SystemFieldMeta(WorkItemQueryFieldType.PROJECT, sortable = false),
+      "issueType" to
+        SystemFieldMeta(WorkItemQueryFieldType.SINGLE_SELECT, sortable = true, groupable = true),
+      "title" to SystemFieldMeta(WorkItemQueryFieldType.TEXT, sortable = true),
+      "description" to SystemFieldMeta(WorkItemQueryFieldType.LONG_TEXT, sortable = false),
+      "status" to
+        SystemFieldMeta(WorkItemQueryFieldType.SINGLE_SELECT, sortable = true, groupable = true),
+      "statusGroup" to
+        SystemFieldMeta(WorkItemQueryFieldType.SINGLE_SELECT, sortable = true, groupable = true),
+      "priority" to
+        SystemFieldMeta(WorkItemQueryFieldType.SINGLE_SELECT, sortable = true, groupable = true),
+      "reporter" to SystemFieldMeta(WorkItemQueryFieldType.USER, sortable = true, groupable = true),
+      "assignee" to SystemFieldMeta(WorkItemQueryFieldType.USER, sortable = true, groupable = true),
+      "sprint" to SystemFieldMeta(WorkItemQueryFieldType.ID, sortable = true, groupable = true),
+      "createdBy" to SystemFieldMeta(WorkItemQueryFieldType.USER, sortable = false),
+      "updatedBy" to SystemFieldMeta(WorkItemQueryFieldType.USER, sortable = false),
+      "createdAt" to SystemFieldMeta(WorkItemQueryFieldType.DATETIME, sortable = true),
+      "updatedAt" to SystemFieldMeta(WorkItemQueryFieldType.DATETIME, sortable = true),
+      "archivedAt" to SystemFieldMeta(WorkItemQueryFieldType.DATETIME, sortable = false),
+      "deletedAt" to SystemFieldMeta(WorkItemQueryFieldType.DATETIME, sortable = false),
+      "parent" to SystemFieldMeta(WorkItemQueryFieldType.ISSUE, sortable = false),
+      "children.count" to SystemFieldMeta(WorkItemQueryFieldType.NUMBER, sortable = false),
+      "children.issueType" to
+        SystemFieldMeta(WorkItemQueryFieldType.SINGLE_SELECT, sortable = false),
     )
 }

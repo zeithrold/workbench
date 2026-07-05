@@ -76,8 +76,33 @@ DELETE /api/projects/{id}         → 204 (empty)
 
 ```
 POST /api/projects/prj_01J…/work-items/search
-{"where": {"status": "OPEN"}, "sort": ["-createdAt"], "limit": 50}
-→ 200 List<WorkItemResponse>
+{
+  "query": {
+    "version": 1,
+    "resource": "work_item",
+    "where": { "field": "statusGroup", "op": "eq", "value": "todo" },
+    "sort": [{ "field": "updatedAt", "direction": "desc" }],
+    "group": { "field": "statusGroup", "direction": "asc" }
+  },
+  "scope": {
+    "excludeGroupKeys": [{ "field": "statusGroup", "op": "eq", "value": "done" }]
+  },
+  "limit": 50,
+  "cursor": null
+}
+→ 200 List<WorkItemSearchHitResponse>
+   Header: X-Workbench-Next-Cursor (when more results exist)
+
+POST /api/projects/prj_01J…/work-items/search/groups
+{
+  "query": {
+    "version": 1,
+    "resource": "work_item",
+    "group": { "field": "statusGroup", "direction": "asc" }
+  },
+  "groupLimit": 20
+}
+→ 200 { "groups": [...], "groupsPage": { "limit", "truncated", "nextGroupCursor" } }
 ```
 
 **Business action** — domain command, not a simple PATCH:

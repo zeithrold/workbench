@@ -1,7 +1,11 @@
 package ink.doa.workbench.core.workitem.model
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
 import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
+import ink.doa.workbench.core.workitem.query.WorkItemGroupKey
+import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
@@ -162,20 +166,9 @@ data class WorkItemResponse(
   }
 }
 
-data class WorkItemSearchPage(
-  val result: WorkItemSearchResult,
-  val page: WorkItemSearchPageInfo,
-)
-
 data class WorkItemSearchResult(
   val hits: List<WorkItemSearchHit>,
-  val total: Long?,
-)
-
-data class WorkItemSearchPageInfo(
-  val limit: Int,
-  val offset: Long,
-  val nextOffset: Long?,
+  val nextCursor: WorkItemSearchCursor?,
 )
 
 data class WorkItemSearchHit(
@@ -195,7 +188,18 @@ data class WorkItemSearchHit(
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
   val properties: JsonObject,
-  val sortCursor: WorkItemSearchSortCursor? = null,
+  val groupKey: WorkItemGroupKey? = null,
+  val groupLabel: WorkItemGroupLabel? = null,
 )
 
-data class WorkItemSearchSortCursor(val values: JsonObject)
+data class WorkItemSearchGroupBucket(
+  val key: WorkItemGroupKey,
+  val label: WorkItemGroupLabel,
+  val count: Long,
+)
+
+data class WorkItemSearchGroupsPage(
+  val groups: List<WorkItemSearchGroupBucket>,
+  val nextGroupCursor: WorkItemSearchGroupCursor?,
+  val truncated: Boolean,
+)

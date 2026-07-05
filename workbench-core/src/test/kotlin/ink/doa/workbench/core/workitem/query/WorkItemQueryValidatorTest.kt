@@ -208,4 +208,36 @@ class WorkItemQueryValidatorTest :
         )
       )
     }
+
+    "accepts groupable group field" {
+      validator.validate(
+        WorkItemQuery(group = WorkItemGroupTerm(field = QueryField.System("statusGroup")))
+      )
+    }
+
+    "rejects non-groupable group field" {
+      shouldThrow<InvalidRequestException> {
+          validator.validate(
+            WorkItemQuery(group = WorkItemGroupTerm(field = QueryField.System("title")))
+          )
+        }
+        .message shouldBe "Field title is not groupable."
+    }
+
+    "rejects group scope without query group" {
+      val key =
+        ConditionNode.Predicate(
+          field = QueryField.System("statusGroup"),
+          op = QueryOperator.EQ,
+          value = QueryValue.Literal(JsonPrimitive("todo")),
+        )
+
+      shouldThrow<InvalidRequestException> {
+          validator.validate(
+            WorkItemQuery(),
+            WorkItemSearchGroupScope(includeGroupKeys = listOf(key)),
+          )
+        }
+        .message shouldBe "Work item query group is required when search scope includes group keys."
+    }
   })
