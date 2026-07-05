@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.workitem
 
-import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
 import ink.doa.workbench.core.workitem.query.QueryOperator
 import ink.doa.workbench.core.workitem.query.QueryValue
+import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
 
 data class SqlFragment(val sql: String, val params: List<Any?> = emptyList()) {
   fun parenthesized(): SqlFragment = copy(sql = "($sql)")

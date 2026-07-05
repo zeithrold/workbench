@@ -82,6 +82,54 @@ class ExposedWorkItemRepositoryIntegrationTest :
       }
     }
 
+    "create with parent persists hierarchy link" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val repository = ExposedWorkItemRepository(database)
+        val parent =
+          repository.create(
+            CreateWorkItemCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              issueTypeApiId = stack.issueType.apiId.value,
+              title = "Parent issue",
+              description = null,
+              reporterId = stack.actorId,
+              actorUserId = stack.actorId,
+            ),
+            issueTypeId = stack.issueType.id,
+            issueTypeConfigId = stack.config.config.id,
+            initialStatusId = stack.todoStatus.id,
+            propertyValues = emptyList(),
+          )
+
+        val child =
+          repository.create(
+            CreateWorkItemCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              issueTypeApiId = stack.issueType.apiId.value,
+              title = "Child issue",
+              description = null,
+              reporterId = stack.actorId,
+              actorUserId = stack.actorId,
+            ),
+            issueTypeId = stack.issueType.id,
+            issueTypeConfigId = stack.config.config.id,
+            initialStatusId = stack.todoStatus.id,
+            propertyValues = emptyList(),
+            parentIssueId = parent.workItem.id,
+          )
+
+        child.workItem.title shouldBe "Child issue"
+        repository.countChildrenNotInStatusGroups(
+          stack.tenantId,
+          parent.workItem.id,
+          setOf("done"),
+        ) shouldBe 1
+      }
+    }
+
     "transition updates status and records history" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)

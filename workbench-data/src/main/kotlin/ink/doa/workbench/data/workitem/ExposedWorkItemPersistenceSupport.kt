@@ -25,6 +25,19 @@ import org.jetbrains.exposed.v1.jdbc.update
 
 internal data class ProjectRow(val id: UUID, val identifier: String)
 
+internal data class PreparedWorkItemInsert(
+  val issueId: UUID,
+  val issueApiId: PublicId,
+  val key: String,
+  val project: ProjectRow,
+  val priorityId: UUID?,
+  val assigneeId: UUID?,
+  val sprintId: UUID?,
+  val snapshot: JsonObject,
+  val sequence: Long,
+  val now: OffsetDateTime,
+)
+
 internal data class StatusRow(val apiId: PublicId, val group: String)
 
 internal fun now(): OffsetDateTime = OffsetDateTime.now(ZoneOffset.UTC)

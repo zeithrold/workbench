@@ -9,10 +9,10 @@ import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
@@ -246,6 +246,93 @@ class WorkItemServiceCrudTest :
 
       coVerify { repository.create(any(), any(), any(), any(), any(), parent.id) }
     }
+
+    "create throws when parent work item is missing" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val config = configDetailsWithInitialStatus(tenantId, PublicId.new("itc"))
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.findByApiId(tenantId, "missing-parent") } returns null
+      val service = workItemService(repository, configs)
+
+      shouldThrow<ResourceNotFoundException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+            parentWorkItemApiId = "missing-parent",
+          )
+        )
+      }
+    }
+
+    "create rejects child when parent is in another project" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
+      val config = configDetailsWithInitialStatus(tenantId, PublicId.new("itc"))
+      val parent = workItem(tenantId, UUID.randomUUID())
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.findByApiId(tenantId, parent.apiId.value) } returns parent
+      val service = workItemService(repository, configs, subtypeConstraints = subtypeConstraints)
+
+      shouldThrow<InvalidRequestException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+            parentWorkItemApiId = parent.apiId.value,
+          )
+        )
+      }
+    }
+
+    "create rejects disallowed child subtype" {
+      val repository = mockk<WorkItemRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
+      val config = configDetailsWithInitialStatus(tenantId, PublicId.new("itc"))
+      val parent = workItem(tenantId, projectId)
+      coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
+        EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
+      coEvery { repository.findByApiId(tenantId, parent.apiId.value) } returns parent
+      coEvery {
+        subtypeConstraints.findAllowedChildType(
+          tenantId,
+          projectId,
+          parent.issueTypeId,
+          config.config.issueTypeId,
+        )
+      } returns null
+      val service = workItemService(repository, configs, subtypeConstraints = subtypeConstraints)
+
+      shouldThrow<InvalidRequestException> {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            issueTypeApiId = "typ_task",
+            title = "Task",
+            description = null,
+            reporterId = actorId,
+            actorUserId = actorId,
+            parentWorkItemApiId = parent.apiId.value,
+          )
+        )
+      }
+    }
   })
 
 private fun workItemService(
@@ -255,9 +342,10 @@ private fun workItemService(
   subtypeConstraints: IssueSubtypeConstraintRepository? = null,
 ): WorkItemService {
   val effectiveSubtypeConstraints =
-    subtypeConstraints ?: mockk<IssueSubtypeConstraintRepository>().also {
-      coEvery { it.isChildOnlyType(any(), any(), any()) } returns false
-    }
+    subtypeConstraints
+      ?: mockk<IssueSubtypeConstraintRepository>().also {
+        coEvery { it.isChildOnlyType(any(), any(), any()) } returns false
+      }
   val fieldPermissions = mockk<WorkItemFieldPermissionService>()
   coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
   coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
