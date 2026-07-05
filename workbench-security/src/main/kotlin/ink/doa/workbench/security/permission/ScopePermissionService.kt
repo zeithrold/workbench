@@ -8,6 +8,9 @@ import ink.doa.workbench.core.permission.AccessGrantRepository
 import ink.doa.workbench.core.permission.AdminUserQueryRepository
 import ink.doa.workbench.core.permission.GrantScope
 import ink.doa.workbench.core.permission.PermissionBindingRepository
+import ink.doa.workbench.core.permission.PermissionConditionContext
+import ink.doa.workbench.core.permission.PermissionConditionEvaluator
+import ink.doa.workbench.core.permission.PermissionConditionResult
 import ink.doa.workbench.core.permission.ResolvedPermissionRule
 import ink.doa.workbench.core.permission.model.AuthorizationDecision
 import ink.doa.workbench.core.permission.model.AuthorizationRequest
@@ -27,6 +30,7 @@ class ScopePermissionService(
   private val permissionBindings: PermissionBindingRepository,
   private val tenantMembers: TenantMemberRepository,
   private val clock: Clock,
+  private val conditionEvaluator: PermissionConditionEvaluator = PermissionConditionEvaluator(),
 ) : PermissionService {
   override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision {
     val at = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
@@ -133,33 +137,53 @@ class ScopePermissionService(
     rules: List<ResolvedPermissionRule>,
     request: AuthorizationRequest,
   ): AuthorizationDecision {
-    val matching = rules.filter { it.matches(request) }
-    return when {
-      matching.any { it.effect == PermissionEffect.DENY } -> {
-        val rule = matching.first { it.effect == PermissionEffect.DENY }
-        AuthorizationDecision.Deny(
-          DecisionReason(
-            code = "binding_denied",
-            message = "A matching policy binding denied the request.",
-            grantId = rule.bindingId,
-          )
+    val evaluated = rules.mapNotNull { it.evaluateMatch(request) }
+    evaluated.firstOrNull { it.contributesDeny() }?.let { match ->
+      return AuthorizationDecision.Deny(
+        DecisionReason(
+          code =
+            if (match.conditionResult == PermissionConditionResult.INVALID) {
+              "binding_condition_invalid"
+            } else {
+              "binding_denied"
+            },
+          message =
+            if (match.conditionResult == PermissionConditionResult.INVALID) {
+              "A matching policy binding has an invalid condition and denied the request."
+            } else {
+              "A matching policy binding denied the request."
+            },
+          grantId = match.rule.bindingId,
         )
-      }
-      matching.any { it.effect == PermissionEffect.ALLOW } -> {
-        val rule = matching.first { it.effect == PermissionEffect.ALLOW }
-        AuthorizationDecision.Allow(
-          DecisionReason(
-            code = "binding_allowed",
-            message = "A matching policy binding allowed the request.",
-            grantId = rule.bindingId,
-          )
-        )
-      }
-      else -> deny("no_matching_binding", "No active policy binding allows this request.")
+      )
     }
+    evaluated.firstOrNull { it.contributesAllow() }?.let { match ->
+      return AuthorizationDecision.Allow(
+        DecisionReason(
+          code = "binding_allowed",
+          message = "A matching policy binding allowed the request.",
+          grantId = match.rule.bindingId,
+        )
+      )
+    }
+    return deny("no_matching_binding", "No active policy binding allows this request.")
   }
 
-  private fun ResolvedPermissionRule.matches(request: AuthorizationRequest): Boolean =
+  private fun ResolvedPermissionRule.evaluateMatch(request: AuthorizationRequest): RuleMatch? {
+    if (!matchesActionAndResource(request)) return null
+    val conditionResult =
+      conditionEvaluator.evaluate(
+        conditionJson = conditionJson,
+        context =
+          PermissionConditionContext(
+            actorUserId = request.subject.userId,
+            resourceAttributes = request.resource.attributes,
+          ),
+      )
+    return RuleMatch(rule = this, conditionResult = conditionResult)
+  }
+
+  private fun ResolvedPermissionRule.matchesActionAndResource(request: AuthorizationRequest): Boolean =
     action.code == request.action.code &&
       resourceMatches(resourcePattern, request.resource.canonical)
 
@@ -170,4 +194,18 @@ class ScopePermissionService(
 
   private fun deny(code: String, message: String): AuthorizationDecision.Deny =
     AuthorizationDecision.Deny(DecisionReason(code, message))
+
+  private data class RuleMatch(
+    val rule: ResolvedPermissionRule,
+    val conditionResult: PermissionConditionResult,
+  ) {
+    fun contributesAllow(): Boolean =
+      rule.effect == PermissionEffect.ALLOW &&
+        conditionResult == PermissionConditionResult.MATCH
+
+    fun contributesDeny(): Boolean =
+      rule.effect == PermissionEffect.DENY &&
+        conditionResult in
+          setOf(PermissionConditionResult.MATCH, PermissionConditionResult.INVALID)
+  }
 }

@@ -66,6 +66,7 @@ data class PermissionPolicyRuleView(
   val action: String,
   val resourcePattern: String,
   val effect: String,
+  val condition: String? = null,
 ) {
   companion object {
     fun from(record: PermissionPolicyRuleRecord) =
@@ -73,6 +74,7 @@ data class PermissionPolicyRuleView(
         action = record.action.code,
         resourcePattern = record.resourcePattern,
         effect = record.effect.name,
+        condition = record.conditionJson,
       )
   }
 }

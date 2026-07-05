@@ -82,6 +82,7 @@ data class ResolvedPermissionRule(
   val action: AuthorizationAction,
   val resourcePattern: String,
   val effect: PermissionEffect,
+  val conditionJson: String? = null,
 )
 
 data class CreatePermissionGroupCommand(
