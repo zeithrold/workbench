@@ -6,7 +6,11 @@ import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
 import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
@@ -29,6 +33,7 @@ class ProjectManagementApplicationService(
   private val projectAccess: ProjectAccessService,
   private val permissionBootstrap: PermissionBootstrapService,
   private val domainEventPublisher: DomainEventPublisher,
+  private val warningCollector: WorkbenchWarningCollector,
   private val clock: Clock,
 ) {
   suspend fun create(
@@ -118,6 +123,14 @@ class ProjectManagementApplicationService(
       projects.restoreStatus(tenantId, project.id, previousStatus)
       throw error
     }
+    warningCollector.warn(
+      WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED,
+      meta =
+        ProjectDestroyScheduledMeta(
+          project = ProjectSummary.from(destroying),
+          deleteReason = deleteReason,
+        ),
+    )
     return toView(destroying)
   }
 

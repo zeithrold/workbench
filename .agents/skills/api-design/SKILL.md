@@ -220,6 +220,7 @@ POST   /api/projects/{id}/work-items/{id}/transition  → WorkItemResponse (busi
 - `application/json`, UTF-8
 - Errors: RFC 7807 ProblemDetail (`application/problem+json`)
 - Version: `X-Workbench-API-Version: yyyy-MM-dd` header (not URL)
+- Warnings: `X-Workbench-Warning` JSON header on **2xx only** when non-blocking business risks exist (see Warnings section)
 
 ### Statelessness
 
@@ -262,6 +263,44 @@ Throw typed exceptions from `workbench-core`; `GlobalExceptionHandler` renders P
 | `DataAccessException` | 503 |
 
 Never return `200` with an error body. Security filter may return plain `401` without ProblemDetail — do not add a second error format in new code.
+
+## Warnings — `X-Workbench-Warning`
+
+Non-blocking business risks on **successful** responses (`2xx`). Failures remain ProblemDetail + non-2xx.
+
+| Signal | When |
+|--------|------|
+| ProblemDetail | Operation must not succeed (validation, auth, conflict) |
+| Warning header | Operation succeeded but client should know about risk |
+
+**Rules**
+
+- Omit header when no warnings.
+- Body stays Direct Resource — no `_warnings` envelope.
+- Value is JSON: `{ "version": 1, "items": [ { "code", "severity", "message", "meta" } ] }`.
+- `meta` is **typed** with required `kind` discriminant; embed primary resources via core `*Summary` (`project: { id, identifier, name }`).
+- Each `WorkbenchWarningCode` binds to exactly one meta type (`workbench-core/.../common/warning/`).
+- Endpoints that may emit warnings: `@MayReturnWarnings` (OpenAPI documents the header).
+
+**Example**
+
+```json
+{
+  "version": 1,
+  "items": [
+    {
+      "code": "project.destroy.scheduled",
+      "severity": "risk",
+      "message": "Project destruction has been scheduled.",
+      "meta": {
+        "kind": "projectDestroyScheduled",
+        "project": { "id": "prj_01J…", "identifier": "WB", "name": "Workbench" },
+        "deleteReason": "cleanup"
+      }
+    }
+  ]
+}
+```
 
 ## Auth, Tenant, Authorization
 

@@ -118,3 +118,5 @@ scripts/ci/__pycache__/
 scripts/ci/diff-coverage-results.json
 scripts/ci/diff-cover-*.html
 scripts/ci/diff-cover-*.json
+scripts/ci/.diff-cover.patch
+scripts/ci/.diff-cover.toml

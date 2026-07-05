@@ -22,6 +22,8 @@ FRONTEND_INCLUDE_GLOBS = (
 BACKEND_COVERAGE_XML = Path("build/reports/kover/report.xml")
 FRONTEND_COVERAGE_LCOV = Path("workbench-frontend/coverage/lcov.info")
 RESULTS_JSON = Path("scripts/ci/diff-coverage-results.json")
+DIFF_COVER_PATCH = Path("scripts/ci/.diff-cover.patch")
+DIFF_COVER_CONFIG = Path("scripts/ci/.diff-cover.toml")
 
 
 @dataclass(frozen=True)
@@ -32,7 +34,6 @@ class StackConfig:
     json_report: Path
     include_globs: tuple[str, ...]
     fail_under: float
-    src_roots: tuple[str, ...] = ()
 
 
 @dataclass
@@ -81,12 +82,10 @@ def compare_branch() -> str:
 
 
 def git_diff_names(root: Path, branch: str) -> list[str]:
+    """List paths that differ from `branch`, including uncommitted and untracked files."""
     files: set[str] = set()
     commands = [
-        ["git", "diff", "--name-only", f"{branch}...HEAD"],
-        ["git", "diff", "--name-only", f"{branch}..HEAD"],
-        ["git", "diff", "--name-only"],
-        ["git", "diff", "--name-only", "--cached"],
+        ["git", "diff", "--name-only", branch],
         ["git", "ls-files", "--others", "--exclude-standard"],
     ]
     for command in commands:
@@ -98,13 +97,23 @@ def git_diff_names(root: Path, branch: str) -> list[str]:
             text=True,
         )
         if result.returncode != 0:
-            continue
+            raise RuntimeError(
+                f"Unable to diff against {branch}: {result.stderr.strip() or result.stdout.strip()}"
+            )
         files.update(line.strip() for line in result.stdout.splitlines() if line.strip())
-    if files:
-        return sorted(files)
+    return sorted(files)
 
+
+def generate_git_diff(root: Path, branch: str) -> str:
+    """
+    Build a unified diff against `branch` through the current working tree.
+
+    `git diff origin/main` compares the merge base branch to the index and
+    working tree, so staged and unstaged local changes are included alongside
+    commits already on the current branch.
+    """
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{branch}...HEAD"],
+        ["git", "diff", branch, "--no-color", "--no-ext-diff", "-U0"],
         cwd=root,
         check=False,
         capture_output=True,
@@ -114,7 +123,82 @@ def git_diff_names(root: Path, branch: str) -> list[str]:
         raise RuntimeError(
             f"Unable to diff against {branch}: {result.stderr.strip() or result.stdout.strip()}"
         )
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    diff_parts = [result.stdout]
+    untracked = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if untracked.returncode != 0:
+        raise RuntimeError(
+            "Unable to list untracked files: "
+            f"{untracked.stderr.strip() or untracked.stdout.strip()}"
+        )
+
+    for path in untracked.stdout.splitlines():
+        normalized = path.strip()
+        if not normalized:
+            continue
+        if not (root / normalized).is_file():
+            continue
+        untracked_diff = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--no-index",
+                "--no-color",
+                "--no-ext-diff",
+                "-U0",
+                os.devnull,
+                normalized,
+            ],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if untracked_diff.stdout:
+            diff_parts.append(untracked_diff.stdout)
+
+    return "".join(diff_parts)
+
+
+def write_diff_cover_config(
+    path: Path,
+    *,
+    include_globs: tuple[str, ...],
+    src_roots: tuple[str, ...],
+    fail_under: float,
+) -> None:
+    """Write a diff-cover TOML config so multiple src_roots are preserved."""
+    lines = [
+        "[tool.diff_cover]",
+        f"fail_under = {fail_under}",
+        "include = [",
+    ]
+    lines.extend(f'  "{pattern}",' for pattern in include_globs)
+    lines.append("]")
+    if src_roots:
+        lines.append("src_roots = [")
+        lines.extend(f'  "{src_root}",' for src_root in src_roots)
+        lines.append("]")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def relevant_backend_src_roots(root: Path, changed_files: list[str]) -> tuple[str, ...]:
+    modules: set[str] = set()
+    for path in changed_files:
+        if not path.startswith("workbench-") or "/src/main/" not in path:
+            continue
+        module = path.split("/", 1)[0]
+        kotlin_root = root / module / "src/main/kotlin"
+        if kotlin_root.is_dir():
+            modules.add(str(kotlin_root.relative_to(root)))
+    return tuple(sorted(modules))
 
 
 def matches_any(path: str, globs: tuple[str, ...]) -> bool:
@@ -168,6 +252,8 @@ def run_diff_cover(
     root: Path,
     config: StackConfig,
     branch: str,
+    diff_text: str,
+    src_roots: tuple[str, ...],
 ) -> tuple[int, str, float | None]:
     coverage_path = root / config.coverage_path
     if not coverage_path.is_file():
@@ -177,18 +263,24 @@ def run_diff_cover(
     json_path = root / config.json_report
     html_path.parent.mkdir(parents=True, exist_ok=True)
 
+    diff_path = root / DIFF_COVER_PATCH
+    config_path = root / DIFF_COVER_CONFIG
+    diff_path.write_text(diff_text, encoding="utf-8")
+    write_diff_cover_config(
+        config_path,
+        include_globs=config.include_globs,
+        src_roots=src_roots,
+        fail_under=config.fail_under,
+    )
+
     command = [
         "diff-cover",
         str(coverage_path),
-        f"--compare-branch={branch}",
-        f"--fail-under={config.fail_under}",
+        f"--diff-file={diff_path}",
+        f"--config-file={config_path}",
         f"--format=html:{html_path},json:{json_path}",
         "--total-percent-float",
     ]
-    for pattern in config.include_globs:
-        command.extend(["--include", pattern])
-    for src_root in config.src_roots:
-        command.extend(["--src-roots", src_root])
 
     result = subprocess.run(
         command,
@@ -209,6 +301,8 @@ def evaluate_stack(
     config: StackConfig,
     branch: str,
     changed_files: list[str],
+    diff_text: str,
+    src_roots: tuple[str, ...],
 ) -> StackResult:
     if not has_stack_changes(changed_files, config.include_globs):
         return StackResult(
@@ -219,7 +313,16 @@ def evaluate_stack(
             message="No matching source changes in diff; skipped.",
         )
 
-    exit_code, output, percent = run_diff_cover(root, config, branch)
+    if not src_roots:
+        return StackResult(
+            name=config.name,
+            status="fail",
+            percent=None,
+            fail_under=config.fail_under,
+            message="Unable to resolve source roots for changed files.",
+        )
+
+    exit_code, output, percent = run_diff_cover(root, config, branch, diff_text, src_roots)
     if exit_code == 0:
         return StackResult(
             name=config.name,
@@ -249,11 +352,6 @@ def evaluate_stack(
 
 
 def backend_config(root: Path) -> StackConfig:
-    src_roots = tuple(
-        str(path.relative_to(root))
-        for path in sorted(root.glob("workbench-*/src/main/kotlin"))
-        if path.is_dir()
-    )
     return StackConfig(
         name="backend",
         coverage_path=env_path("BACKEND_COVERAGE_XML", BACKEND_COVERAGE_XML),
@@ -261,7 +359,6 @@ def backend_config(root: Path) -> StackConfig:
         json_report=Path("scripts/ci/diff-cover-backend.json"),
         include_globs=BACKEND_INCLUDE_GLOBS,
         fail_under=env_float("FAIL_UNDER_BACKEND", 90.0),
-        src_roots=src_roots,
     )
 
 
@@ -273,7 +370,6 @@ def frontend_config(root: Path) -> StackConfig:
         json_report=Path("scripts/ci/diff-cover-frontend.json"),
         include_globs=FRONTEND_INCLUDE_GLOBS,
         fail_under=env_float("FAIL_UNDER_FRONTEND", 70.0),
-        src_roots=(str(Path("workbench-frontend/src")),),
     )
 
 
@@ -336,6 +432,9 @@ def main(argv: list[str] | None = None) -> int:
 
     ensure_compare_branch(root, branch)
     changed_files = git_diff_names(root, branch)
+    diff_text = generate_git_diff(root, branch)
+    backend_src_roots = relevant_backend_src_roots(root, changed_files)
+    frontend_src_roots = (str(Path("workbench-frontend/src")),)
 
     configs: list[StackConfig] = []
     if args.target in ("backend", "all"):
@@ -343,7 +442,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.target in ("frontend", "all"):
         configs.append(frontend_config(root))
 
-    results = [evaluate_stack(root, config, branch, changed_files) for config in configs]
+    src_roots_by_stack = {
+        "backend": backend_src_roots,
+        "frontend": frontend_src_roots,
+    }
+    results = [
+        evaluate_stack(
+            root,
+            config,
+            branch,
+            changed_files,
+            diff_text,
+            src_roots_by_stack[config.name],
+        )
+        for config in configs
+    ]
     write_results(root, results)
 
     summary = render_summary(results)
