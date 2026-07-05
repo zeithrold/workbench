@@ -15,6 +15,8 @@ import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemCommentRepository
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -31,8 +33,8 @@ class ExposedWorkItemAttachmentRepositoryIntegrationTest :
         val stack = seedWorkItemStack(database)
         val projects = ExposedProjectRepository(database)
         val project = projects.findById(stack.tenantId, stack.projectId) ?: error("project missing")
-        val workItems = ExposedWorkItemRepository(database)
-        val comments = ExposedWorkItemCommentRepository(database)
+        val workItems = workItemRepository(database)
+        val comments = workItemCommentRepository(database)
         val attachments = ExposedWorkItemAttachmentRepository(database)
         val created =
           workItems.create(
@@ -56,17 +58,19 @@ class ExposedWorkItemAttachmentRepositoryIntegrationTest :
         val issueId = created.workItem.id
         val workItemApiId = created.workItem.apiId.value
         val comment =
-          comments.create(
-            CreateWorkItemCommentCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              workItemApiId = workItemApiId,
-              authorId = stack.actorId,
-              body = "<p>With attachment</p>",
-              bodyPlainText = "With attachment",
-            ),
-            issueId = issueId,
-          )
+          comments
+            .create(
+              CreateWorkItemCommentCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                workItemApiId = workItemApiId,
+                authorId = stack.actorId,
+                body = "<p>With attachment</p>",
+                bodyPlainText = "With attachment",
+              ),
+              issueId = issueId,
+            )
+            .record
 
         val standalone =
           createCompletedAttachment(
@@ -188,7 +192,7 @@ class ExposedWorkItemAttachmentRepositoryIntegrationTest :
         val stack = seedWorkItemStack(database)
         val projects = ExposedProjectRepository(database)
         val project = projects.findById(stack.tenantId, stack.projectId) ?: error("project missing")
-        val workItems = ExposedWorkItemRepository(database)
+        val workItems = workItemRepository(database)
         val attachments = ExposedWorkItemAttachmentRepository(database)
         val created =
           workItems.create(
@@ -298,7 +302,7 @@ class ExposedWorkItemAttachmentRepositoryIntegrationTest :
         val stack = seedWorkItemStack(database)
         val projects = ExposedProjectRepository(database)
         val project = projects.findById(stack.tenantId, stack.projectId) ?: error("project missing")
-        val workItems = ExposedWorkItemRepository(database)
+        val workItems = workItemRepository(database)
         val attachments = ExposedWorkItemAttachmentRepository(database)
         val created =
           workItems.create(

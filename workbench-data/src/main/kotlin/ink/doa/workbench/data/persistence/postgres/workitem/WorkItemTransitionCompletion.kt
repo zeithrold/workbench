@@ -1,8 +1,12 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.data.repository.workitem.WorkItemActivityContext
+import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
+import ink.doa.workbench.data.repository.workitem.WorkItemStatusChangedInput
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -19,7 +23,9 @@ internal data class WorkItemTransitionCompletion(
 )
 
 internal fun completeWorkItemTransition(
-  completion: WorkItemTransitionCompletion
+  completion: WorkItemTransitionCompletion,
+  activityFactory: WorkItemActivityFactory,
+  activityCodec: WorkItemActivityCodec,
 ): WorkItemMutationResult {
   val command = completion.command
   if (command.sprintApiId != null) {
@@ -53,9 +59,30 @@ internal fun completeWorkItemTransition(
         changedAt = completion.now,
       )
     )
+  val pendingActivity =
+    preparePendingWorkItemActivity(
+      activityCodec,
+      activityFactory.statusChanged(
+        WorkItemStatusChangedInput(
+          context =
+            WorkItemActivityContext(
+              tenantId = command.tenantId,
+              projectId = command.projectId,
+              workItemId = completion.issueId,
+              actorUserId = command.actorUserId,
+              occurredAt = completion.now,
+            ),
+          fromStatusId = completion.fromStatusId,
+          toStatusId = completion.toStatusId,
+          transitionId = completion.transitionId,
+        )
+      ),
+    )
   return WorkItemMutationResult(
     workItem = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId),
     eventType = "work_item.transitioned",
     statusHistoryId = statusHistoryId,
+    activityId = pendingActivity.id,
+    pendingActivity = pendingActivity,
   )
 }

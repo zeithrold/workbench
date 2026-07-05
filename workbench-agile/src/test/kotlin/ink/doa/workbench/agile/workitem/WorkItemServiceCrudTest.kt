@@ -368,6 +368,7 @@ private fun workItemService(
     configs = configs,
     subtypeConstraints = effectiveSubtypeConstraints,
     mutationSupport = mutationSupport,
+    activityEnqueueSupport = mockk(relaxed = true),
     fieldMutationSupport = fieldMutationSupport,
   )
 }

@@ -1,6 +1,7 @@
 package ink.doa.workbench.core.workitem.model
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
@@ -138,6 +139,8 @@ data class WorkItemMutationResult(
   val workItem: WorkItemRecord,
   val eventType: String,
   val statusHistoryId: UUID? = null,
+  val activityId: UUID? = null,
+  val pendingActivity: PendingWorkItemActivity? = null,
 )
 
 data class WorkItemResponse(

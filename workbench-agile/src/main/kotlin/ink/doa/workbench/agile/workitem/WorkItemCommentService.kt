@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service
 class WorkItemCommentService(
   private val comments: WorkItemCommentRepository,
   private val bindings: PermissionBindingRepository,
+  private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val clock: Clock,
 ) {
   suspend fun list(
@@ -41,7 +42,9 @@ class WorkItemCommentService(
     requirePermission(command.tenantId, command.projectId, command.authorId, CREATE_ACTION)
     val processed = processBody(command.body)
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
-    return comments.create(command.withProcessedBody(processed), issueId)
+    val result = comments.create(command.withProcessedBody(processed), issueId)
+    activityEnqueueSupport.enqueue(result.pendingActivity, command.workItemApiId)
+    return result.record
   }
 
   suspend fun update(command: UpdateWorkItemCommentCommand): WorkItemCommentRecord {

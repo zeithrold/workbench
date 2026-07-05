@@ -243,6 +243,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
         bodyFormat = "plain",
         transitionId = null,
         statusHistoryId = null,
+        activityId = null,
         editedAt = null,
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),

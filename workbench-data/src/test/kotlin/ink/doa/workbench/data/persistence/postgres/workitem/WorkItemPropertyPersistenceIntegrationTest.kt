@@ -6,9 +6,9 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
-import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -54,7 +54,7 @@ class WorkItemPropertyPersistenceIntegrationTest :
               dataType = WorkItemPropertyDataType.JSON,
             )
           )
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val propertyValues =
           listOf(
             WorkItemPropertyValue(

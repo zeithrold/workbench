@@ -10,9 +10,9 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
-import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -34,7 +34,7 @@ class ExposedWorkItemPersistenceResolversIntegrationTest :
         val stack = seedWorkItemStack(database)
         val users = ExposedUserRepository(database)
         val projects = ExposedProjectRepository(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val user = users.findById(stack.actorId).shouldNotBeNull()
         val project = projects.findById(stack.tenantId, stack.projectId).shouldNotBeNull()
         val created =
@@ -185,7 +185,7 @@ class ExposedWorkItemPersistenceResolversIntegrationTest :
         val catalog = ExposedWorkItemCatalogRepository(database)
         val projects = ExposedProjectRepository(database)
         val users = ExposedUserRepository(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val user = users.findById(stack.actorId).shouldNotBeNull()
         val project = projects.findById(stack.tenantId, stack.projectId).shouldNotBeNull()
         val ownerProperty =

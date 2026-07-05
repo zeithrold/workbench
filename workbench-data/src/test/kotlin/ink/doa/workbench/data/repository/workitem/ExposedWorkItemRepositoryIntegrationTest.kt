@@ -14,6 +14,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -37,7 +38,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "findByApiId returns null when issue does not exist" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
 
         repository.findByApiId(stack.tenantId, stack.projectId, "iss_missing").shouldBeNull()
       }
@@ -46,7 +47,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "countChildrenNotInStatusGroups returns zero for issue without children" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
 
         repository.countChildrenNotInStatusGroups(
           stack.tenantId,
@@ -59,7 +60,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "create persists work item with key alias and initial status" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
 
         val result =
           repository.create(
@@ -93,7 +94,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "create with parent persists hierarchy link" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val parent =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -162,7 +163,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
               toStatusApiId = stack.doneStatus.apiId.value,
             )
           )
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val created =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -206,7 +207,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "update persists title changes" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val created =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -247,7 +248,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "softDelete marks work item deleted" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val created =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -288,7 +289,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "listByProject returns created issues" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         repository.create(
           CreateWorkItemPersistenceCommand(
             command =
@@ -337,7 +338,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
               dataType = WorkItemPropertyDataType.TEXT,
             )
           )
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val propertyValues =
           listOf(
             WorkItemPropertyValue(
@@ -417,7 +418,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
             it[updatedAt] = now
           }
         }
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val created =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -495,7 +496,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
             it[updatedAt] = now
           }
         }
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val created =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -667,7 +668,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
             it[updatedAt] = now
           }
         }
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val blocker =
           repository.create(
             CreateWorkItemPersistenceCommand(
@@ -781,7 +782,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "update records sprint assignment history" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val repository = ExposedWorkItemRepository(database)
+        val repository = workItemRepository(database)
         val sprintApiId = PublicId.new("spr").value
         val sprintId = UUID.randomUUID()
         val now = OffsetDateTime.now(ZoneOffset.UTC)

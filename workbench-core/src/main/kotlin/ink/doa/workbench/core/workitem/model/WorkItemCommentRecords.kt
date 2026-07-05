@@ -1,8 +1,14 @@
 package ink.doa.workbench.core.workitem.model
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
 import java.time.OffsetDateTime
 import java.util.UUID
+
+data class WorkItemCommentCreateResult(
+  val record: WorkItemCommentRecord,
+  val pendingActivity: PendingWorkItemActivity? = null,
+)
 
 data class WorkItemCommentRecord(
   val id: UUID,
@@ -16,6 +22,7 @@ data class WorkItemCommentRecord(
   val bodyFormat: String,
   val transitionId: UUID?,
   val statusHistoryId: UUID?,
+  val activityId: UUID?,
   val editedAt: OffsetDateTime?,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
@@ -31,6 +38,7 @@ data class CreateWorkItemCommentCommand(
   val bodyFormat: String = HTML_FORMAT,
   val transitionId: UUID? = null,
   val statusHistoryId: UUID? = null,
+  val activityId: UUID? = null,
 ) {
   companion object {
     const val HTML_FORMAT = "html"

@@ -8,6 +8,7 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
@@ -148,18 +149,33 @@ class WorkItemTransitionService(
     )
     val values = WorkItemPropertySupport.normalizeProperties(config, reconciled.propertyValues)
     val result =
-      repository
-        .transition(
-          command = effectiveCommand,
-          fromStatusId = issue.statusId,
-          toStatusId = transition.toStatusId,
-          transitionId = transition.id,
-          propertyValues = values,
-        )
-        .also { collaborators.mutationSupport.publish(it) }
+      persistTransition(
+        command = effectiveCommand,
+        issue = issue,
+        transition = transition,
+        propertyValues = values,
+      )
     createTransitionComment(command, transition, commentBody, result)
     return result
   }
+
+  private suspend fun persistTransition(
+    command: TransitionWorkItemCommand,
+    issue: WorkItemRecord,
+    transition: WorkflowTransitionRecord,
+    propertyValues: List<WorkItemPropertyValue>,
+  ): WorkItemMutationResult =
+    repository
+      .transition(
+        command = command,
+        fromStatusId = issue.statusId,
+        toStatusId = transition.toStatusId,
+        transitionId = transition.id,
+        propertyValues = propertyValues,
+      )
+      .also {
+        collaborators.mutationSupport.publishAndEnqueue(it, collaborators.activityEnqueueSupport)
+      }
 
   private suspend fun createTransitionComment(
     command: TransitionWorkItemCommand,
@@ -177,6 +193,7 @@ class WorkItemTransitionService(
         body = commentBody,
         transitionId = transition.id,
         statusHistoryId = result.statusHistoryId,
+        activityId = result.activityId,
       )
     )
   }

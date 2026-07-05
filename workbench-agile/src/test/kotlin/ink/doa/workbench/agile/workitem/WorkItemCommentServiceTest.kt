@@ -13,6 +13,7 @@ import ink.doa.workbench.core.workitem.WorkItemCommentRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.model.WorkItemCommentCreateResult
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -32,7 +33,8 @@ class WorkItemCommentServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
     val comments = mockk<WorkItemCommentRepository>()
     val bindings = mockk<PermissionBindingRepository>()
-    val service = WorkItemCommentService(comments, bindings, clock)
+    val activityEnqueueSupport = mockk<WorkItemActivityEnqueueSupport>(relaxed = true)
+    val service = WorkItemCommentService(comments, bindings, activityEnqueueSupport, clock)
 
     "create converts plain text body to html and persists comment" {
       val tenantId = UUID.randomUUID()
@@ -52,21 +54,25 @@ class WorkItemCommentServiceTest :
       coEvery { comments.create(any(), issueId) } answers
         {
           val command = firstArg<CreateWorkItemCommentCommand>()
-          WorkItemCommentRecord(
-            id = UUID.randomUUID(),
-            apiId = PublicId.new("icm"),
-            tenantId = tenantId,
-            issueId = issueId,
-            authorId = authorId,
-            authorApiId = PublicId.new("usr"),
-            body = command.body,
-            bodyPlainText = command.bodyPlainText,
-            bodyFormat = command.bodyFormat,
-            transitionId = null,
-            statusHistoryId = null,
-            editedAt = null,
-            createdAt = OffsetDateTime.now(clock),
-            updatedAt = OffsetDateTime.now(clock),
+          WorkItemCommentCreateResult(
+            record =
+              WorkItemCommentRecord(
+                id = UUID.randomUUID(),
+                apiId = PublicId.new("icm"),
+                tenantId = tenantId,
+                issueId = issueId,
+                authorId = authorId,
+                authorApiId = PublicId.new("usr"),
+                body = command.body,
+                bodyPlainText = command.bodyPlainText,
+                bodyFormat = command.bodyFormat,
+                transitionId = null,
+                statusHistoryId = null,
+                activityId = null,
+                editedAt = null,
+                createdAt = OffsetDateTime.now(clock),
+                updatedAt = OffsetDateTime.now(clock),
+              )
           )
         }
 
@@ -104,21 +110,25 @@ class WorkItemCommentServiceTest :
       coEvery { comments.create(any(), issueId) } answers
         {
           val command = firstArg<CreateWorkItemCommentCommand>()
-          WorkItemCommentRecord(
-            id = UUID.randomUUID(),
-            apiId = PublicId.new("icm"),
-            tenantId = tenantId,
-            issueId = issueId,
-            authorId = authorId,
-            authorApiId = PublicId.new("usr"),
-            body = command.body,
-            bodyPlainText = command.bodyPlainText,
-            bodyFormat = command.bodyFormat,
-            transitionId = null,
-            statusHistoryId = null,
-            editedAt = null,
-            createdAt = OffsetDateTime.now(clock),
-            updatedAt = OffsetDateTime.now(clock),
+          WorkItemCommentCreateResult(
+            record =
+              WorkItemCommentRecord(
+                id = UUID.randomUUID(),
+                apiId = PublicId.new("icm"),
+                tenantId = tenantId,
+                issueId = issueId,
+                authorId = authorId,
+                authorApiId = PublicId.new("usr"),
+                body = command.body,
+                bodyPlainText = command.bodyPlainText,
+                bodyFormat = command.bodyFormat,
+                transitionId = null,
+                statusHistoryId = null,
+                activityId = null,
+                editedAt = null,
+                createdAt = OffsetDateTime.now(clock),
+                updatedAt = OffsetDateTime.now(clock),
+              )
           )
         }
 
@@ -364,6 +374,7 @@ private fun commentRecord(
     bodyFormat = CreateWorkItemCommentCommand.HTML_FORMAT,
     transitionId = null,
     statusHistoryId = null,
+    activityId = null,
     editedAt = null,
     createdAt = OffsetDateTime.now(clock),
     updatedAt = OffsetDateTime.now(clock),

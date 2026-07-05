@@ -11,9 +11,9 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.data.repository.permission.ExposedPermissionBindingRepository
 import ink.doa.workbench.data.repository.permission.ExposedPermissionGroupRepository
 import ink.doa.workbench.data.repository.permission.ExposedPermissionPolicyRepository
-import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -27,7 +27,7 @@ class ExposedProjectDestructionRepositoryIntegrationTest :
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
         val destruction = ExposedProjectDestructionRepository(database)
-        val workItems = ExposedWorkItemRepository(database)
+        val workItems = workItemRepository(database)
         val groups = ExposedPermissionGroupRepository(database)
         val policies = ExposedPermissionPolicyRepository(database)
         val bindings = ExposedPermissionBindingRepository(database)

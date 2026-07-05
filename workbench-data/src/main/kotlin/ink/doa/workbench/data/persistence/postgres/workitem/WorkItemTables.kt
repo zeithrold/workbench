@@ -146,6 +146,7 @@ object IssueCommentsTable : Table("issue_comments") {
   val bodyFormat = text("body_format")
   val transitionId = uuid("transition_id").references(WorkflowTransitionsTable.id).nullable()
   val statusHistoryId = uuid("status_history_id").references(IssueStatusHistoryTable.id).nullable()
+  val activityId = uuid("activity_id").nullable()
   val editedAt = timestampWithTimeZone("edited_at").nullable()
   val archivedAt = timestampWithTimeZone("archived_at").nullable()
   val archivedBy = uuid("archived_by").references(UsersTable.id).nullable()
@@ -196,5 +197,24 @@ object WorkItemViewsTable : Table("work_item_views") {
   val displayFields = jsonb("display_fields", Json.Default, JsonElement.serializer())
   val createdAt = timestampWithTimeZone("created_at")
   val updatedAt = timestampWithTimeZone("updated_at")
+  override val primaryKey = PrimaryKey(id)
+}
+
+object WorkItemActivitiesTable : Table("work_item_activities") {
+  val id = uuid("id")
+  val apiId = text("api_id").uniqueIndex()
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val projectId = uuid("project_id").references(ProjectsTable.id)
+  val workItemId = uuid("work_item_id").references(IssuesTable.id)
+  val actorUserId = uuid("actor_user_id").references(UsersTable.id).nullable()
+  val activityType = text("activity_type")
+  val occurredAt = timestampWithTimeZone("occurred_at")
+  val summary = text("summary").nullable()
+  val payload = jsonb("payload", Json.Default, JsonElement.serializer())
+  val sourceType = text("source_type")
+  val sourceId = text("source_id").nullable()
+  val correlationId = text("correlation_id").nullable()
+  val requestId = text("request_id").nullable()
+  val createdAt = timestampWithTimeZone("created_at")
   override val primaryKey = PrimaryKey(id)
 }

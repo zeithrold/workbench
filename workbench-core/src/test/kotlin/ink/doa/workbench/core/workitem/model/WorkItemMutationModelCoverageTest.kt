@@ -106,6 +106,7 @@ class WorkItemMutationModelCoverageTest :
           bodyFormat = "html",
           transitionId = UUID.randomUUID(),
           statusHistoryId = UUID.randomUUID(),
+          activityId = null,
           editedAt = now,
           createdAt = now,
           updatedAt = now,
