@@ -68,7 +68,8 @@ class V24__BackfillDescriptionPlainTextAndCreateFieldsDescription : BaseJavaMigr
 
   private fun updateCreateFieldsDescription(connection: Connection, rows: java.sql.ResultSet) {
     val createFields = json.parseToJsonElement(rows.getString("create_fields")).jsonObject
-    if ("description" in createFields["fields"]!!.jsonObject) return
+    val fields = checkNotNull(createFields["fields"]).jsonObject
+    if ("description" in fields) return
     val migrated = appendDescriptionField(createFields)
     connection
       .prepareStatement("UPDATE issue_type_configs SET create_fields = ? WHERE id = ?")
@@ -80,7 +81,7 @@ class V24__BackfillDescriptionPlainTextAndCreateFieldsDescription : BaseJavaMigr
   }
 
   private fun appendDescriptionField(createFields: JsonObject): JsonObject {
-    val fields = createFields["fields"]!!.jsonObject.toMutableMap()
+    val fields = checkNotNull(createFields["fields"]).jsonObject.toMutableMap()
     fields["description"] =
       json.parseToJsonElement("""{"participation":"optional","writeGrant":"inherit"}""")
     return buildJsonObject {

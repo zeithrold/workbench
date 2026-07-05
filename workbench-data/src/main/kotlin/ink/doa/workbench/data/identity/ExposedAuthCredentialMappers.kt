@@ -59,7 +59,8 @@ internal fun ResultRow.toBearerTokenRecord() =
     scopes =
       (this[BearerTokensTable.scopes] as? JsonArray)
         ?.mapNotNull { (it as? JsonPrimitive)?.content }
-        ?.toSet() ?: emptySet(),
+        ?.toSet()
+        .orEmpty(),
     createdBy = this[BearerTokensTable.createdBy]?.toJavaUuid(),
     expiresAt = this[BearerTokensTable.expiresAt],
     revokedAt = this[BearerTokensTable.revokedAt],

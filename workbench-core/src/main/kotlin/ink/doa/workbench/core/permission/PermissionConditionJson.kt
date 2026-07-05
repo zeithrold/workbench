@@ -15,12 +15,12 @@ object PermissionConditionJson {
       try {
         json.parseToJsonElement(raw.trim())
       } catch (_: Exception) {
-        return invalidCondition()
+        invalidCondition()
       }
-    if (element !is JsonObject) return invalidCondition()
+    if (element !is JsonObject) invalidCondition()
     val canonical = WorkItemConditionJson.canonicalize(element)
     if (canonical.isEmpty() || WorkItemConditionJson.parse(canonical) == null) {
-      return invalidCondition()
+      invalidCondition()
     }
     return canonical.toString()
   }

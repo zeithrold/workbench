@@ -168,7 +168,7 @@ private fun conditionValues(value: JsonElement?): List<String?> =
   }
 
 private fun conditionArrayValues(value: JsonElement?): List<String?> =
-  (value as? JsonArray)?.map { conditionScalar(it) } ?: emptyList()
+  (value as? JsonArray)?.map { conditionScalar(it) }.orEmpty()
 
 private fun conditionScalar(value: JsonElement?): String? =
   when (value) {

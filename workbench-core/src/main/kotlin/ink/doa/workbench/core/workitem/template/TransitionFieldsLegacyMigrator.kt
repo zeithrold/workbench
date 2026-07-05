@@ -52,7 +52,10 @@ object TransitionFieldsLegacyMigrator {
   private fun extractDefaultEntries(propertyDefaults: JsonObject): Map<String, JsonElement> {
     if (propertyDefaults.isEmpty()) return emptyMap()
     return if ("version" in propertyDefaults && "values" in propertyDefaults) {
-      propertyDefaults["values"]!!.jsonObject.map { (key, value) -> key to value }.toMap()
+      checkNotNull(propertyDefaults["values"])
+        .jsonObject
+        .map { (key, value) -> key to value }
+        .toMap()
     } else {
       propertyDefaults.toMap()
     }
