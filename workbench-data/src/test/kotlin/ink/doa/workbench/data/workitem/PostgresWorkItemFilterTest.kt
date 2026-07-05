@@ -126,4 +126,46 @@ class PostgresWorkItemFilterTest :
 
       plan.orderBySql shouldBe "ORDER BY i.updated_at DESC, i.api_id ASC"
     }
+
+    "compiles or not and property sort clauses" {
+      val orPlan =
+        filter.build(
+          WorkItemSearchScope(tenantId = tenantId),
+          WorkItemQuery(
+            where =
+              ConditionNode.Or(
+                listOf(
+                  ConditionNode.Predicate(
+                    field = QueryField.System("title"),
+                    op = QueryOperator.CONTAINS,
+                    value = QueryValue.Literal(JsonPrimitive("bug")),
+                  ),
+                  ConditionNode.Not(
+                    ConditionNode.Predicate(
+                      field = QueryField.System("statusGroup"),
+                      op = QueryOperator.EQ,
+                      value = QueryValue.Literal(JsonPrimitive("done")),
+                    )
+                  ),
+                )
+              )
+          ),
+        )
+
+      orPlan.where.sql shouldContain " OR "
+      orPlan.where.sql shouldContain "NOT"
+
+      val propertySort =
+        filter.build(
+          WorkItemSearchScope(tenantId = tenantId),
+          WorkItemQuery(
+            sort =
+              listOf(
+                SortTerm(QueryField.Property(apiId = null, code = "storyPoints"), SortDirection.ASC)
+              )
+          ),
+        )
+
+      propertySort.orderBySql shouldContain "ipv.value_number"
+    }
   })

@@ -10,7 +10,10 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.postgresql.util.PGobject
 
 class PostgresWorkItemOperatorCompilerTest :
   StringSpec({
@@ -236,5 +239,72 @@ class PostgresWorkItemOperatorCompilerTest :
           QueryValue.Literal(JsonPrimitive("bug")),
         )
         .sql shouldContain "NOT"
+    }
+
+    "compile date comparison aliases and future relative windows" {
+      compiler
+        .compile(
+          "i.updated_at",
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.BEFORE,
+          QueryValue.Literal(JsonPrimitive("2026-07-04T00:00:00Z")),
+        )
+        .sql shouldContain "<"
+      compiler
+        .compile(
+          "i.updated_at",
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.AFTER,
+          QueryValue.Literal(JsonPrimitive("2026-07-04T00:00:00Z")),
+        )
+        .sql shouldContain ">"
+      compiler
+        .compile(
+          "i.updated_at",
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.ON_OR_BEFORE,
+          QueryValue.Literal(JsonPrimitive("2026-07-04T00:00:00Z")),
+        )
+        .sql shouldContain "<="
+      compiler
+        .compile(
+          "i.updated_at",
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.ON_OR_AFTER,
+          QueryValue.Literal(JsonPrimitive("2026-07-04T00:00:00Z")),
+        )
+        .sql shouldContain ">="
+      compiler
+        .compile(
+          "i.updated_at",
+          WorkItemQueryFieldType.DATETIME,
+          QueryOperator.WITHIN,
+          QueryValue.RelativeDate(
+            amount = 3,
+            unit = RelativeDateUnit.WEEK,
+            direction = DateDirection.FUTURE,
+            anchor = "date.today",
+          ),
+        )
+        .sql shouldContain "current_date"
+    }
+
+    "compile contains on json uses jsonb containment" {
+      val fragment =
+        compiler.compile(
+          valueSql = "ipv.value_json",
+          type = WorkItemQueryFieldType.JSON,
+          op = QueryOperator.CONTAINS,
+          value = QueryValue.Literal(JsonObject(mapOf("tier" to JsonPrimitive("gold")))),
+        )
+
+      fragment.sql shouldContain "@>"
+    }
+
+    "operand helpers convert json primitives and objects" {
+      jsonToJdbcValue(JsonPrimitive(true)) shouldBe true
+      jsonToJdbcValue(JsonNull) shouldBe null
+      val jsonb = jsonToJdbcValue(JsonObject(mapOf("a" to JsonPrimitive(1)))) as PGobject
+      jsonb.type shouldBe "jsonb"
     }
   })

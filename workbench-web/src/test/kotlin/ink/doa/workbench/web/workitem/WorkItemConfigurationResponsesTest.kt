@@ -281,4 +281,48 @@ class WorkItemConfigurationResponsesTest :
 
       request.fields.toJsonObject(mapper).keys shouldBe setOf("title")
     }
+
+    "create issue type config request stores bindings" {
+      val mapper = ObjectMapper()
+      val request =
+        CreateIssueTypeConfigRequest(
+          scope = "tenant",
+          projectId = null,
+          issueTypeId = "typ_abc",
+          workflowId = "wfl_abc",
+          nameOverride = "Custom",
+          iconOverride = "bug",
+          colorOverride = "#fff",
+          rank = 50,
+          createFields = mapper.readTree("""{"title": {"editable": true}}"""),
+          statuses =
+            listOf(
+              TypeConfigStatusRequest(
+                statusId = "sts_abc",
+                isInitial = true,
+                isTerminal = false,
+                rank = 1,
+              )
+            ),
+          properties =
+            listOf(
+              TypeConfigPropertyRequest(
+                propertyId = "fld_abc",
+                validationOverride = mapper.readTree("""{"required": true}"""),
+                rank = 2,
+                displayConfig = mapper.readTree("""{"label": "Points"}"""),
+              )
+            ),
+        )
+
+      request.scope shouldBe "tenant"
+      request.statuses.single().statusId shouldBe "sts_abc"
+      request.properties?.single()?.propertyId shouldBe "fld_abc"
+      request.createFields.toJsonObject(mapper).keys shouldBe setOf("title")
+    }
+
+    "comment request types store body text" {
+      CreateWorkItemCommentRequest(body = "Created").body shouldBe "Created"
+      UpdateWorkItemCommentRequest(body = "Updated").body shouldBe "Updated"
+    }
   })

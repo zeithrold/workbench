@@ -12,6 +12,7 @@ import ink.doa.workbench.core.permission.model.AuthorizationSubject
 import ink.doa.workbench.core.permission.model.DecisionReason
 import ink.doa.workbench.security.permission.ScopePermissionService
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -82,5 +83,42 @@ class ProjectVisibilityPermissionDecoratorTest :
       } returns true
 
       decorator.decide(request("issue.view")).shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
+
+    "decorator returns delegate decision when visibility does not grant access" {
+      val deny =
+        AuthorizationDecision.Deny(
+          DecisionReason("no_matching_binding", "No active policy binding allows the request.")
+        )
+      coEvery { delegate.decide(any()) } returns deny
+      coEvery {
+        projectAccess.allowsVisibilityAction(
+          userId,
+          tenantId,
+          projectId,
+          AuthorizationAction("project.read"),
+        )
+      } returns false
+
+      decorator.decide(request("project.read")) shouldBe deny
+    }
+
+    "decorator passes through non-tenant scope requests" {
+      val deny =
+        AuthorizationDecision.Deny(
+          DecisionReason("no_matching_binding", "No active policy binding allows the request.")
+        )
+      coEvery { delegate.decide(any()) } returns deny
+      val instanceRequest = request("project.read").copy(scope = AuthorizationScope.INSTANCE)
+
+      decorator.decide(instanceRequest) shouldBe deny
+    }
+
+    "decorator passes through when deny reason is not visibility eligible" {
+      val deny =
+        AuthorizationDecision.Deny(DecisionReason("policy_denied", "Explicit deny rule matched."))
+      coEvery { delegate.decide(any()) } returns deny
+
+      decorator.decide(request("project.read")) shouldBe deny
     }
   })

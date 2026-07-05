@@ -10,6 +10,7 @@ import ink.doa.workbench.data.persistence.TenantsTable
 import ink.doa.workbench.data.persistence.UsersTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -110,6 +111,48 @@ class ExposedProjectRepositoryIntegrationTest :
         renamed.identifier shouldBe "NEW"
         renamed.nonMemberVisibility shouldBe NonMemberVisibility.READ_WRITE
         renamed.nonMemberJoinPolicy shouldBe NonMemberJoinPolicy.OPEN
+      }
+    }
+
+    "markDestroying finalizeDestroy and updateStatus manage lifecycle" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val repository = ExposedProjectRepository(database)
+        val created =
+          repository.create(
+            CreateProjectCommand(
+              tenantId = tenantId,
+              identifier = "DEL",
+              name = "Delete Me",
+              description = null,
+              createdBy = actorId,
+              leadUserId = actorId,
+            )
+          )
+        val destroying =
+          repository.markDestroying(
+            tenantId = tenantId,
+            projectId = created.id,
+            deletedBy = actorId,
+            deleteReason = "cleanup",
+          )
+        destroying.status shouldBe ProjectStatus.DESTROYING
+
+        repository.updateStatus(tenantId, created.id, ProjectStatus.ACTIVE) shouldBe true
+        repository.findById(tenantId, created.id)?.status shouldBe ProjectStatus.ACTIVE
+
+        repository.markDestroying(tenantId, created.id, actorId, "final").status shouldBe
+          ProjectStatus.DESTROYING
+        val deletedAt = OffsetDateTime.now(ZoneOffset.UTC)
+        repository.finalizeDestroy(
+          tenantId = tenantId,
+          projectId = created.id,
+          deletedAt = deletedAt,
+          deletedBy = actorId,
+          deleteReason = "final",
+        ) shouldBe true
+        repository.findById(tenantId, created.id).shouldBeNull()
       }
     }
   })

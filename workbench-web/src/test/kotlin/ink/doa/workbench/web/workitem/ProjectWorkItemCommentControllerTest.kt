@@ -26,9 +26,14 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -56,6 +61,71 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
         get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments")
       )
       .andExpect(status().isUnauthorized())
+  }
+
+  @Test
+  fun `create comment returns created comment for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          post(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"body":"New comment"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(
+        header()
+          .string(
+            "Location",
+            "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments/${SAMPLE_COMMENT.apiId.value}",
+          )
+      )
+      .andExpect(jsonPath("$.body").value("New comment"))
+  }
+
+  @Test
+  fun `update comment returns updated comment for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          patch(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments/${SAMPLE_COMMENT.apiId.value}"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"body":"Updated comment"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.body").value("Updated comment"))
+  }
+
+  @Test
+  fun `delete comment returns no content for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          delete(
+              "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments/${SAMPLE_COMMENT.apiId.value}"
+            )
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
   }
 
   @Test
@@ -121,6 +191,40 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
           0,
         )
       } returns listOf(SAMPLE_COMMENT)
+      coEvery {
+        service.create(
+          ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand(
+            tenantId = TenantWebMvcFixtures.TENANT_ID,
+            projectId = TenantWebMvcFixtures.PROJECT_ID,
+            workItemApiId = "iss_test",
+            authorId = TenantWebMvcFixtures.USER_ID,
+            body = "New comment",
+          )
+        )
+      } returns SAMPLE_COMMENT.copy(body = "New comment", bodyPlainText = "New comment")
+      coEvery {
+        service.update(
+          ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand(
+            tenantId = TenantWebMvcFixtures.TENANT_ID,
+            projectId = TenantWebMvcFixtures.PROJECT_ID,
+            workItemApiId = "iss_test",
+            commentApiId = SAMPLE_COMMENT.apiId.value,
+            actorUserId = TenantWebMvcFixtures.USER_ID,
+            body = "Updated comment",
+          )
+        )
+      } returns SAMPLE_COMMENT.copy(body = "Updated comment", bodyPlainText = "Updated comment")
+      coEvery {
+        service.delete(
+          ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand(
+            tenantId = TenantWebMvcFixtures.TENANT_ID,
+            projectId = TenantWebMvcFixtures.PROJECT_ID,
+            workItemApiId = "iss_test",
+            commentApiId = SAMPLE_COMMENT.apiId.value,
+            actorUserId = TenantWebMvcFixtures.USER_ID,
+          )
+        )
+      } returns SAMPLE_COMMENT
       return true
     }
   }
