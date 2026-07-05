@@ -3,15 +3,14 @@ package ink.doa.workbench.data.persistence.postgres.workitem.query
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class JdbcPostgresWorkItemFieldResolverIntegrationTest :
@@ -44,18 +43,7 @@ class JdbcPostgresWorkItemFieldResolverIntegrationTest :
   })
 
 private fun withPostgresJdbc(block: (JdbcTemplate, UUID, String) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
-      .load()
-      .migrate()
-    val dataSource =
-      DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password).apply {
-        setDriverClassName("org.postgresql.Driver")
-      }
-    val jdbc = JdbcTemplate(dataSource)
+  WorkbenchPostgresTestSupport.withJdbcTemplate(MigrationSpec.Core) { jdbc ->
     val tenantId = UUID.randomUUID()
     val propertyId = UUID.randomUUID()
     val propertyApiId = "fld_${propertyId.toString().replace("-", "").take(12)}"

@@ -11,6 +11,7 @@ import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.tenant.TenantService
+import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -24,12 +25,11 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class TenantManagementApplicationServiceIntegrationTest :
   StringSpec({
-    val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
+    val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()
     lateinit var database: Database
     lateinit var tenants: ExposedTenantRepository
     lateinit var loginMethods: ExposedLoginMethodRepository
@@ -37,7 +37,7 @@ class TenantManagementApplicationServiceIntegrationTest :
     lateinit var service: TenantManagementApplicationService
 
     beforeSpec {
-      database = AuthIntegrationFixtures.connectDatabase(postgres)
+      database = postgresLease.database
       tenants = ExposedTenantRepository(database)
       loginMethods = ExposedLoginMethodRepository(database)
       tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
@@ -59,7 +59,7 @@ class TenantManagementApplicationServiceIntegrationTest :
     }
 
     afterSpec {
-      postgres.stop()
+      postgresLease.close()
     }
 
     "create tenant provisions password login method setting" {

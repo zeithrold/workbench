@@ -11,30 +11,30 @@ import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountReposit
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.LdapAuthFixture
+import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Tag
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class LdapAuthIntegrationTest :
   StringSpec({
     val ldap: InMemoryLdapTestServer = InMemoryLdapTestServer.start()
-    val postgres: PostgreSQLContainer<*> = AuthIntegrationFixtures.startPostgres()
+    val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()
     lateinit var database: Database
     lateinit var fixture: LdapAuthFixture
 
     beforeSpec {
-      database = AuthIntegrationFixtures.connectDatabase(postgres)
+      database = postgresLease.database
       fixture = runBlocking { AuthIntegrationFixtures.seedLdapFixture(database, ldap) }
     }
 
     afterSpec {
       ldap.close()
-      postgres.stop()
+      postgresLease.close()
     }
 
     "LdapAuthClient authenticates valid credentials against in-memory LDAP" {

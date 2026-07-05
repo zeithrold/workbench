@@ -6,17 +6,16 @@ import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.QueryOperator
 import ink.doa.workbench.core.workitem.query.QueryValue
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
-import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class JdbcWorkItemQueryRepositoryIntegrationTest :
@@ -66,19 +65,7 @@ private data class SeededWorkItem(
 )
 
 private fun withPostgresJdbc(block: (JdbcTemplate) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration")
-      .load()
-      .migrate()
-    val dataSource =
-      DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password).apply {
-        setDriverClassName("org.postgresql.Driver")
-      }
-    block(JdbcTemplate(dataSource))
-  }
+  WorkbenchPostgresTestSupport.withJdbcTemplate(MigrationSpec.Core, block)
 }
 
 private fun seedWorkItem(jdbc: JdbcTemplate): SeededWorkItem {

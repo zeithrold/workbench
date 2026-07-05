@@ -1,13 +1,13 @@
 package ink.doa.workbench.data
 
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
+import ink.doa.workbench.testsupport.postgres.jdbcTemplate
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import org.flywaydb.core.Flyway
 import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.datasource.DriverManagerDataSource
-import org.testcontainers.containers.PostgreSQLContainer
 
 @Tag("integration")
 class PostgresMigrationIntegrationTest :
@@ -19,63 +19,49 @@ class PostgresMigrationIntegrationTest :
     }
 
     "V26 backfills comment html and plain text" {
-      PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-        postgres.start()
-        val jdbcUrl = postgres.jdbcUrl
-        val username = postgres.username
-        val password = postgres.password
-
-        Flyway.configure()
-          .dataSource(jdbcUrl, username, password)
-          .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
-          .target("24")
-          .load()
-          .migrate()
-
-        val jdbc =
-          JdbcTemplate(
-            DriverManagerDataSource(jdbcUrl, username, password).apply {
-              setDriverClassName("org.postgresql.Driver")
-            }
-          )
-        val seed = seedCommentFixture(jdbc)
-        jdbc.update(
-          """
-          INSERT INTO issue_comments (
-            id, api_id, tenant_id, issue_id, author_id, body, body_format, created_at, updated_at
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())
-          """
-            .trimIndent(),
-          seed.commentId,
-          seed.commentApiId,
-          seed.tenantId,
-          seed.issueId,
-          seed.userId,
-          "Legacy plain comment",
-          "plain_text",
+      WorkbenchPostgresTestSupport.openDatabase(
+          WorkbenchPostgresTestSupport.customMigration(configure = { target("24") })
         )
-
-        Flyway.configure()
-          .dataSource(jdbcUrl, username, password)
-          .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
-          .load()
-          .migrate()
-
-        val row =
-          jdbc.queryForMap(
+        .use { lease ->
+          val jdbc = lease.jdbcTemplate()
+          val seed = seedCommentFixture(jdbc)
+          jdbc.update(
             """
-            SELECT body, body_plain_text, body_format
-            FROM issue_comments
-            WHERE id = ?
+            INSERT INTO issue_comments (
+              id, api_id, tenant_id, issue_id, author_id, body, body_format, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())
             """
               .trimIndent(),
             seed.commentId,
+            seed.commentApiId,
+            seed.tenantId,
+            seed.issueId,
+            seed.userId,
+            "Legacy plain comment",
+            "plain_text",
           )
-        row["body"] shouldBe "<p>Legacy plain comment</p>"
-        row["body_plain_text"] shouldBe "Legacy plain comment"
-        row["body_format"] shouldBe "html"
-      }
+
+          org.flywaydb.core.Flyway.configure()
+            .dataSource(lease.jdbcUrl, lease.username, lease.password)
+            .locations(*MigrationSpec.Full.locations())
+            .load()
+            .migrate()
+
+          val row =
+            jdbc.queryForMap(
+              """
+              SELECT body, body_plain_text, body_format
+              FROM issue_comments
+              WHERE id = ?
+              """
+                .trimIndent(),
+              seed.commentId,
+            )
+          row["body"] shouldBe "<p>Legacy plain comment</p>"
+          row["body_plain_text"] shouldBe "Legacy plain comment"
+          row["body_format"] shouldBe "html"
+        }
     }
   })
 
@@ -199,19 +185,27 @@ private fun withMigratedPostgres(
   target: String? = null,
   block: (JdbcTemplate, org.flywaydb.core.api.output.MigrateResult) -> Unit,
 ) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    val flyway =
-      Flyway.configure()
-        .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
-        .apply { if (target != null) target(target) }
-        .load()
-    val result = flyway.migrate()
-    val dataSource =
-      DriverManagerDataSource(postgres.jdbcUrl, postgres.username, postgres.password).apply {
-        setDriverClassName("org.postgresql.Driver")
-      }
-    block(JdbcTemplate(dataSource), result)
-  }
+  WorkbenchPostgresTestSupport.openDatabase(
+      WorkbenchPostgresTestSupport.customMigration(
+        migrateOnOpen = false,
+        configure = {
+          if (target != null) {
+            target(target)
+          } else {
+            this
+          }
+        },
+      )
+    )
+    .use { lease ->
+      val jdbc = lease.jdbcTemplate()
+      val result =
+        org.flywaydb.core.Flyway.configure()
+          .dataSource(lease.jdbcUrl, lease.username, lease.password)
+          .locations(*MigrationSpec.Full.locations())
+          .apply { if (target != null) target(target) }
+          .load()
+          .migrate()
+      block(jdbc, result)
+    }
 }

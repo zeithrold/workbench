@@ -21,34 +21,23 @@ import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemTimelineRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
 import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonObject
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.testcontainers.containers.PostgreSQLContainer
 
 internal fun withPostgresDatabase(block: suspend (Database) -> Unit) {
-  PostgreSQLContainer("postgres:18-alpine").use { postgres ->
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations("classpath:db/migration", "classpath:ink/doa/workbench/data/migration")
-      .load()
-      .migrate()
-    val database =
-      Database.connect(
-        url = postgres.jdbcUrl,
-        driver = "org.postgresql.Driver",
-        user = postgres.username,
-        password = postgres.password,
-      )
-    kotlinx.coroutines.runBlocking { block(database) }
-  }
+  WorkbenchPostgresTestSupport.withDatabase(MigrationSpec.Full, block)
+}
+
+internal fun withCorePostgresDatabase(block: suspend (Database) -> Unit) {
+  WorkbenchPostgresTestSupport.withDatabase(MigrationSpec.Core, block)
 }
 
 internal fun seedTenant(database: Database): UUID {

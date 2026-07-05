@@ -9,29 +9,19 @@ import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
+import ink.doa.workbench.testsupport.postgres.registerWorkbenchDataSource
 import io.mockk.mockk
 import java.time.Duration
-import org.flywaydb.core.Flyway
 import org.redisson.api.RedissonClient
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.test.context.DynamicPropertyRegistry
-import org.testcontainers.containers.PostgreSQLContainer
 
 object AuthIntegrationContainers {
-  val postgres: PostgreSQLContainer<*> =
-    PostgreSQLContainer("postgres:18-alpine").apply {
-      start()
-      Flyway.configure()
-        .dataSource(jdbcUrl, username, password)
-        .locations(
-          "classpath:db/migration",
-          "classpath:ink/doa/workbench/data/migration",
-        )
-        .load()
-        .migrate()
-    }
+  private val postgresLease = WorkbenchPostgresTestSupport.moduleDatabase(MigrationSpec.Full)
 
   val keycloak: KeycloakContainer =
     KeycloakTestContainer.create().apply {
@@ -42,9 +32,7 @@ object AuthIntegrationContainers {
   val ldap: InMemoryLdapTestServer = InMemoryLdapTestServer.start()
 
   fun registerDataSourceProperties(registry: DynamicPropertyRegistry) {
-    registry.add("spring.datasource.url") { postgres.jdbcUrl }
-    registry.add("spring.datasource.username") { postgres.username }
-    registry.add("spring.datasource.password") { postgres.password }
+    registry.registerWorkbenchDataSource(postgresLease)
   }
 
   @TestConfiguration

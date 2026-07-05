@@ -18,17 +18,18 @@ import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettin
 import ink.doa.workbench.data.repository.identity.ExposedTenantMemberRepository
 import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountRepository
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
+import ink.doa.workbench.testsupport.postgres.MigrationSpec
+import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
+import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.testcontainers.containers.PostgreSQLContainer
 
 data class TenantSeed(
   val tenantApiId: String,
@@ -80,27 +81,8 @@ object AuthIntegrationFixtures {
       userLoginAccounts = ExposedUserLoginAccountRepository(database),
     )
 
-  fun startPostgres(): PostgreSQLContainer<*> {
-    val postgres = PostgreSQLContainer("postgres:18-alpine")
-    postgres.start()
-    Flyway.configure()
-      .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-      .locations(
-        "classpath:db/migration",
-        "classpath:ink/doa/workbench/data/migration",
-      )
-      .load()
-      .migrate()
-    return postgres
-  }
-
-  fun connectDatabase(postgres: PostgreSQLContainer<*>): Database =
-    Database.connect(
-      url = postgres.jdbcUrl,
-      driver = "org.postgresql.Driver",
-      user = postgres.username,
-      password = postgres.password,
-    )
+  fun openSpecDatabase(): PostgresTestDatabaseLease =
+    WorkbenchPostgresTestSupport.openDatabase(MigrationSpec.Full)
 
   suspend fun seedLdapFixture(
     database: Database,
