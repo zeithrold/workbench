@@ -366,7 +366,7 @@ def evaluate_stack(
             message="Unable to resolve source roots for changed files.",
         )
 
-    exit_code, output, percent, payload = run_diff_cover(
+    _exit_code, output, percent, payload = run_diff_cover(
         root, config, branch, diff_text, src_roots
     )
     unmeasured_files = (
