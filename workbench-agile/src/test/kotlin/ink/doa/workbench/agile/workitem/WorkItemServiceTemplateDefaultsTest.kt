@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
@@ -53,7 +54,6 @@ class WorkItemServiceTemplateDefaultsTest :
     "applies create fields template defaults before repository create" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
-      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
       val events = mockk<DomainEventPublisher>()
       justRun { events.publish<Any>(any(), any(), any(), any()) }
 
@@ -63,7 +63,7 @@ class WorkItemServiceTemplateDefaultsTest :
       val userApiId = PublicId.new("usr")
       val projectApiId = PublicId.new("prj")
       val config = config(defaultDueDate = true)
-      val values = slot<List<WorkItemPropertyValue>>()
+      val createCommand = slot<CreateWorkItemPersistenceCommand>()
       val created = workItem(tenantId, projectId, config)
 
       coEvery { configs.resolveEffective(tenantId, projectId, "typ_task") } returns
@@ -71,7 +71,7 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
       coEvery {
-        repository.create(any(), any(), any(), any(), capture(values), any())
+        repository.create(capture(createCommand))
       } returns WorkItemMutationResult(created, "work_item.created")
 
       workItemService(repository, configs, events, clock)
@@ -87,7 +87,7 @@ class WorkItemServiceTemplateDefaultsTest :
           )
         )
 
-      values.captured.map { it.code to it.value } shouldContain
+      createCommand.captured.propertyValues.map { it.code to it.value } shouldContain
         ("dueDate" to JsonPrimitive("2026-07-07"))
     }
 
@@ -105,7 +105,7 @@ class WorkItemServiceTemplateDefaultsTest :
       val projectApiId = PublicId.new("prj")
       val config = config(defaultDueDate = false)
       val issue = workItem(tenantId, projectId, config)
-      val values = slot<List<WorkItemPropertyValue>>()
+      val propertyValues = slot<List<WorkItemPropertyValue>>()
       val command = slot<TransitionWorkItemCommand>()
       val transition = transition(config)
 
@@ -119,10 +119,18 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
       coEvery {
-        repository.transition(capture(command), any(), any(), any(), capture(values))
+        repository.transition(capture(command), any(), any(), any(), capture(propertyValues))
       } returns WorkItemMutationResult(issue, "work_item.transitioned")
 
-      workItemTransitionService(repository, configs, workflows, events, clock)
+      workItemTransitionService(
+          WorkItemTransitionServiceFixtures(
+            repository = repository,
+            configs = configs,
+            workflows = workflows,
+            events = events,
+            clock = clock,
+          )
+        )
         .transition(
           TransitionWorkItemCommand(
             tenantId = tenantId,
@@ -135,9 +143,9 @@ class WorkItemServiceTemplateDefaultsTest :
         )
 
       command.captured.assigneeApiId shouldBe userApiId.value
-      values.captured.map { it.code to it.value } shouldContain
+      propertyValues.captured.map { it.code to it.value } shouldContain
         ("resolution" to JsonPrimitive("wont_fix"))
-      values.captured.map { it.code to it.value } shouldContain
+      propertyValues.captured.map { it.code to it.value } shouldContain
         ("resolvedAt" to JsonPrimitive("2026-07-04T10:15:30Z"))
       coVerify(exactly = 1) { repository.transition(any(), any(), any(), any(), any()) }
     }
@@ -145,7 +153,6 @@ class WorkItemServiceTemplateDefaultsTest :
     "applies automatic create default when field write permission is denied and user omits field" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
-      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
       val events = mockk<DomainEventPublisher>()
       justRun { events.publish<Any>(any(), any(), any(), any()) }
 
@@ -155,7 +162,7 @@ class WorkItemServiceTemplateDefaultsTest :
       val userApiId = PublicId.new("usr")
       val projectApiId = PublicId.new("prj")
       val config = config(defaultDueDate = true)
-      val values = slot<List<WorkItemPropertyValue>>()
+      val createCommand = slot<CreateWorkItemPersistenceCommand>()
       val created = workItem(tenantId, projectId, config)
       val fieldPermissions = mockk<WorkItemFieldPermissionService>()
 
@@ -173,7 +180,7 @@ class WorkItemServiceTemplateDefaultsTest :
           field is TemplateField.System && field.canonicalName == "title"
         }
       coEvery {
-        repository.create(any(), any(), any(), any(), capture(values), any())
+        repository.create(capture(createCommand))
       } returns WorkItemMutationResult(created, "work_item.created")
 
       workItemService(repository, configs, events, clock, fieldPermissions)
@@ -189,14 +196,13 @@ class WorkItemServiceTemplateDefaultsTest :
           )
         )
 
-      values.captured.map { it.code to it.value } shouldContain
+      createCommand.captured.propertyValues.map { it.code to it.value } shouldContain
         ("dueDate" to JsonPrimitive("2026-07-07"))
     }
 
     "rejects create when automatic default field is submitted explicitly without permission" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
-      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
       val events = mockk<DomainEventPublisher>()
       val fieldPermissions = mockk<WorkItemFieldPermissionService>()
 
@@ -242,7 +248,6 @@ class WorkItemServiceTemplateDefaultsTest :
     "soft deletes work item through repository and publishes mutation event" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
-      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
       val events = mockk<DomainEventPublisher>()
       justRun { events.publish<Any>(any(), any(), any(), any()) }
 
@@ -487,28 +492,35 @@ private fun workItemService(
     configs,
     subtypeConstraints,
     WorkItemMutationSupport(repository, configs, events),
-    reconciler,
-    fieldPermissions,
-    descriptionAttachmentValidator,
+    WorkItemFieldMutationSupport(
+      reconciler,
+      fieldPermissions,
+      descriptionAttachmentValidator,
+    ),
   )
 }
 
+private data class WorkItemTransitionServiceFixtures(
+  val repository: WorkItemRepository,
+  val configs: IssueTypeConfigRepository,
+  val workflows: WorkflowConfigurationRepository,
+  val events: DomainEventPublisher,
+  val clock: Clock,
+  val fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+)
+
 private fun workItemTransitionService(
-  repository: WorkItemRepository,
-  configs: IssueTypeConfigRepository,
-  workflows: WorkflowConfigurationRepository,
-  events: DomainEventPublisher,
-  clock: Clock,
-  fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+  fixtures: WorkItemTransitionServiceFixtures
 ): WorkItemTransitionService {
-  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
-  val mutationSupport = WorkItemMutationSupport(repository, configs, events)
-  val transitionValidator = WorkItemTransitionValidator(repository)
+  val reconciler = WorkItemFieldMutationReconciler(fixtures.fieldPermissions, fixtures.clock)
+  val mutationSupport =
+    WorkItemMutationSupport(fixtures.repository, fixtures.configs, fixtures.events)
+  val transitionValidator = WorkItemTransitionValidator(fixtures.repository)
   val transitionOptions =
     WorkItemTransitionOptionBuilder(
       mutationSupport,
       reconciler,
-      fieldPermissions,
+      fixtures.fieldPermissions,
       transitionValidator,
     )
   val collaborators =
@@ -521,8 +533,8 @@ private fun workItemTransitionService(
     )
   val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
   return WorkItemTransitionService(
-    repository,
-    workflows,
+    fixtures.repository,
+    fixtures.workflows,
     collaborators,
     descriptionAttachmentValidator,
   )

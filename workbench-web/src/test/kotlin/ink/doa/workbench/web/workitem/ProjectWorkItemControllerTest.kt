@@ -272,11 +272,6 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
     fun workItemServiceSetup(service: WorkItemService): Boolean {
       val createdWorkItem = SAMPLE_WORK_ITEM.copy(title = "New issue", key = "CORE-2")
       val updatedWorkItem = SAMPLE_WORK_ITEM.copy(title = "Updated title")
-      val transitionedWorkItem =
-        SAMPLE_WORK_ITEM.copy(
-          title = "Updated title",
-          statusGroup = WorkItemStatusGroup.IN_PROGRESS,
-        )
       coEvery {
         service.list(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID, 50, 0)
       } returns listOf(SAMPLE_WORK_ITEM)

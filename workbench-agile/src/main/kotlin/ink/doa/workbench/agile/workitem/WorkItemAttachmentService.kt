@@ -13,9 +13,12 @@ import ink.doa.workbench.core.storage.PresignedBlobRequest
 import ink.doa.workbench.core.storage.StorageLimits
 import ink.doa.workbench.core.workitem.WorkItemAttachmentRepository
 import ink.doa.workbench.core.workitem.model.AttachmentPurpose
+import ink.doa.workbench.core.workitem.model.CompletePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.CompleteWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.CreatePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
 import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
 import ink.doa.workbench.core.workitem.richtext.AttachmentReferenceParser
 import java.time.OffsetDateTime
@@ -23,29 +26,33 @@ import java.time.ZoneOffset
 import java.util.UUID
 import org.springframework.stereotype.Service
 
+data class ListWorkItemAttachmentsRequest(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val purpose: AttachmentPurpose? = null,
+  val commentApiId: String? = null,
+  val limit: Int = 50,
+  val offset: Long = 0,
+)
+
 @Service
 class WorkItemAttachmentService(
   private val attachments: WorkItemAttachmentRepository,
   private val blobStorage: BlobStorage,
   private val storageLimits: StorageLimits,
 ) {
-  suspend fun list(
-    tenantId: UUID,
-    projectId: UUID,
-    workItemApiId: String,
-    purpose: AttachmentPurpose?,
-    commentApiId: String?,
-    limit: Int = 50,
-    offset: Long = 0,
-  ): List<WorkItemAttachmentRecord> {
-    val issueId = requireIssueId(tenantId, projectId, workItemApiId)
+  suspend fun list(request: ListWorkItemAttachmentsRequest): List<WorkItemAttachmentRecord> {
+    val issueId = requireIssueId(request.tenantId, request.projectId, request.workItemApiId)
     return attachments.listByWorkItem(
-      tenantId = tenantId,
-      issueId = issueId,
-      purpose = purpose,
-      commentApiId = commentApiId,
-      limit = limit,
-      offset = offset,
+      ListWorkItemAttachmentsQuery(
+        tenantId = request.tenantId,
+        issueId = issueId,
+        purpose = request.purpose,
+        commentApiId = request.commentApiId,
+        limit = request.limit,
+        offset = request.offset,
+      )
     )
   }
 
@@ -71,12 +78,14 @@ class WorkItemAttachmentService(
     val storageKey = buildStorageKey(command.tenantId, issueId, attachmentId, command.filename)
     val pending =
       attachments.createPending(
-        command = command,
-        issueId = issueId,
-        commentId = commentId,
-        attachmentId = attachmentId,
-        apiId = apiId,
-        storageKey = storageKey,
+        CreatePendingAttachmentCommand(
+          upload = command,
+          issueId = issueId,
+          commentId = commentId,
+          attachmentId = attachmentId,
+          apiId = apiId,
+          storageKey = storageKey,
+        )
       )
     val presigned =
       blobStorage.presignPut(
@@ -114,12 +123,14 @@ class WorkItemAttachmentService(
     }
     val head = headResult.getOrThrow()
     return attachments.completePending(
-      tenantId = command.tenantId,
-      issueId = issueId,
-      attachmentApiId = command.attachmentApiId,
-      uploadedBy = command.uploadedBy,
-      byteSize = head.contentLength,
-      checksum = normalizeChecksum(head.etag),
+      CompletePendingAttachmentCommand(
+        tenantId = command.tenantId,
+        issueId = issueId,
+        attachmentApiId = command.attachmentApiId,
+        uploadedBy = command.uploadedBy,
+        byteSize = head.contentLength,
+        checksum = normalizeChecksum(head.etag),
+      )
     )
   }
 
@@ -180,7 +191,11 @@ class WorkItemAttachmentService(
     issueId: UUID,
   ): UUID? {
     if (command.purpose != AttachmentPurpose.COMMENT) return null
-    return attachments.resolveCommentId(command.tenantId, issueId, command.commentApiId!!)
+    val commentApiId =
+      requireNotNull(command.commentApiId) {
+        "commentApiId is required for comment attachments"
+      }
+    return attachments.resolveCommentId(command.tenantId, issueId, commentApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_COMMENT_NOT_FOUND)
   }
 

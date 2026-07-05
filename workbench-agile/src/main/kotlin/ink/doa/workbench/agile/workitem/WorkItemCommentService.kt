@@ -8,7 +8,6 @@ import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Service
 @Service
 class WorkItemCommentService(
   private val comments: WorkItemCommentRepository,
-  private val workItems: WorkItemRepository,
   private val bindings: PermissionBindingRepository,
   private val clock: Clock,
 ) {
@@ -111,20 +109,30 @@ class WorkItemCommentService(
 
   private fun CreateWorkItemCommentCommand.withProcessedBody(
     processed: ProcessedRichText
-  ): CreateWorkItemCommentCommand =
-    copy(
-      body = processed.html!!,
+  ): CreateWorkItemCommentCommand {
+    val html =
+      requireNotNull(processed.html) {
+        "Processed comment body must include HTML content"
+      }
+    return copy(
+      body = html,
       bodyPlainText = processed.plainText,
       bodyFormat = HTML_FORMAT,
     )
+  }
 
   private fun UpdateWorkItemCommentCommand.withProcessedBody(
     processed: ProcessedRichText
-  ): UpdateWorkItemCommentCommand =
-    copy(
-      body = processed.html!!,
+  ): UpdateWorkItemCommentCommand {
+    val html =
+      requireNotNull(processed.html) {
+        "Processed comment body must include HTML content"
+      }
+    return copy(
+      body = html,
       bodyPlainText = processed.plainText,
     )
+  }
 
   private companion object {
     const val MAX_BODY_LENGTH = 32_768

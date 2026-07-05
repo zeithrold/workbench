@@ -3,6 +3,7 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
@@ -23,9 +24,7 @@ class WorkItemService(
   private val configs: IssueTypeConfigRepository,
   private val subtypeConstraints: IssueSubtypeConstraintRepository,
   private val mutationSupport: WorkItemMutationSupport,
-  private val fieldMutationReconciler: WorkItemFieldMutationReconciler,
-  private val fieldPermissions: WorkItemFieldPermissionService,
-  private val descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator,
+  private val fieldMutationSupport: WorkItemFieldMutationSupport,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
 
@@ -60,26 +59,30 @@ class WorkItemService(
       )
     val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
     val reconciled =
-      fieldMutationReconciler.reconcileCreate(
-        template = fieldsTemplate,
+      fieldMutationSupport.reconcileCreate(
+        command = command,
         config = config.config,
+        fieldsTemplate = fieldsTemplate,
         templateContext = templateContext,
-        userProperties = WorkItemPropertySupport.createFieldInputs(command),
         permissionContext = permissionContext,
       )
     val effectiveCommand =
       WorkItemPropertySupport.applyCreateSystemFields(command, reconciled.systemFields)
-    descriptionAttachmentValidator.rejectCreateDescriptionReferences(effectiveCommand.description)
+    fieldMutationSupport.descriptionAttachments.rejectCreateDescriptionReferences(
+      effectiveCommand.description
+    )
     val values =
       WorkItemPropertySupport.normalizeProperties(config.config, reconciled.propertyValues)
     return repository
       .create(
-        command = effectiveCommand,
-        issueTypeId = config.config.config.issueTypeId,
-        issueTypeConfigId = config.config.config.id,
-        initialStatusId = initial.statusId,
-        parentIssueId = parentIssue?.id,
-        propertyValues = values,
+        CreateWorkItemPersistenceCommand(
+          command = effectiveCommand,
+          issueTypeId = config.config.config.issueTypeId,
+          issueTypeConfigId = config.config.config.id,
+          initialStatusId = initial.statusId,
+          parentIssueId = parentIssue?.id,
+          propertyValues = values,
+        )
       )
       .also { mutationSupport.publish(it) }
   }
@@ -115,11 +118,11 @@ class WorkItemService(
     val editableFields =
       fieldsTemplate.fields
         .filter { (field, spec) ->
-          fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
+          fieldMutationSupport.permissions.isFormFieldEditable(permissionContext, field, spec)
         }
         .map { (field, _) -> field.toWirePath() }
     val fieldMeta =
-      fieldMutationReconciler.buildFieldMeta(
+      fieldMutationSupport.reconciler.buildFieldMeta(
         template = fieldsTemplate,
         config = config.config,
         templateContext = templateContext,
@@ -159,12 +162,12 @@ class WorkItemService(
         command.actorUserId,
         FieldPermissionOperation.UPDATE,
       )
-    fieldMutationReconciler.assertWritableProperties(
+    fieldMutationSupport.reconciler.assertWritableProperties(
       permissionContext,
       config,
       WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
     )
-    fieldMutationReconciler.assertWritableSystemFields(
+    fieldMutationSupport.reconciler.assertWritableSystemFields(
       permissionContext,
       mapOf(
         "title" to command.title,
@@ -180,7 +183,7 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
-    descriptionAttachmentValidator.validateReferences(
+    fieldMutationSupport.descriptionAttachments.validateReferences(
       tenantId = command.tenantId,
       projectId = command.projectId,
       workItemApiId = command.workItemApiId,

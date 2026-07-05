@@ -51,25 +51,27 @@ internal fun insertPropertyValues(
   }
 }
 
-internal fun insertStatusHistory(
-  tenantId: UUID,
-  issueId: UUID,
-  fromStatusId: UUID?,
-  toStatusId: UUID,
-  transitionId: UUID?,
-  actorUserId: UUID,
-  changedAt: OffsetDateTime,
-): UUID {
+data class StatusHistoryEntry(
+  val tenantId: UUID,
+  val issueId: UUID,
+  val fromStatusId: UUID?,
+  val toStatusId: UUID,
+  val transitionId: UUID?,
+  val actorUserId: UUID,
+  val changedAt: OffsetDateTime,
+)
+
+internal fun insertStatusHistory(entry: StatusHistoryEntry): UUID {
   val historyId = UUID.randomUUID()
   IssueStatusHistoryTable.insert {
     it[IssueStatusHistoryTable.id] = historyId.toKotlinUuid()
-    it[IssueStatusHistoryTable.tenantId] = tenantId.toKotlinUuid()
-    it[IssueStatusHistoryTable.issueId] = issueId.toKotlinUuid()
-    it[IssueStatusHistoryTable.fromStatusId] = fromStatusId?.toKotlinUuid()
-    it[IssueStatusHistoryTable.toStatusId] = toStatusId.toKotlinUuid()
-    it[IssueStatusHistoryTable.transitionId] = transitionId?.toKotlinUuid()
-    it[IssueStatusHistoryTable.actorUserId] = actorUserId.toKotlinUuid()
-    it[IssueStatusHistoryTable.changedAt] = changedAt
+    it[IssueStatusHistoryTable.tenantId] = entry.tenantId.toKotlinUuid()
+    it[IssueStatusHistoryTable.issueId] = entry.issueId.toKotlinUuid()
+    it[IssueStatusHistoryTable.fromStatusId] = entry.fromStatusId?.toKotlinUuid()
+    it[IssueStatusHistoryTable.toStatusId] = entry.toStatusId.toKotlinUuid()
+    it[IssueStatusHistoryTable.transitionId] = entry.transitionId?.toKotlinUuid()
+    it[IssueStatusHistoryTable.actorUserId] = entry.actorUserId.toKotlinUuid()
+    it[IssueStatusHistoryTable.changedAt] = entry.changedAt
     it[IssueStatusHistoryTable.metadata] = JsonObject(emptyMap())
   }
   return historyId

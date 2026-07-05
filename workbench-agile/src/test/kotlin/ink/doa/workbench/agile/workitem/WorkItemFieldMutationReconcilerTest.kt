@@ -30,6 +30,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -51,21 +52,25 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.REQUIRED,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.REQUIRED,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user = mapOf("resolution" to JsonPrimitive("wont_fix"))
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("wont_fix")
@@ -78,20 +83,25 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.OPTIONAL,
-                    onUnauthorized = UnauthorizedMutationBehavior.PRESERVE_CURRENT,
-                  )
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      onUnauthorized = UnauthorizedMutationBehavior.PRESERVE_CURRENT,
+                    )
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  current = mapOf("resolution" to JsonPrimitive("existing")),
+                  user = mapOf("resolution" to JsonPrimitive("wont_fix")),
+                ),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -101,21 +111,24 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileCreate(
-          template =
-            createTemplate(
-              TemplateField.System("title") to
-                TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          userProperties = mapOf("title" to JsonPrimitive("Task")),
-          permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+        reconciler.reconcileFields(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(user = mapOf("title" to JsonPrimitive("Task"))),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          )
         )
 
       result.systemFields["title"] shouldBe "Task"
@@ -126,28 +139,32 @@ class WorkItemFieldMutationReconcilerTest :
       mockPropertyWriteDenied(fieldPermissions)
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
       val result =
-        reconciler.reconcileCreate(
-          template =
-            createTemplate(
-              TemplateField.System("title") to
-                TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              TemplateField.Property(apiId = null, code = "dueDate") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value =
-                    TemplateValueExpression.RelativeDate(
-                      amount = 3,
-                      unit = ink.doa.workbench.core.workitem.template.TemplateRelativeDateUnit.DAY,
-                      direction =
-                        ink.doa.workbench.core.workitem.template.TemplateDateDirection.FUTURE,
-                      anchor = "date.today",
-                    ),
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          userProperties = mapOf("title" to JsonPrimitive("Task")),
-          permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+        reconciler.reconcileFields(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.Property(apiId = null, code = "dueDate") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value =
+                      TemplateValueExpression.RelativeDate(
+                        amount = 3,
+                        unit =
+                          ink.doa.workbench.core.workitem.template.TemplateRelativeDateUnit.DAY,
+                        direction =
+                          ink.doa.workbench.core.workitem.template.TemplateDateDirection.FUTURE,
+                        anchor = "date.today",
+                      ),
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(user = mapOf("title" to JsonPrimitive("Task"))),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          )
         )
 
       result.propertyValues["dueDate"] shouldBe JsonPrimitive("2026-07-07")
@@ -158,25 +175,30 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                TemplateField.Property(apiId = null, code = "dueDate") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.AUTOMATIC,
-                    value = TemplateValueExpression.Literal(JsonPrimitive("2026-07-10")),
-                  ),
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                "dueDate" to JsonPrimitive("2026-07-10"),
-              ),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.Property(apiId = null, code = "dueDate") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.AUTOMATIC,
+                      value = TemplateValueExpression.Literal(JsonPrimitive("2026-07-10")),
+                    ),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      "dueDate" to JsonPrimitive("2026-07-10"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -186,25 +208,30 @@ class WorkItemFieldMutationReconcilerTest :
       mockTitleOnlyEditable(fieldPermissions)
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
       val result =
-        reconciler.reconcileCreate(
-          template =
-            createTemplate(
-              TemplateField.System("title") to
-                TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              TemplateField.Property(apiId = null, code = "dueDate") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("2026-07-07")),
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          userProperties =
-            mapOf(
-              "title" to JsonPrimitive("Task"),
-              "dueDate" to JsonNull,
-            ),
-          permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+        reconciler.reconcileFields(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.Property(apiId = null, code = "dueDate") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("2026-07-07")),
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user =
+                  mapOf(
+                    "title" to JsonPrimitive("Task"),
+                    "dueDate" to JsonNull,
+                  )
+              ),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          )
         )
 
       result.propertyValues["dueDate"] shouldBe JsonPrimitive("2026-07-07")
@@ -214,33 +241,8 @@ class WorkItemFieldMutationReconcilerTest :
       mockPropertyWriteDenied(fieldPermissions)
       val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileCreate(
-          template =
-            createTemplate(
-              TemplateField.System("title") to
-                TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              TemplateField.Property(apiId = null, code = "labels") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("default-label")),
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          userProperties = mapOf("title" to JsonPrimitive("Task")),
-          permissionContext = permissionContext(FieldPermissionOperation.CREATE),
-        )
-
-      result.propertyValues["labels"] shouldBe JsonPrimitive("default-label")
-    }
-
-    "A5 create optional inherit without permission rejects explicit submission" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
-      val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
-
-      shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileCreate(
+        reconciler.reconcileFields(
+          createContext(
             template =
               createTemplate(
                 TemplateField.System("title") to
@@ -253,12 +255,45 @@ class WorkItemFieldMutationReconcilerTest :
               ),
             config = config,
             templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                "labels" to JsonPrimitive("custom"),
-              ),
+            properties =
+              FieldReconciliationPropertyMaps(user = mapOf("title" to JsonPrimitive("Task"))),
             permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          )
+        )
+
+      result.propertyValues["labels"] shouldBe JsonPrimitive("default-label")
+    }
+
+    "A5 create optional inherit without permission rejects explicit submission" {
+      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
+      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
+
+      shouldThrow<PermissionDeniedException> {
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.Property(apiId = null, code = "labels") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      value = TemplateValueExpression.Literal(JsonPrimitive("default-label")),
+                    ),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      "labels" to JsonPrimitive("custom"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -268,18 +303,21 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(property("summary", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                TemplateField.Property(apiId = null, code = "summary") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties = mapOf("title" to JsonPrimitive("Task")),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.Property(apiId = null, code = "summary") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(user = mapOf("title" to JsonPrimitive("Task"))),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_PROPERTY_REQUIRED
@@ -290,20 +328,25 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED)
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                "unknown" to JsonPrimitive("value"),
-              ),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED)
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      "unknown" to JsonPrimitive("value"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
@@ -315,28 +358,33 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(resolution))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                TemplateField.Property(
-                  apiId = resolution.propertyApiId.value,
-                  code = "resolution",
-                ) to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.AUTOMATIC,
-                    value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
-                  ),
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                resolution.propertyApiId.value to JsonPrimitive("manual"),
-              ),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.Property(
+                    apiId = resolution.propertyApiId.value,
+                    code = "resolution",
+                  ) to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.AUTOMATIC,
+                      value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
+                    ),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      resolution.propertyApiId.value to JsonPrimitive("manual"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -348,25 +396,30 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.AUTOMATIC,
-                    value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
-                  ),
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                "resolution" to JsonPrimitive("manual"),
-              ),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.AUTOMATIC,
+                      value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
+                    ),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      "resolution" to JsonPrimitive("manual"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -381,26 +434,31 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(emptyList())
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileCreate(
-            template =
-              createTemplate(
-                TemplateField.System("title") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                TemplateField.System("assignee") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.OPTIONAL,
-                    value = TemplateValueExpression.Variable("user.currentUser"),
-                    writeGrant = FieldWriteGrant.SYSTEM_ONLY,
-                  ),
-              ),
-            config = config,
-            templateContext = templateContext(),
-            userProperties =
-              mapOf(
-                "title" to JsonPrimitive("Task"),
-                "assignee" to JsonPrimitive("usr_other"),
-              ),
-            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          reconciler.reconcileFields(
+            createContext(
+              template =
+                createTemplate(
+                  TemplateField.System("title") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                  TemplateField.System("assignee") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      value = TemplateValueExpression.Variable("user.currentUser"),
+                      writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+                    ),
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user =
+                    mapOf(
+                      "title" to JsonPrimitive("Task"),
+                      "assignee" to JsonPrimitive("usr_other"),
+                    )
+                ),
+              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -413,17 +471,21 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = emptyMap(),
-            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user = mapOf("resolution" to JsonPrimitive("wont_fix"))
+                ),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -435,20 +497,25 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.OPTIONAL,
-                    writeGrant = FieldWriteGrant.IMMUTABLE,
-                  )
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      writeGrant = FieldWriteGrant.IMMUTABLE,
+                    )
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  current = mapOf("resolution" to JsonPrimitive("existing")),
+                  user = mapOf("resolution" to JsonPrimitive("wont_fix")),
+                ),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -460,21 +527,25 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.OPTIONAL,
-                    value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
-                    writeGrant = FieldWriteGrant.SYSTEM_ONLY,
-                  )
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = emptyMap(),
-            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
+                      writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+                    )
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  user = mapOf("resolution" to JsonPrimitive("wont_fix"))
+                ),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
@@ -485,20 +556,21 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolvedAt", WorkItemPropertyDataType.DATETIME)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolvedAt") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value = TemplateValueExpression.Variable("date.now"),
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties = emptyMap(),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolvedAt") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value = TemplateValueExpression.Variable("date.now"),
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties = FieldReconciliationPropertyMaps(),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolvedAt"] shouldBe JsonPrimitive("2026-07-04T10:15:30Z")
@@ -509,20 +581,25 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.IMMUTABLE,
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-          userProperties = mapOf("resolution" to JsonNull),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.IMMUTABLE,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                current = mapOf("resolution" to JsonPrimitive("existing")),
+                user = mapOf("resolution" to JsonNull),
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("existing")
@@ -533,17 +610,19 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = emptyMap(),
-            userProperties = mapOf("unknown" to JsonPrimitive("value")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(user = mapOf("unknown" to JsonPrimitive("value"))),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
@@ -553,20 +632,24 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user = mapOf("resolution" to JsonPrimitive("wont_fix"))
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("wont_fix")
@@ -576,17 +659,21 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-          userProperties = emptyMap(),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                current = mapOf("resolution" to JsonPrimitive("existing"))
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("existing")
@@ -597,21 +684,24 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileCreate(
-          template =
-            createTemplate(
-              TemplateField.System("title") to
-                TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          userProperties = mapOf("title" to JsonPrimitive("Task")),
-          permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+        reconciler.reconcileFields(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("auto")),
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(user = mapOf("title" to JsonPrimitive("Task"))),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("auto")
@@ -621,21 +711,25 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(apiId = null, code = "resolution") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
-                  writeGrant = FieldWriteGrant.IMMUTABLE,
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-          userProperties = emptyMap(),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
+                    writeGrant = FieldWriteGrant.IMMUTABLE,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                current = mapOf("resolution" to JsonPrimitive("existing"))
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("existing")
@@ -646,20 +740,21 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.REQUIRED,
-                    writeGrant = FieldWriteGrant.IMMUTABLE,
-                  )
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = emptyMap(),
-            userProperties = emptyMap(),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.REQUIRED,
+                      writeGrant = FieldWriteGrant.IMMUTABLE,
+                    )
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties = FieldReconciliationPropertyMaps(),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_FIELD_IMMUTABLE_BUT_REQUIRED
@@ -669,20 +764,21 @@ class WorkItemFieldMutationReconcilerTest :
       coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
       val config = configWithProperties(emptyList())
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.System("assignee") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.AUTOMATIC,
-                  value = TemplateValueExpression.Variable("user.currentUser"),
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties = emptyMap(),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.System("assignee") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.AUTOMATIC,
+                    value = TemplateValueExpression.Variable("user.currentUser"),
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties = FieldReconciliationPropertyMaps(),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.systemFields["assignee"] shouldBe "usr_test"
@@ -691,29 +787,33 @@ class WorkItemFieldMutationReconcilerTest :
     "reconciles title and description together on transition" {
       val config = configWithProperties(emptyList())
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.System("title") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                ),
-              TemplateField.System("description") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                ),
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties =
-            mapOf(
-              "title" to JsonPrimitive("Updated title"),
-              "description" to JsonPrimitive("<p>Updated body</p>"),
-            ),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  ),
+                TemplateField.System("description") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user =
+                  mapOf(
+                    "title" to JsonPrimitive("Updated title"),
+                    "description" to JsonPrimitive("<p>Updated body</p>"),
+                  )
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.systemFields["title"] shouldBe "Updated title"
@@ -871,20 +971,25 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "resolution") to
-                  TransitionFieldSpec(
-                    participation = FieldParticipation.OPTIONAL,
-                    onUnauthorized = UnauthorizedMutationBehavior.REJECT,
-                  )
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = mapOf("resolution" to JsonPrimitive("existing")),
-            userProperties = mapOf("resolution" to JsonPrimitive("wont_fix")),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "resolution") to
+                    TransitionFieldSpec(
+                      participation = FieldParticipation.OPTIONAL,
+                      onUnauthorized = UnauthorizedMutationBehavior.REJECT,
+                    )
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties =
+                FieldReconciliationPropertyMaps(
+                  current = mapOf("resolution" to JsonPrimitive("existing")),
+                  user = mapOf("resolution" to JsonPrimitive("wont_fix")),
+                ),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_UNAUTHORIZED_FIELD_MUTATION
@@ -894,17 +999,18 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(property("summary", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransition(
-            template =
-              template(
-                TemplateField.Property(apiId = null, code = "summary") to
-                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED)
-              ),
-            config = config,
-            templateContext = templateContext(),
-            currentProperties = emptyMap(),
-            userProperties = emptyMap(),
-            permissionContext = permissionContext(),
+          reconciler.reconcileFields(
+            transitionContext(
+              template =
+                template(
+                  TemplateField.Property(apiId = null, code = "summary") to
+                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED)
+                ),
+              config = config,
+              templateContext = templateContext(),
+              properties = FieldReconciliationPropertyMaps(),
+              permissionContext = permissionContext(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_PROPERTY_REQUIRED
@@ -923,25 +1029,26 @@ class WorkItemFieldMutationReconcilerTest :
           workItem = issue,
         )
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.System("title") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                ),
-              TemplateField.System("assignee") to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                ),
-            ),
-          config = config,
-          templateContext = context,
-          currentProperties = emptyMap(),
-          userProperties = emptyMap(),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  ),
+                TemplateField.System("assignee") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  ),
+              ),
+            config = config,
+            templateContext = context,
+            properties = FieldReconciliationPropertyMaps(),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.systemFields["title"] shouldBe issue.title
@@ -952,23 +1059,27 @@ class WorkItemFieldMutationReconcilerTest :
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
       val result =
-        reconciler.reconcileTransition(
-          template =
-            template(
-              TemplateField.Property(
-                apiId = resolution.propertyApiId.value,
-                code = "resolution",
-              ) to
-                TransitionFieldSpec(
-                  participation = FieldParticipation.OPTIONAL,
-                  writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
-                )
-            ),
-          config = config,
-          templateContext = templateContext(),
-          currentProperties = emptyMap(),
-          userProperties = mapOf(resolution.propertyApiId.value to JsonPrimitive("done")),
-          permissionContext = permissionContext(),
+        reconciler.reconcileFields(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(
+                  apiId = resolution.propertyApiId.value,
+                  code = "resolution",
+                ) to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user = mapOf(resolution.propertyApiId.value to JsonPrimitive("done"))
+              ),
+            permissionContext = permissionContext(),
+          )
         )
 
       result.propertyValues["resolution"] shouldBe JsonPrimitive("done")
@@ -1095,4 +1206,44 @@ private fun workItemRecord(): WorkItemRecord =
     properties = JsonObject(emptyMap()),
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+  )
+
+private data class FieldReconciliationPropertyMaps(
+  val current: Map<String, JsonElement> = emptyMap(),
+  val user: Map<String, JsonElement> = emptyMap(),
+)
+
+private fun transitionContext(
+  template: WorkItemTransitionFieldsTemplate,
+  config: IssueTypeConfigDetails,
+  templateContext: WorkItemValueTemplateContext = templateContext(),
+  properties: FieldReconciliationPropertyMaps = FieldReconciliationPropertyMaps(),
+  permissionContext: WorkItemFieldPermissionContext = permissionContext(),
+) =
+  FieldReconciliationContext(
+    template = template,
+    expectedTarget = WorkItemValueTemplateTarget.TRANSITION,
+    config = config,
+    templateContext = templateContext,
+    currentProperties = properties.current,
+    userProperties = properties.user,
+    permissionContext = permissionContext.copy(operation = FieldPermissionOperation.UPDATE),
+  )
+
+private fun createContext(
+  template: WorkItemTransitionFieldsTemplate,
+  config: IssueTypeConfigDetails,
+  templateContext: WorkItemValueTemplateContext = templateContext(),
+  properties: FieldReconciliationPropertyMaps = FieldReconciliationPropertyMaps(),
+  permissionContext: WorkItemFieldPermissionContext =
+    permissionContext(FieldPermissionOperation.CREATE),
+) =
+  FieldReconciliationContext(
+    template = template,
+    expectedTarget = WorkItemValueTemplateTarget.CREATE,
+    config = config,
+    templateContext = templateContext,
+    currentProperties = emptyMap(),
+    userProperties = properties.user,
+    permissionContext = permissionContext.copy(operation = FieldPermissionOperation.CREATE),
   )

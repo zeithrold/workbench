@@ -108,7 +108,6 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
       withPostgresDatabase { database ->
         val tenantId = seedTenant(database)
         val repository = ExposedWorkItemCatalogRepository(database)
-        val actorId = seedUser(database)
 
         repository.createIssueType(
           ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand(

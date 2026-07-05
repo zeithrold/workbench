@@ -71,3 +71,30 @@ data class DeleteWorkItemAttachmentCommand(
   val actorUserId: UUID,
   val deleteReason: String? = null,
 )
+
+data class ListWorkItemAttachmentsQuery(
+  val tenantId: UUID,
+  val issueId: UUID,
+  val purpose: AttachmentPurpose? = null,
+  val commentApiId: String? = null,
+  val limit: Int,
+  val offset: Long,
+)
+
+data class CreatePendingAttachmentCommand(
+  val upload: InitiateWorkItemAttachmentUploadCommand,
+  val issueId: UUID,
+  val commentId: UUID?,
+  val attachmentId: UUID,
+  val apiId: PublicId,
+  val storageKey: String,
+)
+
+data class CompletePendingAttachmentCommand(
+  val tenantId: UUID,
+  val issueId: UUID,
+  val attachmentApiId: String,
+  val uploadedBy: UUID,
+  val byteSize: Long,
+  val checksum: String,
+)

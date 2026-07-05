@@ -10,9 +10,12 @@ import ink.doa.workbench.core.storage.StorageLimits
 import ink.doa.workbench.core.workitem.WorkItemAttachmentRepository
 import ink.doa.workbench.core.workitem.model.AttachmentPurpose
 import ink.doa.workbench.core.workitem.model.AttachmentUploadStatus
+import ink.doa.workbench.core.workitem.model.CompletePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.CompleteWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.CreatePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
 import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -163,8 +166,16 @@ class WorkItemAttachmentServiceTest :
           )
         )
 
-      service.list(tenantId, projectId, "iss_test", null, null).single().apiId shouldBe
-        completed.apiId
+      service
+        .list(
+          ListWorkItemAttachmentsRequest(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+          )
+        )
+        .single()
+        .apiId shouldBe completed.apiId
       service.get(tenantId, projectId, "iss_test", completed.apiId.value).apiId shouldBe
         completed.apiId
       service.delete(
@@ -294,61 +305,47 @@ private class FakeWorkItemAttachmentRepository(private val issueId: UUID) :
   var commentId: UUID? = null
 
   override suspend fun listByWorkItem(
-    tenantId: UUID,
-    issueId: UUID,
-    purpose: AttachmentPurpose?,
-    commentApiId: String?,
-    limit: Int,
-    offset: Long,
+    query: ListWorkItemAttachmentsQuery
   ): List<WorkItemAttachmentRecord> =
     lastCompleted
       ?.let { listOf(it) }
       ?.filter {
-        (purpose == null || it.purpose == purpose) &&
-          (commentApiId == null || it.commentApiId?.value == commentApiId)
-      } ?: emptyList()
+        (query.purpose == null || it.purpose == query.purpose) &&
+          (query.commentApiId == null || it.commentApiId?.value == query.commentApiId)
+      }
+      .orEmpty()
 
   override suspend fun createPending(
-    command: InitiateWorkItemAttachmentUploadCommand,
-    issueId: UUID,
-    commentId: UUID?,
-    attachmentId: UUID,
-    apiId: PublicId,
-    storageKey: String,
+    command: CreatePendingAttachmentCommand
   ): WorkItemAttachmentRecord =
     WorkItemAttachmentRecord(
-        id = attachmentId,
-        apiId = apiId,
-        tenantId = command.tenantId,
-        issueId = issueId,
-        commentId = commentId,
+        id = command.attachmentId,
+        apiId = command.apiId,
+        tenantId = command.upload.tenantId,
+        issueId = command.issueId,
+        commentId = command.commentId,
         commentApiId = null,
-        uploadedBy = command.uploadedBy,
+        uploadedBy = command.upload.uploadedBy,
         uploadedByApiId = PublicId.new("usr"),
-        filename = command.filename,
-        contentType = command.contentType,
-        byteSize = command.declaredByteSize,
+        filename = command.upload.filename,
+        contentType = command.upload.contentType,
+        byteSize = command.upload.declaredByteSize,
         checksum = null,
-        storageKey = storageKey,
-        purpose = command.purpose,
+        storageKey = command.storageKey,
+        purpose = command.upload.purpose,
         uploadStatus = AttachmentUploadStatus.PENDING,
         createdAt = OffsetDateTime.now(ZoneOffset.UTC),
       )
       .also { lastPending = it }
 
   override suspend fun completePending(
-    tenantId: UUID,
-    issueId: UUID,
-    attachmentApiId: String,
-    uploadedBy: UUID,
-    byteSize: Long,
-    checksum: String,
+    command: CompletePendingAttachmentCommand
   ): WorkItemAttachmentRecord {
     val pending = lastPending ?: error("missing pending attachment")
     return pending
       .copy(
-        byteSize = byteSize,
-        checksum = checksum,
+        byteSize = command.byteSize,
+        checksum = command.checksum,
         uploadStatus = AttachmentUploadStatus.COMPLETED,
       )
       .also {

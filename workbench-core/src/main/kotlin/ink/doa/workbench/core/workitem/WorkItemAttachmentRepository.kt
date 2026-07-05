@@ -1,39 +1,18 @@
 package ink.doa.workbench.core.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.AttachmentPurpose
+import ink.doa.workbench.core.workitem.model.CompletePendingAttachmentCommand
+import ink.doa.workbench.core.workitem.model.CreatePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
-import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
 import java.util.UUID
 
 interface WorkItemAttachmentRepository {
-  suspend fun listByWorkItem(
-    tenantId: UUID,
-    issueId: UUID,
-    purpose: AttachmentPurpose?,
-    commentApiId: String?,
-    limit: Int,
-    offset: Long,
-  ): List<WorkItemAttachmentRecord>
+  suspend fun listByWorkItem(query: ListWorkItemAttachmentsQuery): List<WorkItemAttachmentRecord>
 
-  suspend fun createPending(
-    command: InitiateWorkItemAttachmentUploadCommand,
-    issueId: UUID,
-    commentId: UUID?,
-    attachmentId: UUID,
-    apiId: PublicId,
-    storageKey: String,
-  ): WorkItemAttachmentRecord
+  suspend fun createPending(command: CreatePendingAttachmentCommand): WorkItemAttachmentRecord
 
-  suspend fun completePending(
-    tenantId: UUID,
-    issueId: UUID,
-    attachmentApiId: String,
-    uploadedBy: UUID,
-    byteSize: Long,
-    checksum: String,
-  ): WorkItemAttachmentRecord
+  suspend fun completePending(command: CompletePendingAttachmentCommand): WorkItemAttachmentRecord
 
   suspend fun findByApiId(
     tenantId: UUID,

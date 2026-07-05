@@ -10,7 +10,6 @@ import ink.doa.workbench.core.permission.ResolvedPermissionRule
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
@@ -32,9 +31,8 @@ class WorkItemCommentServiceTest :
   StringSpec({
     val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
     val comments = mockk<WorkItemCommentRepository>()
-    val workItems = mockk<WorkItemRepository>()
     val bindings = mockk<PermissionBindingRepository>()
-    val service = WorkItemCommentService(comments, workItems, bindings, clock)
+    val service = WorkItemCommentService(comments, bindings, clock)
 
     "create converts plain text body to html and persists comment" {
       val tenantId = UUID.randomUUID()

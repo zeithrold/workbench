@@ -8,8 +8,10 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemAttachmentRepository
 import ink.doa.workbench.core.workitem.model.AttachmentPurpose
 import ink.doa.workbench.core.workitem.model.AttachmentUploadStatus
+import ink.doa.workbench.core.workitem.model.CompletePendingAttachmentCommand
+import ink.doa.workbench.core.workitem.model.CreatePendingAttachmentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
-import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
+import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
 import ink.doa.workbench.data.persistence.AttachmentsTable
 import ink.doa.workbench.data.persistence.IssueCommentsTable
@@ -40,17 +42,16 @@ import org.springframework.stereotype.Repository
 class ExposedWorkItemAttachmentRepository(private val database: Database) :
   WorkItemAttachmentRepository {
   override suspend fun listByWorkItem(
-    tenantId: UUID,
-    issueId: UUID,
-    purpose: AttachmentPurpose?,
-    commentApiId: String?,
-    limit: Int,
-    offset: Long,
+    query: ListWorkItemAttachmentsQuery
   ): List<WorkItemAttachmentRecord> =
     suspendTransaction(db = database) {
-      val tenantUuid = tenantId.toKotlinUuid()
-      val issueUuid = issueId.toKotlinUuid()
-      val query =
+      val tenantUuid = query.tenantId.toKotlinUuid()
+      val issueUuid = query.issueId.toKotlinUuid()
+      val purpose = query.purpose
+      val commentApiId = query.commentApiId
+      val limit = query.limit
+      val offset = query.offset
+      val selectQuery =
         if (commentApiId != null) {
           (AttachmentsTable innerJoin IssueCommentsTable).selectAll().where {
             (AttachmentsTable.tenantId eq tenantUuid) and
@@ -69,67 +70,73 @@ class ExposedWorkItemAttachmentRepository(private val database: Database) :
               (purpose?.let { AttachmentsTable.purpose eq it.wireValue } ?: Op.TRUE)
           }
         }
-      query.orderBy(AttachmentsTable.createdAt to SortOrder.DESC).limit(limit).offset(offset).map {
-        it.toRecord()
-      }
+      selectQuery
+        .orderBy(AttachmentsTable.createdAt to SortOrder.DESC)
+        .limit(limit)
+        .offset(offset)
+        .map {
+          it.toRecord()
+        }
     }
 
   override suspend fun createPending(
-    command: InitiateWorkItemAttachmentUploadCommand,
-    issueId: UUID,
-    commentId: UUID?,
-    attachmentId: UUID,
-    apiId: PublicId,
-    storageKey: String,
+    command: CreatePendingAttachmentCommand
   ): WorkItemAttachmentRecord =
     suspendTransaction(db = database) {
+      val upload = command.upload
+      val issueId = command.issueId
+      val commentId = command.commentId
+      val attachmentId = command.attachmentId
+      val apiId = command.apiId
+      val storageKey = command.storageKey
       val now = now()
       AttachmentsTable.insert {
         it[AttachmentsTable.id] = attachmentId.toKotlinUuid()
         it[AttachmentsTable.apiId] = apiId.value
-        it[AttachmentsTable.tenantId] = command.tenantId.toKotlinUuid()
+        it[AttachmentsTable.tenantId] = upload.tenantId.toKotlinUuid()
         it[AttachmentsTable.issueId] = issueId.toKotlinUuid()
         it[AttachmentsTable.commentId] = commentId?.toKotlinUuid()
-        it[AttachmentsTable.uploadedBy] = command.uploadedBy.toKotlinUuid()
-        it[AttachmentsTable.filename] = command.filename
-        it[AttachmentsTable.contentType] = command.contentType
-        it[AttachmentsTable.byteSize] = command.declaredByteSize
+        it[AttachmentsTable.uploadedBy] = upload.uploadedBy.toKotlinUuid()
+        it[AttachmentsTable.filename] = upload.filename
+        it[AttachmentsTable.contentType] = upload.contentType
+        it[AttachmentsTable.byteSize] = upload.declaredByteSize
         it[AttachmentsTable.checksum] = null
         it[AttachmentsTable.storageKey] = storageKey
-        it[AttachmentsTable.purpose] = command.purpose.wireValue
+        it[AttachmentsTable.purpose] = upload.purpose.wireValue
         it[AttachmentsTable.uploadStatus] = AttachmentUploadStatus.PENDING.wireValue
-        it[AttachmentsTable.metadata] = metadataFor(command.purpose)
+        it[AttachmentsTable.metadata] = metadataFor(upload.purpose)
         it[AttachmentsTable.createdAt] = now
       }
       WorkItemAttachmentRecord(
         id = attachmentId,
         apiId = apiId,
-        tenantId = command.tenantId,
+        tenantId = upload.tenantId,
         issueId = issueId,
         commentId = commentId,
         commentApiId = commentId?.let { requireCommentApiId(it) },
-        uploadedBy = command.uploadedBy,
-        uploadedByApiId = requireUserApiId(command.uploadedBy),
-        filename = command.filename,
-        contentType = command.contentType,
-        byteSize = command.declaredByteSize,
+        uploadedBy = upload.uploadedBy,
+        uploadedByApiId = requireUserApiId(upload.uploadedBy),
+        filename = upload.filename,
+        contentType = upload.contentType,
+        byteSize = upload.declaredByteSize,
         checksum = null,
         storageKey = storageKey,
-        purpose = command.purpose,
+        purpose = upload.purpose,
         uploadStatus = AttachmentUploadStatus.PENDING,
         createdAt = now,
       )
     }
 
   override suspend fun completePending(
-    tenantId: UUID,
-    issueId: UUID,
-    attachmentApiId: String,
-    uploadedBy: UUID,
-    byteSize: Long,
-    checksum: String,
+    command: CompletePendingAttachmentCommand
   ): WorkItemAttachmentRecord =
     suspendTransaction(db = database) {
+      val tenantId = command.tenantId
+      val issueId = command.issueId
+      val attachmentApiId = command.attachmentApiId
+      val uploadedBy = command.uploadedBy
+      val byteSize = command.byteSize
+      val checksum = command.checksum
       val row =
         AttachmentsTable.selectAll()
           .where {

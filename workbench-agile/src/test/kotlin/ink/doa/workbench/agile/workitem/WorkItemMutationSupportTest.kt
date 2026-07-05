@@ -26,8 +26,6 @@ class WorkItemMutationSupportTest :
     val tenantId = UUID.randomUUID()
     val projectId = UUID.randomUUID()
     val actorId = UUID.randomUUID()
-    val now = OffsetDateTime.now(ZoneOffset.UTC)
-
     "publish emits created updated and transitioned events" {
       val events = mockk<DomainEventPublisher>()
       justRun { events.publish<Any>(any(), any(), any(), any()) }
