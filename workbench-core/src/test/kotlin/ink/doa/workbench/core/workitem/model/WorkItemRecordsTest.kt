@@ -140,14 +140,7 @@ class WorkItemRecordsTest :
           updatedAt = now,
           properties = JsonObject(emptyMap()),
         )
-      WorkItemSearchPage(
-          result = WorkItemSearchResult(hits = listOf(hit), total = 1),
-          page = WorkItemSearchPageInfo(limit = 20, offset = 0, nextOffset = null),
-        )
-        .result
-        .hits
-        .single()
-        .key shouldBe "WB-1"
+      WorkItemSearchResult(hits = listOf(hit), nextCursor = null).hits.single().key shouldBe "WB-1"
     }
 
     "comment and transition commands store actor metadata" {

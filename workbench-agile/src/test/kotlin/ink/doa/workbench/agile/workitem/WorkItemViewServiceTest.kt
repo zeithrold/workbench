@@ -46,9 +46,7 @@ class WorkItemViewServiceTest :
         name = "Backlog",
         description = null,
         visibility = WorkItemViewVisibility.PRIVATE,
-        filterAst = WorkItemViewDefaults.EMPTY_FILTER,
-        sortAst = WorkItemViewDefaults.EMPTY_SORT,
-        groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+        queryAst = WorkItemViewDefaults.EMPTY_QUERY,
         displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
         createdAt = now,
         updatedAt = now,
@@ -98,9 +96,7 @@ class WorkItemViewServiceTest :
           name = "Backlog",
           description = null,
           visibility = WorkItemViewVisibility.PRIVATE,
-          filterAst = WorkItemViewDefaults.EMPTY_FILTER,
-          sortAst = WorkItemViewDefaults.EMPTY_SORT,
-          groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+          queryAst = WorkItemViewDefaults.EMPTY_QUERY,
           displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
         )
       coEvery { access.requireCreate(tenantId, projectId, actorId) } returns Unit

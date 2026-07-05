@@ -475,6 +475,38 @@ enum class WorkbenchErrorCode(
     "work_item.query.variable.trusted_context_required",
     "Variable requires trusted request context binding.",
   ),
+  WORK_ITEM_QUERY_GROUP_REQUIRED(
+    "work_item.query.group.required",
+    "Work item query group is required.",
+  ),
+  WORK_ITEM_QUERY_FIELD_NOT_GROUPABLE(
+    "work_item.query.field.not_groupable",
+    "Field is not groupable.",
+  ),
+  WORK_ITEM_QUERY_GROUP_KEY_OPERATOR_UNSUPPORTED(
+    "work_item.query.group_key.operator_unsupported",
+    "Unsupported work item group key operator.",
+  ),
+  WORK_ITEM_QUERY_GROUP_KEY_FIELD_MISMATCH(
+    "work_item.query.group_key.field_mismatch",
+    "Group key field must match query group field.",
+  ),
+  WORK_ITEM_SEARCH_SCOPE_CONFLICT(
+    "work_item.search.scope.conflict",
+    "Work item search scope cannot combine include and exclude group keys.",
+  ),
+  WORK_ITEM_SEARCH_CURSOR_INVALID(
+    "work_item.search.cursor.invalid",
+    "Invalid work item search cursor.",
+  ),
+  WORK_ITEM_SEARCH_GROUP_CURSOR_INVALID(
+    "work_item.search.group_cursor.invalid",
+    "Invalid work item search group cursor.",
+  ),
+  WORK_ITEM_SEARCH_CURSOR_SORT_MISMATCH(
+    "work_item.search.cursor.sort_mismatch",
+    "Work item search cursor does not match query sort stack.",
+  ),
   WORK_ITEM_TEMPLATE_INVALID_JSON(
     "work_item.template.parse.invalid_json",
     "Invalid work item value template JSON.",

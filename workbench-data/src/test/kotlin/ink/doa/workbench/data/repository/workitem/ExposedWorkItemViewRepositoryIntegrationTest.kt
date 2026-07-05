@@ -30,9 +30,7 @@ class ExposedWorkItemViewRepositoryIntegrationTest :
               name = "Project backlog",
               description = "Team backlog",
               visibility = WorkItemViewVisibility.PROJECT,
-              filterAst = WorkItemViewDefaults.EMPTY_FILTER,
-              sortAst = WorkItemViewDefaults.EMPTY_SORT,
-              groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+              queryAst = WorkItemViewDefaults.EMPTY_QUERY,
               displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
             )
           )
@@ -49,9 +47,7 @@ class ExposedWorkItemViewRepositoryIntegrationTest :
               name = "Tenant inbox",
               description = null,
               visibility = WorkItemViewVisibility.TENANT,
-              filterAst = WorkItemViewDefaults.EMPTY_FILTER,
-              sortAst = WorkItemViewDefaults.EMPTY_SORT,
-              groupAst = WorkItemViewDefaults.EMPTY_GROUP,
+              queryAst = WorkItemViewDefaults.EMPTY_QUERY,
               displayFields = WorkItemViewDefaults.EMPTY_DISPLAY_FIELDS,
             )
           )

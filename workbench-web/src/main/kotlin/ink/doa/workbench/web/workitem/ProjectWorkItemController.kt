@@ -6,11 +6,14 @@ import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
+import ink.doa.workbench.core.workitem.WorkItemSearchGroupsPageRequest
 import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
 import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemSearchPage
 import ink.doa.workbench.core.workitem.query.WorkItemQueryParser
+import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.ProjectScoped
@@ -18,10 +21,12 @@ import ink.doa.workbench.web.api.ResourceId
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.http.headersIfNextToken
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import java.net.URI
+import kotlinx.serialization.json.Json
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -40,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Project Work Items", description = "Project-scoped work item runtime APIs.")
 @SessionSecured
 @StandardErrorResponses
+@Suppress("TooManyFunctions")
 class ProjectWorkItemController(
   private val service: WorkItemService,
   private val transitionService: WorkItemTransitionService,
@@ -88,11 +94,44 @@ class ProjectWorkItemController(
   suspend fun search(
     @Valid @RequestBody request: WorkItemSearchRequest,
     projectContext: ProjectRequestContext,
-  ): WorkItemSearchPage =
-    queryService.search(
-      scope = WorkItemSearchScope(projectContext.tenant.id, projectContext.project.id),
-      query = queryParser.parse(request.query.toJsonElement()),
-      page = WorkItemSearchPageRequest(request.limit ?: 50, request.offset ?: 0),
+  ): ResponseEntity<List<WorkItemSearchHitResponse>> {
+    val result =
+      queryService.search(
+        scope = WorkItemSearchScope(projectContext.tenant.id, projectContext.project.id),
+        query = queryParser.parse(Json.parseToJsonElement(request.query.toString())),
+        groupScope =
+          request.scope?.let { queryParser.parseGroupScope(Json.parseToJsonElement(it.toString())) }
+            ?: WorkItemSearchGroupScope(),
+        page =
+          WorkItemSearchPageRequest(
+            limit = request.limit ?: 50,
+            cursor = request.cursor?.let(WorkItemSearchCursor::decode),
+          ),
+      )
+    val body = result.hits.map(WorkItemSearchHitResponse::from)
+    return ResponseEntity.ok().headersIfNextToken(result.nextCursor?.encode(), body)
+  }
+
+  @PostMapping("/search/groups")
+  @Authenticated
+  @TenantScoped
+  @ProjectScoped
+  @Authorize(action = "issue.view", resource = "issue")
+  @Operation(summary = "Search project work item groups")
+  suspend fun searchGroups(
+    @Valid @RequestBody request: WorkItemSearchGroupsRequest,
+    projectContext: ProjectRequestContext,
+  ): WorkItemSearchGroupsPageResponse =
+    WorkItemSearchGroupsPageResponse.from(
+      queryService.searchGroups(
+        scope = WorkItemSearchScope(projectContext.tenant.id, projectContext.project.id),
+        query = queryParser.parse(Json.parseToJsonElement(request.query.toString())),
+        page =
+          WorkItemSearchGroupsPageRequest(
+            groupLimit = request.groupLimit ?: 20,
+            groupCursor = request.groupCursor?.let(WorkItemSearchGroupCursor::decode),
+          ),
+      )
     )
 
   @GetMapping("/create-form")

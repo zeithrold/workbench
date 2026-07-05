@@ -91,9 +91,3 @@ data class TransitionWorkItemRequest(
 }
 
 data class DeleteWorkItemRequest(val deleteReason: String? = null)
-
-data class WorkItemSearchRequest(
-  val query: JsonNode,
-  val limit: Int? = null,
-  val offset: Long? = null,
-)

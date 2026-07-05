@@ -14,7 +14,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "Flyway migrations run on PostgreSQL" {
       withMigratedPostgres { _, result ->
-        result.migrationsExecuted shouldBe 36
+        result.migrationsExecuted shouldBe 37
       }
     }
 

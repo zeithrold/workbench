@@ -11,6 +11,12 @@ class WorkItemQueryValidator(
     val counter = PredicateCounter()
     query.where?.let { validateCondition(it, depth = 0, counter = counter) }
     query.sort.forEach(::validateSort)
+    query.group?.let(::validateGroup)
+  }
+
+  fun validate(query: WorkItemQuery, groupScope: WorkItemSearchGroupScope) {
+    validate(query)
+    WorkItemGroupKeyValidator(fieldResolver).validateGroupScope(groupScope, query.group?.field)
   }
 
   fun validateEnvelope(query: WorkItemQuery) {
@@ -65,6 +71,16 @@ class WorkItemQueryValidator(
       throw InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_NOT_SORTABLE,
         "Field ${sort.field.canonicalName} is not sortable.",
+      )
+    }
+  }
+
+  private fun validateGroup(group: WorkItemGroupTerm) {
+    val field = fieldResolver.resolve(group.field)
+    if (!field.groupable) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_NOT_GROUPABLE,
+        "Field ${group.field.canonicalName} is not groupable.",
       )
     }
   }

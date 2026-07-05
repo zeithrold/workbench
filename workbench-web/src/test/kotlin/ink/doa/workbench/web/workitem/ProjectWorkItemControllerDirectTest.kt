@@ -11,12 +11,13 @@ import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.core.common.context.TenantContextSummary
 import ink.doa.workbench.core.common.context.UserContextSummary
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
 import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
 import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.model.WorkItemSearchHit
-import ink.doa.workbench.core.workitem.model.WorkItemSearchPage
-import ink.doa.workbench.core.workitem.model.WorkItemSearchPageInfo
 import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
+import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.web.api.http.WORKBENCH_NEXT_CURSOR_HEADER
 import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -27,6 +28,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 class ProjectWorkItemControllerDirectTest :
   StringSpec({
@@ -63,38 +65,36 @@ class ProjectWorkItemControllerDirectTest :
             name = TenantWebMvcFixtures.PROJECT_RECORD.name,
           ),
       )
-    val searchPage =
-      WorkItemSearchPage(
-        result =
-          WorkItemSearchResult(
-            hits =
-              listOf(
-                WorkItemSearchHit(
-                  apiId = "iss_01JABCDEFGHJKMNPQRSTVWXYZ0",
-                  key = "CORE-1",
-                  title = "Fix login",
-                  description = null,
-                  projectApiId = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
-                  issueTypeApiId = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
-                  issueTypeConfigApiId = "itc_01JABCDEFGHJKMNPQRSTVWXYZ0",
-                  statusApiId = "sts_01JABCDEFGHJKMNPQRSTVWXYZ0",
-                  statusGroup = "todo",
-                  priorityApiId = null,
-                  reporterApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-                  assigneeApiId = null,
-                  sprintApiId = null,
-                  createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-                  updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-                  properties = JsonObject(emptyMap()),
-                )
-              ),
-            total = 1,
+    val nextCursor =
+      WorkItemSearchCursor(sortValues = listOf(JsonPrimitive("todo")), apiId = "iss_next")
+    val searchResult =
+      WorkItemSearchResult(
+        hits =
+          listOf(
+            WorkItemSearchHit(
+              apiId = "iss_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              key = "CORE-1",
+              title = "Fix login",
+              description = null,
+              projectApiId = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+              issueTypeApiId = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              issueTypeConfigApiId = "itc_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              statusApiId = "sts_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              statusGroup = "todo",
+              priorityApiId = null,
+              reporterApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              assigneeApiId = null,
+              sprintApiId = null,
+              createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+              updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+              properties = JsonObject(emptyMap()),
+            )
           ),
-        page = WorkItemSearchPageInfo(limit = 25, offset = 10, nextOffset = null),
+        nextCursor = nextCursor,
       )
 
-    "search delegates to query service with parsed request" {
-      coEvery { queryService.search(any(), any(), any()) } returns searchPage
+    "search delegates to query service with parsed request and cursor header" {
+      coEvery { queryService.search(any(), any(), any(), any()) } returns searchResult
 
       val response = runBlocking {
         controller.search(
@@ -111,20 +111,25 @@ class ProjectWorkItemControllerDirectTest :
                   .trimIndent()
               ),
             limit = 25,
-            offset = 10,
+            cursor = nextCursor.encode(),
           ),
           projectContext,
         )
       }
 
-      response.page.limit shouldBe 25
-      response.result.hits.single().key shouldBe "CORE-1"
+      response.body?.single()?.key shouldBe "CORE-1"
+      response.headers.getFirst(WORKBENCH_NEXT_CURSOR_HEADER) shouldBe nextCursor.encode()
       coVerify {
         queryService.search(
           scope =
             WorkItemSearchScope(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID),
           query = any(),
-          page = WorkItemSearchPageRequest(limit = 25, offset = 10),
+          groupScope = WorkItemSearchGroupScope(),
+          page =
+            WorkItemSearchPageRequest(
+              limit = 25,
+              cursor = nextCursor,
+            ),
         )
       }
     }

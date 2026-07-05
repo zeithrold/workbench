@@ -11,6 +11,7 @@ import ink.doa.workbench.core.workitem.query.SortDirection
 import ink.doa.workbench.core.workitem.query.SortTerm
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -33,23 +34,26 @@ class PostgresWorkItemFilterTest :
       )
     val filter = PostgresWorkItemFilter(resolver)
 
+    fun plan(scope: WorkItemSearchScope, query: WorkItemQuery) =
+      filter.buildSearchPlan(scope, query, WorkItemSearchGroupScope(), cursor = null)
+
     "always applies trusted tenant project and lifecycle scope" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId, projectId = projectId),
           WorkItemQuery(),
         )
 
-      plan.where.sql shouldContain "i.tenant_id = ?"
-      plan.where.sql shouldContain "i.project_id = ?"
-      plan.where.sql shouldContain "i.archived_at IS NULL"
-      plan.where.sql shouldContain "i.deleted_at IS NULL"
-      plan.params shouldBe listOf(tenantId, projectId)
+      built.where.sql shouldContain "i.tenant_id = ?"
+      built.where.sql shouldContain "i.project_id = ?"
+      built.where.sql shouldContain "i.archived_at IS NULL"
+      built.where.sql shouldContain "i.deleted_at IS NULL"
+      built.params shouldBe listOf(tenantId, projectId)
     }
 
     "compiles between predicates for custom numeric properties" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -61,16 +65,16 @@ class PostgresWorkItemFilterTest :
           ),
         )
 
-      plan.where.sql shouldContain "EXISTS"
-      plan.where.sql shouldContain "pd.code = ?"
-      plan.where.sql shouldContain "ipv.value_number >= ?"
-      plan.where.sql shouldContain "ipv.value_number <= ?"
-      plan.params shouldBe listOf(tenantId, "storyPoints", 1.0, 10.0)
+      built.where.sql shouldContain "EXISTS"
+      built.where.sql shouldContain "pd.code = ?"
+      built.where.sql shouldContain "ipv.value_number >= ?"
+      built.where.sql shouldContain "ipv.value_number <= ?"
+      built.params shouldBe listOf(tenantId, "storyPoints", 1.0, 10.0)
     }
 
     "compiles relative date windows" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -88,14 +92,14 @@ class PostgresWorkItemFilterTest :
           ),
         )
 
-      plan.where.sql shouldContain "i.updated_at >= (now() - (? * interval '1 day'))"
-      plan.where.sql shouldContain "i.updated_at <= now()"
-      plan.params shouldContain 7
+      built.where.sql shouldContain "i.updated_at >= (now() - (? * interval '1 day'))"
+      built.where.sql shouldContain "i.updated_at <= now()"
+      built.params shouldContain 7
     }
 
     "compiles jsonb array has_any predicates" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -110,26 +114,26 @@ class PostgresWorkItemFilterTest :
           ),
         )
 
-      plan.where.sql shouldContain "ipv.value_array ?| ?"
-      plan.params[1] shouldBe "customerImpact"
-      (plan.params.last() as Array<*>).toList() shouldBe listOf("enterprise", "revenue")
+      built.where.sql shouldContain "ipv.value_array ?| ?"
+      built.params[1] shouldBe "customerImpact"
+      (built.params.last() as Array<*>).toList() shouldBe listOf("enterprise", "revenue")
     }
 
     "compiles explicit sort terms" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             sort = listOf(SortTerm(QueryField.System("updatedAt"), SortDirection.DESC))
           ),
         )
 
-      plan.orderBySql shouldBe "ORDER BY i.updated_at DESC, i.api_id ASC"
+      built.orderBySql shouldBe "ORDER BY i.updated_at DESC, i.api_id ASC"
     }
 
     "compiles children issue type predicates as direct child existence checks" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -144,15 +148,15 @@ class PostgresWorkItemFilterTest :
           ),
         )
 
-      plan.where.sql shouldContain "FROM issue_hierarchy child_ih"
-      plan.where.sql shouldContain "JOIN issue_types child_type"
-      plan.where.sql shouldContain "child_type.api_id IN (?, ?)"
-      plan.params shouldBe listOf(tenantId, "typ_bug", "typ_task")
+      built.where.sql shouldContain "FROM issue_hierarchy child_ih"
+      built.where.sql shouldContain "JOIN issue_types child_type"
+      built.where.sql shouldContain "child_type.api_id IN (?, ?)"
+      built.params shouldBe listOf(tenantId, "typ_bug", "typ_task")
     }
 
     "compiles negative children issue type predicates as not exists" {
-      val plan =
-        filter.build(
+      val built =
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -164,14 +168,14 @@ class PostgresWorkItemFilterTest :
           ),
         )
 
-      plan.where.sql shouldContain "NOT (EXISTS"
-      plan.where.sql shouldContain "child_type.api_id IN (?)"
-      plan.params shouldBe listOf(tenantId, "typ_bug")
+      built.where.sql shouldContain "NOT (EXISTS"
+      built.where.sql shouldContain "child_type.api_id IN (?)"
+      built.params shouldBe listOf(tenantId, "typ_bug")
     }
 
     "compiles or not and property sort clauses" {
       val orPlan =
-        filter.build(
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             where =
@@ -198,7 +202,7 @@ class PostgresWorkItemFilterTest :
       orPlan.where.sql shouldContain "NOT"
 
       val propertySort =
-        filter.build(
+        plan(
           WorkItemSearchScope(tenantId = tenantId),
           WorkItemQuery(
             sort =

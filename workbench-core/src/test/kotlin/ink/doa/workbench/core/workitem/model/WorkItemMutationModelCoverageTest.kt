@@ -164,7 +164,7 @@ class WorkItemMutationModelCoverageTest :
     }
 
     "search paging request enforces bounds" {
-      WorkItemSearchPageRequest(limit = 25, offset = 10).limit shouldBe 25
+      WorkItemSearchPageRequest(limit = 25).limit shouldBe 25
     }
 
     "catalog commands and invitation records store metadata" {

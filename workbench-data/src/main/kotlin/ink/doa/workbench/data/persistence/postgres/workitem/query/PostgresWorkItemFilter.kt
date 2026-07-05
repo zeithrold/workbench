@@ -1,32 +1,133 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
 import ink.doa.workbench.core.workitem.WorkItemSearchScope
 import ink.doa.workbench.core.workitem.query.ConditionNode
 import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.SortDirection
+import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
 
 class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldResolver) {
   private val operatorCompiler = PostgresWorkItemOperatorCompiler()
 
-  fun build(scope: WorkItemSearchScope, query: WorkItemQuery): PostgresWorkItemQueryPlan {
+  fun buildSearchPlan(
+    scope: WorkItemSearchScope,
+    query: WorkItemQuery,
+    groupScope: WorkItemSearchGroupScope,
+    cursor: WorkItemSearchCursor?,
+  ): PostgresWorkItemSearchPlan {
+    val baseWhere = compileBaseWhere(scope, query)
+    val scopeWhere = compileGroupScope(groupScope)
+    val predicates = listOfNotNull(baseWhere, scopeWhere)
+    val where = combine("AND", predicates)
+    val sortStack = PostgresWorkItemSortStack.build(fieldResolver, query)
+    val orderBySql = "ORDER BY ${PostgresWorkItemSortStack.orderByClause(sortStack)}"
+    val sortParams = sortStack.flatMap { it.params }
+    val cursorWhere = cursor?.let {
+      val cursorValues = decodeCursorValues(it, sortStack.size)
+      PostgresWorkItemSearchAfter.afterCursor(sortStack, cursorValues)
+    }
+    val allPredicates = listOfNotNull(where, cursorWhere?.let { combine("AND", listOf(it)) })
+    val finalWhere = combine("AND", allPredicates)
+    return PostgresWorkItemSearchPlan(
+      fromSql = FROM_SQL,
+      where = finalWhere,
+      orderBySql = orderBySql,
+      sortStack = sortStack,
+      params = finalWhere.params,
+      sortParams = sortParams,
+    )
+  }
+
+  fun buildGroupsPlan(
+    scope: WorkItemSearchScope,
+    query: WorkItemQuery,
+    groupCursor: WorkItemSearchGroupCursor?,
+    fetchLimit: Int,
+  ): PostgresWorkItemGroupsPlan {
+    val group =
+      query.group ?: throw IllegalArgumentException("Work item groups query requires query.group.")
+    val baseWhere = compileBaseWhere(scope, query)
+    val groupField = fieldResolver.resolvePostgresField(group.field)
+    val groupSql = groupField.groupSql
+    val direction = if (group.direction.name == "ASC") "ASC" else "DESC"
+    val nullsClause = if (group.direction.name == "ASC") "NULLS LAST" else "NULLS FIRST"
+    val groupParams =
+      when (groupField) {
+        is PostgresWorkItemField.Property -> groupField.identityParams
+        is PostgresWorkItemField.System -> emptyList()
+      }
+    val cursorPredicate =
+      when {
+        groupCursor == null -> null
+        groupCursor.value is kotlinx.serialization.json.JsonNull ->
+          SqlFragment("grouped.group_value IS NOT NULL", emptyList())
+        group.direction.name == "ASC" ->
+          SqlFragment(
+            "grouped.group_value > ?",
+            listOf(WorkItemGroupKeySupport.toJdbcValue(groupCursor.value)),
+          )
+        else ->
+          SqlFragment(
+            "grouped.group_value < ?",
+            listOf(WorkItemGroupKeySupport.toJdbcValue(groupCursor.value)),
+          )
+      }
+    return PostgresWorkItemGroupsPlan(
+      fromSql = FROM_SQL,
+      where = baseWhere,
+      groupSql = groupSql,
+      groupParams = groupParams,
+      orderDirection = direction,
+      nullsClause = nullsClause,
+      fetchLimit = fetchLimit,
+      params = baseWhere.params,
+      cursorPredicate = cursorPredicate,
+    )
+  }
+
+  private fun decodeCursorValues(cursor: WorkItemSearchCursor, expectedSize: Int): List<Any?> {
+    val values = cursor.sortValues.map(WorkItemGroupKeySupport::toJdbcValue).toMutableList()
+    if (values.size + 1 == expectedSize) {
+      values += cursor.apiId
+    }
+    require(values.size == expectedSize) {
+      "Cursor sort value count ${values.size} does not match expected $expectedSize."
+    }
+    return values
+  }
+
+  private fun compileBaseWhere(scope: WorkItemSearchScope, query: WorkItemQuery): SqlFragment {
     val basePredicates =
       mutableListOf<SqlFragment>(SqlFragment("i.tenant_id = ?", listOf(scope.tenantId)))
     scope.projectId?.let { basePredicates += SqlFragment("i.project_id = ?", listOf(it)) }
     if (!scope.includeArchived) basePredicates += SqlFragment("i.archived_at IS NULL")
     if (!scope.includeDeleted) basePredicates += SqlFragment("i.deleted_at IS NULL")
     query.where?.let { basePredicates += compileCondition(it) }
-    val where = combine("AND", basePredicates)
-    return PostgresWorkItemQueryPlan(
-      fromSql = FROM_SQL,
-      where = where,
-      orderBySql = compileOrderBy(query),
-      params = where.params,
-    )
+    return combine("AND", basePredicates)
   }
+
+  private fun compileGroupScope(groupScope: WorkItemSearchGroupScope): SqlFragment? {
+    if (groupScope.includeGroupKeys.isEmpty() && groupScope.excludeGroupKeys.isEmpty()) {
+      return null
+    }
+    val keys =
+      if (groupScope.includeGroupKeys.isNotEmpty()) groupScope.includeGroupKeys
+      else groupScope.excludeGroupKeys
+    val compiled = keys.map(::compileConditionNodePredicate)
+    val combined = combine("OR", compiled)
+    return if (groupScope.includeGroupKeys.isNotEmpty()) {
+      combined
+    } else {
+      SqlFragment("NOT (${combined.sql})", combined.params)
+    }
+  }
+
+  private fun compileConditionNodePredicate(predicate: ConditionNode.Predicate): SqlFragment =
+    compilePredicate(predicate)
 
   private fun compileCondition(node: ConditionNode): SqlFragment =
     when (node) {
@@ -45,8 +146,9 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
       field.definition.type == WorkItemQueryFieldType.LONG_TEXT &&
         predicate.op in TEXT_SEARCH_OPERATORS
     ) {
-      throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_QUERY_LONG_TEXT_REQUIRES_ELASTICSEARCH
+      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+        ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+          .WORK_ITEM_QUERY_LONG_TEXT_REQUIRES_ELASTICSEARCH
       )
     }
     val condition =
@@ -89,24 +191,6 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
     }
   }
 
-  private fun compileOrderBy(query: WorkItemQuery): String {
-    if (query.sort.isEmpty()) return "ORDER BY i.updated_at DESC, i.api_id ASC"
-    val terms =
-      query.sort.map { term ->
-        val field = fieldResolver.resolvePostgresField(term.field)
-        if (!field.definition.sortable) {
-          throw InvalidRequestException(
-            WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_NOT_SORTABLE,
-            "Field ${term.field.canonicalName} is not sortable.",
-          )
-        }
-        val direction = if (term.direction == SortDirection.ASC) "ASC" else "DESC"
-        val nulls = term.nulls?.wireName?.uppercase()?.let { " NULLS $it" }.orEmpty()
-        "${field.sortSql} $direction$nulls"
-      }
-    return "ORDER BY ${terms.joinToString(", ")}, i.api_id ASC"
-  }
-
   private fun combine(operator: String, fragments: List<SqlFragment>): SqlFragment {
     val params = fragments.flatMap { it.params }
     return SqlFragment(fragments.joinToString(" $operator ") { "(${it.sql})" }, params)
@@ -116,7 +200,7 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
     private val TEXT_SEARCH_OPERATORS =
       setOf(QueryOperator.CONTAINS, QueryOperator.NOT_CONTAINS, QueryOperator.MATCHES)
 
-    private const val FROM_SQL =
+    internal const val FROM_SQL =
       """
       FROM issues i
       JOIN projects p ON p.id = i.project_id

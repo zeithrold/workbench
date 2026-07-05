@@ -94,9 +94,7 @@ class ExposedWorkItemViewRepository(private val database: Database) : WorkItemVi
         it[WorkItemViewsTable.name] = command.name
         it[WorkItemViewsTable.description] = command.description
         it[WorkItemViewsTable.visibility] = command.visibility.dbValue
-        it[WorkItemViewsTable.filterAst] = command.filterAst
-        it[WorkItemViewsTable.sortAst] = command.sortAst
-        it[WorkItemViewsTable.groupAst] = command.groupAst
+        it[WorkItemViewsTable.queryAst] = command.queryAst
         it[WorkItemViewsTable.displayFields] = command.displayFields
         it[WorkItemViewsTable.createdAt] = now
         it[WorkItemViewsTable.updatedAt] = now
@@ -111,9 +109,7 @@ class ExposedWorkItemViewRepository(private val database: Database) : WorkItemVi
         name = command.name,
         description = command.description,
         visibility = command.visibility,
-        filterAst = command.filterAst,
-        sortAst = command.sortAst,
-        groupAst = command.groupAst,
+        queryAst = command.queryAst,
         displayFields = command.displayFields,
         createdAt = now,
         updatedAt = now,
@@ -138,9 +134,7 @@ class ExposedWorkItemViewRepository(private val database: Database) : WorkItemVi
     command.name?.let { value -> builder[WorkItemViewsTable.name] = value }
     command.description?.let { value -> builder[WorkItemViewsTable.description] = value }
     command.visibility?.let { value -> builder[WorkItemViewsTable.visibility] = value.dbValue }
-    command.filterAst?.let { value -> builder[WorkItemViewsTable.filterAst] = value }
-    command.sortAst?.let { value -> builder[WorkItemViewsTable.sortAst] = value }
-    command.groupAst?.let { value -> builder[WorkItemViewsTable.groupAst] = value }
+    command.queryAst?.let { value -> builder[WorkItemViewsTable.queryAst] = value }
     command.displayFields?.let { value -> builder[WorkItemViewsTable.displayFields] = value }
     builder[WorkItemViewsTable.updatedAt] = now
   }
@@ -154,9 +148,7 @@ class ExposedWorkItemViewRepository(private val database: Database) : WorkItemVi
       name = command.name ?: record.name,
       description = command.description ?: record.description,
       visibility = command.visibility ?: record.visibility,
-      filterAst = command.filterAst ?: record.filterAst,
-      sortAst = command.sortAst ?: record.sortAst,
-      groupAst = command.groupAst ?: record.groupAst,
+      queryAst = command.queryAst ?: record.queryAst,
       displayFields = command.displayFields ?: record.displayFields,
       updatedAt = now,
     )
@@ -196,9 +188,7 @@ class ExposedWorkItemViewRepository(private val database: Database) : WorkItemVi
       name = this[WorkItemViewsTable.name],
       description = this[WorkItemViewsTable.description],
       visibility = WorkItemViewVisibility.fromDbValue(this[WorkItemViewsTable.visibility]),
-      filterAst = this[WorkItemViewsTable.filterAst],
-      sortAst = this[WorkItemViewsTable.sortAst],
-      groupAst = this[WorkItemViewsTable.groupAst],
+      queryAst = this[WorkItemViewsTable.queryAst],
       displayFields = this[WorkItemViewsTable.displayFields],
       createdAt = this[WorkItemViewsTable.createdAt],
       updatedAt = this[WorkItemViewsTable.updatedAt],
