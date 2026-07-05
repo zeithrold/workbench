@@ -5,7 +5,6 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
 
 object PermissionConditionJson {
   private val json = Json { ignoreUnknownKeys = true }
@@ -16,17 +15,17 @@ object PermissionConditionJson {
       try {
         json.parseToJsonElement(raw.trim())
       } catch (_: Exception) {
-        throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_CONDITION_INVALID)
+        return invalidCondition()
       }
-    if (element !is JsonObject) {
-      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_CONDITION_INVALID)
-    }
+    if (element !is JsonObject) return invalidCondition()
     val canonical = WorkItemConditionJson.canonicalize(element)
-    if (canonical.isEmpty()) {
-      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_CONDITION_INVALID)
+    if (canonical.isEmpty() || WorkItemConditionJson.parse(canonical) == null) {
+      return invalidCondition()
     }
-    WorkItemConditionJson.parse(canonical)
-      ?: throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_CONDITION_INVALID)
     return canonical.toString()
+  }
+
+  private fun invalidCondition(): Nothing {
+    throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_CONDITION_INVALID)
   }
 }

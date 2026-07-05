@@ -52,7 +52,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class WorkItemTypeConfigControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list type configs rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/work-item/type-configs")).andExpect(status().isUnauthorized())
+    mockMvc.perform(get("/api/work-item-catalog/type-configs")).andExpect(status().isUnauthorized())
   }
 
   @Test
@@ -60,7 +60,7 @@ class WorkItemTypeConfigControllerTest(@Autowired private val mockMvc: MockMvc) 
     val result =
       mockMvc
         .perform(
-          get("/api/work-item/type-configs")
+          get("/api/work-item-catalog/type-configs")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())

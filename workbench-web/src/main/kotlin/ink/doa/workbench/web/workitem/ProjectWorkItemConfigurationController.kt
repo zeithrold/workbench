@@ -16,12 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/projects/{id}/work-item/type-configs")
+@RequestMapping("/api/projects/{id}/work-item-types")
 @Tag(name = "Project Work Item Configuration")
 @SessionSecured
 @StandardErrorResponses
 class ProjectWorkItemConfigurationController(private val configs: IssueTypeConfigService) {
-  @GetMapping("/effective/{issueTypeId}")
+  @GetMapping("/{issueTypeId}/effective-config")
   @Authenticated
   @TenantScoped
   @ProjectScoped

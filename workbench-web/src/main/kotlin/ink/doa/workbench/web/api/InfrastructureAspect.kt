@@ -74,8 +74,9 @@ class InfrastructureAspect(
     tenantId?.let { id ->
       runBlocking { tenantOperationalGuard.ensureOperational(id) }
     }
-    val request =
-      runBlocking { enrichAuthorizationRequest(authorizationRequest(joinPoint, authorize)) }
+    val request = runBlocking {
+      enrichAuthorizationRequest(authorizationRequest(joinPoint, authorize))
+    }
     val decision = runBlocking { permissionService.decide(request) }
     if (decision is AuthorizationDecision.Deny) {
       logger.warn(
@@ -153,7 +154,7 @@ class InfrastructureAspect(
   }
 
   private suspend fun enrichAuthorizationRequest(
-    request: AuthorizationRequest,
+    request: AuthorizationRequest
   ): AuthorizationRequest {
     val actorAttributes =
       mapOf(
@@ -167,9 +168,7 @@ class InfrastructureAspect(
         .orEmpty()
     val attributes = actorAttributes + resolvedAttributes
     if (attributes == request.resource.attributes) return request
-    return request.copy(
-      resource = request.resource.copy(attributes = attributes),
-    )
+    return request.copy(resource = request.resource.copy(attributes = attributes))
   }
 
   private fun currentPrincipal(): AuthenticatedPrincipal =

@@ -138,34 +138,38 @@ class ScopePermissionService(
     request: AuthorizationRequest,
   ): AuthorizationDecision {
     val evaluated = rules.mapNotNull { it.evaluateMatch(request) }
-    evaluated.firstOrNull { it.contributesDeny() }?.let { match ->
-      return AuthorizationDecision.Deny(
-        DecisionReason(
-          code =
-            if (match.conditionResult == PermissionConditionResult.INVALID) {
-              "binding_condition_invalid"
-            } else {
-              "binding_denied"
-            },
-          message =
-            if (match.conditionResult == PermissionConditionResult.INVALID) {
-              "A matching policy binding has an invalid condition and denied the request."
-            } else {
-              "A matching policy binding denied the request."
-            },
-          grantId = match.rule.bindingId,
+    evaluated
+      .firstOrNull { it.contributesDeny() }
+      ?.let { match ->
+        return AuthorizationDecision.Deny(
+          DecisionReason(
+            code =
+              if (match.conditionResult == PermissionConditionResult.INVALID) {
+                "binding_condition_invalid"
+              } else {
+                "binding_denied"
+              },
+            message =
+              if (match.conditionResult == PermissionConditionResult.INVALID) {
+                "A matching policy binding has an invalid condition and denied the request."
+              } else {
+                "A matching policy binding denied the request."
+              },
+            grantId = match.rule.bindingId,
+          )
         )
-      )
-    }
-    evaluated.firstOrNull { it.contributesAllow() }?.let { match ->
-      return AuthorizationDecision.Allow(
-        DecisionReason(
-          code = "binding_allowed",
-          message = "A matching policy binding allowed the request.",
-          grantId = match.rule.bindingId,
+      }
+    evaluated
+      .firstOrNull { it.contributesAllow() }
+      ?.let { match ->
+        return AuthorizationDecision.Allow(
+          DecisionReason(
+            code = "binding_allowed",
+            message = "A matching policy binding allowed the request.",
+            grantId = match.rule.bindingId,
+          )
         )
-      )
-    }
+      }
     return deny("no_matching_binding", "No active policy binding allows this request.")
   }
 
@@ -183,7 +187,9 @@ class ScopePermissionService(
     return RuleMatch(rule = this, conditionResult = conditionResult)
   }
 
-  private fun ResolvedPermissionRule.matchesActionAndResource(request: AuthorizationRequest): Boolean =
+  private fun ResolvedPermissionRule.matchesActionAndResource(
+    request: AuthorizationRequest
+  ): Boolean =
     action.code == request.action.code &&
       resourceMatches(resourcePattern, request.resource.canonical)
 
@@ -200,12 +206,10 @@ class ScopePermissionService(
     val conditionResult: PermissionConditionResult,
   ) {
     fun contributesAllow(): Boolean =
-      rule.effect == PermissionEffect.ALLOW &&
-        conditionResult == PermissionConditionResult.MATCH
+      rule.effect == PermissionEffect.ALLOW && conditionResult == PermissionConditionResult.MATCH
 
     fun contributesDeny(): Boolean =
       rule.effect == PermissionEffect.DENY &&
-        conditionResult in
-          setOf(PermissionConditionResult.MATCH, PermissionConditionResult.INVALID)
+        conditionResult in setOf(PermissionConditionResult.MATCH, PermissionConditionResult.INVALID)
   }
 }

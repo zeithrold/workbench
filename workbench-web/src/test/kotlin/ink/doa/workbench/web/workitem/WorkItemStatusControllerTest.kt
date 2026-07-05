@@ -53,7 +53,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class WorkItemStatusControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list statuses rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/work-item/statuses")).andExpect(status().isUnauthorized())
+    mockMvc.perform(get("/api/work-item-catalog/statuses")).andExpect(status().isUnauthorized())
   }
 
   @Test
@@ -61,7 +61,7 @@ class WorkItemStatusControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/work-item/statuses")
+          get("/api/work-item-catalog/statuses")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -78,7 +78,7 @@ class WorkItemStatusControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/work-item/statuses")
+          post("/api/work-item-catalog/statuses")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(

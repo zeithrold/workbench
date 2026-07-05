@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
-class IssueAuthorizationResourceAttributeResolver(
-  private val workItems: WorkItemRepository,
-) : AuthorizationResourceAttributeResolver {
+class IssueAuthorizationResourceAttributeResolver(private val workItems: WorkItemRepository) :
+  AuthorizationResourceAttributeResolver {
   private val logger = LoggerFactory.getLogger(javaClass)
 
   override suspend fun supports(resource: AuthorizationResource): Boolean =
@@ -18,20 +17,20 @@ class IssueAuthorizationResourceAttributeResolver(
 
   override suspend fun resolveAttributes(request: AuthorizationRequest): Map<String, String> {
     val resource = request.resource
-    val tenantId = request.tenantId ?: return emptyMap()
-    val projectId = resource.projectId ?: return emptyMap()
-    val issueId = resource.id ?: return emptyMap()
-    val workItem =
-      workItems.findByApiId(tenantId, projectId, issueId)
-        ?: run {
-          logger.warn(
-            "authorization_issue_not_found tenantId={} projectId={} issueId={}",
-            tenantId,
-            projectId,
-            issueId,
-          )
-          return emptyMap()
-        }
+    val tenantId = request.tenantId
+    val projectId = resource.projectId
+    val issueId = resource.id
+    if (tenantId == null || projectId == null || issueId == null) return emptyMap()
+    val workItem = workItems.findByApiId(tenantId, projectId, issueId)
+    if (workItem == null) {
+      logger.warn(
+        "authorization_issue_not_found tenantId={} projectId={} issueId={}",
+        tenantId,
+        projectId,
+        issueId,
+      )
+      return emptyMap()
+    }
     return buildMap {
       put("reporter", workItem.reporterId.toString())
       workItem.assigneeId?.let { put("assignee", it.toString()) }

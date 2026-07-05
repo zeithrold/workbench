@@ -121,7 +121,8 @@ class ProjectWorkItemControllerDirectTest :
       response.result.hits.single().key shouldBe "CORE-1"
       coVerify {
         queryService.search(
-          scope = WorkItemSearchScope(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID),
+          scope =
+            WorkItemSearchScope(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID),
           query = any(),
           page = WorkItemSearchPageRequest(limit = 25, offset = 10),
         )

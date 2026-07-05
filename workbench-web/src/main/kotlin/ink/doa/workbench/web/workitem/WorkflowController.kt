@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/workflows")
+@RequestMapping("/api/work-item-catalog/workflows")
 @Tag(name = "Workflows", description = "Tenant-scoped workflow management.")
 @SessionSecured
 @StandardErrorResponses

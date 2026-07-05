@@ -315,17 +315,18 @@ class ScopePermissionServiceTest :
         )
 
       val issueRequest =
-        request(AuthorizationScope.TENANT, projectId).copy(
-          action = AuthorizationAction("issue.update"),
-          resource =
-            AuthorizationResource(
-              type = "issue",
-              id = "iss_01",
-              tenantId = tenantId,
-              projectId = projectId,
-              attributes = mapOf("assignee" to userId.toString()),
-            ),
-        )
+        request(AuthorizationScope.TENANT, projectId)
+          .copy(
+            action = AuthorizationAction("issue.update"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = "iss_01",
+                tenantId = tenantId,
+                projectId = projectId,
+                attributes = mapOf("assignee" to userId.toString()),
+              ),
+          )
 
       val decision = service.decide(issueRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
@@ -351,17 +352,18 @@ class ScopePermissionServiceTest :
         )
 
       val issueRequest =
-        request(AuthorizationScope.TENANT, projectId).copy(
-          action = AuthorizationAction("issue.update"),
-          resource =
-            AuthorizationResource(
-              type = "issue",
-              id = "iss_01",
-              tenantId = tenantId,
-              projectId = projectId,
-              attributes = mapOf("assignee" to UUID.randomUUID().toString()),
-            ),
-        )
+        request(AuthorizationScope.TENANT, projectId)
+          .copy(
+            action = AuthorizationAction("issue.update"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = "iss_01",
+                tenantId = tenantId,
+                projectId = projectId,
+                attributes = mapOf("assignee" to UUID.randomUUID().toString()),
+              ),
+          )
 
       val decision = service.decide(issueRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
@@ -388,17 +390,18 @@ class ScopePermissionServiceTest :
         )
 
       val issueRequest =
-        request(AuthorizationScope.TENANT, projectId).copy(
-          action = AuthorizationAction("issue.update"),
-          resource =
-            AuthorizationResource(
-              type = "issue",
-              id = "iss_01",
-              tenantId = tenantId,
-              projectId = projectId,
-              attributes = mapOf("statusGroup" to "done"),
-            ),
-        )
+        request(AuthorizationScope.TENANT, projectId)
+          .copy(
+            action = AuthorizationAction("issue.update"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = "iss_01",
+                tenantId = tenantId,
+                projectId = projectId,
+                attributes = mapOf("statusGroup" to "done"),
+              ),
+          )
 
       val decision = service.decide(issueRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
@@ -425,17 +428,18 @@ class ScopePermissionServiceTest :
         )
 
       val issueRequest =
-        request(AuthorizationScope.TENANT, projectId).copy(
-          action = AuthorizationAction("issue.update"),
-          resource =
-            AuthorizationResource(
-              type = "issue",
-              id = "iss_01",
-              tenantId = tenantId,
-              projectId = projectId,
-              attributes = mapOf("statusGroup" to "todo"),
-            ),
-        )
+        request(AuthorizationScope.TENANT, projectId)
+          .copy(
+            action = AuthorizationAction("issue.update"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = "iss_01",
+                tenantId = tenantId,
+                projectId = projectId,
+                attributes = mapOf("statusGroup" to "todo"),
+              ),
+          )
 
       val decision = service.decide(issueRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
@@ -458,16 +462,17 @@ class ScopePermissionServiceTest :
         )
 
       val issueRequest =
-        request(AuthorizationScope.TENANT, projectId).copy(
-          action = AuthorizationAction("issue.update"),
-          resource =
-            AuthorizationResource(
-              type = "issue",
-              id = "iss_01",
-              tenantId = tenantId,
-              projectId = projectId,
-            ),
-        )
+        request(AuthorizationScope.TENANT, projectId)
+          .copy(
+            action = AuthorizationAction("issue.update"),
+            resource =
+              AuthorizationResource(
+                type = "issue",
+                id = "iss_01",
+                tenantId = tenantId,
+                projectId = projectId,
+              ),
+          )
 
       val decision = service.decide(issueRequest)
       decision.shouldBeInstanceOf<AuthorizationDecision.Deny>()
