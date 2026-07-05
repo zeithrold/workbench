@@ -1,6 +1,7 @@
 package ink.doa.workbench.security.identity.auth.support
 
 import dasniko.testcontainers.keycloak.KeycloakContainer
+import ink.doa.workbench.testsupport.keycloak.WorkbenchKeycloakTestSupport
 import java.time.Duration
 
 object KeycloakTestContainer {
@@ -18,6 +19,8 @@ object KeycloakTestContainer {
   const val OAUTH2_PASSWORD = "oauth-test-pass"
 
   const val REDIRECT_URI = "http://localhost/api/auth/oauth2/callback"
+
+  fun shared(): KeycloakContainer = WorkbenchKeycloakTestSupport.sharedContainer()
 
   fun create(): KeycloakContainer =
     KeycloakContainer("quay.io/keycloak/keycloak:26.4")
