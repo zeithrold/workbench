@@ -42,6 +42,7 @@ data class UpdateWorkItemRequest(
   val assigneeId: String? = null,
   val priorityId: String? = null,
   val sprintId: String? = null,
+  val clearSprint: Boolean = false,
   val properties: JsonNode? = null,
 ) {
   fun toCommand(
@@ -58,6 +59,7 @@ data class UpdateWorkItemRequest(
       assigneeApiId = assigneeId,
       priorityApiId = priorityId,
       sprintApiId = sprintId,
+      clearSprint = clearSprint,
       properties = properties.toJsonObject().toMap(),
       actorUserId = actorUserId,
     )

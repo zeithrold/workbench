@@ -8,12 +8,14 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintHistoryTable
 import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -25,7 +27,9 @@ import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class ExposedWorkItemRepositoryIntegrationTest :
@@ -771,6 +775,75 @@ class ExposedWorkItemRepositoryIntegrationTest :
         values["owner"] shouldBe JsonPrimitive(user.apiId.value)
         values["relatedProject"] shouldBe JsonPrimitive(project.apiId.value)
         values["relatedIssue"] shouldBe JsonPrimitive(blocker.workItem.apiId.value)
+      }
+    }
+
+    "update records sprint assignment history" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val repository = ExposedWorkItemRepository(database)
+        val sprintApiId = PublicId.new("spr").value
+        val sprintId = UUID.randomUUID()
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        transaction(database) {
+          SprintsTable.insert {
+            it[id] = sprintId.toKotlinUuid()
+            it[apiId] = sprintApiId
+            it[tenantId] = stack.tenantId.toKotlinUuid()
+            it[projectId] = stack.projectId.toKotlinUuid()
+            it[name] = "Sprint history"
+            it[status] = "planned"
+            it[createdAt] = now
+            it[updatedAt] = now
+          }
+        }
+
+        val created =
+          repository.create(
+            CreateWorkItemPersistenceCommand(
+              command =
+                CreateWorkItemCommand(
+                  tenantId = stack.tenantId,
+                  projectId = stack.projectId,
+                  issueTypeApiId = stack.issueType.apiId.value,
+                  title = "History target",
+                  description = null,
+                  reporterId = stack.actorId,
+                  actorUserId = stack.actorId,
+                  sprintApiId = sprintApiId,
+                ),
+              issueTypeId = stack.issueType.id,
+              issueTypeConfigId = stack.config.config.id,
+              initialStatusId = stack.todoStatus.id,
+              propertyValues = emptyList(),
+            )
+          )
+
+        transaction(database) {
+          IssueSprintHistoryTable.selectAll()
+            .where { IssueSprintHistoryTable.issueId eq created.workItem.id.toKotlinUuid() }
+            .count() shouldBe 1
+        }
+
+        repository.update(
+          ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand(
+            tenantId = stack.tenantId,
+            projectId = stack.projectId,
+            workItemApiId = created.workItem.apiId.value,
+            clearSprint = true,
+            actorUserId = stack.actorId,
+          ),
+          propertyValues = emptyList(),
+        )
+
+        transaction(database) {
+          val rows =
+            IssueSprintHistoryTable.selectAll()
+              .where { IssueSprintHistoryTable.issueId eq created.workItem.id.toKotlinUuid() }
+              .toList()
+          rows.shouldHaveSize(1)
+          rows.single()[IssueSprintHistoryTable.removedAt].shouldNotBeNull()
+        }
       }
     }
   })

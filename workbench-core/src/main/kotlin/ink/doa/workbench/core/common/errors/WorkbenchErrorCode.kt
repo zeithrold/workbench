@@ -709,6 +709,23 @@ enum class WorkbenchErrorCode(
     "resource.work_item_view.not_found",
     "Work item view not found.",
   ),
+  RESOURCE_SPRINT_NOT_FOUND("resource.sprint.not_found", "Sprint not found."),
+  SPRINT_STATUS_INVALID_TRANSITION(
+    "sprint.status.invalid_transition",
+    "Sprint status transition is not allowed.",
+  ),
+  SPRINT_ACTIVE_CONFLICT(
+    "sprint.active.conflict",
+    "Project already has an active sprint.",
+  ),
+  SPRINT_CLOSED_IMMUTABLE(
+    "sprint.closed.immutable",
+    "Closed sprint cannot be modified.",
+  ),
+  SPRINT_DATE_RANGE_INVALID(
+    "sprint.date_range.invalid",
+    "Sprint end date must be on or after the start date.",
+  ),
   WORK_ITEM_VIEW_READ_DENIED(
     "work_item.view.read_denied",
     "Work item view read permission denied.",

@@ -63,6 +63,7 @@ data class UpdateWorkItemCommand(
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
   val sprintApiId: String? = null,
+  val clearSprint: Boolean = false,
   val properties: Map<String, JsonElement> = emptyMap(),
   val actorUserId: UUID,
 )

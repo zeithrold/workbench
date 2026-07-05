@@ -43,6 +43,9 @@ private val TENANT_ADMIN_RULES =
     "view.read" to "view:*",
     "view.create" to "view:*",
     "view.manage" to "view:*",
+    "sprint.read" to "sprint:*",
+    "sprint.create" to "sprint:*",
+    "sprint.manage" to "sprint:*",
   )
 
 private val ISSUE_WRITE_RULES =
@@ -54,6 +57,9 @@ private val ISSUE_WRITE_RULES =
     "issue.field.write" to "issue:field:*",
     "view.read" to "view:*",
     "view.create" to "view:*",
+    "sprint.read" to "sprint:*",
+    "sprint.create" to "sprint:*",
+    "sprint.manage" to "sprint:*",
   )
 
 private val ISSUE_VIEW_RULES =
@@ -61,6 +67,7 @@ private val ISSUE_VIEW_RULES =
     "issue.view" to "issue:*",
     "view.read" to "view:*",
     "view.create" to "view:*",
+    "sprint.read" to "sprint:*",
   )
 
 private val BUILTIN_POLICY_TEMPLATES =
