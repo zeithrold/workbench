@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -31,12 +33,33 @@ class MutationMetrics:
     total: int = 0
 
 
+MutationSectionResult = tuple[list[str], dict[str, MutationMetrics], MutationMetrics | None]
+
+
 def repo_root() -> Path:
-    return Path(os.environ.get("REPO_ROOT", ".")).resolve()
+    env = os.environ.get("REPO_ROOT")
+    if env:
+        path = Path(env).resolve()
+        if env != "." or (path / "build.gradle.kts").is_file():
+            return path
+
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return Path(result.stdout.strip()).resolve()
+    return Path(".").resolve()
 
 
 def extended_tests_enabled() -> bool:
     return os.environ.get("EXTENDED_TESTS", "false").lower() == "true"
+
+
+def module_kover_report(root: Path, module: str) -> Path:
+    return root / module / "build" / "reports" / "kover" / "report.xml"
 
 
 def parse_kover_report(path: Path) -> CoverageMetrics | None:
@@ -297,19 +320,62 @@ def render_coverage_section(root: Path) -> list[str]:
     lines.append("|--------|------|--------|-------------|")
 
     for module in modules:
-        metrics = parse_kover_report(root / module / "build" / "reports" / "kover" / "report.xml")
+        metrics = parse_kover_report(module_kover_report(root, module))
         if not has_coverage_data(metrics):
             continue
-        lines.append(
-            f"| {module} | {fmt_pct(metrics.line)} | {fmt_pct(metrics.branch)} | {fmt_pct(metrics.instruction)} |"
-        )
+        line = fmt_pct(metrics.line)
+        branch = fmt_pct(metrics.branch)
+        instruction = fmt_pct(metrics.instruction)
+        lines.append(f"| {module} | {line} | {branch} | {instruction} |")
 
     if total is not None:
-        lines.append(
-            f"| **Total** | {fmt_pct(total.line, bold=True)} | {fmt_pct(total.branch, bold=True)} | "
-            f"{fmt_pct(total.instruction, bold=True)} |"
-        )
+        total_line = fmt_pct(total.line, bold=True)
+        total_branch = fmt_pct(total.branch, bold=True)
+        total_instruction = fmt_pct(total.instruction, bold=True)
+        lines.append(f"| **Total** | {total_line} | {total_branch} | {total_instruction} |")
 
+    lines.append("")
+    return lines
+
+
+def render_diff_coverage_section(root: Path) -> list[str]:
+    results_path = root / "scripts" / "ci" / "diff-coverage-results.json"
+    if not results_path.is_file():
+        lines = ["### Diff Coverage (changed lines)", ""]
+        lines.append(
+            "_No diff coverage report found. Run `pnpmCoverage` and "
+            "`uv run check-diff-coverage` after `./gradlew check`._"
+        )
+        lines.append("")
+        return lines
+
+    try:
+        payload = json.loads(results_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        lines = ["### Diff Coverage (changed lines)", ""]
+        lines.append("_Diff coverage results file is invalid JSON._")
+        lines.append("")
+        return lines
+
+    lines = ["### Diff Coverage (changed lines)", ""]
+    lines.append("| Stack | Status | Changed-line % | Threshold |")
+    lines.append("|-------|--------|------------------|-----------|")
+
+    for stack in ("backend", "frontend"):
+        entry = payload.get(stack)
+        if not isinstance(entry, dict):
+            continue
+        percent_value = entry.get("percent")
+        percent = "N/A" if percent_value is None else f"{float(percent_value):.1f}%"
+        fail_under = entry.get("fail_under")
+        threshold = "N/A" if fail_under is None else f"{float(fail_under):.0f}%"
+        lines.append(f"| {stack} | {entry.get('status', 'unknown')} | {percent} | {threshold} |")
+
+    lines.append("")
+    for stack in ("backend", "frontend"):
+        html = root / "scripts" / "ci" / f"diff-cover-{stack}.html"
+        if html.is_file():
+            lines.append(f"- {stack} HTML report: `{html.relative_to(root)}`")
     lines.append("")
     return lines
 
@@ -325,7 +391,7 @@ def discover_pit_modules(root: Path) -> list[str]:
     return modules
 
 
-def render_mutation_section(root: Path) -> tuple[list[str], dict[str, MutationMetrics], MutationMetrics | None]:
+def render_mutation_section(root: Path) -> MutationSectionResult:
     lines = ["### Mutation Testing (PIT)", ""]
 
     if not extended_tests_enabled():
@@ -355,16 +421,22 @@ def render_mutation_section(root: Path) -> tuple[list[str], dict[str, MutationMe
 
     for module in sorted(module_metrics.keys()):
         metrics = module_metrics[module]
+        mutation = fmt_pct(metrics.mutation_score)
+        strength = fmt_pct(metrics.test_strength)
+        pit_line = fmt_pct(metrics.pit_line)
         lines.append(
-            f"| {module} | {fmt_pct(metrics.mutation_score)} | {fmt_pct(metrics.test_strength)} | "
-            f"{fmt_pct(metrics.pit_line)} | {metrics.killed} | {metrics.survived} | {metrics.no_coverage} |"
+            f"| {module} | {mutation} | {strength} | {pit_line} | "
+            f"{metrics.killed} | {metrics.survived} | {metrics.no_coverage} |"
         )
 
     if aggregate is not None:
+        mutation = fmt_pct(aggregate.mutation_score, bold=True)
+        strength = fmt_pct(aggregate.test_strength, bold=True)
+        pit_line = fmt_pct(aggregate.pit_line, bold=True)
         lines.append(
-            f"| **Total** | {fmt_pct(aggregate.mutation_score, bold=True)} | "
-            f"{fmt_pct(aggregate.test_strength, bold=True)} | {fmt_pct(aggregate.pit_line, bold=True)} | "
-            f"**{aggregate.killed}** | **{aggregate.survived}** | **{aggregate.no_coverage}** |"
+            f"| **Total** | {mutation} | {strength} | {pit_line} | "
+            f"**{aggregate.killed}** | **{aggregate.survived}** | "
+            f"**{aggregate.no_coverage}** |"
         )
 
     lines.append("")
@@ -384,7 +456,7 @@ def render_correlation_section(
     modules = sorted(
         module
         for module in set(discover_backend_modules(root)) | set(module_metrics.keys())
-        if has_coverage_data(parse_kover_report(root / module / "build" / "reports" / "kover" / "report.xml"))
+        if has_coverage_data(parse_kover_report(module_kover_report(root, module)))
         or module in module_metrics
     )
     if not modules:
@@ -396,14 +468,16 @@ def render_correlation_section(
     lines.append("|--------|------------|----------|---|----------|----------|")
 
     for module in modules:
-        kover = parse_kover_report(root / module / "build" / "reports" / "kover" / "report.xml")
+        kover = parse_kover_report(module_kover_report(root, module))
         mutation = module_metrics.get(module)
         kover_line = kover.line if kover else None
         pit_line = mutation.pit_line if mutation else None
+        delta = fmt_delta(kover_line, pit_line)
+        mutation_score = fmt_pct(mutation.mutation_score if mutation else None)
+        test_strength = fmt_pct(mutation.test_strength if mutation else None)
         lines.append(
-            f"| {module} | {fmt_pct(kover_line)} | {fmt_pct(pit_line)} | {fmt_delta(kover_line, pit_line)} | "
-            f"{fmt_pct(mutation.mutation_score if mutation else None)} | "
-            f"{fmt_pct(mutation.test_strength if mutation else None)} |"
+            f"| {module} | {fmt_pct(kover_line)} | {fmt_pct(pit_line)} | {delta} | "
+            f"{mutation_score} | {test_strength} |"
         )
 
     if aggregate is not None:
@@ -425,6 +499,7 @@ def main() -> int:
     output: list[str] = ["## Quality Gate Report", ""]
 
     output.extend(render_coverage_section(root))
+    output.extend(render_diff_coverage_section(root))
 
     mutation_lines, module_metrics, aggregate = render_mutation_section(root)
     output.extend(mutation_lines)

@@ -112,3 +112,9 @@ package
 # End of https://www.toptal.com/developers/gitignore/api/jetbrains+iml
 
 .pnpm-store/
+workbench-frontend/coverage/
+scripts/ci/.venv/
+scripts/ci/__pycache__/
+scripts/ci/diff-coverage-results.json
+scripts/ci/diff-cover-*.html
+scripts/ci/diff-cover-*.json
