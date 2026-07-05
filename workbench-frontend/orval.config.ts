@@ -2,7 +2,7 @@ import { defineConfig } from 'orval'
 
 export default defineConfig({
   workbench: {
-    input: 'http://localhost:8080/v3/api-docs',
+    input: 'http://localhost:8080/api/openapi',
     output: {
       mode: 'split',
       target: 'src/lib/api/generated/workbench.ts',

@@ -15,8 +15,8 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 ### Services
 - Backend API (`workbench-web`, port 8080), worker (`workbench-worker`, no web server), and frontend (`workbench-frontend`, Vite port 5173). Run commands are in `README.md`. Prefix backend/worker Gradle runs with the JDK-25 `JAVA_HOME` if it is not already active.
-- OpenAPI: `http://localhost:8080/v3/api-docs`; Scalar UI: `http://localhost:8080/scalar`; both plus `/actuator/health` are public (`permitAll`).
-- The frontend's `pnpm openapi` (Orval) reads `http://localhost:8080/v3/api-docs`, so the backend must be running to regenerate the API client.
+- OpenAPI: `http://localhost:8080/api/openapi`; Scalar UI: `http://localhost:8080/api/scalar`; both plus `/api/actuator/health` are public (`permitAll`).
+- The frontend's `pnpm openapi` (Orval) reads `http://localhost:8080/api/openapi`, so the backend must be running to regenerate the API client.
 
 ### Lint / test caveats
 - Run `./gradlew check` for the JVM build, static analysis, and tests, and `./gradlew :workbench-frontend:pnpmDev|pnpmCoverage|pnpmE2e` for the frontend.

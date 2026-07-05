@@ -23,8 +23,15 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
         }
       }
       .authorizeHttpRequests {
-        it.dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
-        it.requestMatchers("/actuator/health", "/scalar/**", "/v3/api-docs/**").permitAll()
+        it.dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
+        it
+          .requestMatchers(
+            "/api/error",
+            "/api/actuator/health",
+            "/api/scalar/**",
+            "/api/openapi/**",
+          )
+          .permitAll()
         it
           .requestMatchers(
             "/api/auth/login",

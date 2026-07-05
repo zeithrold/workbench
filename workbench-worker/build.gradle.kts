@@ -12,6 +12,7 @@ dependencies {
   implementation(project(":workbench-data"))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation("org.springframework.kafka:spring-kafka")
   implementation(libs.logstash.logback)
@@ -21,6 +22,8 @@ dependencies {
   testImplementation(libs.testcontainers.kafka)
   testImplementation(testFixtures(project(":workbench-service")))
 }
+
+sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))
 
 springBoot {
   mainClass.set("ink.doa.workbench.worker.WorkbenchWorkerApplicationKt")
