@@ -23,14 +23,13 @@ import org.junit.jupiter.api.Tag
 @Tag("integration")
 class OAuth2AuthIntegrationTest :
   StringSpec({
-    val keycloak: KeycloakContainer = KeycloakTestContainer.create()
+    val keycloak: KeycloakContainer = KeycloakTestContainer.shared()
     val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()
     lateinit var database: Database
     lateinit var fixture: FederatedAuthFixture
     lateinit var federatedAuthService: FederatedAuthService
 
     beforeSpec {
-      keycloak.start()
       database = postgresLease.database
       fixture = runBlocking { AuthIntegrationFixtures.seedFederatedFixture(database, keycloak) }
       val secretResolver = MapSecretResolver(AuthIntegrationFixtures.keycloakSecrets())
@@ -64,7 +63,6 @@ class OAuth2AuthIntegrationTest :
     }
 
     afterSpec {
-      keycloak.stop()
       postgresLease.close()
     }
 

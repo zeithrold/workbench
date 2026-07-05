@@ -14,6 +14,7 @@ dependencies {
   implementation(libs.flyway.postgresql)
   implementation("org.flywaydb:flyway-core")
   implementation(libs.testcontainers.postgresql)
+  implementation(libs.testcontainers.keycloak)
   testImplementation(libs.testcontainers.junit)
   implementation(libs.kotlinx.coroutines.core)
   compileOnly(
@@ -26,6 +27,8 @@ dependencies {
   testImplementation(libs.kotest.assertions)
   testImplementation(libs.kotlinx.coroutines.test)
 }
+
+sourceSets.main.get().resources.srcDir(rootProject.file("config/integration-test"))
 
 tasks.withType<Test>().configureEach {
   useJUnitPlatform()

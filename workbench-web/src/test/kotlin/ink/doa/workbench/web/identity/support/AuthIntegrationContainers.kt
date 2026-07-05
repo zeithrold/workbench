@@ -23,11 +23,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 object AuthIntegrationContainers {
   private val postgresLease = WorkbenchPostgresTestSupport.moduleDatabase(MigrationSpec.Full)
 
-  val keycloak: KeycloakContainer =
-    KeycloakTestContainer.create().apply {
-      withStartupTimeout(Duration.ofMinutes(3))
-      start()
-    }
+  val keycloak: KeycloakContainer = KeycloakTestContainer.shared()
 
   val ldap: InMemoryLdapTestServer = InMemoryLdapTestServer.start()
 
