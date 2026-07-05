@@ -1,5 +1,8 @@
 package ink.doa.workbench.web.api
 
+import ink.doa.workbench.core.common.warning.WorkbenchWarningConstants
+import ink.doa.workbench.web.api.warning.WorkbenchWarningEnvelope
+import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.ExampleObject
 import io.swagger.v3.oas.annotations.media.Schema
@@ -116,6 +119,44 @@ import org.springframework.http.ProblemDetail
     ]
 )
 annotation class StandardErrorResponses
+
+object WorkbenchWarningOpenApi {
+  const val HeaderDescription =
+    "Structured non-blocking business risk warnings. Omitted when no warnings were emitted."
+}
+
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.RUNTIME)
+@ApiResponses(
+  value =
+    [
+      ApiResponse(
+        responseCode = "202",
+        description = "Successful response may include non-blocking business risk warnings.",
+        headers =
+          [
+            Header(
+              name = WorkbenchWarningConstants.HeaderName,
+              description = WorkbenchWarningOpenApi.HeaderDescription,
+              schema = Schema(implementation = WorkbenchWarningEnvelope::class),
+            )
+          ],
+      ),
+      ApiResponse(
+        responseCode = "200",
+        description = "Successful response may include non-blocking business risk warnings.",
+        headers =
+          [
+            Header(
+              name = WorkbenchWarningConstants.HeaderName,
+              description = WorkbenchWarningOpenApi.HeaderDescription,
+              schema = Schema(implementation = WorkbenchWarningEnvelope::class),
+            )
+          ],
+      ),
+    ]
+)
+annotation class MayReturnWarnings
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)

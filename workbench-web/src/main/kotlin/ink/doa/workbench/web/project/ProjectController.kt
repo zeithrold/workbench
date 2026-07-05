@@ -13,6 +13,7 @@ import ink.doa.workbench.service.project.ProjectManagementApplicationService
 import ink.doa.workbench.web.api.Audit
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
+import ink.doa.workbench.web.api.MayReturnWarnings
 import ink.doa.workbench.web.api.ProjectScoped
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
@@ -160,6 +161,7 @@ class ProjectController(
   @TenantScoped
   @ProjectScoped
   @Authorize(action = "project.delete", resource = "project")
+  @MayReturnWarnings
   @ResponseStatus(HttpStatus.ACCEPTED)
   @Operation(summary = "Request project deletion")
   suspend fun delete(

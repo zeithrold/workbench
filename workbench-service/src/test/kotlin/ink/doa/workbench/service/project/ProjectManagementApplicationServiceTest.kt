@@ -6,6 +6,10 @@ import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.common.summary.ProjectSummary
+import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.model.CreateProjectCommand
@@ -24,6 +28,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -37,6 +42,7 @@ class ProjectManagementApplicationServiceTest :
     val projectAccess = mockk<ProjectAccessService>()
     val permissionBootstrap = mockk<PermissionBootstrapService>()
     val publisher = RecordingDomainEventPublisher()
+    val warningCollector = mockk<WorkbenchWarningCollector>(relaxed = true)
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
       ProjectManagementApplicationService(
@@ -45,6 +51,7 @@ class ProjectManagementApplicationServiceTest :
         projectAccess,
         permissionBootstrap,
         publisher,
+        warningCollector,
         clock,
       )
 
@@ -195,6 +202,15 @@ class ProjectManagementApplicationServiceTest :
 
       view.status shouldBe "destroying"
       publisher.published.single().key shouldBe record.apiId.value
+      verify(exactly = 1) {
+        warningCollector.warn(
+          WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED,
+          ProjectDestroyScheduledMeta(
+            project = ProjectSummary.from(destroying),
+            deleteReason = "cleanup",
+          ),
+        )
+      }
     }
 
     "get returns view when project is visible" {
@@ -261,6 +277,7 @@ class ProjectManagementApplicationServiceTest :
           projectAccess,
           permissionBootstrap,
           failingPublisher,
+          warningCollector,
           clock,
         )
       coEvery { projects.get(tenantId, record.apiId.value) } returns record

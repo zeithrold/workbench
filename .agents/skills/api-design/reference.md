@@ -259,6 +259,19 @@ Example validation error:
 }
 ```
 
+## Warnings — `X-Workbench-Warning`
+
+See [SKILL.md](SKILL.md) Warnings section. Implementation:
+
+| Piece | Location |
+|-------|----------|
+| Codes / typed meta | `workbench-core/.../common/warning/` |
+| Request collector | `workbench-web/.../api/warning/RequestScopedWorkbenchWarningCollector` |
+| Header serialization | `workbench-web/.../api/warning/WorkbenchWarningFilter` |
+| OpenAPI | `@MayReturnWarnings` on endpoints that may emit warnings |
+
+Header constraints: max 8 items, max 4KB UTF-8; overflow adds `warning.truncated` item.
+
 ## PATCH Semantics
 
 - Include only mutable fields in `*Request`
