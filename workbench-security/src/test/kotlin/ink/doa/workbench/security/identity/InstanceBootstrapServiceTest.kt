@@ -45,14 +45,14 @@ class InstanceBootstrapServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
       InstanceBootstrapService(
-        users,
-        loginMethods,
-        loginAccounts,
-        userLoginAccounts,
-        adminUserCommands,
-        adminUserQueries,
-        accessGrants,
-        passwordHasher,
+        BootstrapAccountSupport(
+          users,
+          loginMethods,
+          loginAccounts,
+          userLoginAccounts,
+          passwordHasher,
+        ),
+        BootstrapAdminSupport(adminUserCommands, adminUserQueries, accessGrants),
         clock,
       )
 

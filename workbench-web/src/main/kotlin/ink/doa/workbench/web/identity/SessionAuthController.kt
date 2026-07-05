@@ -134,7 +134,7 @@ class SessionAuthController(
     responses =
       [ApiResponse(responseCode = "200", description = "Logged out; session cookie cleared")],
   )
-  suspend fun logout(servletRequest: HttpServletRequest): ResponseEntity<Void> {
+  suspend fun logout(servletRequest: HttpServletRequest): ResponseEntity<Unit> {
     val client = HttpClientContext.from(servletRequest).toServiceContext()
     authApplicationService.logout(
       client = client,

@@ -133,11 +133,13 @@ class PermissionPolicyManagementServiceTest :
       shouldThrow<InvalidRequestException> {
         runBlocking {
           service.addPolicyRule(
-            tenantId,
-            policy.apiId.value,
-            "project.read",
-            "project:*",
-            ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            AddPolicyRuleCommand(
+              tenantId = tenantId,
+              policyPublicId = policy.apiId.value,
+              action = "project.read",
+              resourcePattern = "project:*",
+              effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            )
           )
         }
       }
@@ -162,11 +164,13 @@ class PermissionPolicyManagementServiceTest :
 
       val result = runBlocking {
         service.addPolicyRule(
-          tenantId,
-          policy.apiId.value,
-          "project.read",
-          "project:*",
-          ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          AddPolicyRuleCommand(
+            tenantId = tenantId,
+            policyPublicId = policy.apiId.value,
+            action = "project.read",
+            resourcePattern = "project:*",
+            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          )
         )
       }
 
@@ -180,12 +184,14 @@ class PermissionPolicyManagementServiceTest :
       shouldThrow<InvalidRequestException> {
         runBlocking {
           service.addPolicyRule(
-            tenantId,
-            policy.apiId.value,
-            "project.read",
-            "project:*",
-            ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
-            conditionJson = "{invalid",
+            AddPolicyRuleCommand(
+              tenantId = tenantId,
+              policyPublicId = policy.apiId.value,
+              action = "project.read",
+              resourcePattern = "project:*",
+              effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+              conditionJson = "{invalid",
+            )
           )
         }
       }
@@ -215,12 +221,14 @@ class PermissionPolicyManagementServiceTest :
 
       val result = runBlocking {
         service.addPolicyRule(
-          tenantId,
-          policy.apiId.value,
-          "issue.view",
-          "issue:*",
-          ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
-          conditionJson = conditionJson,
+          AddPolicyRuleCommand(
+            tenantId = tenantId,
+            policyPublicId = policy.apiId.value,
+            action = "issue.view",
+            resourcePattern = "issue:*",
+            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            conditionJson = conditionJson,
+          )
         )
       }
 

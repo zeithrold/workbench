@@ -3,7 +3,6 @@ package ink.doa.workbench.security.identity.auth
 import ink.doa.workbench.core.identity.model.TenantLoginMethodSettingRecord
 import javax.naming.Context
 import javax.naming.directory.InitialDirContext
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -11,8 +10,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class LdapAuthClient {
-  private val json = Json { ignoreUnknownKeys = true }
-
   fun authenticate(
     setting: TenantLoginMethodSettingRecord,
     subject: String,

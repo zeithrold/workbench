@@ -34,11 +34,13 @@ class AdminUserServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
       AdminUserService(
-        adminUserCommands,
-        adminUserQueries,
-        accessGrants,
-        userRepository,
-        tenantMembers,
+        AdminUserPersistenceSupport(
+          adminUserCommands,
+          adminUserQueries,
+          accessGrants,
+          userRepository,
+          tenantMembers,
+        ),
         publicIds,
         clock,
       )

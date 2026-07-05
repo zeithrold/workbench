@@ -95,9 +95,14 @@ class LdapLoginAuthenticator(
       } ?: authInvalidCredentials()
     val setting = tenantLoginSettings.findTenantSetting(tenant.id, method.id)
     requireEnabledLdapSetting(setting)
+    val enabledSetting = requireNotNull(setting)
 
     val normalizedSubject =
-      ldapClient.authenticate(setting!!, requireLdapSubject(command), requireLdapPassword(command))
+      ldapClient.authenticate(
+        enabledSetting,
+        requireLdapSubject(command),
+        requireLdapPassword(command),
+      )
     val account =
       loginAccounts.findLoginAccountByMethodAndSubject(method.code, normalizedSubject)
         ?: authInvalidCredentials()

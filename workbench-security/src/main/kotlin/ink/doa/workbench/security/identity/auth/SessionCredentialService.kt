@@ -1,11 +1,6 @@
 package ink.doa.workbench.security.identity.auth
 
-import ink.doa.workbench.core.identity.AuthEventRepository
-import ink.doa.workbench.core.identity.LoginAccountStore
-import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.auth.AuthSessionRepository
-import ink.doa.workbench.core.identity.auth.CredentialHasher
-import ink.doa.workbench.core.identity.auth.CredentialSecretGenerator
 import ink.doa.workbench.core.identity.auth.SessionAuthenticator
 import ink.doa.workbench.core.identity.model.AuditEventResult
 import ink.doa.workbench.core.identity.model.AuthEventType
@@ -22,12 +17,9 @@ import org.springframework.stereotype.Service
 
 @Service
 class SessionCredentialService(
-  private val users: UserRepository,
-  private val loginAccounts: LoginAccountStore,
-  private val authEvents: AuthEventRepository,
+  private val credentials: AuthCredentialSupport,
+  private val crypto: CredentialCryptoSupport,
   private val sessions: AuthSessionRepository,
-  private val secretGenerator: CredentialSecretGenerator,
-  private val credentialHasher: CredentialHasher,
   private val clock: Clock,
 ) : SessionAuthenticator {
   private val defaultSessionTtl = Duration.ofHours(12)
@@ -38,12 +30,12 @@ class SessionCredentialService(
     now: OffsetDateTime,
     activeTenantId: UUID? = null,
   ): IssuedCredential {
-    val secret = secretGenerator.generate()
+    val secret = crypto.secretGenerator.generate()
     val sessionTtl = sessionTtlForUser(userId)
     val session =
       sessions.create(
         CreateAuthSessionCommand(
-          sessionHash = credentialHasher.hash(secret),
+          sessionHash = crypto.credentialHasher.hash(secret),
           userId = userId,
           loginAccountId = loginAccountId,
           expiresAt = now.plus(sessionTtl),
@@ -60,10 +52,10 @@ class SessionCredentialService(
   ): Boolean {
     val now = now()
     val session =
-      sessions.findActiveByHash(credentialHasher.hash(sessionSecret), now) ?: return false
+      sessions.findActiveByHash(crypto.credentialHasher.hash(sessionSecret), now) ?: return false
     val revoked = sessions.revoke(session.id, now)
     if (revoked) {
-      authEvents.append(
+      credentials.authEvents.append(
         CreateAuthEventCommand(
           userId = session.userId,
           loginAccountId = session.loginAccountId,
@@ -79,11 +71,11 @@ class SessionCredentialService(
 
   override suspend fun authenticateSession(sessionId: String): AuthenticatedPrincipal? {
     val now = now()
-    val session = sessions.findActiveByHash(credentialHasher.hash(sessionId), now)
+    val session = sessions.findActiveByHash(crypto.credentialHasher.hash(sessionId), now)
     return session?.let {
-      users.findById(it.userId)?.let { user ->
+      credentials.users.findById(it.userId)?.let { user ->
         sessions.touch(it.id, now)
-        loginAccounts.touchLastUsed(it.loginAccountId, now)
+        credentials.loginAccounts.touchLastUsed(it.loginAccountId, now)
         AuthenticatedPrincipal(
           user = user,
           loginAccountId = it.loginAccountId,
@@ -97,7 +89,7 @@ class SessionCredentialService(
   }
 
   private suspend fun sessionTtlForUser(userId: UUID): Duration {
-    users.findById(userId)
+    credentials.users.findById(userId)
     return defaultSessionTtl
   }
 

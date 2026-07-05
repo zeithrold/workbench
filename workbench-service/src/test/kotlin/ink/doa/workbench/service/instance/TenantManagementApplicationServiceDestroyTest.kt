@@ -53,13 +53,16 @@ class TenantManagementApplicationServiceDestroyTest :
 
     val service =
       TenantManagementApplicationService(
-        tenants = TenantService(tenants),
-        tenantLoginMethods = mockk<TenantLoginMethodService>(relaxed = true),
-        userLookupService = UserLookupService(users),
-        adminUserService = mockk(relaxed = true),
-        invitationService = mockk(relaxed = true),
+        dependencies =
+          TenantManagementDependencies(
+            tenants = TenantService(tenants),
+            tenantLoginMethods = mockk<TenantLoginMethodService>(relaxed = true),
+            userLookupService = UserLookupService(users),
+            adminUserService = mockk(relaxed = true),
+            invitationService = mockk(relaxed = true),
+            clock = clock,
+          ),
         domainEventPublisher = publisher,
-        clock = clock,
       )
 
     beforeEach {

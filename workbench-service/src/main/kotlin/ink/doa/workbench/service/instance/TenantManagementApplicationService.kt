@@ -13,27 +13,24 @@ import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import ink.doa.workbench.core.tenant.events.TenantDomainEvents
-import ink.doa.workbench.security.identity.TenantLoginMethodService
-import ink.doa.workbench.security.identity.UserLookupService
-import ink.doa.workbench.security.invitation.InvitationService
-import ink.doa.workbench.security.permission.AdminUserService
+import ink.doa.workbench.security.invitation.CreateManagedInvitationCommand
 import ink.doa.workbench.security.permission.AdminUserView
-import ink.doa.workbench.tenant.tenant.TenantService
-import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
 class TenantManagementApplicationService(
-  private val tenants: TenantService,
-  private val tenantLoginMethods: TenantLoginMethodService,
-  private val userLookupService: UserLookupService,
-  private val adminUserService: AdminUserService,
-  private val invitationService: InvitationService,
+  private val dependencies: TenantManagementDependencies,
   private val domainEventPublisher: DomainEventPublisher,
-  private val clock: Clock,
 ) {
+  private val tenants = dependencies.tenants
+  private val tenantLoginMethods = dependencies.tenantLoginMethods
+  private val userLookupService = dependencies.userLookupService
+  private val adminUserService = dependencies.adminUserService
+  private val invitationService = dependencies.invitationService
+  private val clock = dependencies.clock
+
   suspend fun list(slug: String? = null): List<TenantRecord> = tenants.listForAdmin(slug)
 
   suspend fun get(tenantPublicId: String): TenantRecord = tenants.getForAdmin(tenantPublicId)
@@ -49,65 +46,90 @@ class TenantManagementApplicationService(
     actorUserId: UUID?,
     requestHost: RequestHost?,
   ): CreateTenantView {
+    val tenant = createTenantForAdminAssignment(command)
+    return when (val assignment = command.adminAssignment) {
+      is TenantAdminAssignment.SelfAssignment -> createTenantWithSelfAdmin(tenant, actorUserId)
+      is TenantAdminAssignment.UserAssignment ->
+        createTenantWithAssignedAdmin(tenant, assignment, actorUserId)
+      is TenantAdminAssignment.EmailInviteAssignment ->
+        createTenantWithEmailInviteAdmin(tenant, assignment, actorUserId, requestHost)
+    }
+  }
+
+  private suspend fun createTenantForAdminAssignment(
+    command: CreateTenantWithAdminCommand
+  ): TenantRecord {
     val status =
       when (command.adminAssignment) {
         is TenantAdminAssignment.EmailInviteAssignment -> TenantStatus.PENDING_ACTIVATION
         else -> TenantStatus.ACTIVE
       }
+    return create(
+      CreateTenantCommand(
+        name = command.name,
+        slug = command.slug,
+        timezone = command.timezone,
+        locale = command.locale,
+        status = status,
+      )
+    )
+  }
 
-    val tenant =
-      create(
-        CreateTenantCommand(
-          name = command.name,
-          slug = command.slug,
-          timezone = command.timezone,
-          locale = command.locale,
-          status = status,
+  private suspend fun createTenantWithSelfAdmin(
+    tenant: TenantRecord,
+    actorUserId: UUID?,
+  ): CreateTenantView {
+    val actor =
+      actorUserId
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+    val adminView =
+      adminUserService.provisionTenantAdmin(
+        tenantId = tenant.id,
+        userId = actor,
+        actorUserId = actor,
+      )
+    return CreateTenantView(tenant = tenant, admin = adminView, invitationLink = null)
+  }
+
+  private suspend fun createTenantWithAssignedAdmin(
+    tenant: TenantRecord,
+    assignment: TenantAdminAssignment.UserAssignment,
+    actorUserId: UUID?,
+  ): CreateTenantView {
+    val adminView =
+      adminUserService.provisionTenantAdmin(
+        tenantId = tenant.id,
+        userId = assignment.userId,
+        actorUserId = actorUserId,
+      )
+    return CreateTenantView(tenant = tenant, admin = adminView, invitationLink = null)
+  }
+
+  private suspend fun createTenantWithEmailInviteAdmin(
+    tenant: TenantRecord,
+    assignment: TenantAdminAssignment.EmailInviteAssignment,
+    actorUserId: UUID?,
+    requestHost: RequestHost?,
+  ): CreateTenantView {
+    val actor =
+      actorUserId
+        ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+    val invitation =
+      invitationService.create(
+        CreateManagedInvitationCommand(
+          type = InvitationType.TENANT_ADMIN,
+          tenantId = tenant.id,
+          email = assignment.email,
+          displayName = assignment.displayName,
+          invitedBy = actor,
+          requestHost = requestHost,
         )
       )
-
-    return when (val assignment = command.adminAssignment) {
-      is TenantAdminAssignment.SelfAssignment -> {
-        val actor =
-          actorUserId
-            ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
-        val adminView =
-          adminUserService.provisionTenantAdmin(
-            tenantId = tenant.id,
-            userId = actor,
-            actorUserId = actor,
-          )
-        CreateTenantView(tenant = tenant, admin = adminView, invitationLink = null)
-      }
-      is TenantAdminAssignment.UserAssignment -> {
-        val adminView =
-          adminUserService.provisionTenantAdmin(
-            tenantId = tenant.id,
-            userId = assignment.userId,
-            actorUserId = actorUserId,
-          )
-        CreateTenantView(tenant = tenant, admin = adminView, invitationLink = null)
-      }
-      is TenantAdminAssignment.EmailInviteAssignment -> {
-        val actor =
-          actorUserId
-            ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
-        val invitation =
-          invitationService.create(
-            type = InvitationType.TENANT_ADMIN,
-            tenantId = tenant.id,
-            email = assignment.email,
-            displayName = assignment.displayName,
-            invitedBy = actor,
-            requestHost = requestHost,
-          )
-        CreateTenantView(
-          tenant = tenant,
-          admin = null,
-          invitationLink = invitation.invitationLink,
-        )
-      }
-    }
+    return CreateTenantView(
+      tenant = tenant,
+      admin = null,
+      invitationLink = invitation.invitationLink,
+    )
   }
 
   suspend fun update(

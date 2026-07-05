@@ -18,6 +18,8 @@ import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.auth.AuthenticationService
 import ink.doa.workbench.security.identity.auth.BearerCredentialService
+import ink.doa.workbench.security.identity.auth.CreateManagedBearerTokenCommand
+import ink.doa.workbench.security.identity.auth.LoginCompletionRequest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -115,12 +117,14 @@ class AuthApplicationServiceTest :
       coEvery { loginCompletionService.resolve(identity, command) } returns completion
       coEvery {
         authenticationService.completeLogin(
-          identity = identity,
-          issueBearerToken = command.issueBearerToken,
-          ipAddress = command.ipAddress,
-          userAgent = command.userAgent,
-          tenantIdForAudit = tenant.id,
-          activeTenantId = tenant.id,
+          LoginCompletionRequest(
+            identity = identity,
+            issueBearerToken = command.issueBearerToken,
+            ipAddress = command.ipAddress,
+            userAgent = command.userAgent,
+            tenantIdForAudit = tenant.id,
+            activeTenantId = tenant.id,
+          )
         )
       } returns authResult
 
@@ -186,13 +190,15 @@ class AuthApplicationServiceTest :
       coEvery { publicIds.resolveTenant(tenant.apiId.value) } returns tenant
       coEvery {
         bearerCredentialService.createBearerToken(
-          userId = user.id,
-          loginAccountId = loginAccountId,
-          tenantId = tenant.id,
-          name = "ci-token",
-          scopes = setOf("workbench.api"),
-          ipAddress = client.ipAddress,
-          userAgent = client.userAgent,
+          CreateManagedBearerTokenCommand(
+            userId = user.id,
+            loginAccountId = loginAccountId,
+            tenantId = tenant.id,
+            name = "ci-token",
+            scopes = setOf("workbench.api"),
+            ipAddress = client.ipAddress,
+            userAgent = client.userAgent,
+          )
         )
       } returns issued
 
@@ -234,13 +240,15 @@ class AuthApplicationServiceTest :
       coEvery { sessionService.requireActiveTenantId(principal) } returns tenant.id
       coEvery {
         bearerCredentialService.createBearerToken(
-          userId = user.id,
-          loginAccountId = loginAccountId,
-          tenantId = tenant.id,
-          name = null,
-          scopes = emptySet(),
-          ipAddress = client.ipAddress,
-          userAgent = client.userAgent,
+          CreateManagedBearerTokenCommand(
+            userId = user.id,
+            loginAccountId = loginAccountId,
+            tenantId = tenant.id,
+            name = null,
+            scopes = emptySet(),
+            ipAddress = client.ipAddress,
+            userAgent = client.userAgent,
+          )
         )
       } returns issued
 

@@ -19,15 +19,20 @@ import ink.doa.workbench.data.identity.ExposedUserRepository
 import ink.doa.workbench.data.permission.ExposedAccessGrantRepository
 import ink.doa.workbench.data.permission.ExposedAdminUserCommandRepository
 import ink.doa.workbench.data.permission.ExposedAdminUserQueryRepository
+import ink.doa.workbench.security.common.PublicIdIdentitySupport
+import ink.doa.workbench.security.common.PublicIdPermissionSupport
 import ink.doa.workbench.security.common.PublicIdResolver
 import ink.doa.workbench.security.identity.TenantLoginMethodService
 import ink.doa.workbench.security.identity.UserLookupService
 import ink.doa.workbench.security.identity.auth.SecureRandomCredentialSecretGenerator
 import ink.doa.workbench.security.identity.auth.Sha256CredentialHasher
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
+import ink.doa.workbench.security.invitation.InvitationCollaborators
+import ink.doa.workbench.security.invitation.InvitationIdentitySupport
 import ink.doa.workbench.security.invitation.InvitationLinkBuilder
 import ink.doa.workbench.security.invitation.InvitationLinkProperties
 import ink.doa.workbench.security.invitation.InvitationService
+import ink.doa.workbench.security.permission.AdminUserPersistenceSupport
 import ink.doa.workbench.security.permission.AdminUserService
 import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependencies
 import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
@@ -77,12 +82,8 @@ class TenantCreateWithAdminIntegrationTest :
       val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
       val publicIds =
         PublicIdResolver(
-          tenants = tenants,
-          users = users,
-          loginMethods = loginMethods,
-          bearerTokens = deps.bearerTokens,
-          adminUserQueries = adminUserQueries,
-          accessGrants = accessGrants,
+          identity = PublicIdIdentitySupport(tenants, users, loginMethods, deps.bearerTokens),
+          permission = PublicIdPermissionSupport(adminUserQueries, accessGrants),
           projects = deps.projects,
         )
       val passwordHasher =
@@ -94,41 +95,53 @@ class TenantCreateWithAdminIntegrationTest :
         }
       val adminUserService =
         AdminUserService(
-          adminUserCommands = adminUserCommands,
-          adminUserQueries = adminUserQueries,
-          accessGrants = accessGrants,
-          userRepository = users,
-          tenantMembers = tenantMembers,
+          persistence =
+            AdminUserPersistenceSupport(
+              adminUserCommands = adminUserCommands,
+              adminUserQueries = adminUserQueries,
+              accessGrants = accessGrants,
+              userRepository = users,
+              tenantMembers = tenantMembers,
+            ),
           publicIds = publicIds,
           clock = clock,
         )
       invitationService =
         InvitationService(
-          invitations = ExposedInvitationRepository(database),
-          tenants = tenants,
-          users = users,
-          loginMethods = loginMethods,
-          loginAccounts = loginAccounts,
-          userLoginAccounts = userLoginAccounts,
-          adminUserService = adminUserService,
-          credentialHasher = Sha256CredentialHasher(),
-          secretGenerator = SecureRandomCredentialSecretGenerator(),
-          passwordHasher = passwordHasher,
-          invitationLinkBuilder =
-            InvitationLinkBuilder(
-              InvitationLinkProperties(publicBaseUrl = "https://app.example.test")
+          identity =
+            InvitationIdentitySupport(
+              tenants = tenants,
+              users = users,
+              loginMethods = loginMethods,
+              loginAccounts = loginAccounts,
+              userLoginAccounts = userLoginAccounts,
+              passwordHasher = passwordHasher,
+            ),
+          collaborators =
+            InvitationCollaborators(
+              invitations = ExposedInvitationRepository(database),
+              credentialHasher = Sha256CredentialHasher(),
+              secretGenerator = SecureRandomCredentialSecretGenerator(),
+              invitationLinkBuilder =
+                InvitationLinkBuilder(
+                  InvitationLinkProperties(publicBaseUrl = "https://app.example.test")
+                ),
+              adminUserService = adminUserService,
             ),
           clock = clock,
         )
       tenantService =
         TenantManagementApplicationService(
-          tenants = TenantService(tenants),
-          tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
-          userLookupService = UserLookupService(users),
-          adminUserService = adminUserService,
-          invitationService = invitationService,
+          dependencies =
+            TenantManagementDependencies(
+              tenants = TenantService(tenants),
+              tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+              userLookupService = UserLookupService(users),
+              adminUserService = adminUserService,
+              invitationService = invitationService,
+              clock = clock,
+            ),
           domainEventPublisher = RecordingDomainEventPublisher(),
-          clock = clock,
         )
 
       runBlocking {

@@ -34,9 +34,11 @@ class OpenApiConfiguration {
         InstanceContextSummary::class.java,
         UserRecord::class.java,
       )
-    SpringDocUtils.getConfig()
-      .addRequestWrapperToIgnore(*injectedTypes)
-      .removeFromSchemaMap(*injectedTypes)
+    val config = SpringDocUtils.getConfig()
+    injectedTypes.forEach { type ->
+      config.addRequestWrapperToIgnore(type)
+      config.removeFromSchemaMap(type)
+    }
   }
 
   @Bean

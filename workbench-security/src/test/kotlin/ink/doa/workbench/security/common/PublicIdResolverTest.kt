@@ -31,13 +31,9 @@ class PublicIdResolverTest :
     val projects = mockk<ProjectRepository>()
     val resolver =
       PublicIdResolver(
-        tenants = tenants,
-        users = users,
-        loginMethods = loginMethods,
-        bearerTokens = bearerTokens,
-        adminUserQueries = adminUsers,
-        accessGrants = accessGrants,
-        projects = projects,
+        PublicIdIdentitySupport(tenants, users, loginMethods, bearerTokens),
+        PublicIdPermissionSupport(adminUsers, accessGrants),
+        projects,
       )
     val now = OffsetDateTime.now(ZoneOffset.UTC)
 

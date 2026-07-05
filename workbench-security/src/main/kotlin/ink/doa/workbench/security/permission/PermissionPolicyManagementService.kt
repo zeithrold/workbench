@@ -10,7 +10,6 @@ import ink.doa.workbench.core.permission.PermissionPolicyRecord
 import ink.doa.workbench.core.permission.PermissionPolicyRepository
 import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -80,27 +79,20 @@ class PermissionPolicyManagementService(
     return policies.delete(tenantId, policy.id)
   }
 
-  suspend fun addPolicyRule(
-    tenantId: UUID,
-    policyPublicId: String,
-    action: String,
-    resourcePattern: String,
-    effect: PermissionEffect,
-    conditionJson: String? = null,
-  ): PermissionPolicyView {
-    val policy = requirePolicy(tenantId, policyPublicId)
+  suspend fun addPolicyRule(command: AddPolicyRuleCommand): PermissionPolicyView {
+    val policy = requirePolicy(command.tenantId, command.policyPublicId)
     if (policy.builtin) {
       throw InvalidRequestException(
         WorkbenchErrorCode.PERMISSION_POLICY_RULES_BUILTIN_CHANGE_FORBIDDEN
       )
     }
-    val canonicalCondition = PermissionConditionJson.validateAndCanonicalize(conditionJson)
+    val canonicalCondition = PermissionConditionJson.validateAndCanonicalize(command.conditionJson)
     policies.addRule(
       CreatePermissionPolicyRuleCommand(
         policyId = policy.id,
-        action = AuthorizationAction(action),
-        resourcePattern = resourcePattern,
-        effect = effect,
+        action = AuthorizationAction(command.action),
+        resourcePattern = command.resourcePattern,
+        effect = command.effect,
         conditionJson = canonicalCondition,
       )
     )

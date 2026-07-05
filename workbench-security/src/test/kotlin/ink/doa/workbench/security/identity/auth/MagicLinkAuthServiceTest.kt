@@ -45,19 +45,17 @@ class MagicLinkAuthServiceTest :
     val tenantConfig = mockk<TenantConfigService>(relaxed = true)
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
-    val service =
-      MagicLinkAuthService(
+    val repositories =
+      MagicLinkAuthRepositories(
         loginMethods,
         tenantLoginSettings,
         loginAccounts,
         userLoginAccounts,
         tenants,
         magicLinkTokens,
-        credentialHasher,
-        secretGenerator,
-        tenantConfig,
-        clock,
       )
+    val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
+    val service = MagicLinkAuthService(repositories, crypto, tenantConfig, clock)
 
     "resolveToken throws when token is invalid" {
       coEvery { credentialHasher.hash("invalid-token") } returns "hashed-invalid"

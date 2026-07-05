@@ -4,7 +4,6 @@ import ink.doa.workbench.core.permission.AccessGrantRepository
 import ink.doa.workbench.core.permission.CreateAccessGrantCommand
 import ink.doa.workbench.core.permission.GrantScope
 import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.security.common.PublicIdResolver
 import java.time.Clock
 import java.time.OffsetDateTime
@@ -32,33 +31,28 @@ class AccessGrantManagementService(
     return grants.map { AccessGrantView.from(it) }
   }
 
-  suspend fun createGrant(
-    scope: GrantScope,
-    tenantId: UUID?,
-    userPublicId: String,
-    actionCode: String,
-    resourcePattern: String,
-    effect: PermissionEffect,
-    projectPublicId: String?,
-    actorUserId: UUID?,
-  ): AccessGrantView {
-    val user = publicIds.resolveUser(userPublicId)
-    val projectId = projectPublicId?.let { publicId ->
-      require(tenantId != null) { "tenantId is required for project-scoped grants." }
-      publicIds.resolveProject(tenantId, publicId).id
-    }
+  suspend fun createGrant(command: CreateManagedAccessGrantCommand): AccessGrantView {
+    val user = publicIds.resolveUser(command.userPublicId)
+    val projectId =
+      command.projectPublicId?.let { publicId ->
+        val tenantId =
+          requireNotNull(command.tenantId) {
+            "tenantId is required for project-scoped grants."
+          }
+        publicIds.resolveProject(tenantId, publicId).id
+      }
     val record =
       accessGrants.create(
         CreateAccessGrantCommand(
-          scope = scope,
-          tenantId = tenantId,
+          scope = command.scope,
+          tenantId = command.tenantId,
           projectId = projectId,
           subjectUserId = user.id,
-          action = AuthorizationAction(actionCode),
-          resourcePattern = resourcePattern,
-          effect = effect,
+          action = AuthorizationAction(command.actionCode),
+          resourcePattern = command.resourcePattern,
+          effect = command.effect,
           validFrom = now(),
-          grantedBy = actorUserId,
+          grantedBy = command.actorUserId,
         )
       )
     return AccessGrantView.from(record)

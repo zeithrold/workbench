@@ -65,17 +65,7 @@ class AuthenticationServiceTest :
 
     "login with bearer token issues token credential" {
       val fixture = Fixture()
-      coEvery {
-        fixture.bearerCredentialService.issueBearerToken(
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-        )
-      } returns
+      coEvery { fixture.bearerCredentialService.issueBearerToken(any()) } returns
         IssuedCredential(
           id = UUID.randomUUID(),
           apiId = PublicId.new("btk"),
@@ -156,21 +146,21 @@ private class Fixture(authenticateFails: Boolean = false) {
     coEvery { loginAccounts.touchLastUsed(loginAccount.id, any()) } returns true
     coEvery { authEvents.append(any<CreateAuthEventCommand>()) } answers
       {
-        firstArg<CreateAuthEventCommand>().let {
-          appendedEvents += it
+        firstArg<CreateAuthEventCommand>().let { event ->
+          appendedEvents += event
           AuthEventRecord(
             id = UUID.randomUUID(),
             authEventId = PublicId.new("aut"),
-            tenantId = it.tenantId,
-            userId = it.userId,
-            loginAccountId = it.loginAccountId,
-            loginMethodId = it.loginMethodId,
-            eventType = it.eventType,
-            result = it.result,
-            failureReason = it.failureReason,
-            ipAddress = it.ipAddress,
-            userAgent = it.userAgent,
-            metadata = it.metadata,
+            tenantId = event.tenantId,
+            userId = event.userId,
+            loginAccountId = event.loginAccountId,
+            loginMethodId = event.loginMethodId,
+            eventType = event.eventType,
+            result = event.result,
+            failureReason = event.failureReason,
+            ipAddress = event.ipAddress,
+            userAgent = event.userAgent,
+            metadata = event.metadata,
             occurredAt = now,
           )
         }

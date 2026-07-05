@@ -3,6 +3,7 @@ package ink.doa.workbench.web.manage
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.core.common.context.TenantRequestContext
 import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.security.permission.AddPolicyRuleCommand
 import ink.doa.workbench.security.permission.PermissionPolicyManagementService
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
@@ -110,14 +111,16 @@ class ManagePermissionPolicyController(
   ): PermissionPolicyResponse =
     PermissionPolicyResponse.from(
       permissionPolicyManagementService.addPolicyRule(
-        tenantId = tenantContext.tenant.id,
-        policyPublicId = id,
-        action = request.action,
-        resourcePattern = request.resourcePattern,
-        effect =
-          request.effect?.let { PermissionEffect.valueOf(it.uppercase()) }
-            ?: PermissionEffect.ALLOW,
-        conditionJson = request.condition?.let { objectMapper.writeValueAsString(it) },
+        AddPolicyRuleCommand(
+          tenantId = tenantContext.tenant.id,
+          policyPublicId = id,
+          action = request.action,
+          resourcePattern = request.resourcePattern,
+          effect =
+            request.effect?.let { PermissionEffect.valueOf(it.uppercase()) }
+              ?: PermissionEffect.ALLOW,
+          conditionJson = request.condition?.let { objectMapper.writeValueAsString(it) },
+        )
       )
     )
 }

@@ -43,16 +43,25 @@ class OidcAuthIntegrationTest :
       val userLoginAccounts = ExposedUserLoginAccountRepository(database)
       federatedAuthService =
         FederatedAuthService(
-          loginMethods = loginMethods,
-          tenantLoginSettings = tenantLoginSettings,
-          loginAccounts = loginAccounts,
-          userLoginAccounts = userLoginAccounts,
-          tenants = ExposedTenantRepository(database),
-          loginStates = ExposedAuthLoginStateRepository(database),
-          secretGenerator = SecureRandomCredentialSecretGenerator(),
-          credentialHasher = Sha256CredentialHasher(),
-          oauthClient = OAuthFederatedClient(secretResolver),
-          samlClient = SamlFederatedClient(),
+          repositories =
+            FederatedAuthRepositories(
+              loginMethods = loginMethods,
+              tenantLoginSettings = tenantLoginSettings,
+              loginAccounts = loginAccounts,
+              userLoginAccounts = userLoginAccounts,
+              tenants = ExposedTenantRepository(database),
+              loginStates = ExposedAuthLoginStateRepository(database),
+            ),
+          clients =
+            FederatedAuthClients(
+              oauth = OAuthFederatedClient(secretResolver),
+              saml = SamlFederatedClient(),
+            ),
+          crypto =
+            CredentialCryptoSupport(
+              secretGenerator = SecureRandomCredentialSecretGenerator(),
+              credentialHasher = Sha256CredentialHasher(),
+            ),
           clock = Clock.systemUTC(),
         )
     }

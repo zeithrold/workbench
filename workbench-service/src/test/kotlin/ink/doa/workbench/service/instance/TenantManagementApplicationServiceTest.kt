@@ -61,13 +61,16 @@ class TenantManagementApplicationServiceTest :
 
     fun service(publisher: DomainEventPublisher): TenantManagementApplicationService =
       TenantManagementApplicationService(
-        tenants = TenantService(tenants),
-        tenantLoginMethods = tenantLoginMethods,
-        userLookupService = UserLookupService(users),
-        adminUserService = adminUserService,
-        invitationService = invitationService,
+        dependencies =
+          TenantManagementDependencies(
+            tenants = TenantService(tenants),
+            tenantLoginMethods = tenantLoginMethods,
+            userLookupService = UserLookupService(users),
+            adminUserService = adminUserService,
+            invitationService = invitationService,
+            clock = clock,
+          ),
         domainEventPublisher = publisher,
-        clock = clock,
       )
 
     beforeEach {

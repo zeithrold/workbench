@@ -21,6 +21,8 @@ import ink.doa.workbench.core.permission.AdminUserQueryRepository
 import ink.doa.workbench.core.permission.AdminUserRecord
 import ink.doa.workbench.core.permission.AdminUserStatus
 import ink.doa.workbench.security.identity.AuthApplicationService
+import ink.doa.workbench.security.identity.BootstrapAccountSupport
+import ink.doa.workbench.security.identity.BootstrapAdminSupport
 import ink.doa.workbench.security.identity.InstanceBootstrapService
 import ink.doa.workbench.security.identity.LoginView
 import ink.doa.workbench.tenant.instance.InstanceProperties
@@ -42,7 +44,7 @@ class InstanceSetupApplicationServiceTest :
     "setup status reflects whether an instance admin exists" {
       val adminUserQueries = mockk<AdminUserQueryRepository>()
       coEvery { adminUserQueries.existsActiveInstanceAdmin() } returns false
-      val service = service(adminUserQueries = adminUserQueries)
+      val service = service(InstanceSetupServiceFixtures(adminUserQueries = adminUserQueries))
 
       runBlocking { service.setupStatus().initialized } shouldBe false
     }
@@ -50,7 +52,7 @@ class InstanceSetupApplicationServiceTest :
     "bootstrap rejects when instance is already initialized" {
       val adminUserQueries = mockk<AdminUserQueryRepository>()
       coEvery { adminUserQueries.existsActiveInstanceAdmin() } returns true
-      val service = service(adminUserQueries = adminUserQueries)
+      val service = service(InstanceSetupServiceFixtures(adminUserQueries = adminUserQueries))
 
       shouldThrow<InstanceAlreadyInitializedException> {
         runBlocking {
@@ -70,8 +72,10 @@ class InstanceSetupApplicationServiceTest :
       coEvery { adminUserQueries.existsActiveInstanceAdmin() } returns false
       val service =
         service(
-          adminUserQueries = adminUserQueries,
-          instanceProperties = InstanceProperties(setupToken = "expected-token"),
+          InstanceSetupServiceFixtures(
+            adminUserQueries = adminUserQueries,
+            instanceProperties = InstanceProperties(setupToken = "expected-token"),
+          )
         )
 
       shouldThrow<SetupTokenInvalidException> {
@@ -153,15 +157,17 @@ class InstanceSetupApplicationServiceTest :
 
       val service =
         service(
-          users = users,
-          loginMethods = loginMethods,
-          loginAccounts = loginAccounts,
-          userLoginAccounts = userLoginAccounts,
-          adminUserCommands = adminUserCommands,
-          adminUserQueries = adminUserQueries,
-          accessGrants = accessGrants,
-          passwordHasher = passwordHasher,
-          authApplicationService = authApplicationService,
+          InstanceSetupServiceFixtures(
+            users = users,
+            loginMethods = loginMethods,
+            loginAccounts = loginAccounts,
+            userLoginAccounts = userLoginAccounts,
+            adminUserCommands = adminUserCommands,
+            adminUserQueries = adminUserQueries,
+            accessGrants = accessGrants,
+            passwordHasher = passwordHasher,
+            authApplicationService = authApplicationService,
+          )
         )
 
       val result = runBlocking {
@@ -182,31 +188,41 @@ class InstanceSetupApplicationServiceTest :
     }
   })
 
+private data class InstanceSetupServiceFixtures(
+  val users: UserRepository = mockk(),
+  val loginMethods: LoginMethodRepository = mockk(),
+  val loginAccounts: LoginAccountStore = mockk(),
+  val userLoginAccounts: UserLoginAccountRepository = mockk(),
+  val adminUserCommands: AdminUserCommandRepository = mockk(),
+  val adminUserQueries: AdminUserQueryRepository = mockk(),
+  val accessGrants: AccessGrantRepository = mockk(),
+  val passwordHasher: PasswordHasher = mockk(),
+  val instanceProperties: InstanceProperties = InstanceProperties(),
+  val authApplicationService: AuthApplicationService = mockk(),
+)
+
 private fun service(
-  users: UserRepository = mockk(),
-  loginMethods: LoginMethodRepository = mockk(),
-  loginAccounts: LoginAccountStore = mockk(),
-  userLoginAccounts: UserLoginAccountRepository = mockk(),
-  adminUserCommands: AdminUserCommandRepository = mockk(),
-  adminUserQueries: AdminUserQueryRepository = mockk(),
-  accessGrants: AccessGrantRepository = mockk(),
-  passwordHasher: PasswordHasher = mockk(),
-  instanceProperties: InstanceProperties = InstanceProperties(),
-  authApplicationService: AuthApplicationService = mockk(),
+  fixtures: InstanceSetupServiceFixtures = InstanceSetupServiceFixtures()
 ): InstanceSetupApplicationService =
   InstanceSetupApplicationService(
     instanceBootstrapService =
       InstanceBootstrapService(
-        users = users,
-        loginMethods = loginMethods,
-        loginAccounts = loginAccounts,
-        userLoginAccounts = userLoginAccounts,
-        adminUserCommands = adminUserCommands,
-        adminUserQueries = adminUserQueries,
-        accessGrants = accessGrants,
-        passwordHasher = passwordHasher,
+        accounts =
+          BootstrapAccountSupport(
+            users = fixtures.users,
+            loginMethods = fixtures.loginMethods,
+            loginAccounts = fixtures.loginAccounts,
+            userLoginAccounts = fixtures.userLoginAccounts,
+            passwordHasher = fixtures.passwordHasher,
+          ),
+        admin =
+          BootstrapAdminSupport(
+            adminUserCommands = fixtures.adminUserCommands,
+            adminUserQueries = fixtures.adminUserQueries,
+            accessGrants = fixtures.accessGrants,
+          ),
         clock = Clock.systemUTC(),
       ),
-    instanceProperties = instanceProperties,
-    authApplicationService = authApplicationService,
+    instanceProperties = fixtures.instanceProperties,
+    authApplicationService = fixtures.authApplicationService,
   )

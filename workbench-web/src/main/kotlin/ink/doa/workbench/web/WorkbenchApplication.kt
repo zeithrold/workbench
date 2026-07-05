@@ -13,5 +13,5 @@ import org.springframework.scheduling.annotation.EnableAsync
 class WorkbenchApplication
 
 fun main(args: Array<String>) {
-  runApplication<WorkbenchApplication>(*args)
+  runApplication<WorkbenchApplication>(args = args)
 }

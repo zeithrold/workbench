@@ -14,6 +14,7 @@ import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.security.permission.AccessGrantManagementService
 import ink.doa.workbench.security.permission.AdminUserService
 import ink.doa.workbench.security.permission.AdminUserView
+import ink.doa.workbench.security.permission.CreateManagedAccessGrantCommand
 import ink.doa.workbench.security.permission.PermissionActionService
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import ink.doa.workbench.web.api.GlobalExceptionHandler
@@ -410,14 +411,16 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
         )
       coEvery {
         service.createGrant(
-          scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
-          tenantId = TenantWebMvcFixtures.TENANT_ID,
-          userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-          actionCode = "project.write",
-          resourcePattern = "project:*",
-          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
-          projectPublicId = null,
-          actorUserId = TenantWebMvcFixtures.USER_ID,
+          CreateManagedAccessGrantCommand(
+            scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+            tenantId = TenantWebMvcFixtures.TENANT_ID,
+            userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+            actionCode = "project.write",
+            resourcePattern = "project:*",
+            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            projectPublicId = null,
+            actorUserId = TenantWebMvcFixtures.USER_ID,
+          )
         )
       } returns
         ink.doa.workbench.security.permission.AccessGrantView(

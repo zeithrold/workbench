@@ -37,16 +37,9 @@ class BearerCredentialServiceTest :
     val secretGenerator = mockk<CredentialSecretGenerator>()
     val credentialHasher = mockk<CredentialHasher>()
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-    val service =
-      BearerCredentialService(
-        users,
-        loginAccounts,
-        authEvents,
-        bearerTokens,
-        secretGenerator,
-        credentialHasher,
-        clock,
-      )
+    val credentials = AuthCredentialSupport(users, loginAccounts, authEvents)
+    val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
+    val service = BearerCredentialService(credentials, crypto, bearerTokens, clock)
 
     "createBearerToken issues token and records auth event" {
       val user = sampleUser()
@@ -59,13 +52,15 @@ class BearerCredentialServiceTest :
 
       val result = runBlocking {
         service.createBearerToken(
-          userId = user.id,
-          loginAccountId = loginAccountId,
-          tenantId = null,
-          name = "api",
-          scopes = emptySet(),
-          ipAddress = "127.0.0.1",
-          userAgent = "test",
+          CreateManagedBearerTokenCommand(
+            userId = user.id,
+            loginAccountId = loginAccountId,
+            tenantId = null,
+            name = "api",
+            scopes = emptySet(),
+            ipAddress = "127.0.0.1",
+            userAgent = "test",
+          )
         )
       }
 
@@ -122,13 +117,15 @@ class BearerCredentialServiceTest :
       shouldThrow<InvalidRequestException> {
           runBlocking {
             service.createBearerToken(
-              userId = userId,
-              loginAccountId = UUID.randomUUID(),
-              tenantId = null,
-              name = null,
-              scopes = emptySet(),
-              ipAddress = null,
-              userAgent = null,
+              CreateManagedBearerTokenCommand(
+                userId = userId,
+                loginAccountId = UUID.randomUUID(),
+                tenantId = null,
+                name = null,
+                scopes = emptySet(),
+                ipAddress = null,
+                userAgent = null,
+              )
             )
           }
         }

@@ -1,5 +1,7 @@
 package ink.doa.workbench.security.identity
 
+import ink.doa.workbench.core.common.errors.ResourceNotFoundException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.identity.LoginDiscoveryRepository
 import ink.doa.workbench.core.identity.LoginMethodRepository
@@ -52,7 +54,7 @@ class LoginCompletionService(
     val normalized =
       command.subject?.let { ink.doa.workbench.security.identity.auth.normalizeSubject(it) }
     val tenantOptions =
-      normalized?.let { loginDiscovery.listLoginOptionsForIdentifier(it) } ?: emptyList()
+      normalized?.let { loginDiscovery.listLoginOptionsForIdentifier(it) }.orEmpty()
     val methodOptions = tenantOptions.filter { option ->
       method == null || option.loginMethod.id == method.apiId.value
     }
@@ -66,11 +68,14 @@ class LoginCompletionService(
 
     return when (eligible.size) {
       1 -> {
-        val tenant = tenants.findByApiId(eligible.single().id)!!
+        val tenantSummary = eligible.single()
+        val tenant =
+          tenants.findByApiId(tenantSummary.id)
+            ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
         LoginCompletion(
           loginContext = LoginContext.TENANT,
           activeTenantId = tenant.id,
-          activeTenant = eligible.single(),
+          activeTenant = tenantSummary,
           eligibleTenants = emptyList(),
         )
       }
