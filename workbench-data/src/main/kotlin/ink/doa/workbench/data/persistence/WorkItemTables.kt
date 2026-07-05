@@ -166,6 +166,8 @@ object AttachmentsTable : Table("attachments") {
   val byteSize = long("byte_size")
   val checksum = text("checksum").nullable()
   val storageKey = text("storage_key").uniqueIndex()
+  val purpose = text("purpose")
+  val uploadStatus = text("upload_status")
   val metadata = jsonb("metadata", Json.Default, JsonElement.serializer())
   val archivedAt = timestampWithTimeZone("archived_at").nullable()
   val archivedBy = uuid("archived_by").references(UsersTable.id).nullable()

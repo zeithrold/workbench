@@ -70,4 +70,22 @@ class RichTextProcessorTest :
       RichTextProcessor.isPlainText("plain") shouldBe true
       RichTextProcessor.isPlainText("<p>html</p>") shouldBe false
     }
+
+    "sanitizeDescriptionHtml keeps valid attachment images and strips external images" {
+      val validSrc = "/api/projects/prj_01/work-items/iss_01/attachments/att_01/content"
+      val sanitized =
+        RichTextProcessor.sanitizeDescriptionHtml(
+          """<p>See image</p><img src="$validSrc" alt="diagram"><img src="https://evil.test/x.png">"""
+        )
+      sanitized shouldContain validSrc
+      sanitized shouldNotContain "evil.test"
+    }
+
+    "processCommentInput strips image tags" {
+      val processed =
+        RichTextProcessor.processCommentInput(
+          """<p>Comment</p><img src="/api/projects/prj_01/work-items/iss_01/attachments/att_01/content">"""
+        )
+      processed?.html shouldNotContain "<img"
+    }
   })

@@ -9,8 +9,6 @@ import ink.doa.workbench.core.tenantconfig.model.UpsertTenantConfigCommand
 import java.util.UUID
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 import org.springframework.stereotype.Service
 
 @Service

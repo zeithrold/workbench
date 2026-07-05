@@ -2,9 +2,7 @@ package ink.doa.workbench.core.messaging
 
 import java.time.Clock
 import java.util.UUID
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
 
 class DomainEventEncoder(private val clock: Clock, private val json: Json = defaultJson) {
   fun <T : Any> encode(

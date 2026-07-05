@@ -10,7 +10,7 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 ### Infrastructure (Docker)
 - The Docker daemon is not started automatically. Start it once per VM with `sudo dockerd` (it's configured for `fuse-overlayfs` with the containerd snapshotter disabled in `/etc/docker/daemon.json`; the user is in the `docker` group). 
-- Start backing services with `docker compose up -d postgres valkey redpanda` for the minimal backend stack, or `docker compose up -d` for the full local stack including Debezium and Elasticsearch.
+- Start backing services with `docker compose up -d postgres valkey redpanda minio` for the minimal backend stack, or `docker compose up -d` for the full local stack including Debezium and Elasticsearch.
 - Postgres/Valkey/Redpanda must be up before the backend/worker start (Flyway migrates Postgres at boot; Redisson connects to Valkey at startup).
 
 ### Services

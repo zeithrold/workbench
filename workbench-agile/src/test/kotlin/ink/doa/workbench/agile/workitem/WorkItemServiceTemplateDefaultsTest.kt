@@ -477,6 +477,11 @@ private fun workItemService(
   val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
   val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
   coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
+  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>()
+  coEvery { descriptionAttachmentValidator.rejectCreateDescriptionReferences(any()) } returns Unit
+  coEvery {
+    descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
+  } returns Unit
   return WorkItemService(
     repository,
     configs,
@@ -484,6 +489,7 @@ private fun workItemService(
     WorkItemMutationSupport(repository, configs, events),
     reconciler,
     fieldPermissions,
+    descriptionAttachmentValidator,
   )
 }
 
@@ -513,7 +519,13 @@ private fun workItemTransitionService(
       transitionValidator,
       transitionOptions,
     )
-  return WorkItemTransitionService(repository, workflows, collaborators)
+  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
+  return WorkItemTransitionService(
+    repository,
+    workflows,
+    collaborators,
+    descriptionAttachmentValidator,
+  )
 }
 
 private fun mockFieldPermissions(): WorkItemFieldPermissionService {

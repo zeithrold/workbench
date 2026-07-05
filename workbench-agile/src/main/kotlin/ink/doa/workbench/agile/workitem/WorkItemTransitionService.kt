@@ -21,6 +21,7 @@ class WorkItemTransitionService(
   private val repository: WorkItemRepository,
   private val workflows: WorkflowConfigurationRepository,
   private val collaborators: WorkItemTransitionCollaborators,
+  private val descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
 
@@ -124,6 +125,13 @@ class WorkItemTransitionService(
       )
     val effectiveCommand =
       WorkItemPropertySupport.applyTransitionSystemFields(command, reconciled.systemFields)
+    descriptionAttachmentValidator.validateReferences(
+      tenantId = command.tenantId,
+      projectId = command.projectId,
+      workItemApiId = command.workItemApiId,
+      issueId = issue.id,
+      descriptionHtml = effectiveCommand.description,
+    )
     val values = WorkItemPropertySupport.normalizeProperties(config, reconciled.propertyValues)
     val result =
       repository

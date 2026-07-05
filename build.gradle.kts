@@ -143,6 +143,11 @@ configure(backendProjects) {
     }
 
     afterEvaluate {
+        tasks.named("detekt").configure { enabled = false }
+        tasks.named("check").configure {
+            dependsOn(tasks.named("detektMain"), tasks.named("detektTest"))
+        }
+
         tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
             if (
                 name == "detektTest" ||

@@ -25,6 +25,7 @@ class WorkItemService(
   private val mutationSupport: WorkItemMutationSupport,
   private val fieldMutationReconciler: WorkItemFieldMutationReconciler,
   private val fieldPermissions: WorkItemFieldPermissionService,
+  private val descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
 
@@ -68,6 +69,7 @@ class WorkItemService(
       )
     val effectiveCommand =
       WorkItemPropertySupport.applyCreateSystemFields(command, reconciled.systemFields)
+    descriptionAttachmentValidator.rejectCreateDescriptionReferences(effectiveCommand.description)
     val values =
       WorkItemPropertySupport.normalizeProperties(config.config, reconciled.propertyValues)
     return repository
@@ -178,6 +180,13 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
+    descriptionAttachmentValidator.validateReferences(
+      tenantId = command.tenantId,
+      projectId = command.projectId,
+      workItemApiId = command.workItemApiId,
+      issueId = issue.id,
+      descriptionHtml = effectiveCommand.description,
+    )
     return repository.update(effectiveCommand, values).also { mutationSupport.publish(it) }
   }
 

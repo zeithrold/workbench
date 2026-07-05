@@ -54,6 +54,8 @@ class WorkItemServiceQueryTest :
         )
       coEvery { repository.findByApiId(tenantId, projectId, "WB-1") } returns record
       coEvery { repository.listByProject(tenantId, projectId, 50, 0L) } returns listOf(record)
+      val descriptionAttachmentValidator =
+        mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
       val service =
         WorkItemService(
           repository,
@@ -62,6 +64,7 @@ class WorkItemServiceQueryTest :
           mutationSupport,
           reconciler,
           fieldPermissions,
+          descriptionAttachmentValidator,
         )
 
       service.get(tenantId, projectId, "WB-1") shouldBe record

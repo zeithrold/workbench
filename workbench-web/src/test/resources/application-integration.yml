@@ -7,3 +7,9 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
       - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+workbench:
+  storage:
+    endpoint: http://integration-test.invalid
+    access-key: test
+    secret-key: test
+    bucket: workbench-test
