@@ -8,6 +8,7 @@ import ink.doa.workbench.data.persistence.IssuesTable
 import ink.doa.workbench.data.persistence.PermissionBindingsTable
 import ink.doa.workbench.data.persistence.ProjectIdentifierAliasesTable
 import ink.doa.workbench.data.persistence.SprintsTable
+import ink.doa.workbench.data.persistence.WorkItemViewsTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
@@ -83,6 +84,10 @@ class ExposedProjectDestructionRepository(private val database: Database) :
       IssueHierarchyTable.deleteWhere {
         (IssueHierarchyTable.tenantId eq tenantUuid) and
           (IssueHierarchyTable.projectId eq projectUuid)
+      }
+      WorkItemViewsTable.deleteWhere {
+        (WorkItemViewsTable.tenantId eq tenantUuid) and
+          (WorkItemViewsTable.projectId eq projectUuid)
       }
     }
 

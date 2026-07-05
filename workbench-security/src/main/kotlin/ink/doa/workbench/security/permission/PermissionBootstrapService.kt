@@ -40,6 +40,9 @@ private val TENANT_ADMIN_RULES =
     "issue.update" to "issue:*",
     "issue.transition" to "issue:*",
     "issue.field.write" to "issue:field:*",
+    "view.read" to "view:*",
+    "view.create" to "view:*",
+    "view.manage" to "view:*",
   )
 
 private val ISSUE_WRITE_RULES =
@@ -49,9 +52,16 @@ private val ISSUE_WRITE_RULES =
     "issue.update" to "issue:*",
     "issue.transition" to "issue:*",
     "issue.field.write" to "issue:field:*",
+    "view.read" to "view:*",
+    "view.create" to "view:*",
   )
 
-private val ISSUE_VIEW_RULES = listOf("issue.view" to "issue:*")
+private val ISSUE_VIEW_RULES =
+  listOf(
+    "issue.view" to "issue:*",
+    "view.read" to "view:*",
+    "view.create" to "view:*",
+  )
 
 private val BUILTIN_POLICY_TEMPLATES =
   listOf(

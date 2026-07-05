@@ -1,0 +1,58 @@
+package ink.doa.workbench.core.workitem.view
+
+import ink.doa.workbench.core.common.ids.PublicId
+import java.time.OffsetDateTime
+import java.util.UUID
+import kotlinx.serialization.json.JsonElement
+
+data class WorkItemViewRecord(
+  val id: UUID,
+  val apiId: PublicId,
+  val tenantId: UUID,
+  val projectId: UUID?,
+  val ownerId: UUID,
+  val ownerApiId: PublicId,
+  val name: String,
+  val description: String?,
+  val visibility: WorkItemViewVisibility,
+  val filterAst: JsonElement,
+  val sortAst: JsonElement,
+  val groupAst: JsonElement,
+  val displayFields: JsonElement,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+)
+
+data class CreateWorkItemViewCommand(
+  val tenantId: UUID,
+  val projectId: UUID?,
+  val ownerId: UUID,
+  val name: String,
+  val description: String?,
+  val visibility: WorkItemViewVisibility,
+  val filterAst: JsonElement,
+  val sortAst: JsonElement,
+  val groupAst: JsonElement,
+  val displayFields: JsonElement,
+)
+
+data class UpdateWorkItemViewCommand(
+  val tenantId: UUID,
+  val viewApiId: String,
+  val projectId: UUID?,
+  val actorUserId: UUID,
+  val name: String? = null,
+  val description: String? = null,
+  val visibility: WorkItemViewVisibility? = null,
+  val filterAst: JsonElement? = null,
+  val sortAst: JsonElement? = null,
+  val groupAst: JsonElement? = null,
+  val displayFields: JsonElement? = null,
+)
+
+data class DeleteWorkItemViewCommand(
+  val tenantId: UUID,
+  val viewApiId: String,
+  val projectId: UUID?,
+  val actorUserId: UUID,
+)
