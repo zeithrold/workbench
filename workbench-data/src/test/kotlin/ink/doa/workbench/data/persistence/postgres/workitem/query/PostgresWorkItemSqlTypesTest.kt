@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem.query
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

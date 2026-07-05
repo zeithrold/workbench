@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.permission
+package ink.doa.workbench.data.repository.permission
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.permission.AddGroupMemberCommand
@@ -19,11 +19,11 @@ import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.core.permission.ResolvedPermissionRule
 import ink.doa.workbench.core.permission.UpdatePermissionGroupCommand
 import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
-import ink.doa.workbench.data.persistence.GroupMembersTable
-import ink.doa.workbench.data.persistence.GroupsTable
-import ink.doa.workbench.data.persistence.PermissionBindingsTable
-import ink.doa.workbench.data.persistence.PermissionPoliciesTable
-import ink.doa.workbench.data.persistence.PermissionPolicyRulesTable
+import ink.doa.workbench.data.persistence.postgres.permission.GroupMembersTable
+import ink.doa.workbench.data.persistence.postgres.permission.GroupsTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionBindingsTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionPoliciesTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionPolicyRulesTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

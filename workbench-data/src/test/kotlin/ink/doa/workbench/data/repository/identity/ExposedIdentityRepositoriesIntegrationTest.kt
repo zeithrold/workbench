@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.AuditEventResult
@@ -16,8 +16,8 @@ import ink.doa.workbench.core.identity.model.LoginAccountParameterKey
 import ink.doa.workbench.core.identity.model.LoginMethodKind
 import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
-import ink.doa.workbench.data.persistence.LoginAccountsTable
-import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull

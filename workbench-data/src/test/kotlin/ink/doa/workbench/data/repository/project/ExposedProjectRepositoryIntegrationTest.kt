@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.project
+package ink.doa.workbench.data.repository.project
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.project.model.CreateProjectCommand
@@ -6,8 +6,8 @@ import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
 import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
-import ink.doa.workbench.data.persistence.TenantsTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull

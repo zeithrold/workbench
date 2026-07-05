@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.identity.model.CreateAuthLoginStateCommand
 import ink.doa.workbench.data.support.seedTenant

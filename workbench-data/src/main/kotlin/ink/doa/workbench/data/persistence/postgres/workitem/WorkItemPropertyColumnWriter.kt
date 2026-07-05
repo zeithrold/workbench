@@ -1,8 +1,7 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.data.persistence.IssuePropertyValuesTable
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID

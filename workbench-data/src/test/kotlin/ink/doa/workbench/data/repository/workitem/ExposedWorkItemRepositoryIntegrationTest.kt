@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
@@ -8,9 +8,9 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.data.persistence.PrioritiesTable
-import ink.doa.workbench.data.persistence.PropertyOptionsTable
-import ink.doa.workbench.data.persistence.SprintsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.spec.style.StringSpec
@@ -384,7 +384,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
     "create persists priority assignee and sprint references" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
-        val users = ink.doa.workbench.data.identity.ExposedUserRepository(database)
+        val users = ink.doa.workbench.data.repository.identity.ExposedUserRepository(database)
         val assignee = users.findById(stack.actorId).shouldNotBeNull()
         val priorityApiId = PublicId.new("pri").value
         val sprintApiId = PublicId.new("spr").value
@@ -452,7 +452,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
         val catalog = ExposedWorkItemCatalogRepository(database)
-        val users = ink.doa.workbench.data.identity.ExposedUserRepository(database)
+        val users = ink.doa.workbench.data.repository.identity.ExposedUserRepository(database)
         val assignee = users.findById(stack.actorId).shouldNotBeNull()
         val points =
           catalog.createProperty(
@@ -562,8 +562,8 @@ class ExposedWorkItemRepositoryIntegrationTest :
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
         val catalog = ExposedWorkItemCatalogRepository(database)
-        val users = ink.doa.workbench.data.identity.ExposedUserRepository(database)
-        val projects = ink.doa.workbench.data.project.ExposedProjectRepository(database)
+        val users = ink.doa.workbench.data.repository.identity.ExposedUserRepository(database)
+        val projects = ink.doa.workbench.data.repository.project.ExposedProjectRepository(database)
         val user = users.findById(stack.actorId).shouldNotBeNull()
         val project = projects.findById(stack.tenantId, stack.projectId).shouldNotBeNull()
         val activeProperty =

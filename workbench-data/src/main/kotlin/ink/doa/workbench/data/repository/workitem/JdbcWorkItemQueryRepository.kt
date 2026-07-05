@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.workitem.WorkItemQueryRepository
 import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
@@ -8,6 +8,9 @@ import ink.doa.workbench.core.workitem.model.WorkItemSearchPageInfo
 import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemQueryValidator
+import ink.doa.workbench.data.persistence.postgres.workitem.query.JdbcPostgresWorkItemFieldResolver
+import ink.doa.workbench.data.persistence.postgres.workitem.query.PostgresWorkItemFilter
+import ink.doa.workbench.data.persistence.postgres.workitem.query.WorkItemSearchHitRowMapper
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.springframework.jdbc.core.JdbcTemplate

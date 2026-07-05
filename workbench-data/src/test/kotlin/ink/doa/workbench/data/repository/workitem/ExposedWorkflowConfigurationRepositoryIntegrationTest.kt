@@ -1,11 +1,11 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.seedUser
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize

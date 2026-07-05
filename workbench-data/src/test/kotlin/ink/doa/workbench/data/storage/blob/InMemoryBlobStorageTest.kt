@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.storage
+package ink.doa.workbench.data.storage.blob
 
 import ink.doa.workbench.core.storage.BlobStorageObjectNotFoundException
 import io.kotest.assertions.throwables.shouldThrow

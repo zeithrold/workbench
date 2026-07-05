@@ -3,11 +3,11 @@ package ink.doa.workbench.security.identity.auth
 import ink.doa.workbench.core.common.errors.AuthenticationFailedException
 import ink.doa.workbench.core.identity.model.LoginCommand
 import ink.doa.workbench.core.identity.model.LoginMethodKind
-import ink.doa.workbench.data.identity.ExposedLoginAccountStore
-import ink.doa.workbench.data.identity.ExposedLoginMethodRepository
-import ink.doa.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
-import ink.doa.workbench.data.identity.ExposedTenantRepository
-import ink.doa.workbench.data.identity.ExposedUserLoginAccountRepository
+import ink.doa.workbench.data.repository.identity.ExposedLoginAccountStore
+import ink.doa.workbench.data.repository.identity.ExposedLoginMethodRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettingRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantRepository
+import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountRepository
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.LdapAuthFixture

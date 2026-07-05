@@ -26,3 +26,9 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 ### Dependency notes
 - Redisson is pinned to `4.6.1` (3.x's `RedissonAutoConfigurationV2` is incompatible with Spring Boot 4's package relocation), and `workbench-web` includes `kotlinx-coroutines-reactor` at runtime (required for Spring MVC to invoke `suspend` handler functions). Both are needed for the apps to boot and serve requests on Spring Boot 4.
+
+### workbench-data package layout
+- `data.persistence.{tech}.{domain}` — low-level storage access (Exposed tables, SQL/query builders, future ES/ClickHouse clients); no `@Repository`.
+- `data.repository.{domain}` — Spring beans implementing `workbench-core` ports; orchestrate persistence.
+- `data.storage.{blob|config}` — object/blob storage (S3, in-memory).
+- `data.messaging`, `data.locking`, `data.migration` — infrastructure adapters at the `data` root.

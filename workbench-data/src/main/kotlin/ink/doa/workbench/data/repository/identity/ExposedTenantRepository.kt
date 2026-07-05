@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
@@ -10,7 +10,7 @@ import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UpdateTenantCommand
-import ink.doa.workbench.data.persistence.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.Op

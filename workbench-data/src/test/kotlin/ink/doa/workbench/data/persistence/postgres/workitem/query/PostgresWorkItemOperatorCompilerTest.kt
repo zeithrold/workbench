@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem.query
 
 import ink.doa.workbench.core.workitem.query.DateDirection
 import ink.doa.workbench.core.workitem.query.QueryOperator

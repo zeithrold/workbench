@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.identity.model.CreateInvitationCommand
 import ink.doa.workbench.core.identity.model.InvitationType

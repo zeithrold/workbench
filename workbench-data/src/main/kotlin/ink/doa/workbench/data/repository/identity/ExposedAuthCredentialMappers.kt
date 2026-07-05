@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.AuthEventRecord
@@ -6,11 +6,11 @@ import ink.doa.workbench.core.identity.model.AuthLoginStateRecord
 import ink.doa.workbench.core.identity.model.AuthSessionRecord
 import ink.doa.workbench.core.identity.model.BearerTokenRecord
 import ink.doa.workbench.core.identity.model.MagicLinkTokenRecord
-import ink.doa.workbench.data.persistence.AuthEventsTable
-import ink.doa.workbench.data.persistence.AuthLoginStatesTable
-import ink.doa.workbench.data.persistence.AuthSessionsTable
-import ink.doa.workbench.data.persistence.BearerTokensTable
-import ink.doa.workbench.data.persistence.MagicLinkTokensTable
+import ink.doa.workbench.data.persistence.postgres.event.AuthEventsTable
+import ink.doa.workbench.data.persistence.postgres.identity.AuthLoginStatesTable
+import ink.doa.workbench.data.persistence.postgres.identity.AuthSessionsTable
+import ink.doa.workbench.data.persistence.postgres.identity.BearerTokensTable
+import ink.doa.workbench.data.persistence.postgres.identity.MagicLinkTokensTable
 import kotlin.uuid.toJavaUuid
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.persistence
+package ink.doa.workbench.data.persistence.postgres.config
 
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ColumnType

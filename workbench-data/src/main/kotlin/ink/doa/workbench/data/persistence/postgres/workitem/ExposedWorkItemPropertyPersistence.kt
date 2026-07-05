@@ -1,8 +1,6 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.data.persistence.IssuePropertyValuesTable
-import ink.doa.workbench.data.persistence.IssueStatusHistoryTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

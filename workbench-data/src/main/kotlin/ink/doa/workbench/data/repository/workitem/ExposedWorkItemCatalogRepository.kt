@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -12,9 +12,17 @@ import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
-import ink.doa.workbench.data.persistence.IssueStatusesTable
-import ink.doa.workbench.data.persistence.IssueTypesTable
-import ink.doa.workbench.data.persistence.PropertyDefinitionsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueStatusesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.PropertyDefinitionsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.findIssueTypeRow
+import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.data.persistence.postgres.workitem.rejectIfActiveConfigsUseIssueType
+import ink.doa.workbench.data.persistence.postgres.workitem.rejectIfActiveConfigsUseProperty
+import ink.doa.workbench.data.persistence.postgres.workitem.rejectIfActiveConfigsUseStatus
+import ink.doa.workbench.data.persistence.postgres.workitem.toIssueStatusRecord
+import ink.doa.workbench.data.persistence.postgres.workitem.toIssueTypeRecord
+import ink.doa.workbench.data.persistence.postgres.workitem.toPropertyDefinitionRecord
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

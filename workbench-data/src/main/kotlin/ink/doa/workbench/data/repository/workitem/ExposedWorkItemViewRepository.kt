@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -11,8 +11,9 @@ import ink.doa.workbench.core.workitem.view.UpdateWorkItemViewCommand
 import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
 import ink.doa.workbench.core.workitem.view.WorkItemViewRepository
 import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
-import ink.doa.workbench.data.persistence.UsersTable
-import ink.doa.workbench.data.persistence.WorkItemViewsTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemViewsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.now
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

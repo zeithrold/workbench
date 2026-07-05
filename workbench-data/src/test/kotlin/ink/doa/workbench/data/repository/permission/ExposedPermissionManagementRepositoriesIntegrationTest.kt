@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.permission
+package ink.doa.workbench.data.repository.permission
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.CreateUserCommand
@@ -12,9 +12,9 @@ import ink.doa.workbench.core.permission.UpdatePermissionGroupCommand
 import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.data.identity.ExposedUserRepository
-import ink.doa.workbench.data.persistence.TenantsTable
-import ink.doa.workbench.data.project.ExposedProjectRepository
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
+import ink.doa.workbench.data.repository.identity.ExposedUserRepository
+import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.storage
+package ink.doa.workbench.data.storage.config
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
