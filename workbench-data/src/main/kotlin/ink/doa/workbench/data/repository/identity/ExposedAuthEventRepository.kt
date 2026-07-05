@@ -1,10 +1,10 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.AuthEventRepository
 import ink.doa.workbench.core.identity.model.AuthEventRecord
 import ink.doa.workbench.core.identity.model.CreateAuthEventCommand
-import ink.doa.workbench.data.persistence.AuthEventsTable
+import ink.doa.workbench.data.persistence.postgres.event.AuthEventsTable
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.SortOrder

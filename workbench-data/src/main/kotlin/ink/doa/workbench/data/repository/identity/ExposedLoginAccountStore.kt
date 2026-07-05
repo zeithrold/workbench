@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.LoginAccountStore
@@ -7,9 +7,9 @@ import ink.doa.workbench.core.identity.model.LoginAccountParameterKey
 import ink.doa.workbench.core.identity.model.LoginAccountParameterRecord
 import ink.doa.workbench.core.identity.model.LoginAccountRecord
 import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
-import ink.doa.workbench.data.persistence.LoginAccountParametersTable
-import ink.doa.workbench.data.persistence.LoginAccountsTable
-import ink.doa.workbench.data.persistence.LoginMethodDefinitionsTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountParametersTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountsTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginMethodDefinitionsTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

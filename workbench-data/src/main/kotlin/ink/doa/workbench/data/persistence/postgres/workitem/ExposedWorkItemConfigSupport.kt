@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -18,14 +18,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.data.persistence.IssueStatusesTable
-import ink.doa.workbench.data.persistence.IssueTypeConfigPropertiesTable
-import ink.doa.workbench.data.persistence.IssueTypeConfigStatusesTable
-import ink.doa.workbench.data.persistence.IssueTypeConfigsTable
-import ink.doa.workbench.data.persistence.IssueTypesTable
-import ink.doa.workbench.data.persistence.PropertyDefinitionsTable
-import ink.doa.workbench.data.persistence.WorkflowTransitionsTable
-import ink.doa.workbench.data.persistence.WorkflowsTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

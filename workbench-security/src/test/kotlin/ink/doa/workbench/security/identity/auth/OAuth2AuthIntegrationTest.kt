@@ -1,12 +1,12 @@
 package ink.doa.workbench.security.identity.auth
 
 import dasniko.testcontainers.keycloak.KeycloakContainer
-import ink.doa.workbench.data.identity.ExposedAuthLoginStateRepository
-import ink.doa.workbench.data.identity.ExposedLoginAccountStore
-import ink.doa.workbench.data.identity.ExposedLoginMethodRepository
-import ink.doa.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
-import ink.doa.workbench.data.identity.ExposedTenantRepository
-import ink.doa.workbench.data.identity.ExposedUserLoginAccountRepository
+import ink.doa.workbench.data.repository.identity.ExposedAuthLoginStateRepository
+import ink.doa.workbench.data.repository.identity.ExposedLoginAccountStore
+import ink.doa.workbench.data.repository.identity.ExposedLoginMethodRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettingRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantRepository
+import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountRepository
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.FederatedAuthFixture
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer

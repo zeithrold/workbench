@@ -4,7 +4,7 @@ import dasniko.testcontainers.keycloak.KeycloakContainer
 import ink.doa.workbench.core.identity.auth.SecretResolver
 import ink.doa.workbench.core.port.locking.DistributedLockService
 import ink.doa.workbench.core.storage.BlobStorage
-import ink.doa.workbench.data.storage.InMemoryBlobStorage
+import ink.doa.workbench.data.storage.blob.InMemoryBlobStorage
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer

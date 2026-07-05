@@ -1,5 +1,6 @@
-package ink.doa.workbench.data.storage
+package ink.doa.workbench.data.storage.blob
 
+import ink.doa.workbench.data.storage.config.StorageProperties
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.net.URI

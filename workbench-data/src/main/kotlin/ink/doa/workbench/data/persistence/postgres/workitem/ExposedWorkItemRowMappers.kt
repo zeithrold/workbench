@@ -1,14 +1,9 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.data.persistence.IssueTypeConfigsTable
-import ink.doa.workbench.data.persistence.IssueTypesTable
-import ink.doa.workbench.data.persistence.IssuesTable
-import ink.doa.workbench.data.persistence.PrioritiesTable
-import ink.doa.workbench.data.persistence.SprintsTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import org.jetbrains.exposed.v1.core.ResultRow

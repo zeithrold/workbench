@@ -2,9 +2,9 @@ package ink.doa.workbench.service.instance
 
 import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.identity.model.CreateTenantCommand
-import ink.doa.workbench.data.identity.ExposedLoginMethodRepository
-import ink.doa.workbench.data.identity.ExposedTenantLoginMethodSettingRepository
-import ink.doa.workbench.data.identity.ExposedTenantRepository
+import ink.doa.workbench.data.repository.identity.ExposedLoginMethodRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettingRepository
+import ink.doa.workbench.data.repository.identity.ExposedTenantRepository
 import ink.doa.workbench.security.identity.TenantLoginMethodService
 import ink.doa.workbench.security.identity.UserLookupService
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures

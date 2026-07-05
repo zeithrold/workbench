@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.permission
+package ink.doa.workbench.data.repository.permission
 
 import ink.doa.workbench.core.permission.CreatePermissionActionCommand
 import ink.doa.workbench.core.permission.model.AuthorizationAction

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.summary.LoginMethodSummary
 import ink.doa.workbench.core.common.summary.TenantSummary
@@ -7,11 +7,11 @@ import ink.doa.workbench.core.identity.LoginDiscoveryRepository
 import ink.doa.workbench.core.identity.UserLoginAccountRepository
 import ink.doa.workbench.core.identity.model.TenantLoginOption
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.data.persistence.LoginMethodDefinitionsTable
-import ink.doa.workbench.data.persistence.TenantLoginMethodSettingsTable
-import ink.doa.workbench.data.persistence.TenantMembersTable
-import ink.doa.workbench.data.persistence.TenantsTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginMethodDefinitionsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantLoginMethodSettingsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantMembersTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq

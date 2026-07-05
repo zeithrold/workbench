@@ -1,10 +1,7 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.data.persistence.IssuePropertyValuesTable
-import ink.doa.workbench.data.persistence.IssuesTable
-import ink.doa.workbench.data.persistence.ProjectsTable
-import ink.doa.workbench.data.persistence.PropertyOptionsTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import kotlin.uuid.toJavaUuid
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull

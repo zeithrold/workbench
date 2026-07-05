@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package ink.doa.workbench.data.permission
+package ink.doa.workbench.data.repository.permission
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.permission.AccessGrantRecord
@@ -17,13 +17,13 @@ import ink.doa.workbench.core.permission.PermissionPolicyRuleRecord
 import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.data.persistence.AccessGrantsTable
-import ink.doa.workbench.data.persistence.AdminUsersTable
-import ink.doa.workbench.data.persistence.GroupMembersTable
-import ink.doa.workbench.data.persistence.GroupsTable
-import ink.doa.workbench.data.persistence.PermissionBindingsTable
-import ink.doa.workbench.data.persistence.PermissionPoliciesTable
-import ink.doa.workbench.data.persistence.PermissionPolicyRulesTable
+import ink.doa.workbench.data.persistence.postgres.permission.AccessGrantsTable
+import ink.doa.workbench.data.persistence.postgres.permission.AdminUsersTable
+import ink.doa.workbench.data.persistence.postgres.permission.GroupMembersTable
+import ink.doa.workbench.data.persistence.postgres.permission.GroupsTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionBindingsTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionPoliciesTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionPolicyRulesTable
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import kotlin.uuid.toJavaUuid

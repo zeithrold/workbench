@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -6,8 +6,10 @@ import ink.doa.workbench.core.common.errors.requireValid
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
 import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
-import ink.doa.workbench.data.persistence.IssueSubtypeConstraintsTable
-import ink.doa.workbench.data.persistence.IssueTypesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueSubtypeConstraintsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.data.persistence.postgres.workitem.requirePublicId
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

@@ -1,14 +1,14 @@
-package ink.doa.workbench.data.project
+package ink.doa.workbench.data.repository.project
 
 import ink.doa.workbench.core.project.ProjectDestructionRepository
-import ink.doa.workbench.data.persistence.AttachmentsTable
-import ink.doa.workbench.data.persistence.IssueCommentsTable
-import ink.doa.workbench.data.persistence.IssueHierarchyTable
-import ink.doa.workbench.data.persistence.IssuesTable
-import ink.doa.workbench.data.persistence.PermissionBindingsTable
-import ink.doa.workbench.data.persistence.ProjectIdentifierAliasesTable
-import ink.doa.workbench.data.persistence.SprintsTable
-import ink.doa.workbench.data.persistence.WorkItemViewsTable
+import ink.doa.workbench.data.persistence.postgres.permission.PermissionBindingsTable
+import ink.doa.workbench.data.persistence.postgres.project.ProjectIdentifierAliasesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.AttachmentsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueCommentsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueHierarchyTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemViewsTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

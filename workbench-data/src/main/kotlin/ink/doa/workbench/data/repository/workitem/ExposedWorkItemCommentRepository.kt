@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -10,9 +10,10 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
-import ink.doa.workbench.data.persistence.IssueCommentsTable
-import ink.doa.workbench.data.persistence.IssuesTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueCommentsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.now
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

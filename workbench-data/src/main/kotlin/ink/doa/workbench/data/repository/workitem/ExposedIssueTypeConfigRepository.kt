@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -10,9 +10,16 @@ import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.data.persistence.IssueTypeConfigPropertiesTable
-import ink.doa.workbench.data.persistence.IssueTypeConfigStatusesTable
-import ink.doa.workbench.data.persistence.IssueTypeConfigsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigPropertiesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigStatusesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.closeCurrentConfig
+import ink.doa.workbench.data.persistence.postgres.workitem.findActiveConfigRow
+import ink.doa.workbench.data.persistence.postgres.workitem.findIssueTypeRow
+import ink.doa.workbench.data.persistence.postgres.workitem.nextConfigVersion
+import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.data.persistence.postgres.workitem.requireConfigDetails
+import ink.doa.workbench.data.persistence.postgres.workitem.toIssueTypeRecord
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

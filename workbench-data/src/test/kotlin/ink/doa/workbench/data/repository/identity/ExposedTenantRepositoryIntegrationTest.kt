@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.identity.model.CreateTenantCommand

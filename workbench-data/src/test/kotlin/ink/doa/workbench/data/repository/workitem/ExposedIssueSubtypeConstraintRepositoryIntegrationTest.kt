@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.project
+package ink.doa.workbench.data.repository.project
 
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.persistence
+package ink.doa.workbench.data.persistence.postgres.identity
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement

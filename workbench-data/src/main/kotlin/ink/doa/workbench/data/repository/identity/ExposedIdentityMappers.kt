@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.InvitationRecord
@@ -11,15 +11,15 @@ import ink.doa.workbench.core.identity.model.TenantMemberRecord
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.UserLoginAccountRecord
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.data.persistence.InvitationsTable
-import ink.doa.workbench.data.persistence.LoginAccountParametersTable
-import ink.doa.workbench.data.persistence.LoginAccountsTable
-import ink.doa.workbench.data.persistence.LoginMethodDefinitionsTable
-import ink.doa.workbench.data.persistence.TenantLoginMethodSettingsTable
-import ink.doa.workbench.data.persistence.TenantMembersTable
-import ink.doa.workbench.data.persistence.TenantsTable
-import ink.doa.workbench.data.persistence.UserLoginAccountsTable
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.InvitationsTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountParametersTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountsTable
+import ink.doa.workbench.data.persistence.postgres.identity.LoginMethodDefinitionsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantLoginMethodSettingsTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantMembersTable
+import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
+import ink.doa.workbench.data.persistence.postgres.identity.UserLoginAccountsTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import kotlin.uuid.toJavaUuid
 import org.jetbrains.exposed.v1.core.ResultRow
 

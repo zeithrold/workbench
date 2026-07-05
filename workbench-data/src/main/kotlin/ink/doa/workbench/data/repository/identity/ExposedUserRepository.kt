@@ -1,10 +1,10 @@
-package ink.doa.workbench.data.identity
+package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.model.CreateUserCommand
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.data.persistence.UsersTable
+import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and

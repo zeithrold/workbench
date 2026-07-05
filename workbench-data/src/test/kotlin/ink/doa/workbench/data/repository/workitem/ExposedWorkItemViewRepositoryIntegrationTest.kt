@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.workitem.view.CreateWorkItemViewCommand
 import ink.doa.workbench.core.workitem.view.DeleteWorkItemViewCommand

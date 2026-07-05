@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.storage
+package ink.doa.workbench.data.storage.config
 
 import java.time.Duration
 import org.springframework.boot.context.properties.ConfigurationProperties

@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.project
+package ink.doa.workbench.data.repository.project
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
@@ -10,8 +10,8 @@ import ink.doa.workbench.core.project.model.NonMemberVisibility
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
-import ink.doa.workbench.data.persistence.ProjectIdentifierAliasesTable
-import ink.doa.workbench.data.persistence.ProjectsTable
+import ink.doa.workbench.data.persistence.postgres.project.ProjectIdentifierAliasesTable
+import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

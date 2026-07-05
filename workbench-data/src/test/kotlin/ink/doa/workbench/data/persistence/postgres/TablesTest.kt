@@ -1,5 +1,7 @@
-package ink.doa.workbench.data.persistence
+package ink.doa.workbench.data.persistence.postgres
 
+import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
+import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

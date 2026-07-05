@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
@@ -7,11 +7,10 @@ import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.data.identity.ExposedUserRepository
-import ink.doa.workbench.data.persistence.PrioritiesTable
-import ink.doa.workbench.data.persistence.PropertyOptionsTable
-import ink.doa.workbench.data.persistence.SprintsTable
-import ink.doa.workbench.data.project.ExposedProjectRepository
+import ink.doa.workbench.data.repository.identity.ExposedUserRepository
+import ink.doa.workbench.data.repository.project.ExposedProjectRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.assertions.throwables.shouldThrow
@@ -134,7 +133,7 @@ class ExposedWorkItemPersistenceResolversIntegrationTest :
         val optionApiId = PublicId.new("opt").value
         val now = OffsetDateTime.now(ZoneOffset.UTC)
         transaction(database) {
-          ink.doa.workbench.data.persistence.PropertyOptionsTable.insert {
+          ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable.insert {
             it[id] = UUID.randomUUID().toKotlinUuid()
             it[apiId] = optionApiId
             it[tenantId] = stack.tenantId.toKotlinUuid()

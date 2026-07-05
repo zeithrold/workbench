@@ -1,10 +1,10 @@
-package ink.doa.workbench.data.permission
+package ink.doa.workbench.data.repository.permission
 
 import ink.doa.workbench.core.permission.AdminScope
 import ink.doa.workbench.core.permission.AdminUserQueryRepository
 import ink.doa.workbench.core.permission.AdminUserRecord
 import ink.doa.workbench.core.permission.AdminUserStatus
-import ink.doa.workbench.data.persistence.AdminUsersTable
+import ink.doa.workbench.data.persistence.postgres.permission.AdminUsersTable
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

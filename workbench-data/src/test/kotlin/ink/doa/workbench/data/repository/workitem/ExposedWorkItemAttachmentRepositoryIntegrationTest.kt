@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.workitem
+package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
@@ -12,7 +12,7 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
 import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
 import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
-import ink.doa.workbench.data.project.ExposedProjectRepository
+import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.assertions.throwables.shouldThrow

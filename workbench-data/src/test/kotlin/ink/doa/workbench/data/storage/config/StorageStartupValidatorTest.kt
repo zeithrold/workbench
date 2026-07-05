@@ -1,4 +1,4 @@
-package ink.doa.workbench.data.storage
+package ink.doa.workbench.data.storage.config
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
