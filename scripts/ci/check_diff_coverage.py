@@ -225,17 +225,60 @@ def ensure_compare_branch(root: Path, branch: str) -> None:
         )
 
 
-def parse_json_percent(path: Path) -> float | None:
+def load_diff_cover_json(path: Path) -> dict | None:
     if not path.is_file():
         return None
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
         return None
+
+
+def effective_diff_coverage_percent(payload: dict) -> float | None:
+    """
+    Return diff-cover's coverage for changed lines that appear in the report.
+
+    diff-cover only scores lines present in both the diff and the coverage XML.
+    Deleted lines, annotation-only edits, and stale reports can inflate
+    `num_changed_lines` without adding rows to `total_num_lines`, so the pass/fail
+    threshold must use `total_percent_covered` rather than dividing by
+    `num_changed_lines`.
+    """
+    total_num = payload.get("total_num_lines") or 0
+    num_changed = payload.get("num_changed_lines") or 0
+    if num_changed <= 0:
+        total = payload.get("total_percent_covered")
+        return float(total) if total is not None else None
+    if total_num <= 0:
+        return 0.0
     total = payload.get("total_percent_covered")
-    if total is None:
+    return float(total) if total is not None else None
+
+
+def unmeasured_changed_source_files(
+    root: Path,
+    payload: dict,
+    changed_files: list[str],
+    include_globs: tuple[str, ...],
+) -> list[str]:
+    src_stats = payload.get("src_stats", {})
+    unmeasured: list[str] = []
+    for path in changed_files:
+        if not matches_any(path, include_globs):
+            continue
+        if path in src_stats:
+            continue
+        if not (root / path).is_file():
+            continue
+        unmeasured.append(path)
+    return sorted(unmeasured)
+
+
+def parse_json_percent(path: Path) -> float | None:
+    payload = load_diff_cover_json(path)
+    if payload is None:
         return None
-    return float(total)
+    return effective_diff_coverage_percent(payload)
 
 
 def parse_stdout_percent(output: str) -> float | None:
@@ -254,10 +297,10 @@ def run_diff_cover(
     branch: str,
     diff_text: str,
     src_roots: tuple[str, ...],
-) -> tuple[int, str, float | None]:
+) -> tuple[int, str, float | None, dict | None]:
     coverage_path = root / config.coverage_path
     if not coverage_path.is_file():
-        return 1, f"Coverage report not found: {coverage_path}", None
+        return 1, f"Coverage report not found: {coverage_path}", None, None
 
     html_path = root / config.html_report
     json_path = root / config.json_report
@@ -290,10 +333,11 @@ def run_diff_cover(
         text=True,
     )
     output = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
-    percent = parse_json_percent(json_path)
+    payload = load_diff_cover_json(json_path)
+    percent = effective_diff_coverage_percent(payload) if payload else None
     if percent is None:
         percent = parse_stdout_percent(output)
-    return result.returncode, output, percent
+    return result.returncode, output, percent, payload
 
 
 def evaluate_stack(
@@ -322,24 +366,45 @@ def evaluate_stack(
             message="Unable to resolve source roots for changed files.",
         )
 
-    exit_code, output, percent = run_diff_cover(root, config, branch, diff_text, src_roots)
-    if exit_code == 0:
-        return StackResult(
-            name=config.name,
-            status="pass",
-            percent=percent,
-            fail_under=config.fail_under,
-            message=output or "Diff coverage threshold met.",
-        )
+    exit_code, output, percent, payload = run_diff_cover(
+        root, config, branch, diff_text, src_roots
+    )
+    unmeasured_files = (
+        unmeasured_changed_source_files(root, payload, changed_files, config.include_globs)
+        if payload
+        else []
+    )
+    unmeasured_lines = 0
+    if payload:
+        num_changed = payload.get("num_changed_lines") or 0
+        total_num = payload.get("total_num_lines") or 0
+        unmeasured_lines = max(num_changed - total_num, 0)
 
     detail = output or "Diff coverage check failed."
+    if unmeasured_lines > 0 or unmeasured_files:
+        hints = []
+        if unmeasured_lines > 0:
+            hints.append(
+                f"{unmeasured_lines} changed line(s) were not found in the coverage report "
+                f"(run `./gradlew check` and, for frontend, "
+                f"`./gradlew :workbench-frontend:pnpmCoverage` after your latest edits)"
+            )
+        if unmeasured_files:
+            preview = ", ".join(unmeasured_files[:5])
+            suffix = "..." if len(unmeasured_files) > 5 else ""
+            hints.append(
+                f"{len(unmeasured_files)} changed source file(s) missing from coverage: "
+                f"{preview}{suffix}"
+            )
+        detail = "\n".join([detail, *hints]) if detail else "\n".join(hints)
+
     if percent is not None and percent >= config.fail_under:
         return StackResult(
             name=config.name,
             status="pass",
             percent=percent,
             fail_under=config.fail_under,
-            message=detail,
+            message=detail or "Diff coverage threshold met.",
         )
 
     return StackResult(

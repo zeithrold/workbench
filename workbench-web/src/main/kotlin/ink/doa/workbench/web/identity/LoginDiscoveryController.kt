@@ -5,6 +5,7 @@ import ink.doa.workbench.security.identity.LoginDiscoveryService
 import ink.doa.workbench.security.identity.LoginOptionView
 import ink.doa.workbench.security.identity.auth.normalizeSubject
 import ink.doa.workbench.web.api.OpenApiExamples
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -31,6 +32,7 @@ class LoginDiscoveryController(
   private val loginDiscovery: LoginDiscoveryRepository,
 ) {
   @GetMapping("/login-options")
+  @PublicEndpoint
   @Operation(
     summary = "List login options",
     description =
@@ -68,6 +70,7 @@ class LoginDiscoveryController(
     }
 
   @GetMapping("/login-discovery")
+  @PublicEndpoint
   @Operation(
     summary = "Discover login flow",
     description =

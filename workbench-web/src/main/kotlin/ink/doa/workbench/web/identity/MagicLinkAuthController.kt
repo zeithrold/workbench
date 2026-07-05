@@ -3,6 +3,7 @@ package ink.doa.workbench.web.identity
 import ink.doa.workbench.security.identity.FederatedLoginCompletionService
 import ink.doa.workbench.security.identity.auth.MagicLinkAuthService
 import ink.doa.workbench.web.api.OpenApiExamples
+import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.http.HttpClientContext
 import ink.doa.workbench.web.api.http.SessionCookieWriter
@@ -41,6 +42,7 @@ class MagicLinkAuthController(
   private val sessionCookieWriter: SessionCookieWriter,
 ) {
   @PostMapping("/magic-link/request")
+  @PublicEndpoint
   @ResponseStatus(HttpStatus.ACCEPTED)
   @Operation(
     summary = "Request magic link",
@@ -77,6 +79,7 @@ class MagicLinkAuthController(
   }
 
   @GetMapping("/magic-link/verify")
+  @PublicEndpoint
   @Operation(
     summary = "Verify magic link",
     description =
