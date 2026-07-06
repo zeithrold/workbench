@@ -6,13 +6,13 @@ import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
 
-@Tag("integration")
+@Tags("integration")
 class JdbcPostgresWorkItemFieldResolverIntegrationTest :
   StringSpec({
     "resolves property fields from jdbc metadata" {

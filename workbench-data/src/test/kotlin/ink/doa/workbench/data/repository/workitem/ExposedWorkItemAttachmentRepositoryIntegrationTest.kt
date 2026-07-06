@@ -18,14 +18,14 @@ import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemCommentRepository
 import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedWorkItemAttachmentRepositoryIntegrationTest :
   StringSpec({
     "create list filter and soft delete attachments" {

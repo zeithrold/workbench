@@ -8,15 +8,15 @@ import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
 import ink.doa.workbench.core.workitem.query.WorkItemGroupLabelCode
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import java.util.UUID
 import kotlinx.serialization.json.JsonPrimitive
-import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
 
-@Tag("integration")
+@Tags("integration")
 class WorkItemGroupLabelResolverTest :
   StringSpec({
     "resolve returns text label for system statusGroup bucket" {

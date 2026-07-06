@@ -101,15 +101,17 @@ Run in separate terminals:
 | **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
 | **Extended** | `./gradlew extendedCheck` | Nightly CI | Full + `fuzzTest` + `mutationTest` + unit Kover XML |
 
-Module tasks: `unitTest` (no `@Tag("integration")`, no fuzz), `integrationTest` (`@Tag("integration")`), `test` (both). Integration tests require Docker.
+Module tasks: `unitTest` (no integration/fuzz tags), `integrationTest` (integration-tagged only), `test` (both). Integration tests require Docker.
+
+**Tags:** Kotest specs (`StringSpec`, etc.) — `@Tags("integration")` / `@Tags("fuzz")` from `io.kotest.core.annotation.Tags` (filtered via Gradle `kotest.tags`). JUnit `@Test` classes — `@Tag("integration")` / `@Tag("fuzz")` from `org.junit.jupiter.api.Tag` (filtered via JUnit Platform `includeTags` / `excludeTags`). Both are required where applicable; JUnit `@Tag` on Kotest specs is not honored.
 
 ### Unit vs integration responsibilities
 
-| | Unit (`unitTest`) | Integration (`@Tag("integration")`) |
-|--|-------------------|-------------------------------------|
+| | Unit (`unitTest`) | Integration (tagged) |
+|--|-------------------|----------------------|
 | **Purpose** | Business rules, pure logic, HTTP slice (`@WebMvcTest`) | SQL/Exposed semantics, Testcontainers, Kafka/S3/auth wiring |
 | **Dependencies** | Fake/Recording ports or MockK; **no Spring full context** | Real Postgres/Valkey/Kafka/Keycloak via Testcontainers |
-| **Naming** | `*Test.kt` | `*IntegrationTest.kt` + `@Tag("integration")` |
+| **Naming** | `*Test.kt` | `*IntegrationTest.kt` + integration tag (see Tags above) |
 | **PIT** | Included | Excluded (`config/pitest/pitest.properties`) |
 | **Prefer** | State/result assertions over `coVerify`-only | Scenarios Fake cannot model (transactions, JSONB, migrations) |
 
@@ -194,10 +196,10 @@ HTML reports: `scripts/ci/diff-cover-backend.html`, `scripts/ci/diff-cover-front
 
 | Test kind | Rule | Command |
 |-----------|------|---------|
-| Unit | Must **not** start Spring; no `@Tag("integration")` | `./gradlew :workbench-*:unitTest` |
-| Integration | `@Tag("integration")`, needs Docker | `./gradlew :workbench-*:integrationTest` |
+| Unit | Must **not** start Spring; no integration tag | `./gradlew :workbench-*:unitTest` |
+| Integration | Integration tag (`@Tags` on Kotest, `@Tag` on JUnit); needs Docker | `./gradlew :workbench-*:integrationTest` |
 | All backend tests | Unit + integration | `./gradlew :workbench-*:test` |
-| Fuzz | `@Tag("fuzz")` | `./gradlew fuzzTest` |
+| Fuzz | Fuzz tag (`@Tags("fuzz")` / `@Tag("fuzz")`) | `./gradlew fuzzTest` |
 | Mutation | nightly (`extendedCheck`) | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
 
 Generic verification patterns: [springboot-verification](../springboot-verification/SKILL.md) (use Gradle commands above for this repo).

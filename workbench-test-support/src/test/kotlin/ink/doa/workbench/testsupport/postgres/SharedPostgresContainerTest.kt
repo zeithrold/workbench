@@ -4,9 +4,9 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import java.sql.DriverManager
-import org.junit.jupiter.api.Tag
+import io.kotest.core.annotation.Tags
 
-@Tag("integration")
+@Tags("integration")
 class SharedPostgresContainerTest :
   StringSpec({
     "openDatabase clones schema from template and drops lease on close" {

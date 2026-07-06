@@ -3,6 +3,7 @@ package ink.doa.workbench.data.repository.tenant
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -12,9 +13,8 @@ import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedTenantDestructionRepositoryIntegrationTest :
   StringSpec({
     "revoke methods return zero when tenant has no related records" {

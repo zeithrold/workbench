@@ -11,13 +11,13 @@ import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemCommentRepository
 import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedWorkItemCommentRepositoryIntegrationTest :
   StringSpec({
     "create list update and soft delete comments for a work item" {

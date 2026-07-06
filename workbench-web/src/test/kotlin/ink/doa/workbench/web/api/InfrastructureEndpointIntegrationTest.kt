@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   webEnvironment = SpringBootTest.WebEnvironment.MOCK,
   properties =
     [
-      "spring.profiles.active=integration",
+      "spring.profiles.active=integration,web",
       "management.health.redis.enabled=false",
     ],
 )

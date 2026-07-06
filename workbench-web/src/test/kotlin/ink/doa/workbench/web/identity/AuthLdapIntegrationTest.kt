@@ -29,7 +29,7 @@ import tools.jackson.databind.ObjectMapper
 
 @SpringBootTest(
   webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-  properties = ["spring.profiles.active=integration"],
+  properties = ["spring.profiles.active=integration,web"],
 )
 @AutoConfigureMockMvc
 @Import(AuthIntegrationContainers.AuthIntegrationTestConfiguration::class)

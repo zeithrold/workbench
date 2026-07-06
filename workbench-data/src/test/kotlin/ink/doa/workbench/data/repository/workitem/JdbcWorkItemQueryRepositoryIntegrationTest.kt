@@ -14,6 +14,7 @@ import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
@@ -24,10 +25,9 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
-import org.junit.jupiter.api.Tag
 import org.springframework.jdbc.core.JdbcTemplate
 
-@Tag("integration")
+@Tags("integration")
 class JdbcWorkItemQueryRepositoryIntegrationTest :
   StringSpec({
     "search filters work items and maps PostgreSQL rows to common result container" {

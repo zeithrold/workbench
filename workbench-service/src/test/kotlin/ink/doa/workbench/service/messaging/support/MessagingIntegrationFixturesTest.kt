@@ -1,11 +1,11 @@
 package ink.doa.workbench.service.messaging.support
 
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class MessagingIntegrationFixturesTest :
   StringSpec({
     "createTopics is idempotent when topic already exists" {

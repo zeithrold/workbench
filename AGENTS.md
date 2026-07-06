@@ -26,7 +26,7 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 | **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
 | **Extended** (Nightly CI) | `./gradlew extendedCheck` | Full + fuzz + mutation; also generates **unit-only** Kover XML |
 
-Backend test tasks: `unitTest` (excludes `@Tag("integration")` and `fuzz`), `integrationTest` (`@Tag("integration")` only), `test` (runs both). Integration tests need Docker.
+Backend test tasks: `unitTest` (excludes integration and fuzz tags), `integrationTest` (integration-tagged only), `test` (runs both). Kotest specs use `@Tags("integration")`; JUnit `@Test` classes use `@Tag("integration")`. Integration tests need Docker.
 
 **Coverage (two metrics):**
 - **Full** — `build/reports/kover/report.xml` — unit + integration; gated at 90% on `check`.

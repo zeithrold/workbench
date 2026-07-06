@@ -13,14 +13,14 @@ import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
 import ink.doa.workbench.security.identity.auth.support.OAuthAuthorizationCodeClient
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.Clock
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class OAuth2AuthIntegrationTest :
   StringSpec({
     val keycloak: KeycloakContainer = KeycloakTestContainer.shared()

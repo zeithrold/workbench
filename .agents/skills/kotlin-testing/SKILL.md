@@ -719,7 +719,7 @@ kover {
 | **Full** (unit + integration) | `./gradlew check` → `build/reports/kover/report.xml` | 90% line |
 | **Unit** (unit tests only) | `./gradlew koverUnitCoverage -Pkover.unitOnly` → `build/reports/kover/unit/report.xml` | Report only (70%+ soft target) |
 
-Unit tests: `unitTest` task — no `@Tag("integration")`, prefer Fake/Recording port implementations over verify-only MockK. Integration tests: `@Tag("integration")`, Testcontainers. See [workbench-development](../workbench-development/SKILL.md).
+Unit tests: `unitTest` task — no integration tag; prefer Fake/Recording port implementations over verify-only MockK. Integration tests: `@Tags("integration")` on Kotest specs or `@Tag("integration")` on JUnit classes; Testcontainers. See [workbench-development](../workbench-development/SKILL.md).
 
 ### Ktor testApplication Testing
 
