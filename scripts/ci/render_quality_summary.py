@@ -354,7 +354,7 @@ def render_coverage_section(root: Path) -> list[str]:
             sign = "+" if integration_lift > 0 else ""
             lines.append("")
             lines.append(
-                f"_Integration test lift (full − unit line): {sign}{integration_lift:.1f}%_"
+                f"_Integration test lift (full - unit line): {sign}{integration_lift:.1f}%_"
             )
         lines.append("")
     else:
