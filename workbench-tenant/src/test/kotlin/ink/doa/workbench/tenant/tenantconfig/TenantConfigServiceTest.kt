@@ -1,6 +1,7 @@
 package ink.doa.workbench.tenant.tenantconfig
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.tenantconfig.TenantConfigRepository
 import ink.doa.workbench.core.tenantconfig.model.MailSmtpTenantConfig
 import ink.doa.workbench.core.tenantconfig.model.TenantConfigKey
@@ -58,9 +59,59 @@ class TenantConfigServiceTest :
           )
         )
 
-      shouldThrow<InvalidRequestException> {
-        TenantConfigService(repository).get(tenantId, TenantConfigSpecs.MailSmtp)
-      }
+      val error =
+        shouldThrow<InvalidRequestException> {
+          TenantConfigService(repository).get(tenantId, TenantConfigSpecs.MailSmtp)
+        }
+      error.errorCode shouldBe WorkbenchErrorCode.TENANT_CONFIG_DECODE_FAILED
+      error.message shouldBe
+        "Tenant config '${TenantConfigSpecs.MailSmtp.key.value}' cannot be decoded as '${TenantConfigSpecs.MailSmtp.key.value}'."
+    }
+
+    "list returns empty when tenant has no overrides" {
+      val service = TenantConfigService(FakeTenantConfigRepository())
+
+      service.list(UUID.randomUUID()) shouldBe emptyList()
+    }
+
+    "upsert forwards secretRef and actorUserId to the repository" {
+      val repository = FakeTenantConfigRepository()
+      val service = TenantConfigService(repository)
+      val tenantId = UUID.randomUUID()
+      val actorUserId = UUID.randomUUID()
+      val config =
+        MailSmtpTenantConfig(
+          enabled = true,
+          fromAddress = "noreply@example.test",
+          host = "smtp.example.test",
+          port = 587,
+          username = "smtp-user",
+          passwordSecretRef = "secret://mail/smtp",
+        )
+
+      service.upsert(
+        tenantId,
+        TenantConfigSpecs.MailSmtp,
+        config,
+        actorUserId = actorUserId,
+        secretRef = "secret://mail/smtp",
+      )
+
+      val stored = requireNotNull(repository.lastUpsertCommand)
+      stored.tenantId shouldBe tenantId
+      stored.key shouldBe TenantConfigSpecs.MailSmtp.key
+      stored.secretRef shouldBe "secret://mail/smtp"
+      stored.actorUserId shouldBe actorUserId
+    }
+
+    "get returns spec default fields when no tenant override exists" {
+      val service = TenantConfigService(FakeTenantConfigRepository())
+
+      val result = service.get(UUID.randomUUID(), TenantConfigSpecs.MailSmtp)
+
+      result.enabled shouldBe false
+      result.port shouldBe 587
+      result.host shouldBe null
     }
 
     "tenant config keys must use lower snake case dot separated segments" {
@@ -73,6 +124,7 @@ class TenantConfigServiceTest :
 
 private class FakeTenantConfigRepository : TenantConfigRepository {
   val records = mutableMapOf<Pair<UUID, TenantConfigKey>, TenantConfigRecord>()
+  var lastUpsertCommand: UpsertTenantConfigCommand? = null
 
   override suspend fun findByTenantAndKey(
     tenantId: UUID,
@@ -83,6 +135,7 @@ private class FakeTenantConfigRepository : TenantConfigRepository {
     records.filterKeys { it.first == tenantId }.values.toList()
 
   override suspend fun upsert(command: UpsertTenantConfigCommand): TenantConfigRecord {
+    lastUpsertCommand = command
     val existing = records[command.tenantId to command.key]
     val record =
       tenantConfigRecord(
