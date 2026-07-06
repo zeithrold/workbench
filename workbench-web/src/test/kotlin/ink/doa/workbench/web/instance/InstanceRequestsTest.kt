@@ -175,7 +175,7 @@ class InstanceRequestsTest :
         InstanceBootstrapView(
           user =
             UserSummary(
-              id = "usr_abc",
+              id = PublicId.new("usr"),
               displayName = "Admin",
               primaryEmail = "admin@example.test",
             ),
@@ -190,7 +190,7 @@ class InstanceRequestsTest :
             LoginView(
               user =
                 UserSummary(
-                  id = "usr_abc",
+                  id = PublicId.new("usr"),
                   displayName = "Admin",
                   primaryEmail = "admin@example.test",
                 ),

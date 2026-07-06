@@ -149,8 +149,7 @@ class LoginCompletionServiceTest :
       result.loginContext shouldBe LoginContext.TENANT
       result.activeTenantId shouldBe null
       result.activeTenant shouldBe null
-      result.eligibleTenants.map { it.id }.toSet() shouldBe
-        setOf(tenantA.apiId.value, tenantB.apiId.value)
+      result.eligibleTenants.map { it.id }.toSet() shouldBe setOf(tenantA.apiId, tenantB.apiId)
     }
 
     "adminScopes returns instance and tenant scopes" {

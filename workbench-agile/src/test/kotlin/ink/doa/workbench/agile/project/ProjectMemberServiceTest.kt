@@ -136,7 +136,7 @@ class ProjectMemberServiceTest :
       val members = service.listMembers(tenantId, projectId)
 
       members.shouldHaveSize(1)
-      members.single().user.id shouldBe userPublicId.value
+      members.single().user.id shouldBe userPublicId
       members.single().policies.shouldHaveSize(1)
       members.single().policies.single().bindingId shouldBe bindingPublicId.value
       members.single().policies.single().policy.code shouldBe "project-member"
@@ -160,7 +160,7 @@ class ProjectMemberServiceTest :
 
       val member = service.addMember(memberCommand(role = "member"))
 
-      member.user.id shouldBe userPublicId.value
+      member.user.id shouldBe userPublicId
       commandSlot.captured.policyId shouldBe memberPolicyId
       commandSlot.captured.principalUserId shouldBe userId
       commandSlot.captured.createdBy shouldBe actorUserId
@@ -265,7 +265,7 @@ class ProjectMemberServiceTest :
 
       val member = service.join(tenantId, projectId, userId, actorUserId)
 
-      member.user.id shouldBe userPublicId.value
+      member.user.id shouldBe userPublicId
       coVerify { bindings.create(any()) }
     }
 

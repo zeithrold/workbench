@@ -1,5 +1,6 @@
 package ink.doa.workbench.core.common.warning
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.warning.meta.ApiVersionDeprecatedMeta
@@ -18,7 +19,7 @@ class WorkbenchWarningMetaValidatorTest :
   StringSpec({
     val project =
       ProjectSummary(
-        id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+        id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
         identifier = "WB",
         name = "Workbench",
       )
@@ -88,7 +89,7 @@ class WorkbenchWarningMetaValidatorTest :
         TenantDestroyScheduledMeta(
           tenant =
             TenantSummary(
-              id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ1"),
               name = "Acme",
               slug = "acme",
             )
@@ -103,7 +104,7 @@ class WorkbenchWarningMetaValidatorTest :
           TenantDestroyScheduledMeta(
             tenant =
               TenantSummary(
-                id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ1",
+                id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ1"),
                 name = " ",
                 slug = "acme",
               )
@@ -153,7 +154,7 @@ class WorkbenchWarningMetaValidatorTest :
       TenantDestroyScheduledMeta(
           tenant =
             TenantSummary(
-              id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ1"),
               name = "Acme",
               slug = "acme",
             ),
@@ -177,5 +178,37 @@ class WorkbenchWarningMetaValidatorTest :
       collector.warn(WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED, meta)
 
       collector.drain() shouldHaveSize 1
+    }
+
+    "collector drain clears stored warnings" {
+      val collector = InMemoryWorkbenchWarningCollector()
+      val meta = ProjectDestroyScheduledMeta(project = project)
+
+      collector.warn(WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED, meta)
+      collector.drain() shouldHaveSize 1
+      collector.drain() shouldHaveSize 0
+    }
+
+    "collector warn overload uses custom message" {
+      val collector = InMemoryWorkbenchWarningCollector()
+      val meta =
+        TenantDestroyScheduledMeta(
+          tenant =
+            TenantSummary(
+              id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ1"),
+              name = "Acme",
+              slug = "acme",
+            )
+        )
+
+      collector.warn(
+        WorkbenchWarningCode.TENANT_DESTROY_SCHEDULED,
+        meta,
+        message = "Tenant teardown queued",
+      )
+
+      val drained = collector.drain()
+      drained shouldHaveSize 1
+      drained.single().message shouldBe "Tenant teardown queued"
     }
   })

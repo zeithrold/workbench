@@ -49,8 +49,7 @@ class FederatedLoginCompletionServiceTest :
           createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
           updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         )
-      val tenantSummary =
-        TenantSummary(id = PublicId.new("ten").value, slug = "acme", name = "Acme")
+      val tenantSummary = TenantSummary(id = PublicId.new("ten"), slug = "acme", name = "Acme")
       val session =
         IssuedCredential(
           id = UUID.randomUUID(),

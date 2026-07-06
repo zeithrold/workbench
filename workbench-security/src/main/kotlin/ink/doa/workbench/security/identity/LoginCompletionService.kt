@@ -70,7 +70,7 @@ class LoginCompletionService(
       1 -> {
         val tenantSummary = eligible.single()
         val tenant =
-          tenants.findByApiId(tenantSummary.id)
+          tenants.findByApiId(tenantSummary.id.value)
             ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
         LoginCompletion(
           loginContext = LoginContext.TENANT,

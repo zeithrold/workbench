@@ -81,7 +81,7 @@ class PermissionBindingManagementServiceTest :
       }
 
       result.id shouldBe binding.apiId.value
-      result.user?.id shouldBe user.apiId.value
+      result.user?.id shouldBe user.apiId
       coVerify {
         bindings.create(match { it.principalUserId == user.id && it.policyId == policy.id })
       }

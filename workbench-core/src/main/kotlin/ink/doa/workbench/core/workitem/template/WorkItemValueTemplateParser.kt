@@ -71,22 +71,7 @@ class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownK
       else -> TemplateValueExpression.Literal(element)
     }
 
-  fun parseFieldPath(path: String): TemplateField =
-    if (path.startsWith("property.")) {
-      val identity =
-        path.removePrefix("property.").ifBlank {
-          throw InvalidRequestException(
-            WorkbenchErrorCode.WORK_ITEM_TEMPLATE_PROPERTY_IDENTITY_REQUIRED
-          )
-        }
-      if (identity.startsWith("fld_")) {
-        TemplateField.Property(apiId = identity, code = null)
-      } else {
-        TemplateField.Property(apiId = null, code = identity)
-      }
-    } else {
-      TemplateField.System(path)
-    }
+  fun parseFieldPath(path: String): TemplateField = parseTemplateFieldPath(path)
 
   private fun parseRelativeDate(element: JsonElement): TemplateValueExpression.RelativeDate {
     val obj = element.asObject("relativeDate")

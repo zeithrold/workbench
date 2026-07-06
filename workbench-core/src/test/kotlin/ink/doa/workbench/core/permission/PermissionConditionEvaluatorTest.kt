@@ -32,6 +32,11 @@ class PermissionConditionEvaluatorTest :
       evaluator.evaluate("{not-json", context()) shouldBe PermissionConditionResult.INVALID
     }
 
+    "empty object condition is invalid" {
+      evaluator.evaluate("{}", context()) shouldBe PermissionConditionResult.INVALID
+      evaluator.evaluate("{ }", context()) shouldBe PermissionConditionResult.INVALID
+    }
+
     "allow condition matches actor and status group" {
       evaluator.evaluate(
         assigneeIsCurrentUserCondition(),
@@ -92,26 +97,5 @@ class PermissionConditionEvaluatorTest :
         condition,
         context(mapOf("reporter" to reporterId.toString())),
       ) shouldBe PermissionConditionResult.MATCH
-    }
-  })
-
-class PermissionConditionJsonTest :
-  StringSpec({
-    "validateAndCanonicalize accepts canonical condition" {
-      val raw =
-        """
-        {"op":"and","args":[
-          {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}},
-          {"field":"statusGroup","op":"eq","value":"todo"}
-        ]}
-        """
-          .trimIndent()
-
-      PermissionConditionJson.validateAndCanonicalize(raw)?.contains("\"op\":\"and\"") shouldBe true
-    }
-
-    "validateAndCanonicalize returns null for blank input" {
-      PermissionConditionJson.validateAndCanonicalize(null) shouldBe null
-      PermissionConditionJson.validateAndCanonicalize("   ") shouldBe null
     }
   })

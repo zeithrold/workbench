@@ -87,7 +87,7 @@ class ProjectMemberService(
       )
     )
     return listMembers(command.tenantId, command.projectId).single {
-      it.user.id == user.apiId.value
+      it.user.id == user.apiId
     }
   }
 
@@ -127,7 +127,7 @@ class ProjectMemberService(
         createdBy = actorUserId,
       )
     )
-    return listMembers(tenantId, projectId).single { it.user.id == user.apiId.value }
+    return listMembers(tenantId, projectId).single { it.user.id == user.apiId }
   }
 
   private suspend fun requireOpenJoinProject(tenantId: UUID, projectId: UUID) {

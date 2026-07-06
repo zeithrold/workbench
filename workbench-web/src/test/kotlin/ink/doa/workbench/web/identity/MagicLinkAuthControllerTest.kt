@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.LoginAccountRecord
 import ink.doa.workbench.core.identity.model.UserRecord
@@ -127,7 +128,7 @@ class MagicLinkAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
         LoginView(
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
               displayName = "Ada Lovelace",
               primaryEmail = "ada@example.test",
             ),

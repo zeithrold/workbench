@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.SecurityConfiguration
@@ -94,12 +95,16 @@ class SessionControllerHappyPathTest(@Autowired private val mockMvc: MockMvc) {
         SessionView(
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
               displayName = "Ada Lovelace",
               primaryEmail = "ada@example.test",
             ),
           activeTenant =
-            TenantSummary(id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ2", slug = "acme", name = "Acme"),
+            TenantSummary(
+              id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ2"),
+              slug = "acme",
+              name = "Acme",
+            ),
           sessionExpiresAt = OffsetDateTime.parse("2026-07-04T12:00:00Z"),
         )
     }

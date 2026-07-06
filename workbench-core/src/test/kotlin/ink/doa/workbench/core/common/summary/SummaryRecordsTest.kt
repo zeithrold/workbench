@@ -34,7 +34,7 @@ class SummaryRecordsTest :
 
       TenantSummary.from(record) shouldBe
         TenantSummary(
-          id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ0"),
           name = "Acme",
           slug = "acme",
         )
@@ -51,7 +51,7 @@ class SummaryRecordsTest :
 
       UserSummary.from(record) shouldBe
         UserSummary(
-          id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+          id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
           displayName = "Ada",
           primaryEmail = "ada@example.test",
         )
@@ -73,7 +73,7 @@ class SummaryRecordsTest :
 
       ProjectSummary.from(record) shouldBe
         ProjectSummary(
-          id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
           identifier = "CORE",
           name = "Core Platform",
         )

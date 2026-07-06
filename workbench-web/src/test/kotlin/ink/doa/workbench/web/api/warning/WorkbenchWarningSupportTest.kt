@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.api.warning
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.warning.InMemoryWorkbenchWarningCollector
@@ -31,7 +32,7 @@ class WorkbenchWarningSupportTest {
   private val support = WorkbenchWarningSupport()
   private val project =
     ProjectSummary(
-      id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+      id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
       identifier = "WB",
       name = "Workbench",
     )
@@ -126,7 +127,7 @@ class WorkbenchWarningSupportTest {
               TenantDestroyScheduledMeta(
                 tenant =
                   TenantSummary(
-                    id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ1",
+                    id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ1"),
                     name = "Acme",
                     slug = "acme",
                   )
@@ -149,7 +150,7 @@ class WorkbenchWarningFilterTest {
       ProjectDestroyScheduledMeta(
         project =
           ProjectSummary(
-            id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
             identifier = "WB",
             name = "Workbench",
           )
@@ -174,7 +175,7 @@ class WorkbenchWarningFilterTest {
       ProjectDestroyScheduledMeta(
         project =
           ProjectSummary(
-            id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
             identifier = "WB",
             name = "Workbench",
           )

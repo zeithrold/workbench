@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.instance
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.LoginMethodSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.LoginMethodKind
@@ -116,7 +117,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
         InstanceBootstrapView(
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
               displayName = "Admin",
               primaryEmail = "admin@example.test",
             ),
@@ -131,7 +132,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
             LoginView(
               user =
                 UserSummary(
-                  id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                  id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
                   displayName = "Admin",
                   primaryEmail = "admin@example.test",
                 ),

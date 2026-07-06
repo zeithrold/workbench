@@ -74,14 +74,5 @@ fun TemplateField.toWirePath(): String =
     is TemplateField.Property -> "property.${apiId ?: code}"
   }
 
-fun fieldPathFromPropertyKey(key: String): TemplateField =
-  WorkItemValueTemplateParser()
-    .parseFieldPath(
-      if (key.startsWith("property.") || key in systemTemplateFieldNames) key else "property.$key"
-    )
-
 fun JsonElement?.isNonNullValue(): Boolean =
   this != null && this !is kotlinx.serialization.json.JsonNull
-
-private val systemTemplateFieldNames =
-  setOf("title", "description", "assignee", "priority", "sprint")

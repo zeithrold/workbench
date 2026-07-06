@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.manage
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.permission.PermissionPrincipalType
@@ -28,7 +29,12 @@ class ManagePermissionResponsesTest :
     }
 
     "group member response maps view fields" {
-      val user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = "ada@example.test")
+      val user =
+        UserSummary(
+          id = PublicId.new("usr"),
+          displayName = "Ada",
+          primaryEmail = "ada@example.test",
+        )
       val view = GroupMemberView(id = "pgm_abc", user = user)
 
       GroupMemberResponse.from(view).user.displayName shouldBe "Ada"
@@ -63,11 +69,11 @@ class ManagePermissionResponsesTest :
         PermissionBindingView(
           id = "pbd_abc",
           principalType = "user",
-          user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = null),
+          user = UserSummary(id = PublicId.new("usr"), displayName = "Ada", primaryEmail = null),
           group = null,
           policy =
             PermissionPolicySummary(id = "pol_abc", code = "project-admin", name = "Project Admin"),
-          project = ProjectSummary(id = "prj_abc", identifier = "CORE", name = "Core"),
+          project = ProjectSummary(id = PublicId.new("prj"), identifier = "CORE", name = "Core"),
         )
 
       PermissionBindingResponse.from(view).project?.identifier shouldBe "CORE"

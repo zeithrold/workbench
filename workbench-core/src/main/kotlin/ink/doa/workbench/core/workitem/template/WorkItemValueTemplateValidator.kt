@@ -9,7 +9,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
 
 object WorkItemValueTemplateValidator {
-  private val writableSystemFields = setOf("title", "description", "assignee", "priority", "sprint")
   private val supportedVariables =
     setOf(
       "user.currentUser",
@@ -70,7 +69,7 @@ object WorkItemValueTemplateValidator {
     when (field) {
       is TemplateField.System -> {
         requireValid(
-          field.canonicalName in writableSystemFields,
+          TemplateSystemFields.isWritableSystemField(field.canonicalName),
           WorkbenchErrorCode.WORK_ITEM_TEMPLATE_FIELD_NOT_WRITABLE,
           "Field is not writable by work item value templates: ${field.canonicalName}",
         )

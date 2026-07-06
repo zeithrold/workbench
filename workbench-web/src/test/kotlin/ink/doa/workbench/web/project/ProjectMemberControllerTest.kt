@@ -3,6 +3,7 @@ package ink.doa.workbench.web.project
 import ink.doa.workbench.agile.project.ProjectMemberPolicyView
 import ink.doa.workbench.agile.project.ProjectMemberService
 import ink.doa.workbench.agile.project.ProjectPermissionPolicySummary
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
@@ -187,7 +188,7 @@ class ProjectMemberControllerTest(@Autowired private val mockMvc: MockMvc) {
         ink.doa.workbench.agile.project.ProjectMemberView(
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
               displayName = "Ada",
               primaryEmail = "ada@example.test",
             ),

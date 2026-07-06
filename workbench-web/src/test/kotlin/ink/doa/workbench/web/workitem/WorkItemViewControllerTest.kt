@@ -3,6 +3,7 @@ package ink.doa.workbench.web.workitem
 import ink.doa.workbench.agile.project.ProjectResolver
 import ink.doa.workbench.agile.workitem.WorkItemViewService
 import ink.doa.workbench.agile.workitem.WorkItemViewView
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
@@ -197,7 +198,7 @@ class WorkItemViewControllerTest(@Autowired private val mockMvc: MockMvc) {
       val now = OffsetDateTime.parse("2026-01-01T00:00:00Z")
       val owner =
         UserSummary(
-          id = TenantWebMvcFixtures.PRINCIPAL.user.apiId.value,
+          id = TenantWebMvcFixtures.PRINCIPAL.user.apiId,
           displayName = "Ada",
           primaryEmail = null,
         )
@@ -210,7 +211,7 @@ class WorkItemViewControllerTest(@Autowired private val mockMvc: MockMvc) {
           owner = owner,
           project =
             ProjectSummary(
-              id = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+              id = PublicId(TenantWebMvcFixtures.PROJECT_PUBLIC_ID),
               identifier = "WB",
               name = "Workbench",
             ),

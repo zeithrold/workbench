@@ -4,7 +4,6 @@ import ink.doa.workbench.core.workitem.query.ConditionNode
 import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.QueryOperator
 import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
 import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -108,11 +107,7 @@ class PermissionConditionEvaluator {
         return PermissionConditionResult.INVALID
       }
     val condition =
-      try {
-        WorkItemConditionJson.parse(ast)
-      } catch (_: Exception) {
-        return PermissionConditionResult.INVALID
-      } ?: return PermissionConditionResult.MATCH
+      PermissionConditionParser.parseOrNull(ast) ?: return PermissionConditionResult.INVALID
     return try {
       if (evaluateNode(condition, context)) {
         PermissionConditionResult.MATCH

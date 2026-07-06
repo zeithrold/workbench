@@ -256,7 +256,7 @@ class ProjectSprintControllerTest(@Autowired private val mockMvc: MockMvc) {
           closedAt = null,
           createdBy =
             UserSummary(
-              id = TenantWebMvcFixtures.PRINCIPAL.user.apiId.value,
+              id = TenantWebMvcFixtures.PRINCIPAL.user.apiId,
               displayName = "Ada",
               primaryEmail = null,
             ),

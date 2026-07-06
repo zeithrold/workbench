@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.project
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.project.ProjectRepository
 import ink.doa.workbench.security.SecurityConfiguration
@@ -282,7 +283,7 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
         nonMemberJoinPolicy = "admin_only",
         lead =
           UserSummary(
-            id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+            id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
             displayName = "Ada",
             primaryEmail = "ada@example.test",
           ),
