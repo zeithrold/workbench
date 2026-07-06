@@ -6,14 +6,14 @@ Detailed paths and commands. Read when implementing a specific change type.
 
 | Purpose | Command |
 |---------|---------|
+| Quick verify (local loop) | `./gradlew quickCheck --no-daemon` |
+| Full verify (CI gate) | `./gradlew check --no-daemon` |
+| Extended verify (Nightly) | `./gradlew extendedCheck --no-parallel --no-configuration-cache` |
+| Unit-only coverage report | `./gradlew koverUnitCoverage -Pkover.unitOnly` |
+| Module unit tests | `./gradlew :workbench-<module>:unitTest` |
+| Module integration tests | `./gradlew :workbench-<module>:integrationTest` |
 | Full stack infra | `docker compose up -d` |
-| Minimal backend infra | `docker compose up -d postgres valkey redpanda` |
 | Print dev commands | `./gradlew dev` |
-| Backend API | `./gradlew :workbench-web:bootRun --args='--spring.profiles.active=local'` |
-| Worker | `./gradlew :workbench-worker:bootRun --args='--spring.profiles.active=local,worker'` |
-| Frontend dev | `./gradlew :workbench-frontend:pnpmDev` |
-| Regenerate API client | `cd workbench-frontend && pnpm openapi` (backend must be running) |
-| Main verify (CI gate) | `./gradlew check --no-daemon` |
 | Format fix | `./gradlew spotlessApply` |
 | Boot jars | `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon` |
 | Fuzz tests | `./gradlew fuzzTest` |
@@ -27,7 +27,6 @@ Detailed paths and commands. Read when implementing a specific change type.
 | Format CI Python | `uv run --directory scripts/ci ruff format .` |
 | Frontend E2E | `./gradlew :workbench-frontend:pnpmE2e` |
 | Frontend build | `./gradlew :workbench-frontend:pnpmBuild` |
-| Module unit tests | `./gradlew :workbench-<module>:test` |
 
 ## Toolchain
 

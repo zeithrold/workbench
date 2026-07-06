@@ -41,8 +41,18 @@ OpenAPI is available at `http://localhost:8080/api/openapi`. Scalar is available
 
 ## Verification
 
+Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
+
 ```bash
-./gradlew check
+./gradlew quickCheck                              # local: unit tests + static analysis
+./gradlew check                                   # pre-PR / CI: + integration tests + full Kover (90%)
+./gradlew extendedCheck                           # Nightly: + fuzz + mutation
+./gradlew koverUnitCoverage -Pkover.unitOnly      # unit-only coverage report (no gate)
+```
+
+Legacy per-module debug:
+
+```bash
 ./gradlew mutationTest
 ./gradlew :workbench-core:pitest
 ./gradlew :workbench-frontend:pnpmCoverage
