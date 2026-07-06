@@ -29,7 +29,7 @@ Copy and track progress:
 - [ ] Code in correct modules with tests
 - [ ] API changes: OpenAPI annotated + `pnpm openapi` (backend running)
 - [ ] Schema changes: Flyway migration + Exposed tables + migration test count
-- [ ] `./gradlew check` passes
+- [ ] `./gradlew quickCheck` during iteration; `./gradlew check` before push
 - [ ] Diff coverage passes (Kotlin → unit/integration tests; frontend → Vitest; see Verification)
 - [ ] PR opened; CI quality gate green
 ```
@@ -93,14 +93,59 @@ Run in separate terminals:
 
 ## Verification
 
-**Standard gate (matches CI):**
+### Tiers
+
+| Tier | Command | When | Includes |
+|------|---------|------|----------|
+| **Quick** | `./gradlew quickCheck` | Local edit loop | Spotless, Detekt, backend `unitTest`, frontend `pnpmLint` |
+| **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
+| **Extended** | `./gradlew extendedCheck` | Nightly CI | Full + `fuzzTest` + `mutationTest` + unit Kover XML |
+
+Module tasks: `unitTest` (no `@Tag("integration")`, no fuzz), `integrationTest` (`@Tag("integration")`), `test` (both). Integration tests require Docker.
+
+### Unit vs integration responsibilities
+
+| | Unit (`unitTest`) | Integration (`@Tag("integration")`) |
+|--|-------------------|-------------------------------------|
+| **Purpose** | Business rules, pure logic, HTTP slice (`@WebMvcTest`) | SQL/Exposed semantics, Testcontainers, Kafka/S3/auth wiring |
+| **Dependencies** | Fake/Recording ports or MockK; **no Spring full context** | Real Postgres/Valkey/Kafka/Keycloak via Testcontainers |
+| **Naming** | `*Test.kt` | `*IntegrationTest.kt` + `@Tag("integration")` |
+| **PIT** | Included | Excluded (`config/pitest/pitest.properties`) |
+| **Prefer** | State/result assertions over `coVerify`-only | Scenarios Fake cannot model (transactions, JSONB, migrations) |
+
+**Consistency:** share fixtures (`workbench-test-support` / module `testFixtures`); use Fake implementations of `workbench-core` ports in unit tests; reserve integration tests for adapter/wiring proof. Do not duplicate the same business matrix in both layers.
+
+### Coverage standards (two metrics)
+
+| Metric | Report | Gate | Target |
+|--------|--------|------|--------|
+| **Full** (unit + integration) | `build/reports/kover/report.xml` | `./gradlew check` | **90%** line (aggregate + per backend module) |
+| **Unit** (unit tests only) | `build/reports/kover/unit/report.xml` | Report only (for now) | **70%+** line; core/agile/service **80%+** aspirational |
+| **Diff** (full Kover / Vitest LCOV) | `scripts/ci/diff-cover-*.html` | CI after `check` | Backend changed lines **90%**, frontend **70%** |
+| **Mutation / Strength** | `build/reports/pitest/` | Nightly report | Track via Quality Report; no hard gate yet |
+
+If full line coverage exceeds unit by **> 15%** for a module, add unit tests or contract tests — do not compensate with more integration tests alone.
+
+Generate unit-only coverage:
+
+```bash
+./gradlew koverUnitCoverage -Pkover.unitOnly
+```
+
+### Standard gate (matches CI)
 
 ```bash
 ./gradlew check --no-daemon
 ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
 ```
 
-`check` includes Spotless, Detekt, backend tests (excludes fuzz), Kover, and frontend ESLint + Vitest.
+`check` includes Spotless, Detekt, unit + integration tests, Kover full verify, and frontend ESLint + Vitest.
+
+### Quick local loop
+
+```bash
+./gradlew quickCheck --no-daemon
+```
 
 **Pre-PR diff coverage (matches CI quality gate):**
 
@@ -142,18 +187,18 @@ HTML reports: `scripts/ci/diff-cover-backend.html`, `scripts/ci/diff-cover-front
 **Extended (nightly CI / large changes):**
 
 ```bash
-./gradlew fuzzTest
-./gradlew mutationTest --no-parallel --no-configuration-cache
+./gradlew extendedCheck --no-parallel --no-configuration-cache
 ./gradlew :workbench-frontend:pnpmCoverage
 ./gradlew :workbench-frontend:pnpmE2e
 ```
 
 | Test kind | Rule | Command |
 |-----------|------|---------|
-| Unit | Must **not** start Spring | `./gradlew :workbench-*:test` |
-| Integration | `@Tag("integration")`, needs Docker | included in `check` |
+| Unit | Must **not** start Spring; no `@Tag("integration")` | `./gradlew :workbench-*:unitTest` |
+| Integration | `@Tag("integration")`, needs Docker | `./gradlew :workbench-*:integrationTest` |
+| All backend tests | Unit + integration | `./gradlew :workbench-*:test` |
 | Fuzz | `@Tag("fuzz")` | `./gradlew fuzzTest` |
-| Mutation | nightly | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
+| Mutation | nightly (`extendedCheck`) | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
 
 Generic verification patterns: [springboot-verification](../springboot-verification/SKILL.md) (use Gradle commands above for this repo).
 
@@ -161,15 +206,14 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 
 | Trigger | Workflow | What runs |
 |---------|----------|-----------|
-| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → quality-gate | `check`, bootJar, Docker build (no push on PR) |
-| Push / PR | quality-gate (after `check`) | `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage` (backend 90% / frontend 70% on changed lines) |
-| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | quality-gate + fuzz + mutation (no diff coverage) |
+| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → quality-gate | `check` (full), bootJar, diff coverage, Docker build (no push on PR) |
+| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | `check` + fuzz + mutation + `koverUnitCoverage -Pkover.unitOnly` (no diff coverage) |
 
 Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary; `uv run render-quality-summary` writes Kover/PIT. Diff coverage runs on CI push/PR when `./gradlew check` succeeds.
 
 ## PR Checklist
 
-- [ ] `./gradlew check` passes locally
+- [ ] `./gradlew quickCheck` during iteration; `./gradlew check` before push locally
 - [ ] Diff coverage passes locally when Kotlin or frontend source changed (`uv run --directory scripts/ci check-diff-coverage`)
 - [ ] Kotlin changes: unit/integration tests added; backend diff ≥ 90%
 - [ ] Frontend changes: Vitest tests added; frontend diff ≥ 70%
@@ -185,7 +229,7 @@ Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summar
 - Unit tests starting Spring context
 - OpenAPI field changes without regen frontend client
 - New migration without updating integration test count
-- PR with only module `test` — skips Spotless, Detekt, frontend lint
+- PR with only module `unitTest` — skips Spotless, Detekt, integration tests, frontend lint
 - Opening a PR after only `./gradlew check` when source changed but diff coverage was not run locally
 - Changing Kotlin or frontend business logic without tests for the new/changed lines
 
