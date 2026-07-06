@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.LoginDiscoveryRepository
 import ink.doa.workbench.core.identity.model.LoginMethodKind
 import ink.doa.workbench.security.SecurityConfiguration
@@ -96,7 +97,7 @@ class LoginDiscoveryControllerTest(@Autowired private val mockMvc: MockMvc) {
           ink.doa.workbench.core.identity.model.TenantLoginOption(
             tenant =
               ink.doa.workbench.core.common.summary.TenantSummary(
-                id = "ten_abc",
+                id = PublicId.new("ten"),
                 slug = "acme",
                 name = "Acme",
               ),

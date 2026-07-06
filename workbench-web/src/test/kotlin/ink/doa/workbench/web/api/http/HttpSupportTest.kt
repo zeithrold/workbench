@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.api.http
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.web.identity.LoginResponse
@@ -26,7 +27,7 @@ class SessionCookieWriterTest {
       LoginResponse(
         user =
           UserSummary(
-            id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
             displayName = "Ada",
             primaryEmail = "ada@example.test",
           ),

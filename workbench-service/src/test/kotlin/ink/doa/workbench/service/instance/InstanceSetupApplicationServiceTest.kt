@@ -181,7 +181,7 @@ class InstanceSetupApplicationServiceTest :
         )
       }
 
-      result.user.id shouldBe createdUser.apiId.value
+      result.user.id shouldBe createdUser.apiId
       result.loginMethod.id shouldBe instancePasswordMethod.apiId.value
       result.session.sessionSecret shouldBe "session-secret"
       coVerify(exactly = 1) { adminUserCommands.create(any()) }

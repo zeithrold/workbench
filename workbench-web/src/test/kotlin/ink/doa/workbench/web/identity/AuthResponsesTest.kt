@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.LoginMethodSummary
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
@@ -18,8 +19,9 @@ import java.time.OffsetDateTime
 
 class AuthResponsesTest :
   StringSpec({
-    val user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = "ada@example.test")
-    val tenant = TenantSummary(id = "ten_abc", name = "Acme", slug = "acme")
+    val user =
+      UserSummary(id = PublicId.new("usr"), displayName = "Ada", primaryEmail = "ada@example.test")
+    val tenant = TenantSummary(id = PublicId.new("ten"), name = "Acme", slug = "acme")
     val expiresAt = OffsetDateTime.parse("2026-07-04T12:00:00Z")
 
     "login response maps login view" {

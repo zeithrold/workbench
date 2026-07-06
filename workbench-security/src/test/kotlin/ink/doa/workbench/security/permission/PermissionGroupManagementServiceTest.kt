@@ -77,7 +77,7 @@ class PermissionGroupManagementServiceTest :
         service.addGroupMember(tenantId, group.apiId.value, user.apiId.value)
       }
 
-      result.user.id shouldBe user.apiId.value
+      result.user.id shouldBe user.apiId
     }
 
     "listGroups returns repository groups" {
@@ -134,7 +134,7 @@ class PermissionGroupManagementServiceTest :
 
       val result = runBlocking { service.listGroupMembers(tenantId, group.apiId.value) }
 
-      result.single().user.id shouldBe user.apiId.value
+      result.single().user.id shouldBe user.apiId
     }
 
     "removeGroupMember resolves user and removes membership" {

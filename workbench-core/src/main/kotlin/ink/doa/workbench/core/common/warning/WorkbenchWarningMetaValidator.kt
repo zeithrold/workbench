@@ -38,13 +38,17 @@ object WorkbenchWarningMetaValidator {
     }
 
   private fun validateProjectEmbed(project: ProjectSummary) {
-    requirePublicId(project.id, "prj")
+    require(project.id.value.startsWith("prj_")) {
+      "Expected public id prefix 'prj' but was '${project.id.value}'."
+    }
     require(project.identifier.isNotBlank()) { "Project identifier is required in warning embed." }
     require(project.name.isNotBlank()) { "Project name is required in warning embed." }
   }
 
   private fun validateTenantEmbed(tenant: TenantSummary) {
-    requirePublicId(tenant.id, "ten")
+    require(tenant.id.value.startsWith("ten_")) {
+      "Expected public id prefix 'ten' but was '${tenant.id.value}'."
+    }
     require(tenant.name.isNotBlank()) { "Tenant name is required in warning embed." }
     require(tenant.slug.isNotBlank()) { "Tenant slug is required in warning embed." }
   }

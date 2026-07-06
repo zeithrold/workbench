@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.invitation
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.InvitationType
@@ -112,7 +113,7 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
     fun invitationServiceSetup(service: InvitationService): Boolean {
       val tenant =
         TenantSummary(
-          id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ0"),
           slug = "acme",
           name = "Acme",
         )
@@ -129,7 +130,7 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
           tenant = tenant,
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
               displayName = "Acme Admin",
               primaryEmail = "admin@acme.test",
             ),

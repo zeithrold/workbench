@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.manage
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.permission.PermissionPrincipalType
 import ink.doa.workbench.security.SecurityConfiguration
@@ -149,7 +150,7 @@ class ManagePermissionBindingControllerTest(@Autowired private val mockMvc: Mock
           principalType = PermissionPrincipalType.USER.name,
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
               displayName = "Ada",
               primaryEmail = "ada@example.test",
             ),

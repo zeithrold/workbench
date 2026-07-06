@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.security.SecurityConfiguration
@@ -164,7 +165,7 @@ class SessionAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
         LoginView(
           user =
             UserSummary(
-              id = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              id = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
               displayName = "Ada Lovelace",
               primaryEmail = "ada@example.test",
             ),
@@ -183,7 +184,11 @@ class SessionAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
           TenantMembershipView(
             id = "mbr_01JABCDEFGHJKMNPQRSTVWXYZ3",
             tenant =
-              TenantSummary(id = "ten_01JABCDEFGHJKMNPQRSTVWXYZ2", slug = "acme", name = "Acme"),
+              TenantSummary(
+                id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ2"),
+                slug = "acme",
+                name = "Acme",
+              ),
             isTenantAdmin = true,
           )
         )

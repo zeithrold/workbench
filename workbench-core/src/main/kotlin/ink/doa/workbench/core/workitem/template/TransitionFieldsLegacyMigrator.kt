@@ -10,8 +10,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 object TransitionFieldsLegacyMigrator {
-  private val systemFields = setOf("title", "description", "assignee", "priority", "sprint")
-
   fun migrate(
     requiredProperties: JsonElement,
     optionalProperties: JsonElement,
@@ -71,7 +69,7 @@ object TransitionFieldsLegacyMigrator {
   private fun normalizeFieldKey(key: String): String =
     when {
       key.startsWith("property.") -> key
-      key in systemFields -> key
+      key in TemplateSystemFields.WRITABLE -> key
       else -> "property.$key"
     }
 }

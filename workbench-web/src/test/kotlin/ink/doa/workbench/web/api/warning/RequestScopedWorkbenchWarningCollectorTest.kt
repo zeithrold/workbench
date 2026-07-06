@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.api.warning
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.warning.WorkbenchWarning
 import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
@@ -12,7 +13,7 @@ import org.junit.jupiter.api.Test
 class RequestScopedWorkbenchWarningCollectorTest {
   private val project =
     ProjectSummary(
-      id = "prj_01JABCDEFGHJKMNPQRSTVWXYZ0",
+      id = PublicId("prj_01JABCDEFGHJKMNPQRSTVWXYZ0"),
       identifier = "WB",
       name = "Workbench",
     )

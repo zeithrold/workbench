@@ -68,4 +68,13 @@ class WorkbenchExceptionsTest :
         )
       }
     }
+
+    "SerializationParseSupport propagates non-serialization exceptions" {
+      shouldThrow<IllegalStateException> {
+        SerializationParseSupport.parseOrThrow(
+          { throw IllegalStateException("boom") },
+          { InvalidRequestException(WorkbenchErrorCode.REQUEST_VALIDATION_FAILED, it.message) },
+        )
+      }
+    }
   })

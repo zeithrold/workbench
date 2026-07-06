@@ -9,12 +9,11 @@ import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
 import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
+import ink.doa.workbench.core.workitem.template.TemplateSystemFields
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 internal object WorkItemPropertySupport {
-  val systemTemplateFields = setOf("title", "description", "assignee", "priority", "sprint")
-
   fun normalizeProperties(
     config: IssueTypeConfigDetails,
     input: Map<String, JsonElement>,
@@ -45,7 +44,7 @@ internal object WorkItemPropertySupport {
   }
 
   fun Map<String, JsonElement>.filterPropertyInputs(): Map<String, JsonElement> = filterKeys {
-    it !in systemTemplateFields
+    it !in TemplateSystemFields.WRITABLE
   }
 
   fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {

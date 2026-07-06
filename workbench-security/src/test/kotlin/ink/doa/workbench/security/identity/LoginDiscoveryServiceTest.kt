@@ -106,7 +106,7 @@ class LoginDiscoveryServiceTest :
 
       result.identifierRecognized shouldBe true
       result.flow shouldBe LoginFlow.TENANT
-      result.tenantMethods.single().supportedTenants.single().id shouldBe tenant.apiId.value
+      result.tenantMethods.single().supportedTenants.single().id shouldBe tenant.apiId
     }
   })
 

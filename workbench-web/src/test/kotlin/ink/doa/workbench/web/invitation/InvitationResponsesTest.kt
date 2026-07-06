@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.invitation
 
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.summary.TenantSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.InvitationType
@@ -10,8 +11,9 @@ import io.kotest.matchers.shouldBe
 
 class InvitationResponsesTest :
   StringSpec({
-    val tenant = TenantSummary(id = "ten_abc", name = "Acme", slug = "acme")
-    val user = UserSummary(id = "usr_abc", displayName = "Ada", primaryEmail = "ada@example.test")
+    val tenant = TenantSummary(id = PublicId.new("ten"), name = "Acme", slug = "acme")
+    val user =
+      UserSummary(id = PublicId.new("usr"), displayName = "Ada", primaryEmail = "ada@example.test")
 
     "invitation preview response maps view" {
       InvitationPreviewResponse.from(
