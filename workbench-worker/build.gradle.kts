@@ -10,11 +10,12 @@ dependencies {
   implementation(project(":workbench-agile"))
   implementation(project(":workbench-tenant"))
   implementation(project(":workbench-data"))
+  implementation(project(":workbench-security"))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
-  implementation("org.springframework.kafka:spring-kafka")
+  implementation("org.springframework.boot:spring-boot-starter-kafka")
   implementation(libs.logstash.logback)
   runtimeOnly(libs.postgresql)
   testImplementation(libs.testcontainers.junit)
@@ -24,6 +25,7 @@ dependencies {
 }
 
 sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))
+sourceSets.main.get().resources.srcDir(rootProject.file("config/application"))
 
 springBoot {
   mainClass.set("ink.doa.workbench.worker.WorkbenchWorkerApplicationKt")

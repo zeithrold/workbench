@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kotlinx.coroutines.runBlocking
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.http.HttpHeaders
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 const val WORKBENCH_SESSION_COOKIE_NAME = "WORKBENCH_SESSION"
 
 @Component
+@ConditionalOnWebApplication
 class WorkbenchAuthenticationFilter(
   private val sessionAuthenticator: SessionAuthenticator,
   private val bearerTokenAuthenticator: BearerTokenAuthenticator,

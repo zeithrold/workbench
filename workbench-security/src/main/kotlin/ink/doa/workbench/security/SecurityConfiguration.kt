@@ -2,6 +2,7 @@ package ink.doa.workbench.security
 
 import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -9,6 +10,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 
 @Configuration
+@ConditionalOnWebApplication
 class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthenticationFilter) {
   @Bean
   fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
