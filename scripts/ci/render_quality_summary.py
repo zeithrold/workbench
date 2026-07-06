@@ -307,14 +307,18 @@ def fmt_delta(kover_line: float | None, pit_line: float | None) -> str:
 def render_coverage_section(root: Path) -> list[str]:
     lines = ["### Coverage (Kover)", ""]
     modules = discover_backend_modules(root)
-    total_path = root / "build" / "reports" / "kover" / "report.xml"
-    total = parse_kover_report(total_path)
+    full_total_path = root / "build" / "reports" / "kover" / "report.xml"
+    unit_total_path = root / "build" / "reports" / "kover" / "unit" / "report.xml"
+    full_total = parse_kover_report(full_total_path)
+    unit_total = parse_kover_report(unit_total_path)
 
-    if not modules and total is None:
-        lines.append("_No Kover report found. Run `./gradlew check koverXmlReport` first._")
+    if not modules and full_total is None:
+        lines.append("_No Kover report found. Run `./gradlew check` or `koverXmlReport` first._")
         lines.append("")
         return lines
 
+    lines.append("#### Full coverage (unit + integration)")
+    lines.append("")
     lines.append("| Module | Line | Branch | Instruction |")
     lines.append("|--------|------|--------|-------------|")
 
@@ -327,13 +331,39 @@ def render_coverage_section(root: Path) -> list[str]:
         instruction = fmt_pct(metrics.instruction)
         lines.append(f"| {module} | {line} | {branch} | {instruction} |")
 
-    if total is not None:
-        total_line = fmt_pct(total.line, bold=True)
-        total_branch = fmt_pct(total.branch, bold=True)
-        total_instruction = fmt_pct(total.instruction, bold=True)
+    if full_total is not None:
+        total_line = fmt_pct(full_total.line, bold=True)
+        total_branch = fmt_pct(full_total.branch, bold=True)
+        total_instruction = fmt_pct(full_total.instruction, bold=True)
         lines.append(f"| **Total** | {total_line} | {total_branch} | {total_instruction} |")
 
     lines.append("")
+
+    if unit_total is not None:
+        lines.append("#### Unit coverage (unit tests only)")
+        lines.append("")
+        lines.append("| Scope | Line | Branch | Instruction |")
+        lines.append("|-------|------|--------|-------------|")
+        lines.append(
+            f"| **Total** | {fmt_pct(unit_total.line, bold=True)} | "
+            f"{fmt_pct(unit_total.branch, bold=True)} | "
+            f"{fmt_pct(unit_total.instruction, bold=True)} |"
+        )
+        if full_total is not None and full_total.line is not None and unit_total.line is not None:
+            integration_lift = full_total.line - unit_total.line
+            sign = "+" if integration_lift > 0 else ""
+            lines.append("")
+            lines.append(
+                f"_Integration test lift (full − unit line): {sign}{integration_lift:.1f}%_"
+            )
+        lines.append("")
+    else:
+        lines.append(
+            "_Unit-only coverage not generated. "
+            "Run `./gradlew koverUnitCoverage -Pkover.unitOnly` (Nightly does this after `check`)._"
+        )
+        lines.append("")
+
     return lines
 
 
@@ -421,8 +451,8 @@ def render_correlation_section(
         lines.append("")
         return lines
 
-    lines.append("| Module | Kover Line | PIT Line | Δ | Mutation | Strength |")
-    lines.append("|--------|------------|----------|---|----------|----------|")
+    lines.append("| Module | Full Line | PIT Line | Δ | Mutation | Strength |")
+    lines.append("|--------|-----------|----------|---|----------|----------|")
 
     for module in modules:
         kover = parse_kover_report(module_kover_report(root, module))

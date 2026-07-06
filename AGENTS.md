@@ -18,8 +18,24 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 - OpenAPI: `http://localhost:8080/api/openapi`; Scalar UI: `http://localhost:8080/api/scalar`; both plus `/api/actuator/health` are public (`permitAll`).
 - The frontend's `pnpm openapi` (Orval) reads `http://localhost:8080/api/openapi`, so the backend must be running to regenerate the API client.
 
+### Verification tiers
+
+| Tier | Command | Scope |
+|------|---------|--------|
+| **Quick** (local loop) | `./gradlew quickCheck` | Spotless + Detekt + **unit tests**; frontend ESLint only |
+| **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
+| **Extended** (Nightly CI) | `./gradlew extendedCheck` | Full + fuzz + mutation; also generates **unit-only** Kover XML |
+
+Backend test tasks: `unitTest` (excludes `@Tag("integration")` and `fuzz`), `integrationTest` (`@Tag("integration")` only), `test` (runs both). Integration tests need Docker.
+
+**Coverage (two metrics):**
+- **Full** — `build/reports/kover/report.xml` — unit + integration; gated at 90% on `check`.
+- **Unit** — `build/reports/kover/unit/report.xml` — unit tests only; report-only for now (soft target 70%+). Generate with `./gradlew koverUnitCoverage -Pkover.unitOnly`.
+
+Unit vs integration responsibilities and thresholds: [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
+
 ### Lint / test caveats
-- Run `./gradlew check` for the JVM build, static analysis, and tests, and `./gradlew :workbench-frontend:pnpmDev|pnpmCoverage|pnpmE2e` for the frontend.
+- Run `./gradlew quickCheck` during local iteration; `./gradlew check` before push; `./gradlew extendedCheck` matches Nightly.
 - **Diff coverage:** after `./gradlew check`, run `./gradlew :workbench-frontend:pnpmCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this on push/PR (not nightly) when `check` succeeds. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
 - Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
