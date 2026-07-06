@@ -192,9 +192,8 @@ class WorkItemAttachmentService(
   ): UUID? {
     if (command.purpose != AttachmentPurpose.COMMENT) return null
     val commentApiId =
-      requireNotNull(command.commentApiId) {
-        "commentApiId is required for comment attachments"
-      }
+      command.commentApiId
+        ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_COMMENT_REQUIRED)
     return attachments.resolveCommentId(command.tenantId, issueId, commentApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_COMMENT_NOT_FOUND)
   }

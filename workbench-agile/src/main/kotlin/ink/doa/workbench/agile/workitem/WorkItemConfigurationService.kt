@@ -29,6 +29,7 @@ import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
+import ink.doa.workbench.core.workitem.query.WorkItemTransitionConditionValidator
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import ink.doa.workbench.core.workitem.template.TransitionFieldsValidator
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
@@ -130,6 +131,7 @@ class WorkflowConfigurationService(
   private val clock: Clock,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
+  private val transitionConditionValidator = WorkItemTransitionConditionValidator()
 
   suspend fun createWorkflow(command: CreateWorkflowCommand): WorkflowRecord =
     repository.createWorkflow(command)
@@ -161,6 +163,8 @@ class WorkflowConfigurationService(
         permissionCondition = WorkItemConditionJson.canonicalize(command.permissionCondition),
         preconditionAst = WorkItemConditionJson.canonicalize(command.preconditionAst),
       )
+    transitionConditionValidator.validate(canonicalCommand.permissionCondition)
+    transitionConditionValidator.validate(canonicalCommand.preconditionAst)
     return repository.createTransition(canonicalCommand)
   }
 
@@ -223,11 +227,12 @@ class IssueTypeConfigService(
 
   suspend fun create(command: CreateIssueTypeConfigCommand): IssueTypeConfigDetails {
     validateScope(command.scope, command.projectId)
-    validateBindings(command)
-    validateCreateFields(command)
-    val created = configs.createConfig(command)
-    validateWorkflowTransitions(created)
-    return created
+    validateBindingShape(command)
+    val propertyRecords = resolveConfigProperties(command)
+    validateIssueTypeWorkflowStatusReferences(command)
+    validateCreateFields(command, propertyRecords)
+    validateWorkflowTransitionsForCreate(command)
+    return configs.createConfig(command)
   }
 
   suspend fun list(tenantId: UUID, projectId: UUID? = null): List<IssueTypeConfigDetails> =
@@ -242,11 +247,6 @@ class IssueTypeConfigService(
       ?: throw ResourceNotFoundException(
         WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
       )
-
-  private suspend fun validateBindings(command: CreateIssueTypeConfigCommand) {
-    validateBindingShape(command)
-    validateBindingReferences(command)
-  }
 
   private fun validateBindingShape(command: CreateIssueTypeConfigCommand) {
     requireValid(
@@ -263,7 +263,9 @@ class IssueTypeConfigService(
     )
   }
 
-  private suspend fun validateBindingReferences(command: CreateIssueTypeConfigCommand) {
+  private suspend fun validateIssueTypeWorkflowStatusReferences(
+    command: CreateIssueTypeConfigCommand
+  ) {
     requireFound(
       catalog.findIssueType(command.tenantId, command.issueTypeApiId, command.projectId) != null,
       WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
@@ -278,17 +280,56 @@ class IssueTypeConfigService(
         WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND,
       )
     }
-    command.properties.forEach {
-      requireFound(
-        catalog.findProperty(command.tenantId, it.propertyApiId) != null,
-        WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND,
+  }
+
+  private suspend fun resolveConfigProperties(
+    command: CreateIssueTypeConfigCommand
+  ): List<IssueTypeConfigPropertyRecord> {
+    val configId = UUID.randomUUID()
+    return command.properties.map { input ->
+      val record =
+        catalog.findProperty(command.tenantId, input.propertyApiId)
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND
+          )
+      IssueTypeConfigPropertyRecord(
+        id = UUID.randomUUID(),
+        tenantId = command.tenantId,
+        issueTypeConfigId = configId,
+        propertyId = record.id,
+        propertyApiId = record.apiId,
+        code = record.code,
+        name = record.name,
+        dataType = record.dataType,
+        validationOverride = input.validationOverride,
+        rank = input.rank,
+        displayConfig = input.displayConfig,
       )
     }
   }
 
-  private suspend fun validateWorkflowTransitions(details: IssueTypeConfigDetails) {
-    val statusIds = details.statuses.map { it.statusId }.toSet()
-    val transitions = workflows.listTransitions(details.config.tenantId, details.config.workflowId)
+  private suspend fun validateWorkflowTransitionsForCreate(command: CreateIssueTypeConfigCommand) {
+    val workflow =
+      workflows.findWorkflow(command.tenantId, command.workflowApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    val statusIds =
+      command.statuses
+        .map { input ->
+          catalog.findStatus(command.tenantId, input.statusApiId)?.id
+            ?: throw ResourceNotFoundException(
+              WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND
+            )
+        }
+        .toSet()
+    validateWorkflowTransitions(command.tenantId, workflow.id, statusIds)
+  }
+
+  private suspend fun validateWorkflowTransitions(
+    tenantId: UUID,
+    workflowId: UUID,
+    statusIds: Set<UUID>,
+  ) {
+    val transitions = workflows.listTransitions(tenantId, workflowId)
     val invalid = transitions.firstOrNull { transition ->
       transition.toStatusId !in statusIds ||
         (transition.fromStatusId != null && transition.fromStatusId !in statusIds)
@@ -301,29 +342,11 @@ class IssueTypeConfigService(
     }
   }
 
-  private suspend fun validateCreateFields(command: CreateIssueTypeConfigCommand) {
-    val configId = UUID.randomUUID()
-    val properties =
-      command.properties.map { input ->
-        val record =
-          catalog.findProperty(command.tenantId, input.propertyApiId)
-            ?: throw ResourceNotFoundException(
-              WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND
-            )
-        IssueTypeConfigPropertyRecord(
-          id = UUID.randomUUID(),
-          tenantId = command.tenantId,
-          issueTypeConfigId = configId,
-          propertyId = record.id,
-          propertyApiId = record.apiId,
-          code = record.code,
-          name = record.name,
-          dataType = record.dataType,
-          validationOverride = input.validationOverride,
-          rank = input.rank,
-          displayConfig = input.displayConfig,
-        )
-      }
+  private fun validateCreateFields(
+    command: CreateIssueTypeConfigCommand,
+    propertyRecords: List<IssueTypeConfigPropertyRecord>,
+  ) {
+    val configId = propertyRecords.firstOrNull()?.issueTypeConfigId ?: UUID.randomUUID()
     val template = createFieldsParser.parseCreateFields(command.createFields)
     TransitionFieldsValidator.validate(
       template,
@@ -353,7 +376,7 @@ class IssueTypeConfigService(
             createFields = command.createFields,
           ),
         statuses = emptyList(),
-        properties = properties,
+        properties = propertyRecords,
       ),
       expectedTarget = WorkItemValueTemplateTarget.CREATE,
     )

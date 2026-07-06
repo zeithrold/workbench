@@ -6,6 +6,7 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
@@ -73,6 +74,84 @@ class WorkItemCatalogServiceTest :
 
       service.listStatuses(tenantId).single().code shouldBe "todo"
       coVerify { repository.listStatuses(tenantId) }
+    }
+
+    "createStatus and deactivateStatus delegate to repository" {
+      val repository = mockk<WorkItemCatalogRepository>()
+      val status =
+        IssueStatusRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("sts"),
+          tenantId = tenantId,
+          code = "todo",
+          name = "To Do",
+          statusGroup = WorkItemStatusGroup.TODO,
+          rank = 10,
+          color = null,
+          isTerminal = false,
+          isActive = true,
+          createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+          updatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+        )
+      val command =
+        CreateIssueStatusCommand(
+          tenantId = tenantId,
+          code = "todo",
+          name = "To Do",
+          statusGroup = WorkItemStatusGroup.TODO,
+        )
+      coEvery { repository.createStatus(command) } returns status
+      coEvery { repository.deactivateStatus(tenantId, "todo", actorId) } returns
+        status.copy(isActive = false)
+      val service = WorkItemCatalogService(repository)
+
+      service.createStatus(command).code shouldBe "todo"
+      service.deactivateStatus(tenantId, "todo", actorId).isActive shouldBe false
+      coVerify { repository.createStatus(command) }
+      coVerify { repository.deactivateStatus(tenantId, "todo", actorId) }
+    }
+
+    "listIssueTypes delegates to repository" {
+      val repository = mockk<WorkItemCatalogRepository>()
+      val issueType =
+        IssueTypeRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("typ"),
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          code = "task",
+          name = "Task",
+          description = null,
+          icon = null,
+          color = null,
+          rank = 100,
+          isActive = true,
+          createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+          updatedAt = OffsetDateTime.now(ZoneOffset.UTC),
+        )
+      coEvery { repository.listIssueTypes(tenantId, null) } returns listOf(issueType)
+      val service = WorkItemCatalogService(repository)
+
+      service.listIssueTypes(tenantId).single().code shouldBe "task"
+      coVerify { repository.listIssueTypes(tenantId, null) }
+    }
+
+    "createIssueType rejects tenant scope with project id" {
+      val repository = mockk<WorkItemCatalogRepository>(relaxed = true)
+      val service = WorkItemCatalogService(repository)
+
+      shouldThrow<InvalidRequestException> {
+        service.createIssueType(
+          CreateIssueTypeCommand(
+            tenantId = tenantId,
+            scope = WorkItemConfigScope.TENANT,
+            projectId = UUID.randomUUID(),
+            code = "bug",
+            name = "Bug",
+          )
+        )
+      }
     }
 
     "deactivateIssueType delegates to repository" {

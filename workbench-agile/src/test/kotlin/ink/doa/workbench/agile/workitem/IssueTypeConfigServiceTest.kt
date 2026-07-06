@@ -15,7 +15,9 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeRecord
+import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import io.kotest.assertions.throwables.shouldThrow
@@ -191,8 +193,8 @@ class IssueTypeConfigServiceTest :
       coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
       coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
       coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+      coEvery { workflows.listTransitions(tenantId, workflow.id) } returns emptyList()
       coEvery { configs.createConfig(command) } returns created
-      coEvery { workflows.listTransitions(tenantId, created.config.workflowId) } returns emptyList()
 
       IssueTypeConfigService(configs, catalog, workflows).create(command) shouldBe created
       coVerify { configs.createConfig(command) }
@@ -323,32 +325,12 @@ class IssueTypeConfigServiceTest :
           createFields = createFields.jsonObject,
           statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
         )
-      val created =
-        sampleConfigDetails(tenantId)
-          .copy(
-            statuses =
-              listOf(
-                IssueTypeConfigStatusRecord(
-                  id = UUID.randomUUID(),
-                  tenantId = tenantId,
-                  issueTypeConfigId = UUID.randomUUID(),
-                  statusId = status.id,
-                  statusApiId = status.apiId,
-                  code = "todo",
-                  name = "To Do",
-                  statusGroup = WorkItemStatusGroup.TODO,
-                  isInitial = true,
-                  isTerminal = false,
-                  rank = 100,
-                )
-              )
-          )
       val invalidTransition =
         ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("trn"),
           tenantId = tenantId,
-          workflowId = created.config.workflowId,
+          workflowId = workflow.id,
           name = "Done",
           fromStatusId = status.id,
           fromStatusApiId = status.apiId,
@@ -366,13 +348,13 @@ class IssueTypeConfigServiceTest :
       coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
       coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
       coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
-      coEvery { configs.createConfig(command) } returns created
-      coEvery { workflows.listTransitions(tenantId, created.config.workflowId) } returns
-        listOf(invalidTransition)
+      coEvery { workflows.listTransitions(tenantId, workflow.id) } returns listOf(invalidTransition)
 
       shouldThrow<InvalidRequestException> {
         IssueTypeConfigService(configs, catalog, workflows).create(command)
       }
+
+      coVerify(exactly = 0) { configs.createConfig(any()) }
     }
 
     "rejects duplicate properties" {
@@ -506,6 +488,231 @@ class IssueTypeConfigServiceTest :
         IssueTypeConfigService(configs, catalog, workflows).create(command)
       }
     }
+
+    "list with projectId delegates to repository" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>(relaxed = true)
+      val workflows = mockk<WorkflowConfigurationRepository>(relaxed = true)
+      val details = sampleConfigDetails(tenantId)
+      coEvery { configs.listConfigs(tenantId, projectId) } returns listOf(details)
+      val service = IssueTypeConfigService(configs, catalog, workflows)
+
+      service.list(tenantId, projectId).single().config.apiId shouldBe details.config.apiId
+      coVerify { configs.listConfigs(tenantId, projectId) }
+    }
+
+    "create with properties validates createFields against property config" {
+      val tenantId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>()
+      val issueType = sampleIssueType(tenantId)
+      val workflow = sampleWorkflow(tenantId)
+      val status = sampleStatus(tenantId)
+      val property = sampleProperty(tenantId)
+      val createFieldsWithProperty =
+        Json.parseToJsonElement(
+          """
+          {
+            "version": 1,
+            "resource": "work_item",
+            "target": "create",
+            "fields": {
+              "title": { "participation": "required" },
+              "property.severity": { "participation": "optional" }
+            }
+          }
+          """
+            .trimIndent()
+        )
+      val command =
+        CreateIssueTypeConfigCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          issueTypeApiId = issueType.apiId.value,
+          workflowApiId = workflow.apiId.value,
+          createFields = createFieldsWithProperty.jsonObject,
+          statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
+          properties = listOf(IssueTypeConfigPropertyInput(property.apiId.value)),
+        )
+      val created = sampleConfigDetails(tenantId)
+
+      coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
+      coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+      coEvery { catalog.findProperty(tenantId, property.apiId.value) } returns property
+      coEvery { workflows.listTransitions(tenantId, workflow.id) } returns emptyList()
+      coEvery { configs.createConfig(command) } returns created
+
+      IssueTypeConfigService(configs, catalog, workflows).create(command) shouldBe created
+      coVerify(exactly = 1) { catalog.findProperty(tenantId, property.apiId.value) }
+    }
+
+    "rejects invalid createFields template" {
+      val tenantId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>()
+      val issueType = sampleIssueType(tenantId)
+      val workflow = sampleWorkflow(tenantId)
+      val status = sampleStatus(tenantId)
+      val invalidCreateFields =
+        Json.parseToJsonElement(
+          """
+          {
+            "version": 1,
+            "resource": "work_item",
+            "target": "transition",
+            "fields": {
+              "title": { "participation": "required" }
+            }
+          }
+          """
+            .trimIndent()
+        )
+      val command =
+        CreateIssueTypeConfigCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          issueTypeApiId = issueType.apiId.value,
+          workflowApiId = workflow.apiId.value,
+          createFields = invalidCreateFields.jsonObject,
+          statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
+        )
+
+      coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
+      coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+
+      shouldThrow<InvalidRequestException> {
+        IssueTypeConfigService(configs, catalog, workflows).create(command)
+      }
+
+      coVerify(exactly = 0) { configs.createConfig(any()) }
+    }
+
+    "rejects workflow transition with unavailable from status" {
+      val tenantId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>()
+      val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val issueType = sampleIssueType(tenantId)
+      val workflow = sampleWorkflow(tenantId)
+      val status = sampleStatus(tenantId)
+      val command =
+        CreateIssueTypeConfigCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          issueTypeApiId = issueType.apiId.value,
+          workflowApiId = workflow.apiId.value,
+          createFields = createFields.jsonObject,
+          statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
+        )
+      val invalidTransition =
+        ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("trn"),
+          tenantId = tenantId,
+          workflowId = workflow.id,
+          name = "Start",
+          fromStatusId = UUID.randomUUID(),
+          fromStatusApiId = PublicId.new("sts"),
+          toStatusId = status.id,
+          toStatusApiId = status.apiId,
+          rank = 100,
+          permissionCondition = JsonObject(emptyMap()),
+          preconditionAst = JsonObject(emptyMap()),
+          fields = createFields.jsonObject,
+          isActive = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
+      coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+      coEvery { workflows.listTransitions(tenantId, workflow.id) } returns listOf(invalidTransition)
+
+      shouldThrow<InvalidRequestException> {
+        IssueTypeConfigService(configs, catalog, workflows).create(command)
+      }
+
+      coVerify(exactly = 0) { configs.createConfig(any()) }
+    }
+
+    "create accepts global transition with null from status" {
+      val tenantId = UUID.randomUUID()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val workflows = mockk<WorkflowConfigurationRepository>()
+      val now = OffsetDateTime.now(ZoneOffset.UTC)
+      val issueType = sampleIssueType(tenantId)
+      val workflow = sampleWorkflow(tenantId)
+      val status = sampleStatus(tenantId)
+      val command =
+        CreateIssueTypeConfigCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          projectId = null,
+          issueTypeApiId = issueType.apiId.value,
+          workflowApiId = workflow.apiId.value,
+          createFields = createFields.jsonObject,
+          statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
+        )
+      val created =
+        sampleConfigDetails(tenantId)
+          .copy(
+            statuses =
+              listOf(
+                IssueTypeConfigStatusRecord(
+                  id = UUID.randomUUID(),
+                  tenantId = tenantId,
+                  issueTypeConfigId = UUID.randomUUID(),
+                  statusId = status.id,
+                  statusApiId = status.apiId,
+                  code = "todo",
+                  name = "To Do",
+                  statusGroup = WorkItemStatusGroup.TODO,
+                  isInitial = true,
+                  isTerminal = false,
+                  rank = 100,
+                )
+              )
+          )
+      val globalTransition =
+        ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("trn"),
+          tenantId = tenantId,
+          workflowId = workflow.id,
+          name = "Create",
+          fromStatusId = null,
+          fromStatusApiId = null,
+          toStatusId = status.id,
+          toStatusApiId = status.apiId,
+          rank = 100,
+          permissionCondition = JsonObject(emptyMap()),
+          preconditionAst = JsonObject(emptyMap()),
+          fields = createFields.jsonObject,
+          isActive = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      coEvery { catalog.findIssueType(tenantId, issueType.apiId.value, null) } returns issueType
+      coEvery { workflows.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, status.apiId.value) } returns status
+      coEvery { workflows.listTransitions(tenantId, workflow.id) } returns listOf(globalTransition)
+      coEvery { configs.createConfig(command) } returns created
+
+      IssueTypeConfigService(configs, catalog, workflows).create(command) shouldBe created
+    }
   })
 
 private fun sampleConfigDetails(tenantId: UUID): IssueTypeConfigDetails {
@@ -587,6 +794,26 @@ private fun sampleStatus(tenantId: UUID): IssueStatusRecord {
     rank = 1,
     color = null,
     isTerminal = false,
+    isActive = true,
+    createdAt = now,
+    updatedAt = now,
+  )
+}
+
+private fun sampleProperty(tenantId: UUID): PropertyDefinitionRecord {
+  val now = OffsetDateTime.now(ZoneOffset.UTC)
+  return PropertyDefinitionRecord(
+    id = UUID.randomUUID(),
+    apiId = PublicId.new("fld"),
+    tenantId = tenantId,
+    code = "severity",
+    name = "Severity",
+    description = null,
+    dataType = WorkItemPropertyDataType.TEXT,
+    isSystem = false,
+    isArray = false,
+    validationSchema = JsonObject(emptyMap()),
+    searchConfig = JsonObject(emptyMap()),
     isActive = true,
     createdAt = now,
     updatedAt = now,

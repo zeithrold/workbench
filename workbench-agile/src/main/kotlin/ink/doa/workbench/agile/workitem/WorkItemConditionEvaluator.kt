@@ -8,6 +8,7 @@ import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.QueryOperator
 import ink.doa.workbench.core.workitem.query.QueryValue
 import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
+import ink.doa.workbench.core.workitem.query.canonicalizeTransitionSystemField
 import java.util.UUID
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -65,23 +66,16 @@ private val predicateEvaluators: Map<QueryOperator, PredicateEvaluator> =
       },
   )
 
-private val fieldResolvers: Map<String, FieldResolver> =
+private val transitionFieldResolvers: Map<String, FieldResolver> =
   mapOf(
-    "actor" to { JsonPrimitive(it.actorUserId.toString()) },
-    "actorId" to { JsonPrimitive(it.actorUserId.toString()) },
-    "reporter" to { JsonPrimitive(it.workItem.reporterId.toString()) },
-    "reporterId" to { JsonPrimitive(it.workItem.reporterId.toString()) },
-    "assignee" to { it.workItem.assigneeId?.let { id -> JsonPrimitive(id.toString()) } },
-    "assigneeId" to { it.workItem.assigneeId?.let { id -> JsonPrimitive(id.toString()) } },
-    "status" to { JsonPrimitive(it.workItem.statusApiId.value) },
-    "statusId" to { JsonPrimitive(it.workItem.statusApiId.value) },
-    "statusGroup" to { JsonPrimitive(it.workItem.statusGroup.dbValue) },
-    "issueType" to { JsonPrimitive(it.workItem.issueTypeApiId.value) },
-    "issueTypeId" to { JsonPrimitive(it.workItem.issueTypeApiId.value) },
-    "issueTypeConfig" to { JsonPrimitive(it.workItem.issueTypeConfigApiId.value) },
-    "issueTypeConfigId" to { JsonPrimitive(it.workItem.issueTypeConfigApiId.value) },
-    "project" to { JsonPrimitive(it.workItem.projectId.toString()) },
-    "projectId" to { JsonPrimitive(it.workItem.projectId.toString()) },
+    "user.currentUser" to { JsonPrimitive(it.actorUserId.toString()) },
+    "issue.reporter" to { JsonPrimitive(it.workItem.reporterId.toString()) },
+    "issue.assignee" to { it.workItem.assigneeId?.let { id -> JsonPrimitive(id.toString()) } },
+    "issue.status" to { JsonPrimitive(it.workItem.statusApiId.value) },
+    "issue.statusGroup" to { JsonPrimitive(it.workItem.statusGroup.dbValue) },
+    "issue.issueType" to { JsonPrimitive(it.workItem.issueTypeApiId.value) },
+    "issue.issueTypeConfig" to { JsonPrimitive(it.workItem.issueTypeConfigApiId.value) },
+    "issue.project" to { JsonPrimitive(it.workItem.projectId.toString()) },
     "children.notDone" to { JsonPrimitive(it.childIssuesNotDone) },
   )
 
@@ -127,8 +121,8 @@ class WorkItemConditionEvaluator {
       return field.apiId?.let { context.properties[it] ?: context.workItem.properties[it] }
         ?: field.code?.let { context.properties[it] ?: context.workItem.properties[it] }
     }
-    val name = field.canonicalName.removePrefix("property.")
-    return fieldResolvers[name]?.invoke(context)
+    val name = canonicalizeTransitionSystemField(field.canonicalName.removePrefix("property."))
+    return transitionFieldResolvers[name]?.invoke(context)
       ?: context.properties[name]
       ?: context.workItem.properties[name]
   }

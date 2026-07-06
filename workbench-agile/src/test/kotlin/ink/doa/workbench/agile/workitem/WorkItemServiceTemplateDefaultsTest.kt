@@ -1,11 +1,11 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.agile.testfixtures.AgileServiceFactory
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
@@ -74,7 +74,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.create(capture(createCommand))
       } returns WorkItemMutationResult(created, "work_item.created")
 
-      workItemService(repository, configs, events, clock)
+      AgileServiceFactory.workItemService(repository, configs, events, clock)
         .create(
           CreateWorkItemCommand(
             tenantId = tenantId,
@@ -122,15 +122,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.transition(capture(command), any(), any(), any(), capture(propertyValues))
       } returns WorkItemMutationResult(issue, "work_item.transitioned")
 
-      workItemTransitionService(
-          WorkItemTransitionServiceFixtures(
-            repository = repository,
-            configs = configs,
-            workflows = workflows,
-            events = events,
-            clock = clock,
-          )
-        )
+      AgileServiceFactory.workItemTransitionService(repository, configs, workflows, events, clock)
         .transition(
           TransitionWorkItemCommand(
             tenantId = tenantId,
@@ -183,7 +175,7 @@ class WorkItemServiceTemplateDefaultsTest :
         repository.create(capture(createCommand))
       } returns WorkItemMutationResult(created, "work_item.created")
 
-      workItemService(repository, configs, events, clock, fieldPermissions)
+      AgileServiceFactory.workItemService(repository, configs, events, clock, fieldPermissions)
         .create(
           CreateWorkItemCommand(
             tenantId = tenantId,
@@ -228,7 +220,7 @@ class WorkItemServiceTemplateDefaultsTest :
         }
 
       shouldThrow<PermissionDeniedException> {
-          workItemService(repository, configs, events, clock, fieldPermissions)
+          AgileServiceFactory.workItemService(repository, configs, events, clock, fieldPermissions)
             .create(
               CreateWorkItemCommand(
                 tenantId = tenantId,
@@ -267,7 +259,8 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { repository.softDelete(command) } returns
         WorkItemMutationResult(issue, "work_item.updated")
 
-      val result = workItemService(repository, configs, events, clock).delete(command)
+      val result =
+        AgileServiceFactory.workItemService(repository, configs, events, clock).delete(command)
 
       result.workItem shouldBe issue
       coVerify(exactly = 1) { repository.softDelete(command) }
@@ -471,83 +464,3 @@ private fun workItem(
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
   )
-
-private fun workItemService(
-  repository: WorkItemRepository,
-  configs: IssueTypeConfigRepository,
-  events: DomainEventPublisher,
-  clock: Clock,
-  fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
-): WorkItemService {
-  val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
-  val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
-  coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
-  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>()
-  coEvery { descriptionAttachmentValidator.rejectCreateDescriptionReferences(any()) } returns Unit
-  coEvery {
-    descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
-  } returns Unit
-  return WorkItemService(
-    repository,
-    configs,
-    subtypeConstraints,
-    WorkItemMutationSupport(repository, configs, events),
-    mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
-    WorkItemFieldMutationSupport(
-      reconciler,
-      fieldPermissions,
-      descriptionAttachmentValidator,
-    ),
-  )
-}
-
-private data class WorkItemTransitionServiceFixtures(
-  val repository: WorkItemRepository,
-  val configs: IssueTypeConfigRepository,
-  val workflows: WorkflowConfigurationRepository,
-  val events: DomainEventPublisher,
-  val clock: Clock,
-  val fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
-)
-
-private fun workItemTransitionService(
-  fixtures: WorkItemTransitionServiceFixtures
-): WorkItemTransitionService {
-  val reconciler = WorkItemFieldMutationReconciler(fixtures.fieldPermissions, fixtures.clock)
-  val mutationSupport =
-    WorkItemMutationSupport(fixtures.repository, fixtures.configs, fixtures.events)
-  val activityEnqueueSupport = mockk<WorkItemActivityEnqueueSupport>(relaxed = true)
-  val transitionValidator = WorkItemTransitionValidator(fixtures.repository)
-  val transitionOptions =
-    WorkItemTransitionOptionBuilder(
-      mutationSupport,
-      reconciler,
-      fixtures.fieldPermissions,
-      transitionValidator,
-    )
-  val collaborators =
-    WorkItemTransitionCollaborators(
-      mutationSupport,
-      activityEnqueueSupport,
-      reconciler,
-      mockk(relaxed = true),
-      transitionValidator,
-      transitionOptions,
-    )
-  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
-  return WorkItemTransitionService(
-    fixtures.repository,
-    fixtures.workflows,
-    collaborators,
-    descriptionAttachmentValidator,
-  )
-}
-
-private fun mockFieldPermissions(): WorkItemFieldPermissionService {
-  val fieldPermissions = mockk<WorkItemFieldPermissionService>()
-  coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
-  coEvery { fieldPermissions.isFieldEditableInTransition(any(), any(), any()) } returns true
-  coEvery { fieldPermissions.isFieldEditable(any(), any(), any()) } returns true
-  coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
-  return fieldPermissions
-}

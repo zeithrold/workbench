@@ -1,6 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.storage.BlobObjectHead
 import ink.doa.workbench.core.storage.BlobStorage
@@ -282,19 +283,359 @@ class WorkItemAttachmentServiceTest :
       presigned.method shouldBe "GET"
       presigned.url shouldBe "https://example.test/get/${completed.storageKey}"
     }
+
+    "initiate upload rejects file exceeding max size" {
+      val service =
+        service(
+          mockk(relaxed = true),
+          mockk(relaxed = true),
+          maxFileSizeBytes = 10,
+        )
+      shouldThrow<InvalidRequestException> {
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "large.bin",
+            contentType = "application/octet-stream",
+            declaredByteSize = 11,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      }
+    }
+
+    "initiate upload allows null content type" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+
+      service.initiateUpload(
+        InitiateWorkItemAttachmentUploadCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          projectApiId = "prj_test",
+          workItemApiId = "iss_test",
+          uploadedBy = actorId,
+          filename = "notes.bin",
+          contentType = null,
+          declaredByteSize = 5,
+          purpose = AttachmentPurpose.STANDALONE,
+        )
+      )
+
+      blobStorage.lastContentType shouldBe null
+    }
+
+    "rejects upload when work item is not found" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      attachments.issueResolvable = false
+      val service = service(attachments, RecordingBlobStorage())
+
+      shouldThrow<ResourceNotFoundException> {
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_missing",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      }
+    }
+
+    "rejects comment attachment when comment is not found" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      attachments.commentId = null
+      val service = service(attachments, RecordingBlobStorage())
+
+      shouldThrow<ResourceNotFoundException> {
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.COMMENT,
+            commentApiId = "icm_missing",
+          )
+        )
+      }
+    }
+
+    "complete upload rejects expired pending upload" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      attachments.pendingCreatedAt = OffsetDateTime.now(ZoneOffset.UTC).minusHours(1)
+      val blobStorage = RecordingBlobStorage()
+      val service =
+        service(
+          attachments,
+          blobStorage,
+          presignUploadTtl = Duration.ofMinutes(15),
+        )
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+
+      shouldThrow<InvalidRequestException> {
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+      }
+    }
+
+    "complete upload rejects incomplete blob object" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+
+      shouldThrow<InvalidRequestException> {
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+      }
+    }
+
+    "complete upload rejects size mismatch and deletes blob" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      val storageKey = attachments.lastPending!!.storageKey
+      blobStorage.heads[storageKey] =
+        BlobObjectHead(contentType = "text/plain", contentLength = 9, etag = "\"abc123\"")
+
+      shouldThrow<InvalidRequestException> {
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+      }
+      blobStorage.deletedKeys.contains(storageKey) shouldBe true
+    }
+
+    "complete upload uses unknown checksum when etag is missing" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      blobStorage.heads[attachments.lastPending!!.storageKey] =
+        BlobObjectHead(contentType = "text/plain", contentLength = 5, etag = null)
+
+      val completed =
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+
+      completed.checksum shouldBe "unknown"
+    }
+
+    "get throws when attachment is not found" {
+      val service = service(FakeWorkItemAttachmentRepository(issueId), RecordingBlobStorage())
+
+      shouldThrow<ResourceNotFoundException> {
+        service.get(tenantId, projectId, "iss_test", "att_missing")
+      }
+    }
+
+    "presignedDownloadUrl throws when blob object is missing" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      blobStorage.heads[attachments.lastPending!!.storageKey] =
+        BlobObjectHead(contentType = "text/plain", contentLength = 5, etag = "\"abc123\"")
+      val completed =
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+      blobStorage.presignGetThrows += completed.storageKey
+
+      shouldThrow<ResourceNotFoundException> {
+        service.presignedDownloadUrl(
+          tenantId = tenantId,
+          projectId = projectId,
+          workItemApiId = "iss_test",
+          attachmentApiId = completed.apiId.value,
+        )
+      }
+    }
+
+    "contentRedirectUrl returns presigned download url" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val blobStorage = RecordingBlobStorage()
+      val service = service(attachments, blobStorage)
+      val session =
+        service.initiateUpload(
+          InitiateWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            projectApiId = "prj_test",
+            workItemApiId = "iss_test",
+            uploadedBy = actorId,
+            filename = "notes.txt",
+            contentType = "text/plain",
+            declaredByteSize = 5,
+            purpose = AttachmentPurpose.STANDALONE,
+          )
+        )
+      blobStorage.heads[attachments.lastPending!!.storageKey] =
+        BlobObjectHead(contentType = "text/plain", contentLength = 5, etag = "\"abc123\"")
+      val completed =
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = session.attachmentApiId,
+            uploadedBy = actorId,
+          )
+        )
+
+      service.contentRedirectUrl(
+        tenantId = tenantId,
+        projectId = projectId,
+        workItemApiId = "iss_test",
+        attachmentApiId = completed.apiId.value,
+      ) shouldBe "https://example.test/get/${completed.storageKey}"
+    }
+
+    "complete upload rejects missing pending attachment" {
+      val attachments = FakeWorkItemAttachmentRepository(issueId)
+      val service = service(attachments, RecordingBlobStorage())
+
+      shouldThrow<ResourceNotFoundException> {
+        service.completeUpload(
+          CompleteWorkItemAttachmentUploadCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = "iss_test",
+            attachmentApiId = "att_missing",
+            uploadedBy = actorId,
+          )
+        )
+      }
+    }
   })
 
 private fun service(
   attachments: WorkItemAttachmentRepository,
   blobStorage: BlobStorage,
+  maxFileSizeBytes: Long = 25L * 1024 * 1024,
+  presignUploadTtl: Duration = Duration.ofMinutes(15),
 ): WorkItemAttachmentService =
   WorkItemAttachmentService(
     attachments = attachments,
     blobStorage = blobStorage,
     storageLimits =
       StorageLimits(
-        maxFileSizeBytes = 25L * 1024 * 1024,
-        presignUploadTtl = Duration.ofMinutes(15),
+        maxFileSizeBytes = maxFileSizeBytes,
+        presignUploadTtl = presignUploadTtl,
       ),
   )
 
@@ -303,6 +644,8 @@ private class FakeWorkItemAttachmentRepository(private val issueId: UUID) :
   var lastPending: WorkItemAttachmentRecord? = null
   private var lastCompleted: WorkItemAttachmentRecord? = null
   var commentId: UUID? = null
+  var issueResolvable = true
+  var pendingCreatedAt: OffsetDateTime? = null
 
   override suspend fun listByWorkItem(
     query: ListWorkItemAttachmentsQuery
@@ -334,7 +677,7 @@ private class FakeWorkItemAttachmentRepository(private val issueId: UUID) :
         storageKey = command.storageKey,
         purpose = command.upload.purpose,
         uploadStatus = AttachmentUploadStatus.PENDING,
-        createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+        createdAt = pendingCreatedAt ?: OffsetDateTime.now(ZoneOffset.UTC),
       )
       .also { lastPending = it }
 
@@ -382,7 +725,7 @@ private class FakeWorkItemAttachmentRepository(private val issueId: UUID) :
     tenantId: UUID,
     projectId: UUID,
     workItemApiId: String,
-  ): UUID? = issueId
+  ): UUID? = issueId.takeIf { issueResolvable }
 
   override suspend fun resolveCommentId(
     tenantId: UUID,
@@ -397,6 +740,7 @@ private class RecordingBlobStorage : BlobStorage {
   var lastContentLength: Long? = null
   val heads = mutableMapOf<String, BlobObjectHead>()
   val deletedKeys = mutableSetOf<String>()
+  val presignGetThrows = mutableSetOf<String>()
 
   override suspend fun presignPut(
     key: String,
@@ -418,7 +762,7 @@ private class RecordingBlobStorage : BlobStorage {
   }
 
   override suspend fun presignGet(key: String): PresignedBlobRequest {
-    if (!heads.containsKey(key)) {
+    if (key in presignGetThrows || !heads.containsKey(key)) {
       throw BlobStorageObjectNotFoundException(key)
     }
     return PresignedBlobRequest(

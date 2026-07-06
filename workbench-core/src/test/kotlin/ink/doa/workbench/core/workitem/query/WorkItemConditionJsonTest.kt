@@ -115,8 +115,8 @@ class WorkItemConditionJsonTest :
         )
     }
 
-    "canonicalize round-trips canonical condition" {
-      val canonical =
+    "canonicalize rewrites system fields to namespaced wire names" {
+      val input =
         json
           .parseToJsonElement(
             """
@@ -131,8 +131,23 @@ class WorkItemConditionJsonTest :
               .trimIndent()
           )
           .jsonObject
+      val expected =
+        json
+          .parseToJsonElement(
+            """
+            {
+              "op": "and",
+              "args": [
+                { "field": "issue.statusGroup", "op": "in", "value": ["todo"] },
+                { "field": "issue.assignee", "op": "eq", "value": { "var": "user.currentUser" } }
+              ]
+            }
+            """
+              .trimIndent()
+          )
+          .jsonObject
 
-      WorkItemConditionJson.canonicalize(canonical) shouldBe canonical
+      WorkItemConditionJson.canonicalize(input) shouldBe expected
     }
 
     "canonicalize returns empty object when parse yields null" {

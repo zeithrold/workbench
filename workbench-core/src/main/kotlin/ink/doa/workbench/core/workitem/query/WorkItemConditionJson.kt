@@ -106,7 +106,7 @@ object WorkItemConditionJson {
       is ConditionNode.Predicate -> {
         val fields =
           linkedMapOf<String, JsonElement>(
-            "field" to JsonPrimitive(field.canonicalName),
+            "field" to JsonPrimitive(canonicalizeTransitionSystemField(field.canonicalName)),
             "op" to JsonPrimitive(op.wireName),
           )
         value?.let { fields["value"] = it.toJsonElement() }

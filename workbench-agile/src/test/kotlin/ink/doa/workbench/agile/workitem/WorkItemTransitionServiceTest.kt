@@ -1,19 +1,13 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.agile.testfixtures.AgileWorkItemFixtures
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
 import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -24,13 +18,8 @@ import io.mockk.coVerify
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.slot
-import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
 
 class WorkItemTransitionServiceTest :
   StringSpec({
@@ -58,8 +47,10 @@ class WorkItemTransitionServiceTest :
         transitionValidator,
         transitionOptions,
       )
-    val descriptionAttachmentValidator =
-      mockk<WorkItemDescriptionAttachmentValidator>(relaxed = true)
+    val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>()
+    coEvery {
+      descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
+    } returns Unit
     val service =
       WorkItemTransitionService(
         repository,
@@ -71,9 +62,9 @@ class WorkItemTransitionServiceTest :
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
       val actorId = UUID.randomUUID()
-      val config = sampleConfig(tenantId)
-      val issue = sampleIssue(tenantId, projectId, config, actorId)
-      val transition = sampleTransition(config)
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
+      val transition = AgileWorkItemFixtures.sampleTransition(config)
 
       coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
       coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
@@ -125,8 +116,8 @@ class WorkItemTransitionServiceTest :
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
       val actorId = UUID.randomUUID()
-      val config = sampleConfig(tenantId)
-      val issue = sampleIssue(tenantId, projectId, config, actorId)
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
 
       coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
       coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
@@ -153,11 +144,11 @@ class WorkItemTransitionServiceTest :
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
       val actorId = UUID.randomUUID()
-      val config = sampleConfig(tenantId)
-      val issue = sampleIssue(tenantId, projectId, config, actorId)
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
       val otherStatusId = UUID.randomUUID()
       val mismatchedTransition =
-        sampleTransition(config)
+        AgileWorkItemFixtures.sampleTransition(config)
           .copy(fromStatusId = otherStatusId, fromStatusApiId = PublicId.new("sts"))
 
       coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
@@ -180,9 +171,9 @@ class WorkItemTransitionServiceTest :
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
       val actorId = UUID.randomUUID()
-      val config = sampleConfig(tenantId)
-      val issue = sampleIssue(tenantId, projectId, config, actorId)
-      val transition = sampleTransition(config)
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
+      val transition = AgileWorkItemFixtures.sampleTransition(config)
       val mutationResult =
         ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
           issue,
@@ -233,9 +224,9 @@ class WorkItemTransitionServiceTest :
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
       val actorId = UUID.randomUUID()
-      val config = sampleConfig(tenantId)
-      val issue = sampleIssue(tenantId, projectId, config, actorId)
-      val transition = sampleTransition(config)
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
+      val transition = AgileWorkItemFixtures.sampleTransition(config)
       val activityId = UUID.randomUUID()
       val mutationResult =
         ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
@@ -287,129 +278,78 @@ class WorkItemTransitionServiceTest :
       commentSlot.captured.activityId shouldBe activityId
       commentSlot.captured.statusHistoryId shouldBe mutationResult.statusHistoryId
     }
-  })
 
-private fun permissiveCondition(): JsonObject =
-  JsonObject(
-    mapOf(
-      "field" to JsonPrimitive("statusGroup"),
-      "op" to JsonPrimitive("eq"),
-      "value" to JsonPrimitive("todo"),
-    )
-  )
+    "availableTransitions rejects unknown work item" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
 
-private fun sampleIssue(
-  tenantId: UUID,
-  projectId: UUID,
-  config: IssueTypeConfigDetails,
-  actorId: UUID,
-): WorkItemRecord {
-  val status = config.statuses.single()
-  return WorkItemRecord(
-    id = UUID.randomUUID(),
-    apiId = PublicId.new("iss"),
-    tenantId = tenantId,
-    projectId = projectId,
-    issueTypeApiId = config.config.issueTypeApiId,
-    issueTypeConfigApiId = config.config.apiId,
-    key = "CORE-1",
-    title = "Issue",
-    description = null,
-    statusId = status.statusId,
-    statusApiId = status.statusApiId,
-    statusGroup = WorkItemStatusGroup.TODO,
-    reporterId = actorId,
-    assigneeId = actorId,
-    priorityApiId = null,
-    reporterApiId = PublicId.new("usr"),
-    assigneeApiId = PublicId.new("usr"),
-    sprintApiId = null,
-    properties = JsonObject(emptyMap()),
-    createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-    updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-  )
-}
+      coEvery { repository.findByApiId(tenantId, projectId, "iss_missing") } returns null
 
-private fun sampleConfig(tenantId: UUID): IssueTypeConfigDetails {
-  val configId = UUID.randomUUID()
-  val statusId = UUID.randomUUID()
-  return IssueTypeConfigDetails(
-    config =
-      IssueTypeConfigRecord(
-        id = configId,
-        apiId = PublicId.new("itc"),
-        tenantId = tenantId,
-        scope = WorkItemConfigScope.TENANT,
-        projectId = null,
-        issueTypeId = UUID.randomUUID(),
-        issueTypeApiId = PublicId.new("typ"),
-        workflowId = UUID.randomUUID(),
-        workflowApiId = PublicId.new("wfl"),
-        version = 1,
-        nameOverride = null,
-        iconOverride = null,
-        colorOverride = null,
-        rank = 100,
-        isActive = true,
-        validFrom = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-        validTo = null,
-        createdBy = null,
-        createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-        createFields = JsonObject(emptyMap()),
-      ),
-    statuses =
-      listOf(
-        IssueTypeConfigStatusRecord(
-          id = UUID.randomUUID(),
-          tenantId = tenantId,
-          issueTypeConfigId = configId,
-          statusId = statusId,
-          statusApiId = PublicId.new("sts"),
-          code = "todo",
-          name = "Todo",
-          statusGroup = WorkItemStatusGroup.TODO,
-          isInitial = true,
-          isTerminal = false,
-          rank = 100,
-        )
-      ),
-    properties = emptyList(),
-  )
-}
-
-private fun sampleTransition(config: IssueTypeConfigDetails): WorkflowTransitionRecord {
-  val status = config.statuses.single()
-  return WorkflowTransitionRecord(
-    id = UUID.randomUUID(),
-    apiId = PublicId.new("trn"),
-    tenantId = config.config.tenantId,
-    workflowId = config.config.workflowId,
-    name = "Done",
-    fromStatusId = status.statusId,
-    fromStatusApiId = status.statusApiId,
-    toStatusId = status.statusId,
-    toStatusApiId = status.statusApiId,
-    rank = 100,
-    permissionCondition = permissiveCondition(),
-    preconditionAst = permissiveCondition(),
-    fields =
-      Json.parseToJsonElement(
-          """
-          {
-            "version": 1,
-            "resource": "work_item",
-            "target": "transition",
-            "fields": {
-              "title": { "participation": "optional" }
-            }
+      shouldThrow<ResourceNotFoundException> {
+          runBlocking {
+            service.availableTransitions(tenantId, projectId, "iss_missing", UUID.randomUUID())
           }
-          """
-            .trimIndent()
+        }
+        .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
+    }
+
+    "transition validates description attachment references" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val config = AgileWorkItemFixtures.sampleConfig(tenantId)
+      val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
+      val transition = AgileWorkItemFixtures.sampleTransition(config)
+      val mutationResult =
+        ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
+          issue,
+          "work_item.transitioned",
         )
-        .jsonObject,
-    isActive = true,
-    createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-    updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-  )
-}
+
+      coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value) } returns
+        config
+      coEvery { workflows.findTransition(tenantId, transition.apiId.value) } returns transition
+      coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, issue.id, setOf("done"))
+      } returns 0
+      coEvery { mutationSupport.templateContext(any()) } returns mockk(relaxed = true)
+      coEvery { fieldMutationReconciler.buildFieldMeta(any(), any(), any(), any()) } returns
+        emptyList()
+      coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
+      coEvery {
+        fieldMutationReconciler.reconcileFields(any())
+      } returns
+        TransitionFieldReconcileResult(propertyValues = emptyMap(), systemFields = emptyMap())
+      coEvery {
+        fieldMutationReconciler.reconcileTransitionComment(any(), any(), any())
+      } returns null
+      coEvery {
+        repository.transition(any(), any(), any(), any(), any())
+      } returns mutationResult
+      justRun { mutationSupport.publishAndEnqueue(any(), any()) }
+
+      runBlocking {
+        service.transition(
+          TransitionWorkItemCommand(
+            tenantId = tenantId,
+            projectId = projectId,
+            workItemApiId = issue.apiId.value,
+            transitionApiId = transition.apiId.value,
+            actorUserId = actorId,
+          )
+        )
+      }
+
+      coVerify {
+        descriptionAttachmentValidator.validateReferences(
+          tenantId,
+          projectId,
+          issue.apiId.value,
+          issue.id,
+          null,
+        )
+      }
+    }
+  })
