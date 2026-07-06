@@ -1,4 +1,4 @@
-package ink.doa.workbench.web.api
+package ink.doa.workbench.data.config
 
 import java.time.Clock
 import org.springframework.context.annotation.Bean

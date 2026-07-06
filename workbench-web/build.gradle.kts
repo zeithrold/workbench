@@ -39,6 +39,7 @@ dependencies {
 }
 
 sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))
+sourceSets.main.get().resources.srcDir(rootProject.file("config/application"))
 
 sourceSets.test.get().resources.srcDir(rootProject.file("config/integration-test"))
 
