@@ -88,9 +88,11 @@ Field renames in OpenAPI are breaking — coordinate backend and frontend in one
 | Tag / profile | Use |
 |---------------|-----|
 | (none) | Unit tests — no Spring context |
-| `@Tag("integration")` | Testcontainers, `spring.profiles.active=integration` |
-| `@Tag("fuzz")` | Property-based tests; excluded from `check` |
+| `@Tags("integration")` (Kotest) or `@Tag("integration")` (JUnit `@Test`) | Testcontainers, `spring.profiles.active=integration` |
+| `@Tags("fuzz")` (Kotest) or `@Tag("fuzz")` (JUnit `@Test`) | Property-based tests; excluded from `check` |
 | Docker required | Integration tests and `check` on JVM modules |
+
+Gradle maps tags to tasks: JUnit via `includeTags` / `excludeTags`; Kotest via `kotest.tags` (`!integration & !fuzz` on `unitTest`, `integration` on `integrationTest`, `fuzz` on `fuzzVerification`).
 
 **Stacks:** Kotest + MockK + JUnit 5. Integration fixtures in `workbench-service` testFixtures and `config/integration-test/`.
 

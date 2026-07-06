@@ -12,15 +12,15 @@ import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemCommentRepository
 import ink.doa.workbench.data.support.workItemRepository
 import ink.doa.workbench.data.support.workItemTimelineRepository
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedWorkItemTimelineRepositoryIntegrationTest :
   StringSpec({
     "lists merged timeline entries with cursor pagination and excludes comment activity duplicates" {

@@ -39,6 +39,7 @@ import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.tenant.TenantService
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -50,10 +51,9 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.junit.jupiter.api.Tag
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
-@Tag("integration")
+@Tags("integration")
 class TenantCreateWithAdminIntegrationTest :
   StringSpec({
     val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()

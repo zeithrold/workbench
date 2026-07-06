@@ -9,15 +9,15 @@ import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogReposito
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class WorkItemPropertyPersistenceIntegrationTest :
   StringSpec({
     "property persistence round-trips boolean datetime and json values" {

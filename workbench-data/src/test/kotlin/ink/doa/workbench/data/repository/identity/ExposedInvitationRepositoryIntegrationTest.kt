@@ -5,15 +5,15 @@ import ink.doa.workbench.core.identity.model.InvitationType
 import ink.doa.workbench.data.support.seedTenant
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedInvitationRepositoryIntegrationTest :
   StringSpec({
     "create find consume and cancel pending invitations" {

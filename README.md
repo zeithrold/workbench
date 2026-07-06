@@ -70,7 +70,7 @@ uv run --directory scripts/ci check-diff-coverage
 
 Thresholds: backend changed lines ≥ 90%, frontend changed lines ≥ 70%. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md) for details.
 
-Unit tests must not start Spring. Integration tests may use Testcontainers.
+Unit tests must not start Spring. Integration tests may use Testcontainers. Tag Kotest specs with `@Tags("integration")`; tag JUnit `@Test` classes with `@Tag("integration")`.
 
 ## Architecture Notes
 

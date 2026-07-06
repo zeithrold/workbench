@@ -8,14 +8,14 @@ import ink.doa.workbench.core.identity.model.UpdateTenantCommand
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedTenantRepositoryIntegrationTest :
   StringSpec({
     "create update and find tenant by slug" {

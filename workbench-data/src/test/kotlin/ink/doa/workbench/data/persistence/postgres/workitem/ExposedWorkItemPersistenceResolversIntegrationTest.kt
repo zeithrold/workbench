@@ -14,6 +14,7 @@ import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -24,9 +25,8 @@ import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedWorkItemPersistenceResolversIntegrationTest :
   StringSpec({
     "resolve helpers map public ids to database ids" {

@@ -7,9 +7,6 @@ spring:
   mvc:
     problemdetails:
       enabled: true
-  flyway:
-    enabled: true
-    locations: classpath:db/migration,classpath:ink/doa/workbench/data/migration
   docker:
     compose:
       enabled: false
@@ -55,12 +52,6 @@ workbench:
   tracing:
     echo-traceparent:
       enabled: true
-  instance:
-    setup-token: ${WORKBENCH_SETUP_TOKEN:}
-    id: ${WORKBENCH_INSTANCE_ID:}
-    name: ${WORKBENCH_INSTANCE_NAME:}
-  invitation-link:
-    public-base-url: ${WORKBENCH_INVITATION_LINK_PUBLIC_BASE_URL:}
 logging:
   structured:
     format:

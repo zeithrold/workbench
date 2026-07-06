@@ -282,7 +282,10 @@ configure(backendProjects) {
         val hasFuzzTests =
             fileTree("src/test/kotlin") {
                 include("**/*.kt")
-            }.any { it.readText().contains("@Tag(\"fuzz\")") }
+            }.any {
+                val source = it.readText()
+                source.contains("@Tags(\"fuzz\")") || source.contains("@Tag(\"fuzz\")")
+            }
 
         if (hasFuzzTests) {
             tasks.register<Test>("fuzzVerification") {
@@ -295,6 +298,7 @@ configure(backendProjects) {
                 useJUnitPlatform {
                     includeTags("fuzz")
                 }
+                systemProperty("kotest.tags", "fuzz")
             }
         } else {
             tasks.register("fuzzVerification") {
@@ -394,18 +398,20 @@ fun org.gradle.api.Project.configureUnitAndIntegrationTests() {
     val unitTest =
         tasks.register<Test>("unitTest") {
             group = "verification"
-            description = "Runs unit tests (excludes @Tag integration and fuzz)."
+            description = "Runs unit tests (excludes integration and fuzz tags)."
             testClassesDirs = testTask.testClassesDirs
             classpath = testTask.classpath
             failOnNoDiscoveredTests = false
             useJUnitPlatform {
                 excludeTags("fuzz", "integration")
             }
+            // Kotest specs use @Tags / tags(); JUnit @Tag is not propagated to this filter.
+            systemProperty("kotest.tags", "!integration & !fuzz")
         }
 
     tasks.register<Test>("integrationTest") {
         group = "verification"
-        description = "Runs @Tag integration tests."
+        description = "Runs integration-tagged tests."
         testClassesDirs = testTask.testClassesDirs
         classpath = testTask.classpath
         failOnNoDiscoveredTests = false
@@ -413,6 +419,7 @@ fun org.gradle.api.Project.configureUnitAndIntegrationTests() {
         useJUnitPlatform {
             includeTags("integration")
         }
+        systemProperty("kotest.tags", "integration")
     }
 
     testTaskProvider.configure {

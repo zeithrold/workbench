@@ -13,5 +13,7 @@ import org.springframework.scheduling.annotation.EnableAsync
 class WorkbenchApplication
 
 fun main(args: Array<String>) {
-  runApplication<WorkbenchApplication>(args = args)
+  runApplication<WorkbenchApplication>(args = args) {
+    setAdditionalProfiles("web")
+  }
 }

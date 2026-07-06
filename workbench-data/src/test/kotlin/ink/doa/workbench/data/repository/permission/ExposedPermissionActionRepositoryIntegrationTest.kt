@@ -3,13 +3,13 @@ package ink.doa.workbench.data.repository.permission
 import ink.doa.workbench.core.permission.CreatePermissionActionCommand
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.data.support.withPostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedPermissionActionRepositoryIntegrationTest :
   StringSpec({
     "upsert inserts new action and returns existing on duplicate" {

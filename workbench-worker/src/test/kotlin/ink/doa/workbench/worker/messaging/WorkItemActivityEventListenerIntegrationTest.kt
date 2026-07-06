@@ -20,6 +20,7 @@ import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
 import ink.doa.workbench.service.messaging.support.KafkaTestSupport
 import ink.doa.workbench.service.messaging.support.MessagingIntegrationFixtures
 import ink.doa.workbench.worker.workitem.WorkItemActivityRecordRequestedHandler
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.Clock
@@ -31,13 +32,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.junit.jupiter.api.Tag
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.kafka.listener.ContainerProperties
 import org.springframework.kafka.listener.MessageListener
 
-@Tag("integration")
+@Tags("integration")
 class WorkItemActivityEventListenerIntegrationTest :
   StringSpec({
     val bootstrapServers = MessagingIntegrationFixtures.bootstrapServers()

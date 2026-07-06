@@ -38,6 +38,7 @@ import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependen
 import ink.doa.workbench.tenant.instance.InstanceProperties
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldNotBeBlank
@@ -46,10 +47,9 @@ import java.time.Instant
 import java.time.ZoneOffset
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.junit.jupiter.api.Tag
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 
-@Tag("integration")
+@Tags("integration")
 class InstanceSetupApplicationServiceIntegrationTest :
   StringSpec({
     val postgresLease: PostgresTestDatabaseLease = AuthIntegrationFixtures.openSpecDatabase()

@@ -14,13 +14,13 @@ import ink.doa.workbench.data.repository.permission.ExposedPermissionPolicyRepos
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedProjectDestructionRepositoryIntegrationTest :
   StringSpec({
     "expireBindingsByProject and softDeleteProjectScopedData mark project data deleted" {

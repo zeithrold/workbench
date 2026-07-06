@@ -13,13 +13,13 @@ import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer
 import ink.doa.workbench.security.identity.auth.support.LdapAuthFixture
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class LdapAuthIntegrationTest :
   StringSpec({
     val ldap: InMemoryLdapTestServer = InMemoryLdapTestServer.start()

@@ -7,13 +7,13 @@ import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
 import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedWorkItemViewRepositoryIntegrationTest :
   StringSpec({
     "creates updates lists and deletes project and tenant views" {

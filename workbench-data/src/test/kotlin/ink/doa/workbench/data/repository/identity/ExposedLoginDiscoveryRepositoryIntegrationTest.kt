@@ -8,14 +8,14 @@ import ink.doa.workbench.core.identity.model.LinkUserLoginAccountCommand
 import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.data.support.seedTenant
 import ink.doa.workbench.data.support.withPostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedLoginDiscoveryRepositoryIntegrationTest :
   StringSpec({
     "listLoginOptionsForIdentifier returns tenant password option for member" {

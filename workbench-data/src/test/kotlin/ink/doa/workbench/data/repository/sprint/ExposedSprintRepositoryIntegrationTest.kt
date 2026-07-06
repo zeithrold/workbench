@@ -9,14 +9,14 @@ import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedSprintRepositoryIntegrationTest :
   StringSpec({
     "creates lists updates starts closes archives and deletes sprints" {

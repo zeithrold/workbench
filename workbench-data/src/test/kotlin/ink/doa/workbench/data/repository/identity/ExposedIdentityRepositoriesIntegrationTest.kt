@@ -19,6 +19,7 @@ import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import ink.doa.workbench.data.persistence.postgres.identity.LoginAccountsTable
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -35,9 +36,8 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-import org.junit.jupiter.api.Tag
 
-@Tag("integration")
+@Tags("integration")
 class ExposedIdentityRepositoriesIntegrationTest :
   StringSpec({
     "login account binding can resolve a user and stops resolving after unlink or disable" {

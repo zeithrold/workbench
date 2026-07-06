@@ -1,13 +1,13 @@
 package ink.doa.workbench.core.common.ids
 
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldNotBe
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.stringPattern
 import io.kotest.property.checkAll
-import org.junit.jupiter.api.Tag
 
-@Tag("fuzz")
+@Tags("fuzz")
 class PublicIdFuzzTest :
   StringSpec({
     "invalid generated-like strings are rejected" {

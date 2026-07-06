@@ -1,6 +1,7 @@
 package ink.doa.workbench.data.storage.blob
 
 import ink.doa.workbench.data.storage.config.StorageProperties
+import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.net.URI
@@ -8,11 +9,10 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.Tag
 import org.springframework.util.unit.DataSize
 import org.testcontainers.containers.MinIOContainer
 
-@Tag("integration")
+@Tags("integration")
 class S3BlobStorageIntegrationTest :
   StringSpec({
     "presign put head get and delete objects in minio" {
