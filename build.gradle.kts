@@ -70,8 +70,11 @@ val koverExcludedClasses =
       "*.data.persistence.*Configuration",
   )
 
-// Kover baseline: all backend modules target 90% line coverage minimum.
+// Kover baseline: all backend modules target 90% line coverage minimum (full test suite).
 fun moduleLineCoverageFloor(moduleName: String): Int = 90
+
+// Unit-test-only coverage is reported separately; soft target documented in AGENTS.md (70%+).
+fun moduleUnitLineCoverageFloor(moduleName: String): Int = 70
 
 dependencies {
     backendProjects.forEach { kover(it) }
@@ -100,11 +103,48 @@ extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kov
     }
 }
 
+tasks.register("quickCheck") {
+    group = "verification"
+    description = "Fast local verification: Spotless, Detekt, and unit tests (no integration tests or coverage)."
+    dependsOn(
+        backendProjects.map { "${it.path}:quickCheck" },
+        ":workbench-test-support:quickCheck",
+        ":workbench-frontend:quickCheck",
+    )
+}
+
 tasks.register("check") {
     group = "verification"
-    description = "Runs all checks."
+    description = "Full verification: static analysis, unit and integration tests, and coverage gates."
     dependsOn(subprojects.map { it.tasks.named("check") })
     dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
+}
+
+tasks.register("koverXmlReportUnit") {
+    group = "verification"
+    description =
+        "Copies the aggregated Kover XML into build/reports/kover/unit/report.xml. " +
+            "Requires -Pkover.unitOnly (see koverUnitCoverage)."
+    dependsOn(tasks.named("koverXmlReport"))
+    onlyIf("kover.unitOnly property must be set") {
+        providers.gradleProperty("kover.unitOnly").isPresent
+    }
+    doLast {
+        val report = layout.buildDirectory.file("reports/kover/report.xml").get().asFile
+        val unitDir = layout.buildDirectory.dir("reports/kover/unit").get().asFile
+        unitDir.mkdirs()
+        report.copyTo(unitDir.resolve("report.xml"), overwrite = true)
+    }
+}
+
+tasks.register("koverUnitCoverage") {
+    group = "verification"
+    description =
+        "Runs backend unit tests and writes unit-only Kover XML. Invoke with: " +
+            "./gradlew koverUnitCoverage -Pkover.unitOnly"
+    dependsOn(backendProjects.map { "${it.path}:unitTest" })
+    dependsOn(tasks.named("koverXmlReport"))
+    finalizedBy(tasks.named("koverXmlReportUnit"))
 }
 
 tasks.named("koverHtmlReport") {
@@ -166,6 +206,14 @@ configure(backendProjects) {
             dependsOn(tasks.named("detektMain"), tasks.named("detektTest"))
         }
 
+        configureUnitAndIntegrationTests()
+
+        tasks.register("quickCheck") {
+            group = "verification"
+            description = "Spotless, Detekt, and unit tests for this module."
+            dependsOn("spotlessCheck", "detektMain", "detektTest", "unitTest")
+        }
+
         tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
             if (
                 name == "detektTest" ||
@@ -182,6 +230,14 @@ configure(backendProjects) {
     }
 
     extensions.configure<kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension>("kover") {
+        currentProject {
+            instrumentation {
+                disabledForTestTasks.add("fuzzVerification")
+                if (providers.gradleProperty("kover.unitOnly").isPresent) {
+                    disabledForTestTasks.add("integrationTest")
+                }
+            }
+        }
         reports {
             total {
                 html {
@@ -220,12 +276,6 @@ configure(backendProjects) {
 
     tasks.withType<Test>().matching { it.name != "fuzzVerification" }.configureEach {
         useJUnitPlatform()
-    }
-
-    tasks.named<Test>("test") {
-        useJUnitPlatform {
-            excludeTags("fuzz")
-        }
     }
 
     afterEvaluate {
@@ -329,4 +379,56 @@ tasks.register("mutationTest") {
     description = "Runs PIT mutation testing across backend modules"
     dependsOn(pitestTaskPaths)
     dependsOn("pitestReportAggregate")
+}
+
+tasks.register("extendedCheck") {
+    group = "verification"
+    description = "Extended verification: full check plus fuzz and mutation tests"
+    dependsOn("check", "fuzzTest", "mutationTest")
+}
+
+fun org.gradle.api.Project.configureUnitAndIntegrationTests() {
+    val testTaskProvider = tasks.named<Test>("test")
+    val testTask = testTaskProvider.get()
+
+    val unitTest =
+        tasks.register<Test>("unitTest") {
+            group = "verification"
+            description = "Runs unit tests (excludes @Tag integration and fuzz)."
+            testClassesDirs = testTask.testClassesDirs
+            classpath = testTask.classpath
+            failOnNoDiscoveredTests = false
+            useJUnitPlatform {
+                excludeTags("fuzz", "integration")
+            }
+        }
+
+    tasks.register<Test>("integrationTest") {
+        group = "verification"
+        description = "Runs @Tag integration tests."
+        testClassesDirs = testTask.testClassesDirs
+        classpath = testTask.classpath
+        failOnNoDiscoveredTests = false
+        mustRunAfter(unitTest)
+        useJUnitPlatform {
+            includeTags("integration")
+        }
+    }
+
+    testTaskProvider.configure {
+        description = "Runs unit and integration tests."
+        dependsOn(unitTest, tasks.named("integrationTest"))
+        enabled = false
+    }
+}
+
+project(":workbench-test-support") {
+    afterEvaluate {
+        configureUnitAndIntegrationTests()
+        tasks.register("quickCheck") {
+            group = "verification"
+            description = "Unit tests for workbench-test-support."
+            dependsOn("unitTest")
+        }
+    }
 }
