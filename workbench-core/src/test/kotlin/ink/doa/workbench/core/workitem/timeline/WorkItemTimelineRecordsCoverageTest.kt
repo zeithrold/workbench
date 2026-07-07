@@ -1,15 +1,14 @@
 package ink.doa.workbench.core.workitem.timeline
 
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.pagination.WorkbenchCursor
-import ink.doa.workbench.core.common.pagination.WorkbenchTimelineEntryKind
+import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCommentRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecord
-import ink.doa.workbench.core.workitem.activity.WorkItemActivitySourceType
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityType
 import ink.doa.workbench.core.workitem.activity.WorkItemCommentCreatedPayload
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.core.workitem.stream.WorkItemEventType
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -27,12 +26,7 @@ class WorkItemTimelineRecordsCoverageTest :
     val authorId = UUID.randomUUID()
 
     "list timeline query carries cursor and limit" {
-      val cursor =
-        WorkbenchCursor(
-          occurredAt = now,
-          entryKind = WorkbenchTimelineEntryKind.ACTIVITY,
-          entryId = UUID.randomUUID(),
-        )
+      val cursor = WorkItemStreamCursor(sequence = 42)
 
       ListWorkItemTimelineQuery(
           tenantId = tenantId,
@@ -44,28 +38,29 @@ class WorkItemTimelineRecordsCoverageTest :
         .cursor shouldBe cursor
     }
 
-    "timeline page stores mixed activity and comment entries" {
-      val activityRecord =
-        WorkItemActivityRecord(
+    "timeline page stores mixed event and comment entries" {
+      val eventRecord =
+        WorkItemEventRecord(
           id = UUID.randomUUID(),
-          apiId = PublicId.new("act"),
+          apiId = PublicId.new("evt"),
           tenantId = tenantId,
           projectId = projectId,
           workItemId = workItemId,
           workItemApiId = PublicId.new("iss"),
+          sequence = 2,
+          eventType = WorkItemEventType.COMMENT_ADDED,
           actorUserId = authorId,
           actorApiId = PublicId.new("usr"),
           actorDisplayName = "Alice",
-          activityType = WorkItemActivityType.COMMENT_CREATED,
           occurredAt = now,
           summary = "Commented",
           payload =
-            WorkItemActivityPayload.CommentCreated(
+            WorkItemActivityPayload.CommentAdded(
               WorkItemCommentCreatedPayload(
                 comment = WorkItemActivityCommentRef("cmt_test", "Looks good")
               )
             ),
-          sourceType = WorkItemActivitySourceType.USER,
+          sourceType = WorkItemEventSourceType.USER,
           createdAt = now,
         )
       val commentRecord =
@@ -81,7 +76,6 @@ class WorkItemTimelineRecordsCoverageTest :
           bodyFormat = "html",
           transitionId = null,
           statusHistoryId = null,
-          activityId = activityRecord.id,
           editedAt = null,
           createdAt = now,
           updatedAt = now,
@@ -91,8 +85,8 @@ class WorkItemTimelineRecordsCoverageTest :
         WorkItemTimelinePage(
           items =
             listOf(
-              WorkItemTimelineEntry.Activity(activityRecord),
-              WorkItemTimelineEntry.Comment(commentRecord),
+              WorkItemTimelineEntry.Event(eventRecord),
+              WorkItemTimelineEntry.Comment(event = eventRecord, comment = commentRecord),
             ),
           nextCursor = null,
         )

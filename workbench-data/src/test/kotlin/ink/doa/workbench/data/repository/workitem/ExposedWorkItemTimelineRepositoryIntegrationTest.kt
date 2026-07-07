@@ -2,9 +2,9 @@ package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityType
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.core.workitem.stream.WorkItemEventType
 import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
 import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
 import ink.doa.workbench.data.support.seedWorkItemStack
@@ -23,17 +23,12 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 @Tags("integration")
 class ExposedWorkItemTimelineRepositoryIntegrationTest :
   StringSpec({
-    "lists merged timeline entries with cursor pagination and excludes comment activity duplicates" {
+    "lists merged timeline entries with cursor pagination and excludes comment event duplicates" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)
         val workItems = workItemRepository(database)
         val comments = workItemCommentRepository(database)
         val timeline = workItemTimelineRepository(database)
-        val activities =
-          ExposedWorkItemActivityRepository(
-            database,
-            ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec(),
-          )
 
         val created =
           workItems.create(
@@ -54,22 +49,19 @@ class ExposedWorkItemTimelineRepositoryIntegrationTest :
               propertyValues = emptyList(),
             )
           )
-        created.pendingActivity?.let { activities.createWithId(it) }
         val workItemApiId = created.workItem.apiId.value
 
-        val commentResult =
-          comments.create(
-            CreateWorkItemCommentCommand(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              workItemApiId = workItemApiId,
-              authorId = stack.actorId,
-              body = "<p>Ship it</p>",
-              bodyPlainText = "Ship it",
-            ),
-            created.workItem.id,
-          )
-        commentResult.pendingActivity?.let { activities.createWithId(it) }
+        comments.create(
+          CreateWorkItemCommentCommand(
+            tenantId = stack.tenantId,
+            projectId = stack.projectId,
+            workItemApiId = workItemApiId,
+            authorId = stack.actorId,
+            body = "<p>Ship it</p>",
+            bodyPlainText = "Ship it",
+          ),
+          created.workItem.id,
+        )
 
         val firstPage =
           timeline.listByWorkItem(
@@ -95,10 +87,10 @@ class ExposedWorkItemTimelineRepositoryIntegrationTest :
             )
           )
         secondPage.items shouldHaveSize 1
-        val activityEntry = secondPage.items.single()
-        activityEntry.shouldBeInstanceOf<WorkItemTimelineEntry.Activity>()
-        activityEntry.record.activityType shouldBe WorkItemActivityType.CREATED
-        activityEntry.record.payload.shouldBeInstanceOf<WorkItemActivityPayload.Created>()
+        val eventEntry = secondPage.items.single()
+        eventEntry.shouldBeInstanceOf<WorkItemTimelineEntry.Event>()
+        eventEntry.record.eventType shouldBe WorkItemEventType.CREATED
+        eventEntry.record.payload.shouldBeInstanceOf<WorkItemActivityPayload.Created>()
         secondPage.nextCursor.shouldBeNull()
       }
     }
@@ -163,7 +155,7 @@ class ExposedWorkItemTimelineRepositoryIntegrationTest :
             )
           )
         page.items.none { entry ->
-          entry is WorkItemTimelineEntry.Comment && entry.record.apiId == comment.record.apiId
+          entry is WorkItemTimelineEntry.Comment && entry.comment.apiId == comment.record.apiId
         } shouldBe true
       }
     }

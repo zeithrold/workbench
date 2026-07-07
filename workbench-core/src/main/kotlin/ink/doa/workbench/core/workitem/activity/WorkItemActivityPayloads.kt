@@ -48,3 +48,11 @@ data class WorkItemActivityCommentRef(
 )
 
 @Serializable data class WorkItemCommentCreatedPayload(val comment: WorkItemActivityCommentRef)
+
+@Serializable data class WorkItemCommentEditedPayload(val comment: WorkItemActivityCommentRef)
+
+@Serializable
+data class WorkItemCommentDeletedPayload(
+  val comment: WorkItemActivityCommentRef,
+  val deleteReason: String? = null,
+)
