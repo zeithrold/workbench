@@ -1,5 +1,6 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.agile.testfixtures.AgileServiceFactory
 import ink.doa.workbench.agile.testfixtures.AgileWorkItemFixtures
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
@@ -23,9 +24,11 @@ class WorkItemTransitionOptionBuilderTest :
         descriptionAttachments = mockk(relaxed = true),
         transitionFieldsParser = TransitionFieldsParser(),
       )
+    val accessPolicy = AgileServiceFactory.mockAccessPolicy()
     val evaluator =
       WorkItemTransitionEvaluator(
-        WorkItemTransitionValidator(mockk(relaxed = true)),
+        WorkItemTransitionValidator(mockk(relaxed = true), accessPolicy),
+        accessPolicy,
         TransitionFieldsParser(),
       )
     val builder = WorkItemTransitionOptionBuilder(fieldPipeline)
@@ -79,6 +82,18 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
   val actorUserId = UUID.randomUUID()
   val config = AgileWorkItemFixtures.sampleConfig(tenantId)
   val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorUserId)
+  val accessEvaluation =
+    ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
+      actor =
+        ink.doa.workbench.core.workitem.access.WorkItemAccessActor(
+          userId = actorUserId,
+          groupIds = emptySet(),
+          projectRoles = emptySet(),
+        ),
+      workItem = issue,
+      issueTypeConfigId = config.config.id,
+      properties = emptyMap(),
+    )
   return WorkItemTransitionContext(
     tenantId = tenantId,
     projectId = projectId,
@@ -87,6 +102,7 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
     config = config,
     currentProperties = emptyMap(),
     conditionContext = WorkItemConditionContext(issue, actorUserId, emptyMap()),
+    accessEvaluation = accessEvaluation,
     templateContext =
       ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext(
         tenantId = tenantId,

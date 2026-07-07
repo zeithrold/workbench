@@ -14,6 +14,7 @@ data class WorkItemTransitionContext(
   val config: IssueTypeConfigDetails,
   val currentProperties: Map<String, JsonElement>,
   val conditionContext: WorkItemConditionContext,
+  val accessEvaluation: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext,
   val templateContext: WorkItemValueTemplateContext,
   val permissionContext: WorkItemFieldPermissionContext,
 )

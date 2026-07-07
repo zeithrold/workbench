@@ -4,9 +4,8 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
@@ -14,34 +13,50 @@ import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.richtext.ProcessedRichText
 import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
-import java.time.Clock
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
 class WorkItemCommentService(
   private val comments: WorkItemCommentRepository,
-  private val bindings: PermissionBindingRepository,
-  private val clock: Clock,
+  private val accessPolicy: WorkItemAccessPolicyEngine,
+  private val repository: ink.doa.workbench.core.workitem.WorkItemRepository,
+  private val configs: IssueTypeConfigRepository,
 ) {
   suspend fun create(command: CreateWorkItemCommentCommand): WorkItemCommentRecord {
-    requirePermission(command.tenantId, command.projectId, command.authorId, CREATE_ACTION)
+    requirePermission(
+      command.tenantId,
+      command.projectId,
+      command.authorId,
+      command.workItemApiId,
+      CREATE_ACTION,
+    )
     val processed = processBody(command.body)
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
     return comments.create(command.withProcessedBody(processed), issueId).record
   }
 
   suspend fun update(command: UpdateWorkItemCommentCommand): WorkItemCommentRecord {
-    requirePermission(command.tenantId, command.projectId, command.actorUserId, UPDATE_ACTION)
+    requirePermission(
+      command.tenantId,
+      command.projectId,
+      command.actorUserId,
+      command.workItemApiId,
+      UPDATE_ACTION,
+    )
     val processed = processBody(command.body)
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
     return comments.update(command.withProcessedBody(processed), issueId)
   }
 
   suspend fun delete(command: DeleteWorkItemCommentCommand): WorkItemCommentRecord {
-    requirePermission(command.tenantId, command.projectId, command.actorUserId, DELETE_ACTION)
+    requirePermission(
+      command.tenantId,
+      command.projectId,
+      command.actorUserId,
+      command.workItemApiId,
+      DELETE_ACTION,
+    )
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
     return comments.softDelete(command, issueId)
   }
@@ -58,21 +73,36 @@ class WorkItemCommentService(
     tenantId: UUID,
     projectId: UUID,
     actorUserId: UUID,
+    workItemApiId: String,
     action: AuthorizationAction,
   ) {
-    val rules =
-      bindings.listActiveRulesForSubject(
-        subjectUserId = actorUserId,
+    if (
+      !accessPolicy.bindingAllowsComment(
         tenantId = tenantId,
         projectId = projectId,
-        at = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC),
+        actorUserId = actorUserId,
+        action = action,
       )
-    val allowed = rules.any {
-      it.action == action &&
-        (it.effect == PermissionEffect.ALLOW) &&
-        (it.resourcePattern == "issue:*" || it.resourcePattern == "*")
+    ) {
+      throw PermissionDeniedException(permissionError(action))
     }
-    if (!allowed) {
+    val issue =
+      repository.findByApiId(tenantId, projectId, workItemApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
+    val properties = repository.listPropertyValues(tenantId, issue.id)
+    val config =
+      configs.findConfig(tenantId, issue.issueTypeConfigApiId.value)
+        ?: throw ResourceNotFoundException(
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
+        )
+    val evaluation =
+      ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
+        actor = accessPolicy.resolveActor(tenantId, projectId, actorUserId),
+        workItem = issue,
+        issueTypeConfigId = config.config.id,
+        properties = properties,
+      )
+    if (!accessPolicy.isCommentPermitted(config.config.id, evaluation)) {
       throw PermissionDeniedException(permissionError(action))
     }
   }

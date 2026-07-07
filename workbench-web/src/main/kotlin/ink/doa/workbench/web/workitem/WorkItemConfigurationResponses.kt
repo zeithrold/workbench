@@ -2,6 +2,7 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
@@ -15,6 +16,7 @@ import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import jakarta.validation.constraints.NotBlank
+import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -394,6 +396,50 @@ data class WorkItemAttachmentUploadSessionResponse(
         uploadMethod = session.presigned.method,
         expiresAt = session.presigned.expiresAt.toString(),
         requiredHeaders = session.presigned.headers,
+      )
+  }
+}
+
+data class CreateWorkItemAccessRuleRequest(
+  @field:NotBlank val subjectType: String,
+  val subjectUserId: UUID? = null,
+  val subjectGroupId: UUID? = null,
+  val subjectRoleCode: String? = null,
+  @field:NotBlank val actionType: String,
+  val transitionId: UUID? = null,
+  val fieldKey: String? = null,
+  @field:NotBlank val effect: String,
+  val condition: JsonNode? = null,
+  val rank: Int? = null,
+)
+
+data class WorkItemAccessRuleResponse(
+  val id: String,
+  val subjectType: String,
+  val subjectUserId: String?,
+  val subjectGroupId: String?,
+  val subjectRoleCode: String?,
+  val actionType: String,
+  val transitionId: String?,
+  val fieldKey: String?,
+  val effect: String,
+  val condition: JsonObject,
+  val rank: Int,
+) {
+  companion object {
+    fun from(record: WorkItemAccessRuleRecord) =
+      WorkItemAccessRuleResponse(
+        id = record.apiId.value,
+        subjectType = record.subjectType.dbValue,
+        subjectUserId = record.subjectUserId?.toString(),
+        subjectGroupId = record.subjectGroupId?.toString(),
+        subjectRoleCode = record.subjectRoleCode,
+        actionType = record.actionType.dbValue,
+        transitionId = record.transitionId?.toString(),
+        fieldKey = record.fieldKey,
+        effect = record.effect.name.lowercase(),
+        condition = record.condition,
+        rank = record.rank,
       )
   }
 }

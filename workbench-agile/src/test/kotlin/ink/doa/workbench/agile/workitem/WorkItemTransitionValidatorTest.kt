@@ -5,6 +5,8 @@ import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.WorkItemRepository
+import ink.doa.workbench.core.workitem.access.WorkItemAccessActor
+import ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
@@ -26,7 +28,8 @@ import kotlinx.serialization.json.JsonPrimitive
 class WorkItemTransitionValidatorTest :
   StringSpec({
     val repository = mockk<WorkItemRepository>()
-    val validator = WorkItemTransitionValidator(repository)
+    val accessPolicy = mockk<WorkItemAccessPolicyEngine>()
+    val validator = WorkItemTransitionValidator(repository, accessPolicy)
 
     "conditionContext includes child issue count from repository" {
       val issue = sampleIssue()
@@ -110,25 +113,29 @@ class WorkItemTransitionValidatorTest :
         .errorCode shouldBe WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE
     }
 
-    "requireTransitionPermission rejects when permission condition fails" {
+    "requireTransitionPermission rejects when access policy denies transition" {
       val issue = sampleIssue()
-      val transition =
-        sampleTransition(
-          permissionCondition =
-            JsonObject(
-              mapOf(
-                "field" to JsonPrimitive("assignee"),
-                "op" to JsonPrimitive("eq"),
-                "value" to JsonPrimitive("usr_other"),
-              )
-            )
+      val config = sampleConfig()
+      val transition = sampleTransition(workflowId = config.config.workflowId)
+      val evaluation =
+        WorkItemAccessEvaluationContext(
+          actor = WorkItemAccessActor(issue.assigneeId!!, emptySet(), emptySet()),
+          workItem = issue,
+          issueTypeConfigId = config.config.id,
+          properties = emptyMap(),
         )
+      coEvery {
+        accessPolicy.isTransitionPermitted(config.config.id, transition.id, evaluation)
+      } returns false
 
       shouldThrow<PermissionDeniedException> {
-          validator.requireTransitionPermission(
-            transition,
-            WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
-          )
+          runBlocking {
+            validator.requireTransitionPermission(
+              config.config.id,
+              transition,
+              evaluation,
+            )
+          }
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_PERMISSION_DENIED
     }

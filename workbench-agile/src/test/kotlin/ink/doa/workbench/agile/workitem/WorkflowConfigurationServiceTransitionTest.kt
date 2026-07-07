@@ -327,9 +327,7 @@ class WorkflowConfigurationServiceTransitionTest :
 
       WorkflowConfigurationService(repository, catalog, configs, clock).createTransition(command)
 
-      commandSlot.captured.permissionCondition["op"]!!.jsonPrimitive.content shouldBe "eq"
-      commandSlot.captured.permissionCondition["field"]!!.jsonPrimitive.content shouldBe
-        "issue.statusGroup"
+      commandSlot.captured.permissionCondition shouldBe JsonObject(emptyMap())
       commandSlot.captured.preconditionAst["op"]!!.jsonPrimitive.content shouldBe "eq"
       commandSlot.captured.preconditionAst["field"]!!.jsonPrimitive.content shouldBe
         "issue.statusGroup"
@@ -359,7 +357,7 @@ class WorkflowConfigurationServiceTransitionTest :
           name = "Complete",
           fromStatusApiId = todoStatus.apiId.value,
           toStatusApiId = doneStatus.apiId.value,
-          permissionCondition = unsupportedCondition,
+          preconditionAst = unsupportedCondition,
           fields = transitionFields,
         )
 
