@@ -158,6 +158,8 @@ interface PermissionGroupRepository {
   suspend fun removeMember(groupId: UUID, userId: UUID, removedAt: OffsetDateTime): Boolean
 
   suspend fun listMembers(groupId: UUID): List<GroupMemberRecord>
+
+  suspend fun listActiveGroupIdsForUser(tenantId: UUID, userId: UUID): Set<UUID>
 }
 
 interface PermissionPolicyRepository {

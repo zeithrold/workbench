@@ -46,6 +46,7 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
+@Suppress("TooManyFunctions")
 class ExposedPermissionGroupRepository(private val database: Database) : PermissionGroupRepository {
   override suspend fun create(command: CreatePermissionGroupCommand): PermissionGroupRecord =
     suspendTransaction(db = database) {
@@ -169,6 +170,24 @@ class ExposedPermissionGroupRepository(private val database: Database) : Permiss
         }
         .orderBy(GroupMembersTable.createdAt to SortOrder.ASC)
         .map { it.toGroupMemberRecord() }
+    }
+
+  override suspend fun listActiveGroupIdsForUser(tenantId: UUID, userId: UUID): Set<UUID> =
+    suspendTransaction(db = database) {
+      val activeGroupIds =
+        GroupsTable.selectAll().where { activeGroup(tenantId) }.map { it[GroupsTable.id] }
+      if (activeGroupIds.isEmpty()) {
+        emptySet()
+      } else {
+        GroupMembersTable.selectAll()
+          .where {
+            (GroupMembersTable.userId eq userId.toKotlinUuid()) and
+              (GroupMembersTable.status eq GroupMemberStatus.ACTIVE.dbValue) and
+              (GroupMembersTable.groupId inList activeGroupIds)
+          }
+          .map { it[GroupMembersTable.groupId].toJavaUuid() }
+          .toSet()
+      }
     }
 
   private fun activeGroup(tenantId: UUID): Op<Boolean> =

@@ -33,12 +33,21 @@ class WorkItemTransitionContextLoader(
     val currentProperties = repository.listPropertyValues(issue.tenantId, issue.id)
     val conditionContext =
       transitionValidator.conditionContext(issue, actorUserId, currentProperties)
+    val accessEvaluation =
+      transitionValidator.accessEvaluationContext(
+        issue,
+        actorUserId,
+        currentProperties,
+        config.config.id,
+      )
     val permissionContext =
       WorkItemFieldPermissionContext(
         tenantId = issue.tenantId,
         projectId = issue.projectId,
         actorUserId = actorUserId,
         operation = FieldPermissionOperation.UPDATE,
+        accessEvaluation = accessEvaluation,
+        resourceAttributes = workItemResourceAttributes(issue),
       )
     val templateContext =
       mutationSupport.templateContext(
@@ -58,6 +67,7 @@ class WorkItemTransitionContextLoader(
       config = config,
       currentProperties = currentProperties,
       conditionContext = conditionContext,
+      accessEvaluation = accessEvaluation,
       templateContext = templateContext,
       permissionContext = permissionContext,
     )
@@ -69,5 +79,18 @@ class WorkItemTransitionContextLoader(
       projectId = request.projectId,
       workItemApiId = request.workItemApiId,
       actorUserId = request.actorUserId,
+    )
+
+  private fun workItemResourceAttributes(
+    issue: ink.doa.workbench.core.workitem.model.WorkItemRecord
+  ): Map<String, String> =
+    mapOf(
+      "reporter" to issue.reporterId.toString(),
+      "assignee" to issue.assigneeId?.toString().orEmpty(),
+      "status" to issue.statusApiId.value,
+      "statusGroup" to issue.statusGroup.dbValue,
+      "issueType" to issue.issueTypeApiId.value,
+      "issueTypeConfig" to issue.issueTypeConfigApiId.value,
+      "project" to issue.projectId.toString(),
     )
 }

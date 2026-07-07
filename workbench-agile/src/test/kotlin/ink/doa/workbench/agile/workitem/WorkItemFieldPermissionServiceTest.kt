@@ -4,6 +4,7 @@ import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.ResolvedPermissionRule
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.core.workitem.access.AccessConditionEvaluator
 import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.FieldWriteGrant
 import ink.doa.workbench.core.workitem.template.TemplateField
@@ -24,8 +25,21 @@ class WorkItemFieldPermissionServiceTest :
     val userId = UUID.randomUUID()
     val clock = Clock.fixed(Instant.parse("2026-07-01T00:00:00Z"), ZoneOffset.UTC)
     val bindings = mockk<PermissionBindingRepository>()
-    val service = WorkItemFieldPermissionService(bindings, clock)
+    val bindingEvaluator =
+      WorkItemBindingPermissionEvaluator(bindings, AccessConditionEvaluator(), clock)
+    val accessPolicy = mockk<WorkItemAccessPolicyEngine>()
+    val service = WorkItemFieldPermissionService(accessPolicy)
     val field = TemplateField.Property(apiId = null, code = "resolution")
+
+    coEvery { accessPolicy.bindingAllowsFieldWrite(any(), any(), any()) } coAnswers
+      {
+        bindingEvaluator.allowsFieldWrite(
+          firstArg(),
+          secondArg(),
+          thirdArg(),
+        )
+      }
+    coEvery { accessPolicy.isFieldWritePermitted(any(), any(), any()) } returns true
 
     fun context(operation: FieldPermissionOperation) =
       WorkItemFieldPermissionContext(tenantId, projectId, userId, operation)
