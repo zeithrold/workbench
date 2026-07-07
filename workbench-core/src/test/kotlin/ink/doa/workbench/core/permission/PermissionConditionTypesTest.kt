@@ -14,14 +14,14 @@ import kotlinx.serialization.json.JsonObject
 class PermissionConditionTypesTest :
   StringSpec({
     "permission condition context stores actor and attributes" {
-      val actorId = UUID.randomUUID()
+      val actorApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
       val context =
         PermissionConditionContext(
-          actorUserId = actorId,
-          resourceAttributes = mapOf("assignee" to actorId.toString()),
+          actorUserApiId = actorApiId,
+          resourceAttributes = mapOf("assignee" to actorApiId),
         )
-      context.actorUserId shouldBe actorId
-      context.resourceAttributes["assignee"] shouldBe actorId.toString()
+      context.actorUserApiId shouldBe actorApiId
+      context.resourceAttributes["assignee"] shouldBe actorApiId
     }
 
     "permission condition result enum values are stable" {
@@ -62,9 +62,16 @@ class PermissionConditionTypesTest :
         )
       val evaluation =
         WorkItemAccessEvaluationContext(
-          actor = WorkItemAccessActor(actorId, emptySet(), emptySet()),
+          actor =
+            WorkItemAccessActor(
+              userId = actorId,
+              userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              groupIds = emptySet(),
+              projectRoles = emptySet(),
+            ),
           workItem = workItem,
           issueTypeConfigId = configId,
+          projectApiId = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1",
           properties = emptyMap(),
           childIssuesNotDone = 1,
         )

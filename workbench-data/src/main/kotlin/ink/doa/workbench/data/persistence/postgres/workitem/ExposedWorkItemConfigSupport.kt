@@ -112,7 +112,6 @@ internal fun ResultRow.toWorkflowTransitionRecord(): WorkflowTransitionRecord =
     toStatusId = this[WorkflowTransitionsTable.toStatusId].toJavaUuid(),
     toStatusApiId = statusPublicId(this[WorkflowTransitionsTable.toStatusId].toJavaUuid()),
     rank = this[WorkflowTransitionsTable.rank],
-    permissionCondition = this[WorkflowTransitionsTable.permissionCondition].asObject(),
     preconditionAst = this[WorkflowTransitionsTable.preconditionAst].asObject(),
     fields = this[WorkflowTransitionsTable.transitionFields].asObject(),
     isActive = this[WorkflowTransitionsTable.isActive],

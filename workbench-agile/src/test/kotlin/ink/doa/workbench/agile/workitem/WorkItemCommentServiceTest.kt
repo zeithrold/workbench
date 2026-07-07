@@ -48,7 +48,12 @@ class WorkItemCommentServiceTest :
         } returns true
       }
       coEvery { accessPolicy.resolveActor(any(), any(), any()) } returns
-        WorkItemAccessActor(UUID.randomUUID(), emptySet(), emptySet())
+        WorkItemAccessActor(
+          userId = UUID.randomUUID(),
+          userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          groupIds = emptySet(),
+          projectRoles = emptySet(),
+        )
     }
 
     fun denyComments(action: AuthorizationAction) {
@@ -62,6 +67,7 @@ class WorkItemCommentServiceTest :
       val config = sampleConfig(tenantId, issue.issueTypeConfigApiId.value)
       coEvery { repository.findByApiId(tenantId, projectId, workItemApiId) } returns issue
       coEvery { repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns PublicId.new("prj")
       coEvery { configs.findConfig(tenantId, issue.issueTypeConfigApiId.value) } returns config
     }
 

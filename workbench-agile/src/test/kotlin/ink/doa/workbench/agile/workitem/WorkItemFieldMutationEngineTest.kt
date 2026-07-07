@@ -1172,6 +1172,7 @@ private fun permissionContext(
     tenantId = UUID.randomUUID(),
     projectId = UUID.randomUUID(),
     actorUserId = UUID.randomUUID(),
+    actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
     operation = operation,
   )
 

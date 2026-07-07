@@ -1,24 +1,23 @@
 package ink.doa.workbench.core.permission
 
+import ink.doa.workbench.core.common.errors.InvalidRequestException
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import java.util.UUID
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 
 class PermissionConditionEvaluatorTest :
   StringSpec({
     val evaluator = PermissionConditionEvaluator()
-    val actorId = UUID.randomUUID()
-    val reporterId = UUID.randomUUID()
+    val actorApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+    val reporterApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1"
     fun context(attributes: Map<String, String> = emptyMap()) =
-      PermissionConditionContext(actorUserId = actorId, resourceAttributes = attributes)
+      PermissionConditionContext(actorUserApiId = actorApiId, resourceAttributes = attributes)
 
     fun assigneeIsCurrentUserCondition(): String =
       """
       {"op":"and","args":[
-        {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}},
-        {"field":"statusGroup","op":"eq","value":"todo"}
+        {"field":"issue.assignee","op":"eq","value":{"var":"user.currentUser"}},
+        {"field":"issue.statusGroup","op":"eq","value":"todo"}
       ]}
       """
         .trimIndent()
@@ -42,7 +41,7 @@ class PermissionConditionEvaluatorTest :
         assigneeIsCurrentUserCondition(),
         context(
           mapOf(
-            "assignee" to actorId.toString(),
+            "assignee" to actorApiId,
             "statusGroup" to "todo",
           )
         ),
@@ -54,48 +53,43 @@ class PermissionConditionEvaluatorTest :
         assigneeIsCurrentUserCondition(),
         context(
           mapOf(
-            "assignee" to UUID.randomUUID().toString(),
+            "assignee" to reporterApiId,
             "statusGroup" to "todo",
           )
         ),
       ) shouldBe PermissionConditionResult.NO_MATCH
     }
 
-    "legacy all syntax matches reporter variable" {
+    "legacy all syntax is invalid" {
       val condition =
         """
         {"all":[
-          {"field":"reporter","op":"eq","value":"issue.reporter"},
-          {"field":"statusGroup","op":"eq","value":"todo"}
+          {"field":"issue.reporter","op":"eq","value":{"var":"issue.reporter"}},
+          {"field":"issue.statusGroup","op":"eq","value":"todo"}
         ]}
         """
           .trimIndent()
 
-      evaluator.evaluate(
-        condition,
-        context(
-          mapOf(
-            "reporter" to reporterId.toString(),
-            "statusGroup" to "todo",
-          )
-        ),
-      ) shouldBe PermissionConditionResult.MATCH
+      shouldThrow<InvalidRequestException> {
+        evaluator.evaluate(
+          condition,
+          context(
+            mapOf(
+              "reporter" to reporterApiId,
+              "statusGroup" to "todo",
+            )
+          ),
+        )
+      }
     }
 
-    "reporter predicate matches resource attribute" {
+    "rejects uuid literal in stored condition" {
       val condition =
-        JsonObject(
-            mapOf(
-              "field" to JsonPrimitive("reporter"),
-              "op" to JsonPrimitive("eq"),
-              "value" to JsonPrimitive(reporterId.toString()),
-            )
-          )
-          .toString()
+        """
+        {"field":"issue.assignee","op":"eq","value":"550e8400-e29b-41d4-a716-446655440000"}
+        """
+          .trimIndent()
 
-      evaluator.evaluate(
-        condition,
-        context(mapOf("reporter" to reporterId.toString())),
-      ) shouldBe PermissionConditionResult.MATCH
+      shouldThrow<InvalidRequestException> { evaluator.evaluate(condition, context()) }
     }
   })

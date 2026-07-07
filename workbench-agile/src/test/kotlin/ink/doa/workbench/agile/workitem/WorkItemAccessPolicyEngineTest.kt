@@ -27,6 +27,8 @@ class WorkItemAccessPolicyEngineTest :
     val configId = UUID.randomUUID()
     val transitionId = UUID.randomUUID()
     val actorId = UUID.randomUUID()
+    val actorApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+    val projectApiId = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1"
     val groupId = UUID.randomUUID()
     val accessRules = mockk<WorkItemAccessRuleRepository>()
     val principalResolver = mockk<WorkItemAccessPrincipalResolver>(relaxed = true)
@@ -40,14 +42,21 @@ class WorkItemAccessPolicyEngineTest :
       )
 
     fun evaluation(
-      actor: WorkItemAccessActor = WorkItemAccessActor(actorId, emptySet(), emptySet()),
+      actor: WorkItemAccessActor =
+        WorkItemAccessActor(
+          userId = actorId,
+          userApiId = actorApiId,
+          groupIds = emptySet(),
+          projectRoles = emptySet(),
+        ),
       assigneeId: UUID? = actorId,
     ): WorkItemAccessEvaluationContext {
-      val workItem = sampleWorkItem(tenantId, actorId, assigneeId)
+      val workItem = sampleWorkItem(tenantId, actorId, assigneeId, actorApiId)
       return WorkItemAccessEvaluationContext(
         actor = actor,
         workItem = workItem,
         issueTypeConfigId = configId,
+        projectApiId = projectApiId,
         properties = emptyMap(),
       )
     }
@@ -92,7 +101,13 @@ class WorkItemAccessPolicyEngineTest :
           )
         )
       )
-      val actor = WorkItemAccessActor(actorId, setOf(groupId), emptySet())
+      val actor =
+        WorkItemAccessActor(
+          userId = actorId,
+          userApiId = actorApiId,
+          groupIds = setOf(groupId),
+          projectRoles = emptySet(),
+        )
       engine.isTransitionPermitted(configId, transitionId, evaluation(actor)) shouldBe true
     }
 
@@ -188,7 +203,13 @@ class WorkItemAccessPolicyEngineTest :
           )
         )
       )
-      val actor = WorkItemAccessActor(actorId, emptySet(), setOf("viewer"))
+      val actor =
+        WorkItemAccessActor(
+          userId = actorId,
+          userApiId = actorApiId,
+          groupIds = emptySet(),
+          projectRoles = setOf("viewer"),
+        )
       engine.isCommentPermitted(configId, evaluation(actor)) shouldBe false
     }
 
@@ -244,6 +265,7 @@ private fun sampleWorkItem(
   tenantId: UUID,
   reporterId: UUID,
   assigneeId: UUID?,
+  userApiId: String = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
 ): WorkItemRecord =
   WorkItemRecord(
     id = UUID.randomUUID(),
@@ -261,8 +283,8 @@ private fun sampleWorkItem(
     reporterId = reporterId,
     assigneeId = assigneeId,
     priorityApiId = null,
-    reporterApiId = PublicId.new("usr"),
-    assigneeApiId = assigneeId?.let { PublicId.new("usr") },
+    reporterApiId = PublicId(userApiId),
+    assigneeApiId = assigneeId?.let { PublicId(userApiId) },
     sprintApiId = null,
     properties = JsonObject(emptyMap()),
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),

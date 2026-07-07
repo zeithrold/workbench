@@ -91,7 +91,6 @@ class WorkItemConfigModelCoverageTest :
           toStatusId = status.id,
           toStatusApiId = status.apiId,
           rank = 1,
-          permissionCondition = JsonObject(emptyMap()),
           preconditionAst = JsonObject(emptyMap()),
           fields = JsonObject(emptyMap()),
           isActive = true,

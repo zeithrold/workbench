@@ -130,6 +130,7 @@ class InfrastructureAspect(
       subject =
         AuthorizationSubject(
           userId = principal.user.id,
+          userApiId = principal.user.apiId.value,
           loginAccountId = principal.loginAccountId,
           credentialType = principal.credentialType,
           credentialId = principal.bearerTokenId ?: principal.sessionId,
@@ -158,8 +159,8 @@ class InfrastructureAspect(
   ): AuthorizationRequest {
     val actorAttributes =
       mapOf(
-        "actor" to request.subject.userId.toString(),
-        "actorId" to request.subject.userId.toString(),
+        "actor" to request.subject.userApiId,
+        "actorId" to request.subject.userApiId,
       )
     val resolvedAttributes =
       attributeResolvers

@@ -8,7 +8,6 @@ import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.QueryOperator
 import ink.doa.workbench.core.workitem.query.QueryValue
 import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
-import ink.doa.workbench.core.workitem.query.canonicalizeTransitionSystemField
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -83,16 +82,16 @@ private val accessPredicateEvaluators: Map<QueryOperator, AccessPredicateEvaluat
 
 private val accessFieldResolvers: Map<String, AccessFieldResolver> =
   mapOf(
-    "user.currentUser" to { JsonPrimitive(it.actorUserId.toString()) },
+    "user.currentUser" to { JsonPrimitive(it.actorUserApiId) },
     "issue.reporter" to
       {
-        it.workItem?.reporterId?.let { id -> JsonPrimitive(id.toString()) }
+        it.workItem?.reporterApiId?.value?.let(::JsonPrimitive)
           ?: it.resourceAttributes["reporter"]?.let(::JsonPrimitive)
           ?: JsonNull
       },
     "issue.assignee" to
       {
-        it.workItem?.assigneeId?.let { id -> JsonPrimitive(id.toString()) }
+        it.workItem?.assigneeApiId?.value?.let(::JsonPrimitive)
           ?: it.resourceAttributes["assignee"]?.let(::JsonPrimitive)
           ?: JsonNull
       },
@@ -118,7 +117,7 @@ private val accessFieldResolvers: Map<String, AccessFieldResolver> =
       },
     "issue.project" to
       {
-        it.workItem?.projectId?.let { id -> JsonPrimitive(id.toString()) }
+        it.projectApiId?.let(::JsonPrimitive)
           ?: it.resourceAttributes["project"]?.let(::JsonPrimitive)
       },
     "children.notDone" to { JsonPrimitive(it.childIssuesNotDone) },
@@ -126,16 +125,16 @@ private val accessFieldResolvers: Map<String, AccessFieldResolver> =
 
 private val accessVariableResolvers: Map<String, AccessFieldResolver> =
   mapOf(
-    "user.currentUser" to { JsonPrimitive(it.actorUserId.toString()) },
+    "user.currentUser" to { JsonPrimitive(it.actorUserApiId) },
     "issue.reporter" to
       {
-        it.workItem?.reporterId?.let { id -> JsonPrimitive(id.toString()) }
+        it.workItem?.reporterApiId?.value?.let(::JsonPrimitive)
           ?: it.resourceAttributes["reporter"]?.let(::JsonPrimitive)
           ?: JsonNull
       },
     "issue.assignee" to
       {
-        it.workItem?.assigneeId?.let { id -> JsonPrimitive(id.toString()) }
+        it.workItem?.assigneeApiId?.value?.let(::JsonPrimitive)
           ?: it.resourceAttributes["assignee"]?.let(::JsonPrimitive)
           ?: JsonNull
       },
@@ -198,7 +197,7 @@ class AccessConditionEvaluator {
       val key = field.apiId ?: field.code
       return key?.let { context.properties[it] ?: context.workItem?.properties?.get(it) }
     }
-    val name = canonicalizeTransitionSystemField(field.canonicalName.removePrefix("property."))
+    val name = field.canonicalName.removePrefix("property.")
     return accessFieldResolvers[name]?.invoke(context)
       ?: context.properties[name]
       ?: context.workItem?.properties?.get(name)

@@ -4,16 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.agile.project.ProjectService
 import ink.doa.workbench.agile.workitem.IssueTypeConfigAccessRuleService
 import ink.doa.workbench.agile.workitem.IssueTypeConfigService
+import ink.doa.workbench.agile.workitem.WorkItemAccessRulePresentation
 import ink.doa.workbench.core.common.context.ApiVersion
 import ink.doa.workbench.core.common.context.InstanceContextSummary
 import ink.doa.workbench.core.common.context.TenantContextSummary
 import ink.doa.workbench.core.common.context.TenantRequestContext
 import ink.doa.workbench.core.common.context.UserContextSummary
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
-import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
@@ -81,24 +78,18 @@ class WorkItemTypeConfigControllerDirectTest :
         createFields = JsonObject(emptyMap()),
       )
     val sampleAccessRule =
-      WorkItemAccessRuleRecord(
-        id = java.util.UUID.randomUUID(),
-        apiId = PublicId("iar_01JABCDEFGHJKMNPQRSTVWXYZ0"),
-        tenantId = TenantWebMvcFixtures.TENANT_ID,
-        issueTypeConfigId = sampleConfig.id,
-        subjectType = WorkItemAccessSubjectType.ANYONE,
+      WorkItemAccessRulePresentation(
+        id = "iar_01JABCDEFGHJKMNPQRSTVWXYZ0",
+        subjectType = "anyone",
         subjectUserId = null,
         subjectGroupId = null,
         subjectRoleCode = null,
-        actionType = WorkItemAccessActionType.COMMENT,
+        actionType = "comment",
         transitionId = null,
         fieldKey = null,
-        effect = PermissionEffect.ALLOW,
+        effect = "allow",
         condition = JsonObject(emptyMap()),
         rank = 100,
-        isActive = true,
-        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
       )
 
     "list access rules delegates to access rule service" {
@@ -109,7 +100,7 @@ class WorkItemTypeConfigControllerDirectTest :
         controller.listAccessRules(sampleConfig.apiId.value, tenantContext)
       }
 
-      response.single().id shouldBe sampleAccessRule.apiId.value
+      response.single().id shouldBe sampleAccessRule.id
       response.single().actionType shouldBe "comment"
     }
 
@@ -138,7 +129,7 @@ class WorkItemTypeConfigControllerDirectTest :
       runBlocking {
         controller.deactivateAccessRule(
           sampleConfig.apiId.value,
-          sampleAccessRule.apiId.value,
+          sampleAccessRule.id,
           tenantContext,
         )
       }
@@ -147,7 +138,7 @@ class WorkItemTypeConfigControllerDirectTest :
         accessRules.deactivate(
           TenantWebMvcFixtures.TENANT_ID,
           sampleConfig.apiId.value,
-          sampleAccessRule.apiId.value,
+          sampleAccessRule.id,
         )
       }
     }

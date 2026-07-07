@@ -72,7 +72,14 @@ class WorkItemTransitionServiceTest :
         coEvery { harness.workflows.listTransitions(any(), any()) } returns listOf(transition)
 
         val options =
-          service().availableTransitions(tenantId, projectId, issue.apiId.value, actorId)
+          service()
+            .availableTransitions(
+              tenantId,
+              projectId,
+              issue.apiId.value,
+              actorId,
+              "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            )
 
         options shouldHaveSize 1
         options.single().id shouldBe transition.apiId
@@ -95,6 +102,7 @@ class WorkItemTransitionServiceTest :
                   workItemApiId = "iss_missing",
                   transitionApiId = "trn_done",
                   actorUserId = UUID.randomUUID(),
+                  actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
                 )
               )
           }
@@ -124,6 +132,7 @@ class WorkItemTransitionServiceTest :
                   workItemApiId = issue.apiId.value,
                   transitionApiId = "trn_missing",
                   actorUserId = actorId,
+                  actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
                 )
               )
           }
@@ -150,7 +159,14 @@ class WorkItemTransitionServiceTest :
           listOf(mismatchedTransition)
 
         val options =
-          service().availableTransitions(tenantId, projectId, issue.apiId.value, actorId)
+          service()
+            .availableTransitions(
+              tenantId,
+              projectId,
+              issue.apiId.value,
+              actorId,
+              "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            )
 
         options.shouldBeEmpty()
       }
@@ -189,6 +205,7 @@ class WorkItemTransitionServiceTest :
                 workItemApiId = issue.apiId.value,
                 transitionApiId = transition.apiId.value,
                 actorUserId = actorId,
+                actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
               )
             )
 
@@ -250,6 +267,7 @@ class WorkItemTransitionServiceTest :
               workItemApiId = issue.apiId.value,
               transitionApiId = transition.apiId.value,
               actorUserId = actorId,
+              actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
               comment = "Looks good",
             )
           )
@@ -267,7 +285,14 @@ class WorkItemTransitionServiceTest :
         coEvery { harness.repository.findByApiId(tenantId, projectId, "iss_missing") } returns null
 
         shouldThrow<ResourceNotFoundException> {
-            service().availableTransitions(tenantId, projectId, "iss_missing", UUID.randomUUID())
+            service()
+              .availableTransitions(
+                tenantId,
+                projectId,
+                "iss_missing",
+                UUID.randomUUID(),
+                "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              )
           }
           .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
       }
@@ -315,6 +340,7 @@ class WorkItemTransitionServiceTest :
               workItemApiId = issue.apiId.value,
               transitionApiId = transition.apiId.value,
               actorUserId = actorId,
+              actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
             )
           )
 

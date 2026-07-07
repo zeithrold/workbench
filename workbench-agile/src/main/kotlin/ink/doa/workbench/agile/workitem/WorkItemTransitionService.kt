@@ -23,8 +23,16 @@ class WorkItemTransitionService(
     projectId: UUID,
     workItemApiId: String,
     actorUserId: UUID,
+    actorUserApiId: String,
   ): List<WorkItemTransitionOption> {
-    val context = contextLoader.loadForIssue(tenantId, projectId, workItemApiId, actorUserId)
+    val context =
+      contextLoader.loadForIssue(
+        tenantId,
+        projectId,
+        workItemApiId,
+        actorUserId,
+        actorUserApiId,
+      )
     return workflows
       .listTransitions(tenantId, context.config.config.workflowId)
       .filter { it.fromStatusId == null || it.fromStatusId == context.issue.statusId }

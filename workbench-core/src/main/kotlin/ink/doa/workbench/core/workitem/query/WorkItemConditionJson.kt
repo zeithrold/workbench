@@ -1,88 +1,25 @@
 package ink.doa.workbench.core.workitem.query
 
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 
 object WorkItemConditionJson {
-  private val parser = WorkItemQueryParser()
-  private val legacyVariables = setOf("user.currentUser", "issue.reporter", "issue.assignee")
+  private val parser = WorkItemQueryParser(Json { ignoreUnknownKeys = true })
 
   fun parse(element: JsonObject): ConditionNode? {
     if (element.isEmpty()) return null
-    return parser.parseCondition(toCanonicalElement(element))
+    WorkItemConditionSyntax.validate(element)
+    return parser.parseCondition(element)
   }
 
   fun canonicalize(element: JsonObject): JsonObject =
     when {
       element.isEmpty() -> element
       else -> parse(element)?.toJsonObject() ?: JsonObject(emptyMap())
-    }
-
-  private fun toCanonicalElement(element: JsonElement): JsonElement =
-    when {
-      element !is JsonObject -> element
-      !element.isLegacyCondition() -> element
-      "all" in element ->
-        JsonObject(
-          mapOf(
-            "op" to JsonPrimitive("and"),
-            "args" to JsonArray(element.array("all").map(::toCanonicalElement)),
-          )
-        )
-      "any" in element ->
-        JsonObject(
-          mapOf(
-            "op" to JsonPrimitive("or"),
-            "args" to JsonArray(element.array("any").map(::toCanonicalElement)),
-          )
-        )
-      "not" in element ->
-        JsonObject(
-          mapOf(
-            "op" to JsonPrimitive("not"),
-            "arg" to toCanonicalElement(element.getValue("not")),
-          )
-        )
-      else -> canonicalPredicate(element)
-    }
-
-  private fun canonicalPredicate(obj: JsonObject): JsonObject {
-    val op = obj.getValue("op").jsonPrimitive.content
-    val canonicalOp =
-      when (op) {
-        "==" -> "eq"
-        "ne",
-        "!=" -> "neq"
-        "exists" -> "is_not_empty"
-        "missing" -> "is_empty"
-        else -> op
-      }
-    val fields =
-      linkedMapOf<String, JsonElement>(
-        "field" to obj.getValue("field"),
-        "op" to JsonPrimitive(canonicalOp),
-      )
-    if (canonicalOp !in setOf("is_empty", "is_not_empty")) {
-      fields["value"] = toCanonicalValue(obj["value"] ?: JsonNull)
-    }
-    return JsonObject(fields)
-  }
-
-  private fun toCanonicalValue(value: JsonElement): JsonElement =
-    when (value) {
-      is JsonPrimitive ->
-        if (value.contentOrNull in legacyVariables) {
-          JsonObject(mapOf("var" to JsonPrimitive(value.content)))
-        } else {
-          value
-        }
-      is JsonArray -> JsonArray(value.map(::toCanonicalValue))
-      else -> value
     }
 
   private fun ConditionNode.toJsonObject(): JsonObject =
@@ -106,12 +43,25 @@ object WorkItemConditionJson {
       is ConditionNode.Predicate -> {
         val fields =
           linkedMapOf<String, JsonElement>(
-            "field" to JsonPrimitive(canonicalizeTransitionSystemField(field.canonicalName)),
+            "field" to field.toJsonElement(),
             "op" to JsonPrimitive(op.wireName),
           )
         value?.let { fields["value"] = it.toJsonElement() }
         JsonObject(fields)
       }
+    }
+
+  private fun QueryField.toJsonElement(): JsonElement =
+    when (this) {
+      is QueryField.System -> JsonPrimitive(canonicalName)
+      is QueryField.Property ->
+        JsonObject(
+          buildMap {
+            put("kind", JsonPrimitive("property"))
+            apiId?.let { put("apiId", JsonPrimitive(it)) }
+            code?.let { put("code", JsonPrimitive(it)) }
+          }
+        )
     }
 
   private fun QueryValue.toJsonElement(): JsonElement =
@@ -135,20 +85,4 @@ object WorkItemConditionJson {
       is QueryValue.Between ->
         JsonObject(mapOf("from" to (from ?: JsonNull), "to" to (to ?: JsonNull)))
     }
-
-  private fun JsonObject.isLegacyCondition(): Boolean =
-    "all" in this || "any" in this || ("not" in this && this["op"] == null) || legacyPredicate()
-
-  private fun JsonObject.legacyPredicate(): Boolean {
-    val op = this["op"]?.jsonPrimitive?.contentOrNull
-    val value = this["value"]
-    return "field" in this &&
-      op != null &&
-      (op in setOf("ne", "==", "!=", "exists", "missing") ||
-        (value is JsonPrimitive && value.contentOrNull in legacyVariables) ||
-        (value is JsonArray &&
-          value.any { it is JsonPrimitive && it.contentOrNull in legacyVariables }))
-  }
-
-  private fun JsonObject.array(name: String): JsonArray = getValue(name) as JsonArray
 }

@@ -131,6 +131,7 @@ class WorkItemServiceTemplateDefaultsTest :
             workItemApiId = issue.apiId.value,
             transitionApiId = "trn_done",
             actorUserId = actorId,
+            actorUserApiId = userApiId.value,
             properties = mapOf("resolution" to JsonPrimitive("wont_fix")),
           )
         )
@@ -418,7 +419,6 @@ private fun transition(config: IssueTypeConfigDetails): WorkflowTransitionRecord
     toStatusId = config.statuses.single().statusId,
     toStatusApiId = PublicId.new("sts"),
     rank = 100,
-    permissionCondition = JsonObject(emptyMap()),
     preconditionAst = JsonObject(emptyMap()),
     fields =
       TransitionFieldsLegacyMigrator.migrate(

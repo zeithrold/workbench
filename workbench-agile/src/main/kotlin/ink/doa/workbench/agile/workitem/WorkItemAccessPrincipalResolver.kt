@@ -1,5 +1,6 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.PermissionGroupRepository
 import ink.doa.workbench.core.permission.PermissionPolicyRepository
@@ -23,18 +24,23 @@ class WorkItemAccessPrincipalResolver(
   private val bindings: PermissionBindingRepository,
   private val groups: PermissionGroupRepository,
   private val policies: PermissionPolicyRepository,
+  private val users: UserRepository,
   private val clock: Clock,
 ) {
   suspend fun resolveActor(
     tenantId: UUID,
     projectId: UUID,
     actorUserId: UUID,
-  ): WorkItemAccessActor =
-    WorkItemAccessActor(
+  ): WorkItemAccessActor {
+    val userApiId =
+      users.findById(actorUserId)?.apiId?.value ?: error("User not found for actor: $actorUserId")
+    return WorkItemAccessActor(
       userId = actorUserId,
+      userApiId = userApiId,
       groupIds = groups.listActiveGroupIdsForUser(tenantId, actorUserId),
       projectRoles = resolveProjectRoles(tenantId, projectId, actorUserId),
     )
+  }
 
   private suspend fun resolveProjectRoles(
     tenantId: UUID,

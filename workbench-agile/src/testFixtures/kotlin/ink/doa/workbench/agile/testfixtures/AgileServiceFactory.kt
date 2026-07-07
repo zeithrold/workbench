@@ -15,6 +15,8 @@ import ink.doa.workbench.agile.workitem.WorkItemTransitionExecutor
 import ink.doa.workbench.agile.workitem.WorkItemTransitionOptionBuilder
 import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.agile.workitem.WorkItemTransitionValidator
+import ink.doa.workbench.core.identity.UserRepository
+import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
@@ -33,6 +35,7 @@ object AgileServiceFactory {
     coEvery { accessPolicy.resolveActor(any(), any(), any()) } returns
       WorkItemAccessActor(
         userId = java.util.UUID.randomUUID(),
+        userApiId = "usr_test",
         groupIds = emptySet(),
         projectRoles = setOf("admin", "member"),
       )
@@ -83,9 +86,18 @@ object AgileServiceFactory {
   ): WorkItemService {
     val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
     coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
+    val users = mockk<UserRepository>()
+    coEvery { users.findById(any()) } returns
+      UserRecord(
+        id = java.util.UUID.randomUUID(),
+        apiId = ink.doa.workbench.core.common.ids.PublicId.new("usr"),
+        displayName = "Test User",
+        primaryEmail = "test@example.com",
+      )
     return WorkItemService(
       repository,
       configs,
+      users,
       WorkItemCreateParentGuard(repository, subtypeConstraints),
       WorkItemMutationSupport(repository, configs, events),
       fieldMutationPipeline(

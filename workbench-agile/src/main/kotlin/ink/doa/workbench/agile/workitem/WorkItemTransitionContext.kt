@@ -10,6 +10,7 @@ data class WorkItemTransitionContext(
   val tenantId: UUID,
   val projectId: UUID,
   val actorUserId: UUID,
+  val actorUserApiId: String,
   val issue: WorkItemRecord,
   val config: IssueTypeConfigDetails,
   val currentProperties: Map<String, JsonElement>,

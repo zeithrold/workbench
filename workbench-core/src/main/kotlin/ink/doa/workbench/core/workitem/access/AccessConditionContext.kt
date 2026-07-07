@@ -5,29 +5,34 @@ import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 
 data class AccessConditionContext(
-  val actorUserId: UUID,
+  val actorUserApiId: String,
   val actorGroupIds: Set<UUID> = emptySet(),
   val workItem: WorkItemRecord? = null,
+  val projectApiId: String? = null,
   val properties: Map<String, JsonElement> = emptyMap(),
   val childIssuesNotDone: Long = 0,
   val resourceAttributes: Map<String, String> = emptyMap(),
 ) {
   companion object {
-    fun fromEvaluation(context: WorkItemAccessEvaluationContext): AccessConditionContext =
+    fun fromEvaluation(
+      context: WorkItemAccessEvaluationContext,
+      projectApiId: String?,
+    ): AccessConditionContext =
       AccessConditionContext(
-        actorUserId = context.actor.userId,
+        actorUserApiId = context.actor.userApiId,
         actorGroupIds = context.actor.groupIds,
         workItem = context.workItem,
+        projectApiId = projectApiId,
         properties = context.properties,
         childIssuesNotDone = context.childIssuesNotDone,
       )
 
     fun fromResourceAttributes(
-      actorUserId: UUID,
+      actorUserApiId: String,
       resourceAttributes: Map<String, String>,
     ): AccessConditionContext =
       AccessConditionContext(
-        actorUserId = actorUserId,
+        actorUserApiId = actorUserApiId,
         resourceAttributes = resourceAttributes,
       )
   }

@@ -137,7 +137,6 @@ data class WorkflowTransitionRecord(
   val toStatusId: UUID,
   val toStatusApiId: PublicId?,
   val rank: Int,
-  val permissionCondition: JsonObject,
   val preconditionAst: JsonObject,
   val fields: JsonObject,
   val isActive: Boolean,
@@ -273,7 +272,6 @@ data class CreateWorkflowTransitionCommand(
   val fromStatusApiId: String?,
   val toStatusApiId: String,
   val rank: Int = 100,
-  val permissionCondition: JsonObject = JsonObject(emptyMap()),
   val preconditionAst: JsonObject = JsonObject(emptyMap()),
   val fields: JsonObject = JsonObject(emptyMap()),
 )

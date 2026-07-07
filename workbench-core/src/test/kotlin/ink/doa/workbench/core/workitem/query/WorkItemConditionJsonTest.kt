@@ -1,5 +1,8 @@
 package ink.doa.workbench.core.workitem.query
 
+import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -17,128 +20,15 @@ class WorkItemConditionJsonTest :
       WorkItemConditionJson.parse(JsonObject(emptyMap())).shouldBeNull()
     }
 
-    "parse converts legacy all to canonical and" {
-      val legacy =
-        json
-          .parseToJsonElement(
-            """
-            {
-              "all": [
-                { "field": "statusGroup", "op": "==", "value": "todo" },
-                { "field": "assignee", "op": "eq", "value": "user.currentUser" }
-              ]
-            }
-            """
-              .trimIndent()
-          )
-          .jsonObject
-
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.And(
-          listOf(
-            ConditionNode.Predicate(
-              field = QueryField.System("statusGroup"),
-              op = QueryOperator.EQ,
-              value = QueryValue.Literal(JsonPrimitive("todo")),
-            ),
-            ConditionNode.Predicate(
-              field = QueryField.System("assignee"),
-              op = QueryOperator.EQ,
-              value = QueryValue.Variable("user.currentUser"),
-            ),
-          )
-        )
-    }
-
-    "parse converts legacy any to canonical or" {
-      val legacy =
-        json
-          .parseToJsonElement(
-            """
-            {
-              "any": [
-                { "field": "statusGroup", "op": "ne", "value": "done" },
-                { "field": "assignee", "op": "missing" }
-              ]
-            }
-            """
-              .trimIndent()
-          )
-          .jsonObject
-
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Or(
-          listOf(
-            ConditionNode.Predicate(
-              field = QueryField.System("statusGroup"),
-              op = QueryOperator.NEQ,
-              value = QueryValue.Literal(JsonPrimitive("done")),
-            ),
-            ConditionNode.Predicate(
-              field = QueryField.System("assignee"),
-              op = QueryOperator.IS_EMPTY,
-              value = null,
-            ),
-          )
-        )
-    }
-
-    "parse converts legacy not and exists operators" {
-      val legacy =
-        json
-          .parseToJsonElement(
-            """
-            {
-              "not": {
-                "field": "assignee",
-                "op": "exists"
-              }
-            }
-            """
-              .trimIndent()
-          )
-          .jsonObject
-
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Not(
-          ConditionNode.Predicate(
-            field = QueryField.System("assignee"),
-            op = QueryOperator.IS_NOT_EMPTY,
-            value = null,
-          )
-        )
-    }
-
-    "canonicalize rewrites system fields to namespaced wire names" {
-      val input =
+    "parse accepts canonical and composition" {
+      val canonical =
         json
           .parseToJsonElement(
             """
             {
               "op": "and",
               "args": [
-                { "field": "statusGroup", "op": "in", "value": ["todo"] },
-                { "field": "assignee", "op": "eq", "value": { "var": "user.currentUser" } }
-              ]
-            }
-            """
-              .trimIndent()
-          )
-          .jsonObject
-      val expected =
-        json
-          .parseToJsonElement(
-            """
-            {
-              "op": "and",
-              "args": [
-                { "field": "issue.statusGroup", "op": "in", "value": ["todo"] },
+                { "field": "issue.statusGroup", "op": "eq", "value": "todo" },
                 { "field": "issue.assignee", "op": "eq", "value": { "var": "user.currentUser" } }
               ]
             }
@@ -147,125 +37,112 @@ class WorkItemConditionJsonTest :
           )
           .jsonObject
 
-      WorkItemConditionJson.canonicalize(input) shouldBe expected
+      val parsed = WorkItemConditionJson.parse(canonical)
+
+      parsed shouldBe
+        ConditionNode.And(
+          listOf(
+            ConditionNode.Predicate(
+              field = QueryField.System("issue.statusGroup"),
+              op = QueryOperator.EQ,
+              value = QueryValue.Literal(JsonPrimitive("todo")),
+            ),
+            ConditionNode.Predicate(
+              field = QueryField.System("issue.assignee"),
+              op = QueryOperator.EQ,
+              value = QueryValue.Variable("user.currentUser"),
+            ),
+          )
+        )
     }
 
-    "canonicalize returns empty object when parse yields null" {
-      val emptyCondition = JsonObject(emptyMap())
-
-      WorkItemConditionJson.canonicalize(emptyCondition) shouldBe JsonObject(emptyMap())
-    }
-
-    "parse converts legacy equality and inequality operators" {
+    "parse rejects legacy all syntax" {
       val legacy =
         json
           .parseToJsonElement(
             """
-            { "field": "statusGroup", "op": "==", "value": "todo" }
+            {
+              "all": [
+                { "field": "issue.statusGroup", "op": "eq", "value": "todo" }
+              ]
+            }
             """
               .trimIndent()
           )
           .jsonObject
 
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Predicate(
-          field = QueryField.System("statusGroup"),
-          op = QueryOperator.EQ,
-          value = QueryValue.Literal(JsonPrimitive("todo")),
-        )
+      shouldThrow<InvalidRequestException> { WorkItemConditionJson.parse(legacy) }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_CONDITION_LEGACY_SYNTAX
     }
 
-    "parse converts legacy variable primitive to canonical variable object" {
+    "parse rejects legacy field aliases" {
       val legacy =
-        JsonObject(
-          mapOf(
-            "field" to JsonPrimitive("assignee"),
-            "op" to JsonPrimitive("eq"),
-            "value" to JsonPrimitive("user.currentUser"),
+        json
+          .parseToJsonElement(
+            """{ "field": "assignee", "op": "eq", "value": { "var": "user.currentUser" } }"""
+              .trimIndent()
           )
-        )
+          .jsonObject
 
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Predicate(
-          field = QueryField.System("assignee"),
-          op = QueryOperator.EQ,
-          value = QueryValue.Variable("user.currentUser"),
-        )
+      shouldThrow<InvalidRequestException> { WorkItemConditionJson.parse(legacy) }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_CONDITION_LEGACY_SYNTAX
     }
 
-    "parse handles legacy variable in array values" {
+    "parse rejects legacy operators" {
       val legacy =
-        JsonObject(
-          mapOf(
-            "field" to JsonPrimitive("assignee"),
-            "op" to JsonPrimitive("in"),
-            "value" to JsonArray(listOf(JsonPrimitive("user.currentUser"), JsonPrimitive("usr_1"))),
+        json
+          .parseToJsonElement(
+            """{ "field": "issue.statusGroup", "op": "==", "value": "todo" }""".trimIndent()
           )
-        )
+          .jsonObject
 
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Predicate(
-          field = QueryField.System("assignee"),
-          op = QueryOperator.IN,
-          value =
-            QueryValue.Literal(
-              JsonArray(
-                listOf(
-                  JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
-                  JsonPrimitive("usr_1"),
-                )
-              )
-            ),
-        )
+      shouldThrow<InvalidRequestException> { WorkItemConditionJson.parse(legacy) }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_CONDITION_LEGACY_SYNTAX
     }
 
-    "parse converts legacy inequality operator" {
-      val legacy =
-        JsonObject(
-          mapOf(
-            "field" to JsonPrimitive("statusGroup"),
-            "op" to JsonPrimitive("!="),
-            "value" to JsonPrimitive("done"),
+    "parse rejects uuid literals for entity identifiers" {
+      val condition =
+        json
+          .parseToJsonElement(
+            """
+            {
+              "field": "issue.assignee",
+              "op": "eq",
+              "value": "550e8400-e29b-41d4-a716-446655440000"
+            }
+            """
+              .trimIndent()
           )
-        )
+          .jsonObject
 
-      val parsed = WorkItemConditionJson.parse(legacy)
-
-      parsed shouldBe
-        ConditionNode.Predicate(
-          field = QueryField.System("statusGroup"),
-          op = QueryOperator.NEQ,
-          value = QueryValue.Literal(JsonPrimitive("done")),
-        )
+      shouldThrow<InvalidRequestException> { WorkItemConditionJson.parse(condition) }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_CONDITION_UUID_LITERAL_FORBIDDEN
     }
 
-    "parse converts legacy missing operator" {
-      val legacy =
-        JsonObject(
-          mapOf(
-            "field" to JsonPrimitive("assignee"),
-            "op" to JsonPrimitive("missing"),
+    "canonicalize round-trips canonical predicates" {
+      val canonical =
+        json
+          .parseToJsonElement(
+            """
+            {
+              "field": "issue.statusGroup",
+              "op": "in",
+              "value": ["todo"]
+            }
+            """
+              .trimIndent()
           )
-        )
+          .jsonObject
 
-      val parsed = WorkItemConditionJson.parse(legacy)
+      WorkItemConditionJson.canonicalize(canonical) shouldBe canonical
+    }
 
-      parsed shouldBe
-        ConditionNode.Predicate(
-          field = QueryField.System("assignee"),
-          op = QueryOperator.IS_EMPTY,
-          value = null,
-        )
+    "canonicalize returns empty object when parse yields null" {
+      WorkItemConditionJson.canonicalize(JsonObject(emptyMap())) shouldBe JsonObject(emptyMap())
     }
 
     "canonicalize round-trips relative date values" {
-      val canonical =
+      val input =
         json
           .parseToJsonElement(
             """
@@ -286,6 +163,64 @@ class WorkItemConditionJsonTest :
           )
           .jsonObject
 
-      WorkItemConditionJson.canonicalize(canonical) shouldBe canonical
+      WorkItemConditionJson.canonicalize(input) shouldBe
+        JsonObject(
+          mapOf(
+            "field" to
+              JsonObject(
+                mapOf(
+                  "kind" to JsonPrimitive("property"),
+                  "code" to JsonPrimitive("dueDate"),
+                )
+              ),
+            "op" to JsonPrimitive("eq"),
+            "value" to
+              JsonObject(
+                mapOf(
+                  "relativeDate" to
+                    JsonObject(
+                      mapOf(
+                        "amount" to JsonPrimitive(2),
+                        "unit" to JsonPrimitive("day"),
+                        "direction" to JsonPrimitive("future"),
+                        "anchor" to JsonPrimitive("date.today"),
+                      )
+                    )
+                )
+              ),
+          )
+        )
+    }
+
+    "parse accepts apiId literals in in arrays" {
+      val condition =
+        JsonObject(
+          mapOf(
+            "field" to JsonPrimitive("issue.assignee"),
+            "op" to JsonPrimitive("in"),
+            "value" to
+              JsonArray(
+                listOf(
+                  JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+                  JsonPrimitive("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+                )
+              ),
+          )
+        )
+
+      WorkItemConditionJson.parse(condition) shouldBe
+        ConditionNode.Predicate(
+          field = QueryField.System("issue.assignee"),
+          op = QueryOperator.IN,
+          value =
+            QueryValue.Literal(
+              JsonArray(
+                listOf(
+                  JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+                  JsonPrimitive("usr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+                )
+              )
+            ),
+        )
     }
   })

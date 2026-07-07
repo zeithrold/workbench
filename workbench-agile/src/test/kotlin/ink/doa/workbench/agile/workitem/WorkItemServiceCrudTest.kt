@@ -349,6 +349,7 @@ private fun workItemService(
     return WorkItemService(
       repository = repository,
       configs = configs,
+      users = mockk(relaxed = true),
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
       mutationSupport = WorkItemMutationSupport(repository, configs, events),
       fieldPipeline =
