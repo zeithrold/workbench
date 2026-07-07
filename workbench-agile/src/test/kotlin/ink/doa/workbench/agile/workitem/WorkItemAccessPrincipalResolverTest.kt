@@ -1,6 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.identity.UserRepository
+import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.permission.PermissionBindingRecord
 import ink.doa.workbench.core.permission.PermissionBindingRepository
 import ink.doa.workbench.core.permission.PermissionGroupRepository
@@ -28,7 +30,16 @@ class WorkItemAccessPrincipalResolverTest :
     val bindings = mockk<PermissionBindingRepository>()
     val groups = mockk<PermissionGroupRepository>()
     val policies = mockk<PermissionPolicyRepository>()
-    val resolver = WorkItemAccessPrincipalResolver(bindings, groups, policies, clock)
+    val users = mockk<UserRepository>()
+    val actorApiId = PublicId.new("usr").value
+    coEvery { users.findById(actorId) } returns
+      UserRecord(
+        id = actorId,
+        apiId = PublicId(actorApiId),
+        displayName = "Actor",
+        primaryEmail = "actor@example.com",
+      )
+    val resolver = WorkItemAccessPrincipalResolver(bindings, groups, policies, users, clock)
 
     coEvery { groups.listActiveGroupIdsForUser(tenantId, actorId) } returns setOf(groupId)
 
@@ -51,6 +62,7 @@ class WorkItemAccessPrincipalResolverTest :
       val actor = resolver.resolveActor(tenantId, projectId, actorId)
 
       actor.userId shouldBe actorId
+      actor.userApiId shouldBe actorApiId
       actor.groupIds shouldBe setOf(groupId)
       actor.projectRoles shouldBe setOf("admin")
     }

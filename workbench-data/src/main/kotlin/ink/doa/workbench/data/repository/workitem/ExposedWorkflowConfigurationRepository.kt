@@ -171,7 +171,6 @@ class ExposedWorkflowConfigurationRepository(
         it[WorkflowTransitionsTable.fromStatusId] = fromStatusId?.id?.toKotlinUuid()
         it[WorkflowTransitionsTable.toStatusId] = toStatus.id.toKotlinUuid()
         it[WorkflowTransitionsTable.rank] = command.rank
-        it[WorkflowTransitionsTable.permissionCondition] = command.permissionCondition
         it[WorkflowTransitionsTable.preconditionAst] = command.preconditionAst
         it[WorkflowTransitionsTable.transitionFields] = command.fields
         it[WorkflowTransitionsTable.isActive] = true

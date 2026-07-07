@@ -57,9 +57,6 @@ class WorkItemValueTemplateParser(private val json: Json = Json { ignoreUnknownK
         element["relativeDate"]?.let {
           return parseRelativeDate(it)
         }
-        element["relativeDateTime"]?.let {
-          return parseRelativeDate(it)
-        }
         element["copy"]?.let {
           return TemplateValueExpression.Copy(parseFieldPath(it.asString("copy")))
         }

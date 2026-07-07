@@ -18,8 +18,8 @@ class PermissionConditionParserTest :
     fun assigneeIsCurrentUserCondition(): String =
       """
       {"op":"and","args":[
-        {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}},
-        {"field":"statusGroup","op":"eq","value":"todo"}
+        {"field":"issue.assignee","op":"eq","value":{"var":"user.currentUser"}},
+        {"field":"issue.statusGroup","op":"eq","value":"todo"}
       ]}
       """
         .trimIndent()
@@ -39,14 +39,14 @@ class PermissionConditionParserTest :
       PermissionConditionParser.parseOrNull(
         JsonObject(
           mapOf(
-            "field" to JsonPrimitive("statusGroup"),
+            "field" to JsonPrimitive("issue.statusGroup"),
             "op" to JsonPrimitive("eq"),
             "value" to JsonPrimitive("todo"),
           )
         )
       ) shouldBe
         ConditionNode.Predicate(
-          field = QueryField.System("statusGroup"),
+          field = QueryField.System("issue.statusGroup"),
           op = QueryOperator.EQ,
           value = QueryValue.Literal(JsonPrimitive("todo")),
         )

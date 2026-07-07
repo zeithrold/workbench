@@ -72,6 +72,7 @@ data class CreateWorkItemAccessRuleCommand(
 
 data class WorkItemAccessActor(
   val userId: UUID,
+  val userApiId: String,
   val groupIds: Set<UUID>,
   val projectRoles: Set<String>,
 )
@@ -80,6 +81,7 @@ data class WorkItemAccessEvaluationContext(
   val actor: WorkItemAccessActor,
   val workItem: WorkItemRecord,
   val issueTypeConfigId: UUID,
+  val projectApiId: String,
   val properties: Map<String, kotlinx.serialization.json.JsonElement>,
   val childIssuesNotDone: Long = 0,
 )

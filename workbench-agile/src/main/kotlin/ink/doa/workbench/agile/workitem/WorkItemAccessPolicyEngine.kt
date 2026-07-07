@@ -121,7 +121,11 @@ class WorkItemAccessPolicyEngine(
             rule.matchesTarget(query.transitionId, query.fieldKey)
         }
     if (rules.isEmpty()) return query.defaultWhenNoRules
-    val conditionContext = AccessConditionContext.fromEvaluation(query.evaluationContext)
+    val conditionContext =
+      AccessConditionContext.fromEvaluation(
+        query.evaluationContext,
+        query.evaluationContext.projectApiId,
+      )
     val matching = rules.filter { rule ->
       matchesSubject(rule, query.evaluationContext.actor) &&
         conditionEvaluator.evaluateObject(rule.condition, conditionContext)

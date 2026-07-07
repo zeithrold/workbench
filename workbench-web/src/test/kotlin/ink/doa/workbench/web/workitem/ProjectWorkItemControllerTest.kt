@@ -317,6 +317,7 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
           TenantWebMvcFixtures.PROJECT_ID,
           SAMPLE_WORK_ITEM.apiId.value,
           TenantWebMvcFixtures.USER_ID,
+          TenantWebMvcFixtures.PRINCIPAL.user.apiId.value,
         )
       } returns
         listOf(

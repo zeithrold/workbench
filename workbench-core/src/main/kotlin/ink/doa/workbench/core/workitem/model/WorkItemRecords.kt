@@ -87,6 +87,7 @@ data class TransitionRequest(
   val workItemApiId: String,
   val transitionApiId: String,
   val actorUserId: UUID,
+  val actorUserApiId: String,
   val properties: Map<String, JsonElement> = emptyMap(),
   val title: String? = null,
   val description: String? = null,

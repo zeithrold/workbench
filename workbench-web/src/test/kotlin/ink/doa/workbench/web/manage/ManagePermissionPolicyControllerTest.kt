@@ -141,7 +141,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
               {
                 "action": "issue.view",
                 "resourcePattern": "issue:*",
-                "condition": {"field":"statusGroup","op":"eq","value":"todo"}
+                "condition": {"field":"issue.statusGroup","op":"eq","value":"todo"}
               }
               """
                 .trimIndent()
@@ -153,7 +153,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.rules[0].condition.field").value("statusGroup"))
+      .andExpect(jsonPath("$.rules[0].condition.field").value("issue.statusGroup"))
   }
 
   @Test
@@ -257,7 +257,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
           id = UUID.randomUUID(),
           apiId = PublicId.new("prr"),
           action = ink.doa.workbench.core.permission.model.AuthorizationAction("issue.view"),
-          conditionJson = """{"field":"statusGroup","op":"eq","value":"todo"}""",
+          conditionJson = """{"field":"issue.statusGroup","op":"eq","value":"todo"}""",
         )
       var rules: List<ink.doa.workbench.core.permission.PermissionPolicyRuleRecord> = emptyList()
 

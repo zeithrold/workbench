@@ -4,13 +4,13 @@ import ink.doa.workbench.core.workitem.access.AccessConditionContext
 import ink.doa.workbench.core.workitem.access.AccessConditionEvaluator
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
-import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 data class WorkItemConditionContext(
   val workItem: WorkItemRecord,
-  val actorUserId: UUID,
+  val actorUserApiId: String,
+  val projectApiId: String,
   val properties: Map<String, JsonElement>,
   val childIssuesNotDone: Long = 0,
 )
@@ -23,8 +23,9 @@ class WorkItemConditionEvaluator(
       condition = ast,
       context =
         AccessConditionContext(
-          actorUserId = context.actorUserId,
+          actorUserApiId = context.actorUserApiId,
           workItem = context.workItem,
+          projectApiId = context.projectApiId,
           properties = context.properties,
           childIssuesNotDone = context.childIssuesNotDone,
         ),

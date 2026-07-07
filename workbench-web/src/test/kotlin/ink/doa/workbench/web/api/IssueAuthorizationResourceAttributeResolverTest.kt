@@ -8,6 +8,9 @@ import ink.doa.workbench.core.permission.model.AuthorizationRequest
 import ink.doa.workbench.core.permission.model.AuthorizationResource
 import ink.doa.workbench.core.permission.model.AuthorizationScope
 import ink.doa.workbench.core.permission.model.AuthorizationSubject
+import ink.doa.workbench.core.project.ProjectRepository
+import ink.doa.workbench.core.project.model.ProjectRecord
+import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
@@ -27,9 +30,12 @@ class IssueAuthorizationResourceAttributeResolverTest :
   StringSpec({
     val tenantId = UUID.randomUUID()
     val projectId = UUID.randomUUID()
-    val userId = UUID.randomUUID()
+    val projectApiId = PublicId.new("prj")
+    val reporterApiId = PublicId.new("usr")
+    val assigneeApiId = PublicId.new("usr")
     val workItems = mockk<WorkItemRepository>()
-    val resolver = IssueAuthorizationResourceAttributeResolver(workItems)
+    val projects = mockk<ProjectRepository>(relaxed = true)
+    val resolver = IssueAuthorizationResourceAttributeResolver(workItems, projects)
 
     "supports issue resources with id" {
       resolver.supports(
@@ -58,17 +64,27 @@ class IssueAuthorizationResourceAttributeResolverTest :
           statusId = UUID.randomUUID(),
           statusApiId = PublicId.new("sts"),
           statusGroup = WorkItemStatusGroup.TODO,
-          reporterId = userId,
-          assigneeId = userId,
+          reporterId = UUID.randomUUID(),
+          assigneeId = UUID.randomUUID(),
           priorityApiId = null,
-          reporterApiId = PublicId.new("usr"),
-          assigneeApiId = PublicId.new("usr"),
+          reporterApiId = reporterApiId,
+          assigneeApiId = assigneeApiId,
           sprintApiId = null,
           properties = JsonObject(emptyMap()),
           createdAt = OffsetDateTime.now(ZoneOffset.UTC),
           updatedAt = OffsetDateTime.now(ZoneOffset.UTC),
         )
       coEvery { workItems.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
+      coEvery { projects.findById(tenantId, projectId) } returns
+        ProjectRecord(
+          id = projectId,
+          apiId = projectApiId,
+          tenantId = tenantId,
+          identifier = "CORE",
+          name = "Core",
+          description = null,
+          status = ProjectStatus.ACTIVE,
+        )
 
       val attributes = runBlocking {
         resolver.resolveAttributes(
@@ -76,7 +92,8 @@ class IssueAuthorizationResourceAttributeResolverTest :
             scope = AuthorizationScope.TENANT,
             subject =
               AuthorizationSubject(
-                userId = userId,
+                userId = UUID.randomUUID(),
+                userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
                 loginAccountId = null,
                 credentialType = CredentialType.SESSION,
                 credentialId = null,
@@ -97,9 +114,9 @@ class IssueAuthorizationResourceAttributeResolverTest :
         )
       }
 
-      attributes shouldContain ("reporter" to userId.toString())
-      attributes shouldContain ("assignee" to userId.toString())
+      attributes shouldContain ("reporter" to reporterApiId.value)
+      attributes shouldContain ("assignee" to assigneeApiId.value)
       attributes shouldContain ("statusGroup" to "todo")
-      attributes shouldContain ("project" to projectId.toString())
+      attributes shouldContain ("project" to projectApiId.value)
     }
   })

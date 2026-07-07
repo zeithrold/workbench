@@ -1,6 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
@@ -52,10 +53,12 @@ class WorkItemServiceQueryTest :
         )
       coEvery { repository.findByApiId(tenantId, projectId, "WB-1") } returns record
       coEvery { repository.listByProject(tenantId, projectId, 50, 0L) } returns listOf(record)
+      val users = mockk<UserRepository>(relaxed = true)
       val service =
         WorkItemService(
           repository,
           configs,
+          users,
           createParentGuard,
           mutationSupport,
           fieldPipeline,

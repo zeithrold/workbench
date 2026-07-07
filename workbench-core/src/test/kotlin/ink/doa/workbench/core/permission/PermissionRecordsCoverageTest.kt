@@ -101,6 +101,7 @@ class PermissionRecordsCoverageTest :
           subject =
             AuthorizationSubject(
               userId = userId,
+              userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
               loginAccountId = UUID.randomUUID(),
               credentialType = CredentialType.SESSION,
               credentialId = "sess",

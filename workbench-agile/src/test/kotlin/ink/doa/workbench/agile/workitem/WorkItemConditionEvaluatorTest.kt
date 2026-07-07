@@ -14,39 +14,66 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+private const val ACTOR_API_ID = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+private const val PROJECT_API_ID = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1"
+
 class WorkItemConditionEvaluatorTest :
   StringSpec({
     val actorId = UUID.randomUUID()
     val issue = workItem(actorId)
     val evaluator = WorkItemConditionEvaluator()
 
-    "evaluates nested all and current user variables" {
+    fun context(
+      item: WorkItemRecord = issue,
+      properties: Map<String, kotlinx.serialization.json.JsonElement> = emptyMap(),
+      childIssuesNotDone: Long = 0,
+    ) = WorkItemConditionContext(item, ACTOR_API_ID, PROJECT_API_ID, properties, childIssuesNotDone)
+
+    "evaluates canonical and composition with current user variables" {
+      val ast =
+        JsonObject(
+          mapOf(
+            "op" to JsonPrimitive("and"),
+            "args" to
+              JsonArray(
+                listOf(
+                  JsonObject(
+                    mapOf(
+                      "field" to JsonPrimitive("issue.assignee"),
+                      "op" to JsonPrimitive("eq"),
+                      "value" to JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+                    )
+                  ),
+                  predicate("issue.statusGroup", "eq", "todo"),
+                )
+              ),
+          )
+        )
+
+      evaluator.evaluate(ast, context()) shouldBe true
+    }
+
+    "rejects legacy all syntax" {
       val ast =
         JsonObject(
           mapOf(
             "all" to
               JsonArray(
                 listOf(
-                  predicate("assignee", "eq", "user.currentUser"),
-                  predicate("statusGroup", "eq", "todo"),
+                  predicate("issue.assignee", "eq", "user.currentUser"),
+                  predicate("issue.statusGroup", "eq", "todo"),
                 )
               )
           )
         )
 
-      evaluator.evaluate(
-        ast,
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-      ) shouldBe true
+      shouldThrow<InvalidRequestException> { evaluator.evaluate(ast, context()) }
     }
 
     "evaluates child aggregate preconditions" {
       val ast = predicate("children.notDone", "eq", JsonPrimitive(0))
 
-      evaluator.evaluate(
-        ast,
-        WorkItemConditionContext(issue, actorId, properties = emptyMap(), childIssuesNotDone = 1),
-      ) shouldBe false
+      evaluator.evaluate(ast, context(childIssuesNotDone = 1)) shouldBe false
     }
 
     "evaluates query style condition ast and variables" {
@@ -59,14 +86,14 @@ class WorkItemConditionEvaluatorTest :
                 listOf(
                   JsonObject(
                     mapOf(
-                      "field" to JsonPrimitive("assignee"),
+                      "field" to JsonPrimitive("issue.assignee"),
                       "op" to JsonPrimitive("eq"),
                       "value" to JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
                     )
                   ),
                   JsonObject(
                     mapOf(
-                      "field" to JsonPrimitive("statusGroup"),
+                      "field" to JsonPrimitive("issue.statusGroup"),
                       "op" to JsonPrimitive("eq"),
                       "value" to JsonPrimitive("todo"),
                     )
@@ -76,127 +103,114 @@ class WorkItemConditionEvaluatorTest :
           )
         )
 
-      evaluator.evaluate(
-        ast,
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-      ) shouldBe true
+      evaluator.evaluate(ast, context()) shouldBe true
     }
 
     "returns true for empty or unparseable condition" {
-      evaluator.evaluate(
-        JsonObject(emptyMap()),
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-      ) shouldBe true
+      evaluator.evaluate(JsonObject(emptyMap()), context()) shouldBe true
     }
 
     "evaluates or and not combinators" {
       val orAst =
         JsonObject(
           mapOf(
-            "any" to
+            "op" to JsonPrimitive("or"),
+            "args" to
               JsonArray(
                 listOf(
-                  predicate("statusGroup", "eq", "done"),
-                  predicate("statusGroup", "eq", "todo"),
+                  predicate("issue.statusGroup", "eq", "done"),
+                  predicate("issue.statusGroup", "eq", "todo"),
                 )
-              )
+              ),
           )
         )
-      val notAst = JsonObject(mapOf("not" to predicate("statusGroup", "eq", "done")))
+      val notAst =
+        JsonObject(
+          mapOf(
+            "op" to JsonPrimitive("not"),
+            "arg" to predicate("issue.statusGroup", "eq", "done"),
+          )
+        )
 
+      evaluator.evaluate(orAst, context()) shouldBe true
+      evaluator.evaluate(notAst, context()) shouldBe true
       evaluator.evaluate(
-        orAst,
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-      ) shouldBe true
-      evaluator.evaluate(
-        notAst,
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-      ) shouldBe true
-      evaluator.evaluate(
-        JsonObject(mapOf("not" to predicate("statusGroup", "eq", "todo"))),
-        WorkItemConditionContext(issue, actorId, properties = emptyMap()),
+        JsonObject(
+          mapOf(
+            "op" to JsonPrimitive("not"),
+            "arg" to predicate("issue.statusGroup", "eq", "todo"),
+          )
+        ),
+        context(),
       ) shouldBe false
     }
 
     "evaluates comparison operators on child aggregate" {
-      val context =
-        WorkItemConditionContext(issue, actorId, properties = emptyMap(), childIssuesNotDone = 3)
+      val ctx = context(childIssuesNotDone = 3)
 
-      evaluator.evaluate(predicate("children.notDone", "gt", JsonPrimitive(2)), context) shouldBe
-        true
-      evaluator.evaluate(predicate("children.notDone", "gte", JsonPrimitive(3)), context) shouldBe
-        true
-      evaluator.evaluate(predicate("children.notDone", "lt", JsonPrimitive(4)), context) shouldBe
-        true
-      evaluator.evaluate(predicate("children.notDone", "lte", JsonPrimitive(3)), context) shouldBe
-        true
+      evaluator.evaluate(predicate("children.notDone", "gt", JsonPrimitive(2)), ctx) shouldBe true
+      evaluator.evaluate(predicate("children.notDone", "gte", JsonPrimitive(3)), ctx) shouldBe true
+      evaluator.evaluate(predicate("children.notDone", "lt", JsonPrimitive(4)), ctx) shouldBe true
+      evaluator.evaluate(predicate("children.notDone", "lte", JsonPrimitive(3)), ctx) shouldBe true
     }
 
     "evaluates membership operators on status" {
       val statusApiId = issue.statusApiId.value
-      val context = WorkItemConditionContext(issue, actorId, properties = emptyMap())
+      val ctx = context()
 
+      evaluator.evaluate(predicate("issue.status", "in", statusApiId), ctx) shouldBe true
       evaluator.evaluate(
-        predicate("status", "in", statusApiId),
-        context,
-      ) shouldBe true
-      evaluator.evaluate(
-        predicate("status", "not_in", JsonArray(listOf(JsonPrimitive("sts_other")))),
-        context,
+        predicate("issue.status", "not_in", JsonArray(listOf(JsonPrimitive("sts_other")))),
+        ctx,
       ) shouldBe true
     }
 
     "evaluates empty and not empty on assignee" {
-      val assigned = WorkItemConditionContext(issue, actorId, properties = emptyMap())
-      val unassigned =
-        WorkItemConditionContext(
-          workItem(actorId, assigneeId = null),
-          actorId,
-          properties = emptyMap(),
-        )
+      val assigned = context()
+      val unassigned = context(workItem(actorId, assigneeId = null))
 
-      evaluator.evaluate(predicate("assignee", "is_not_empty", JsonNull), assigned) shouldBe true
-      evaluator.evaluate(predicate("assignee", "is_empty", JsonNull), unassigned) shouldBe true
+      evaluator.evaluate(predicate("issue.assignee", "is_not_empty", JsonNull), assigned) shouldBe
+        true
+      evaluator.evaluate(predicate("issue.assignee", "is_empty", JsonNull), unassigned) shouldBe
+        true
     }
 
     "evaluates string and array operators on custom properties" {
-      val context =
-        WorkItemConditionContext(
-          issue,
-          actorId,
+      val ctx =
+        context(
           properties =
             mapOf(
               "note" to JsonPrimitive("hello world"),
               "tags" to JsonArray(listOf(JsonPrimitive("a"), JsonPrimitive("b"))),
-            ),
+            )
         )
 
-      evaluator.evaluate(predicate("note", "contains", "world"), context) shouldBe true
-      evaluator.evaluate(predicate("note", "not_contains", "missing"), context) shouldBe true
+      evaluator.evaluate(predicate("property.note", "contains", "world"), ctx) shouldBe true
+      evaluator.evaluate(predicate("property.note", "not_contains", "missing"), ctx) shouldBe true
       evaluator.evaluate(
-        predicate("tags", "has_any", JsonArray(listOf(JsonPrimitive("b")))),
-        context,
+        predicate("property.tags", "has_any", JsonArray(listOf(JsonPrimitive("b")))),
+        ctx,
       ) shouldBe true
       evaluator.evaluate(
-        predicate("tags", "has_all", JsonArray(listOf(JsonPrimitive("a"), JsonPrimitive("b")))),
-        context,
-      ) shouldBe true
-      evaluator.evaluate(
-        predicate("tags", "has_none", JsonArray(listOf(JsonPrimitive("z")))),
-        context,
-      ) shouldBe true
-      evaluator.evaluate(
-        predicate("structured", "eq", """{"k":"v"}"""),
-        WorkItemConditionContext(
-          issue,
-          actorId,
-          properties = mapOf("structured" to JsonObject(mapOf("k" to JsonPrimitive("v")))),
+        predicate(
+          "property.tags",
+          "has_all",
+          JsonArray(listOf(JsonPrimitive("a"), JsonPrimitive("b"))),
         ),
+        ctx,
+      ) shouldBe true
+      evaluator.evaluate(
+        predicate("property.tags", "has_none", JsonArray(listOf(JsonPrimitive("z")))),
+        ctx,
+      ) shouldBe true
+      evaluator.evaluate(
+        predicate("property.structured", "eq", """{"k":"v"}"""),
+        context(properties = mapOf("structured" to JsonObject(mapOf("k" to JsonPrimitive("v"))))),
       ) shouldBe true
     }
 
     "resolves property field by apiId and code" {
-      val propertyApiId = "fld_severity"
+      val propertyApiId = PublicId.new("fld").value
       val issueWithProperty =
         workItem(
           actorId,
@@ -208,25 +222,21 @@ class WorkItemConditionEvaluatorTest :
 
       evaluator.evaluate(
         predicate("property.severity", "eq", "high"),
-        WorkItemConditionContext(issueWithProperty, actorId, properties = emptyMap()),
+        context(issueWithProperty),
       ) shouldBe true
       evaluator.evaluate(
         predicate("property.$propertyApiId", "eq", "low"),
-        WorkItemConditionContext(issueWithProperty, actorId, properties = emptyMap()),
+        context(issueWithProperty),
       ) shouldBe true
       evaluator.evaluate(
-        predicate("customNote", "eq", "from-context"),
-        WorkItemConditionContext(
-          issue,
-          actorId,
-          properties = mapOf("customNote" to JsonPrimitive("from-context")),
-        ),
+        predicate("property.customNote", "eq", "from-context"),
+        context(properties = mapOf("customNote" to JsonPrimitive("from-context"))),
       ) shouldBe true
     }
 
     "resolves issue variables with null assignee" {
       val unassignedIssue = workItem(actorId, assigneeId = null)
-      val context = WorkItemConditionContext(unassignedIssue, actorId, properties = emptyMap())
+      val ctx = context(unassignedIssue)
 
       evaluator.evaluate(
         JsonObject(
@@ -236,7 +246,7 @@ class WorkItemConditionEvaluatorTest :
             "value" to JsonNull,
           )
         ),
-        context,
+        ctx,
       ) shouldBe true
       evaluator.evaluate(
         JsonObject(
@@ -246,7 +256,7 @@ class WorkItemConditionEvaluatorTest :
             "value" to JsonObject(mapOf("var" to JsonPrimitive("issue.reporter"))),
           )
         ),
-        context,
+        ctx,
       ) shouldBe true
     }
 
@@ -254,11 +264,11 @@ class WorkItemConditionEvaluatorTest :
       shouldThrow<InvalidRequestException> {
         evaluator.evaluate(
           predicate(
-            "statusGroup",
+            "issue.statusGroup",
             "between",
             JsonArray(listOf(JsonPrimitive(1), JsonPrimitive(2))),
           ),
-          WorkItemConditionContext(issue, actorId, properties = emptyMap()),
+          context(),
         )
       }
     }
@@ -268,20 +278,17 @@ class WorkItemConditionEvaluatorTest :
         evaluator.evaluate(
           JsonObject(
             mapOf(
-              "field" to JsonPrimitive("assignee"),
+              "field" to JsonPrimitive("issue.assignee"),
               "op" to JsonPrimitive("eq"),
               "value" to JsonObject(mapOf("var" to JsonPrimitive("issue.unknown"))),
             )
           ),
-          WorkItemConditionContext(issue, actorId, properties = emptyMap()),
+          context(),
         )
       }
 
       shouldThrow<InvalidRequestException> {
-        evaluator.evaluate(
-          predicate("statusGroup", "gt", "todo"),
-          WorkItemConditionContext(issue, actorId, properties = emptyMap()),
-        )
+        evaluator.evaluate(predicate("issue.statusGroup", "gt", "todo"), context())
       }
     }
   })
@@ -328,8 +335,8 @@ private fun workItem(
     reporterId = actorId,
     assigneeId = assigneeId,
     priorityApiId = null,
-    reporterApiId = PublicId.new("usr"),
-    assigneeApiId = assigneeId?.let { PublicId.new("usr") },
+    reporterApiId = PublicId(ACTOR_API_ID),
+    assigneeApiId = assigneeId?.let { PublicId(ACTOR_API_ID) },
     sprintApiId = null,
     properties = properties,
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
