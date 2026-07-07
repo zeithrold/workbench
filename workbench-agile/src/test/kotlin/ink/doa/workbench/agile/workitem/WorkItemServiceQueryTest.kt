@@ -58,7 +58,6 @@ class WorkItemServiceQueryTest :
           configs,
           createParentGuard,
           mutationSupport,
-          mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
           fieldPipeline,
         )
 

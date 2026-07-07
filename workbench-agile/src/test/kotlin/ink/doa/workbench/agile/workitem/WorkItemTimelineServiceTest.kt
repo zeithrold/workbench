@@ -6,14 +6,14 @@ import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkItemTimelineRepository
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecord
-import ink.doa.workbench.core.workitem.activity.WorkItemActivitySourceType
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusSnapshot
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityType
 import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.core.workitem.stream.WorkItemEventType
 import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
 import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
 import io.kotest.assertions.throwables.shouldThrow
@@ -44,18 +44,19 @@ class WorkItemTimelineServiceTest :
         WorkItemTimelinePage(
           items =
             listOf(
-              WorkItemTimelineEntry.Activity(
-                WorkItemActivityRecord(
+              WorkItemTimelineEntry.Event(
+                WorkItemEventRecord(
                   id = UUID.randomUUID(),
-                  apiId = PublicId.new("act"),
+                  apiId = PublicId.new("evt"),
                   tenantId = tenantId,
                   projectId = projectId,
                   workItemId = workItemId,
                   workItemApiId = PublicId.new("iss"),
+                  sequence = 1,
+                  eventType = WorkItemEventType.CREATED,
                   actorUserId = null,
                   actorApiId = null,
                   actorDisplayName = null,
-                  activityType = WorkItemActivityType.CREATED,
                   occurredAt = now,
                   summary = null,
                   payload =
@@ -68,7 +69,7 @@ class WorkItemTimelineServiceTest :
                         issueType = WorkItemActivityEntityRef("ity_01", "Task"),
                       )
                     ),
-                  sourceType = WorkItemActivitySourceType.USER,
+                  sourceType = WorkItemEventSourceType.USER,
                   createdAt = now,
                 )
               )

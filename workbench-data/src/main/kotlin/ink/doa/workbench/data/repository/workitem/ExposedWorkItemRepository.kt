@@ -3,13 +3,13 @@ package ink.doa.workbench.data.repository.workitem
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.InsertHierarchyLinkCommand
@@ -20,13 +20,13 @@ import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintChange
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.StatusHistoryEntry
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemTransitionCompletion
+import ink.doa.workbench.data.persistence.postgres.workitem.appendWorkItemEvent
 import ink.doa.workbench.data.persistence.postgres.workitem.asObject
 import ink.doa.workbench.data.persistence.postgres.workitem.completeWorkItemTransition
 import ink.doa.workbench.data.persistence.postgres.workitem.insertHierarchyLink
 import ink.doa.workbench.data.persistence.postgres.workitem.insertStatusHistory
 import ink.doa.workbench.data.persistence.postgres.workitem.insertWorkItemRows
 import ink.doa.workbench.data.persistence.postgres.workitem.now
-import ink.doa.workbench.data.persistence.postgres.workitem.preparePendingWorkItemActivity
 import ink.doa.workbench.data.persistence.postgres.workitem.prepareWorkItemInsert
 import ink.doa.workbench.data.persistence.postgres.workitem.propertyCode
 import ink.doa.workbench.data.persistence.postgres.workitem.recordIssueSprintChange
@@ -59,8 +59,8 @@ import org.springframework.stereotype.Repository
 @Repository
 class ExposedWorkItemRepository(
   private val database: Database,
-  private val activityFactory: WorkItemActivityFactory,
-  private val activityCodec: WorkItemActivityCodec,
+  private val eventFactory: WorkItemEventFactory,
+  private val eventCodec: WorkItemEventCodec,
 ) : WorkItemRepository {
   @Suppress("LongMethod")
   override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
@@ -111,10 +111,10 @@ class ExposedWorkItemRepository(
           )
         )
       }
-      val pendingActivity =
-        preparePendingWorkItemActivity(
-          activityCodec,
-          activityFactory.created(
+      val insertedEvent =
+        appendWorkItemEvent(
+          eventCodec,
+          eventFactory.created(
             context =
               WorkItemActivityContext(
                 tenantId = command.command.tenantId,
@@ -135,8 +135,8 @@ class ExposedWorkItemRepository(
             prepared.issueApiId.value,
           ),
         eventType = "work_item.created",
-        activityId = pendingActivity.id,
-        pendingActivity = pendingActivity,
+        streamEventId = insertedEvent.id,
+        streamEventApiId = insertedEvent.apiId,
       )
     }
 
@@ -263,8 +263,8 @@ class ExposedWorkItemRepository(
       }
       replacePropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
       val after = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId)
-      val pendingActivity =
-        activityFactory
+      val updateEvent =
+        eventFactory
           .updated(
             WorkItemUpdateActivityInput(
               context =
@@ -281,12 +281,12 @@ class ExposedWorkItemRepository(
               propertyValues = propertyValues,
             )
           )
-          ?.let { preparePendingWorkItemActivity(activityCodec, it) }
+          ?.let { appendWorkItemEvent(eventCodec, it) }
       WorkItemMutationResult(
         workItem = after,
         eventType = "work_item.updated",
-        activityId = pendingActivity?.id,
-        pendingActivity = pendingActivity,
+        streamEventId = updateEvent?.id,
+        streamEventApiId = updateEvent?.apiId,
       )
     }
 
@@ -344,8 +344,8 @@ class ExposedWorkItemRepository(
           nextSprintId = nextSprintId,
           now = now,
         ),
-        activityFactory = activityFactory,
-        activityCodec = activityCodec,
+        eventFactory = eventFactory,
+        eventCodec = eventCodec,
       )
     }
 

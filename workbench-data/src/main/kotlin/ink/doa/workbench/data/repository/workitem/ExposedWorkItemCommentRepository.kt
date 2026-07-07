@@ -5,22 +5,19 @@ package ink.doa.workbench.data.repository.workitem
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.pagination.WorkbenchTimelineEntryKind
 import ink.doa.workbench.core.workitem.WorkItemCommentRepository
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentCreateResult
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
-import ink.doa.workbench.data.persistence.postgres.workitem.InsertTimelineEntryCommand
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueCommentsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
-import ink.doa.workbench.data.persistence.postgres.workitem.insertTimelineEntry
+import ink.doa.workbench.data.persistence.postgres.workitem.appendWorkItemEvent
 import ink.doa.workbench.data.persistence.postgres.workitem.now
-import ink.doa.workbench.data.persistence.postgres.workitem.preparePendingWorkItemActivity
-import ink.doa.workbench.data.persistence.postgres.workitem.softDeleteTimelineEntryByComment
+import ink.doa.workbench.data.persistence.postgres.workitem.softDeleteTimelineByCommentSource
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -40,8 +37,8 @@ import org.springframework.stereotype.Repository
 @Repository
 class ExposedWorkItemCommentRepository(
   private val database: Database,
-  private val activityFactory: WorkItemActivityFactory,
-  private val activityCodec: WorkItemActivityCodec,
+  private val eventFactory: WorkItemEventFactory,
+  private val eventCodec: WorkItemEventCodec,
 ) : WorkItemCommentRepository {
   @Suppress("LongMethod")
   override suspend fun create(
@@ -52,29 +49,6 @@ class ExposedWorkItemCommentRepository(
       val now = now()
       val commentId = UUID.randomUUID()
       val apiId = PublicId.new("icm")
-      val pendingActivity =
-        if (command.activityId == null && command.transitionId == null) {
-          preparePendingWorkItemActivity(
-            activityCodec,
-            activityFactory.commentCreated(
-              WorkItemCommentCreatedInput(
-                context =
-                  WorkItemActivityContext(
-                    tenantId = command.tenantId,
-                    projectId = command.projectId,
-                    workItemId = issueId,
-                    actorUserId = command.authorId,
-                    occurredAt = now,
-                  ),
-                commentApiId = apiId.value,
-                plainTextPreview = command.bodyPlainText,
-              )
-            ),
-          )
-        } else {
-          null
-        }
-      val linkedActivityId = command.activityId ?: pendingActivity?.id
       IssueCommentsTable.insert {
         it[IssueCommentsTable.id] = commentId.toKotlinUuid()
         it[IssueCommentsTable.apiId] = apiId.value
@@ -86,20 +60,27 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.bodyFormat] = command.bodyFormat
         it[IssueCommentsTable.transitionId] = command.transitionId?.toKotlinUuid()
         it[IssueCommentsTable.statusHistoryId] = command.statusHistoryId?.toKotlinUuid()
-        it[IssueCommentsTable.activityId] = linkedActivityId?.toKotlinUuid()
         it[IssueCommentsTable.createdAt] = now
         it[IssueCommentsTable.updatedAt] = now
       }
-      insertTimelineEntry(
-        InsertTimelineEntryCommand(
-          tenantId = command.tenantId,
-          projectId = command.projectId,
-          workItemId = issueId,
-          entryKind = WorkbenchTimelineEntryKind.COMMENT,
-          sourceId = commentId,
-          occurredAt = now,
+      val event =
+        appendWorkItemEvent(
+          eventCodec,
+          eventFactory.commentAdded(
+            WorkItemCommentCreatedInput(
+              context =
+                WorkItemActivityContext(
+                  tenantId = command.tenantId,
+                  projectId = command.projectId,
+                  workItemId = issueId,
+                  actorUserId = command.authorId,
+                  occurredAt = now,
+                ),
+              commentApiId = apiId.value,
+              plainTextPreview = command.bodyPlainText,
+            )
+          ),
         )
-      )
       WorkItemCommentCreateResult(
         record =
           WorkItemCommentRecord(
@@ -114,12 +95,12 @@ class ExposedWorkItemCommentRepository(
             bodyFormat = command.bodyFormat,
             transitionId = command.transitionId,
             statusHistoryId = command.statusHistoryId,
-            activityId = linkedActivityId,
             editedAt = null,
             createdAt = now,
             updatedAt = now,
           ),
-        pendingActivity = pendingActivity,
+        eventId = event.id,
+        eventApiId = event.apiId,
       )
     }
 
@@ -165,6 +146,23 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.editedAt] = now
         it[IssueCommentsTable.updatedAt] = now
       }
+      appendWorkItemEvent(
+        eventCodec,
+        eventFactory.commentEdited(
+          WorkItemCommentCreatedInput(
+            context =
+              WorkItemActivityContext(
+                tenantId = command.tenantId,
+                projectId = command.projectId,
+                workItemId = issueId,
+                actorUserId = command.actorUserId,
+                occurredAt = now,
+              ),
+            commentApiId = command.commentApiId,
+            plainTextPreview = command.bodyPlainText,
+          )
+        ),
+      )
       row
         .toRecord()
         .copy(
@@ -200,10 +198,29 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.deleteReason] = command.deleteReason
         it[IssueCommentsTable.updatedAt] = now
       }
-      softDeleteTimelineEntryByComment(
+      softDeleteTimelineByCommentSource(
         tenantId = command.tenantId,
-        commentId = row[IssueCommentsTable.id].toJavaUuid(),
+        workItemId = issueId,
+        commentApiId = command.commentApiId,
         deletedAt = now,
+      )
+      appendWorkItemEvent(
+        eventCodec,
+        eventFactory.commentDeleted(
+          WorkItemCommentDeletedInput(
+            context =
+              WorkItemActivityContext(
+                tenantId = command.tenantId,
+                projectId = command.projectId,
+                workItemId = issueId,
+                actorUserId = command.actorUserId,
+                occurredAt = now,
+              ),
+            commentApiId = command.commentApiId,
+            plainTextPreview = row[IssueCommentsTable.bodyPlainText],
+            deleteReason = command.deleteReason,
+          )
+        ),
       )
       IssueCommentsTable.selectAll()
         .where { IssueCommentsTable.id eq row[IssueCommentsTable.id] }
@@ -230,10 +247,16 @@ class ExposedWorkItemCommentRepository(
         ?.toJavaUuid()
     }
 
-  internal fun loadRecord(commentId: UUID): WorkItemCommentRecord? =
+  internal fun loadByApiId(
+    tenantId: UUID,
+    issueId: UUID,
+    commentApiId: String,
+  ): WorkItemCommentRecord? =
     IssueCommentsTable.selectAll()
       .where {
-        (IssueCommentsTable.id eq commentId.toKotlinUuid()) and
+        (IssueCommentsTable.tenantId eq tenantId.toKotlinUuid()) and
+          (IssueCommentsTable.issueId eq issueId.toKotlinUuid()) and
+          (IssueCommentsTable.apiId eq commentApiId) and
           IssueCommentsTable.deletedAt.isNull()
       }
       .singleOrNull()
@@ -256,7 +279,6 @@ class ExposedWorkItemCommentRepository(
       bodyFormat = this[IssueCommentsTable.bodyFormat],
       transitionId = this[IssueCommentsTable.transitionId]?.toJavaUuid(),
       statusHistoryId = this[IssueCommentsTable.statusHistoryId]?.toJavaUuid(),
-      activityId = this[IssueCommentsTable.activityId]?.toJavaUuid(),
       editedAt = this[IssueCommentsTable.editedAt],
       createdAt = this[IssueCommentsTable.createdAt],
       updatedAt = this[IssueCommentsTable.updatedAt],

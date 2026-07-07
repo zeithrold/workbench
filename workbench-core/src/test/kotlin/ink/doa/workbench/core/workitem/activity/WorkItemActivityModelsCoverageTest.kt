@@ -1,7 +1,11 @@
 package ink.doa.workbench.core.workitem.activity
 
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.messaging.DomainTopics
+import ink.doa.workbench.core.workitem.stream.AppendWorkItemEventCommand
+import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.core.workitem.stream.WorkItemEventSpecs
+import ink.doa.workbench.core.workitem.stream.WorkItemEventType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
@@ -40,13 +44,27 @@ class WorkItemActivityModelsCoverageTest :
       WorkItemActivitySpecs.specFor(WorkItemActivityType.UNKNOWN).shouldBeNull()
     }
 
-    "record requested domain event spec uses work item activity topic" {
-      WorkItemActivityDomainEvents.RecordRequested.type shouldBe
-        "work_item.activity.record_requested"
-      WorkItemActivityDomainEvents.RecordRequested.topic shouldBe DomainTopics.WORK_ITEM_ACTIVITY
+    "event type helpers resolve db values" {
+      WorkItemEventType.fromDbValue("work_item.created") shouldBe WorkItemEventType.CREATED
+      WorkItemEventType.fromDbValue("comment.added") shouldBe WorkItemEventType.COMMENT_ADDED
+      WorkItemEventType.fromDbValue("missing") shouldBe WorkItemEventType.UNKNOWN
+      WorkItemEventType.requireKnown(WorkItemEventType.CREATED) shouldBe WorkItemEventType.CREATED
+      shouldThrow<IllegalArgumentException> {
+        WorkItemEventType.requireKnown(WorkItemEventType.UNKNOWN)
+      }
     }
 
-    "activity records store actor and payload metadata" {
+    "event source type helpers resolve db values" {
+      WorkItemEventSourceType.fromDbValue("system") shouldBe WorkItemEventSourceType.SYSTEM
+      WorkItemEventSourceType.fromDbValue("missing") shouldBe WorkItemEventSourceType.USER
+    }
+
+    "event specs resolve by type" {
+      WorkItemEventSpecs.specFor(WorkItemEventType.CREATED)?.type shouldBe WorkItemEventType.CREATED
+      WorkItemEventSpecs.specFor(WorkItemEventType.UNKNOWN).shouldBeNull()
+    }
+
+    "event records store actor and payload metadata" {
       val payload =
         WorkItemActivityPayload.Created(
           WorkItemCreatedPayload(
@@ -58,27 +76,28 @@ class WorkItemActivityModelsCoverageTest :
           )
         )
       val record =
-        WorkItemActivityRecord(
+        WorkItemEventRecord(
           id = UUID.randomUUID(),
-          apiId = PublicId.new("act"),
+          apiId = PublicId.new("evt"),
           tenantId = tenantId,
           projectId = projectId,
           workItemId = workItemId,
           workItemApiId = PublicId.new("iss"),
+          sequence = 1,
+          eventType = WorkItemEventType.CREATED,
           actorUserId = userId,
           actorApiId = PublicId.new("usr"),
           actorDisplayName = "Alice",
-          activityType = WorkItemActivityType.CREATED,
           occurredAt = now,
           summary = "Created",
           payload = payload,
-          sourceType = WorkItemActivitySourceType.USER,
+          sourceType = WorkItemEventSourceType.USER,
           createdAt = now,
         )
       record.summary shouldBe "Created"
     }
 
-    "create activity command stores actor and source metadata" {
+    "append event command stores actor and source metadata" {
       val payload =
         WorkItemUpdatedPayload(
           fields =
@@ -91,39 +110,21 @@ class WorkItemActivityModelsCoverageTest :
               )
             )
         )
-      CreateWorkItemActivityCommand(
+      AppendWorkItemEventCommand(
           tenantId = tenantId,
           projectId = projectId,
           workItemId = workItemId,
           actorUserId = userId,
-          spec = WorkItemActivitySpecs.Updated,
+          spec = WorkItemEventSpecs.Updated,
           payload = payload,
           occurredAt = now,
           summary = "Updated title",
-          sourceType = WorkItemActivitySourceType.AUTOMATION,
+          sourceType = WorkItemEventSourceType.AUTOMATION,
           sourceId = "rule_1",
           correlationId = "corr-1",
           requestId = "req-1",
         )
         .summary shouldBe "Updated title"
-
-      PendingWorkItemActivity(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("act"),
-          command =
-            CreateWorkItemActivityCommand(
-              tenantId = tenantId,
-              projectId = projectId,
-              workItemId = workItemId,
-              actorUserId = userId,
-              spec = WorkItemActivitySpecs.Updated,
-              payload = payload,
-              occurredAt = now,
-            ),
-        )
-        .command
-        .spec
-        .type shouldBe WorkItemActivityType.UPDATED
     }
 
     "unknown payload wrapper keeps raw json" {
