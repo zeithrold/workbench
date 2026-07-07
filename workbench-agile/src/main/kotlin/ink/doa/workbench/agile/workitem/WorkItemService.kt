@@ -20,7 +20,6 @@ class WorkItemService(
   private val configs: IssueTypeConfigRepository,
   private val createParentGuard: WorkItemCreateParentGuard,
   private val mutationSupport: WorkItemMutationSupport,
-  private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val fieldPipeline: WorkItemFieldMutationPipeline,
 ) {
   suspend fun create(command: CreateWorkItemCommand): WorkItemMutationResult {
@@ -56,7 +55,7 @@ class WorkItemService(
           propertyValues = plan.propertyValues,
         )
       )
-      .also { mutationSupport.publishAndEnqueue(it, activityEnqueueSupport) }
+      .also { mutationSupport.publish(it) }
   }
 
   suspend fun availableCreateForm(
@@ -155,9 +154,7 @@ class WorkItemService(
       issueId = issue.id,
       descriptionHtml = effectiveCommand.description,
     )
-    return repository.update(effectiveCommand, values).also {
-      mutationSupport.publishAndEnqueue(it, activityEnqueueSupport)
-    }
+    return repository.update(effectiveCommand, values).also { mutationSupport.publish(it) }
   }
 
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =

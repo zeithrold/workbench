@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.repository.workitem.WorkItemActivityContext
-import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
+import ink.doa.workbench.data.repository.workitem.WorkItemEventFactory
 import ink.doa.workbench.data.repository.workitem.WorkItemStatusChangedInput
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -24,8 +24,8 @@ internal data class WorkItemTransitionCompletion(
 
 internal fun completeWorkItemTransition(
   completion: WorkItemTransitionCompletion,
-  activityFactory: WorkItemActivityFactory,
-  activityCodec: WorkItemActivityCodec,
+  eventFactory: WorkItemEventFactory,
+  eventCodec: WorkItemEventCodec,
 ): WorkItemMutationResult {
   val command = completion.command
   if (command.sprintApiId != null) {
@@ -59,10 +59,10 @@ internal fun completeWorkItemTransition(
         changedAt = completion.now,
       )
     )
-  val pendingActivity =
-    preparePendingWorkItemActivity(
-      activityCodec,
-      activityFactory.statusChanged(
+  val insertedEvent =
+    appendWorkItemEvent(
+      eventCodec,
+      eventFactory.statusChanged(
         WorkItemStatusChangedInput(
           context =
             WorkItemActivityContext(
@@ -82,7 +82,7 @@ internal fun completeWorkItemTransition(
     workItem = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId),
     eventType = "work_item.transitioned",
     statusHistoryId = statusHistoryId,
-    activityId = pendingActivity.id,
-    pendingActivity = pendingActivity,
+    streamEventId = insertedEvent.id,
+    streamEventApiId = insertedEvent.apiId,
   )
 }

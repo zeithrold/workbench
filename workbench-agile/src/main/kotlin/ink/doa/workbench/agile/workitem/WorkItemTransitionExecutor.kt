@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component
 class WorkItemTransitionExecutor(
   private val repository: WorkItemRepository,
   private val mutationSupport: WorkItemMutationSupport,
-  private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val commentService: WorkItemCommentService,
 ) {
   suspend fun execute(command: TransitionExecutionCommand): WorkItemMutationResult {
@@ -22,7 +21,7 @@ class WorkItemTransitionExecutor(
           transitionId = command.transition.id,
           propertyValues = command.propertyValues,
         )
-        .also { mutationSupport.publishAndEnqueue(it, activityEnqueueSupport) }
+        .also { mutationSupport.publish(it) }
     if (command.commentBody != null) {
       commentService.create(
         CreateWorkItemCommentCommand(
@@ -33,7 +32,6 @@ class WorkItemTransitionExecutor(
           body = command.commentBody,
           transitionId = command.transition.id,
           statusHistoryId = result.statusHistoryId,
-          activityId = result.activityId,
         )
       )
     }

@@ -146,7 +146,6 @@ object IssueCommentsTable : Table("issue_comments") {
   val bodyFormat = text("body_format")
   val transitionId = uuid("transition_id").references(WorkflowTransitionsTable.id).nullable()
   val statusHistoryId = uuid("status_history_id").references(IssueStatusHistoryTable.id).nullable()
-  val activityId = uuid("activity_id").nullable()
   val editedAt = timestampWithTimeZone("edited_at").nullable()
   val archivedAt = timestampWithTimeZone("archived_at").nullable()
   val archivedBy = uuid("archived_by").references(UsersTable.id).nullable()
@@ -198,15 +197,16 @@ object WorkItemViewsTable : Table("work_item_views") {
   override val primaryKey = PrimaryKey(id)
 }
 
-object WorkItemActivitiesTable : Table("work_item_activities") {
+object WorkItemEventsTable : Table("work_item_events") {
   val id = uuid("id")
   val apiId = text("api_id").uniqueIndex()
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
   val projectId = uuid("project_id").references(ProjectsTable.id)
   val workItemId = uuid("work_item_id").references(IssuesTable.id)
-  val actorUserId = uuid("actor_user_id").references(UsersTable.id).nullable()
-  val activityType = text("activity_type")
+  val sequence = long("sequence")
+  val eventType = text("event_type")
   val occurredAt = timestampWithTimeZone("occurred_at")
+  val actorUserId = uuid("actor_user_id").references(UsersTable.id).nullable()
   val summary = text("summary").nullable()
   val payload = jsonb("payload", Json.Default, JsonElement.serializer())
   val sourceType = text("source_type")
@@ -217,14 +217,24 @@ object WorkItemActivitiesTable : Table("work_item_activities") {
   override val primaryKey = PrimaryKey(id)
 }
 
+object DomainOutboxTable : Table("domain_outbox") {
+  val id = uuid("id")
+  val topic = text("topic")
+  val partitionKey = text("partition_key")
+  val payload = jsonb("payload", Json.Default, JsonElement.serializer())
+  val createdAt = timestampWithTimeZone("created_at")
+  val publishedAt = timestampWithTimeZone("published_at").nullable()
+  val attempts = integer("attempts")
+  override val primaryKey = PrimaryKey(id)
+}
+
 object WorkItemTimelineEntriesTable : Table("work_item_timeline_entries") {
   val id = uuid("id")
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
   val projectId = uuid("project_id").references(ProjectsTable.id)
   val workItemId = uuid("work_item_id").references(IssuesTable.id)
-  val entryKind = text("entry_kind")
-  val entryKindRank = short("entry_kind_rank")
-  val sourceId = uuid("source_id")
+  val eventId = uuid("event_id").references(WorkItemEventsTable.id)
+  val sequence = long("sequence")
   val occurredAt = timestampWithTimeZone("occurred_at")
   val deletedAt = timestampWithTimeZone("deleted_at").nullable()
   val createdAt = timestampWithTimeZone("created_at")

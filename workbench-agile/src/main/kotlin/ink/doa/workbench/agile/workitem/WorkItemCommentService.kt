@@ -24,16 +24,13 @@ import org.springframework.stereotype.Service
 class WorkItemCommentService(
   private val comments: WorkItemCommentRepository,
   private val bindings: PermissionBindingRepository,
-  private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
   private val clock: Clock,
 ) {
   suspend fun create(command: CreateWorkItemCommentCommand): WorkItemCommentRecord {
     requirePermission(command.tenantId, command.projectId, command.authorId, CREATE_ACTION)
     val processed = processBody(command.body)
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
-    val result = comments.create(command.withProcessedBody(processed), issueId)
-    activityEnqueueSupport.enqueue(result.pendingActivity, command.workItemApiId)
-    return result.record
+    return comments.create(command.withProcessedBody(processed), issueId).record
   }
 
   suspend fun update(command: UpdateWorkItemCommentCommand): WorkItemCommentRecord {
@@ -128,9 +125,9 @@ class WorkItemCommentService(
 
   private companion object {
     const val MAX_BODY_LENGTH = 32_768
-    const val HTML_FORMAT = CreateWorkItemCommentCommand.HTML_FORMAT
     val CREATE_ACTION = AuthorizationAction("issue.comment.create")
     val UPDATE_ACTION = AuthorizationAction("issue.comment.update")
     val DELETE_ACTION = AuthorizationAction("issue.comment.delete")
+    const val HTML_FORMAT = CreateWorkItemCommentCommand.HTML_FORMAT
   }
 }

@@ -34,3 +34,10 @@ data class WorkItemCommentCreatedInput(
   val commentApiId: String,
   val plainTextPreview: String?,
 )
+
+data class WorkItemCommentDeletedInput(
+  val context: WorkItemActivityContext,
+  val commentApiId: String,
+  val plainTextPreview: String?,
+  val deleteReason: String? = null,
+)

@@ -32,8 +32,7 @@ class WorkItemCommentServiceTest :
     val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
     val comments = mockk<WorkItemCommentRepository>()
     val bindings = mockk<PermissionBindingRepository>()
-    val activityEnqueueSupport = mockk<WorkItemActivityEnqueueSupport>(relaxed = true)
-    val service = WorkItemCommentService(comments, bindings, activityEnqueueSupport, clock)
+    val service = WorkItemCommentService(comments, bindings, clock)
 
     "create converts plain text body to html and persists comment" {
       val tenantId = UUID.randomUUID()
@@ -67,7 +66,6 @@ class WorkItemCommentServiceTest :
                 bodyFormat = command.bodyFormat,
                 transitionId = null,
                 statusHistoryId = null,
-                activityId = null,
                 editedAt = null,
                 createdAt = OffsetDateTime.now(clock),
                 updatedAt = OffsetDateTime.now(clock),
@@ -123,7 +121,6 @@ class WorkItemCommentServiceTest :
                 bodyFormat = command.bodyFormat,
                 transitionId = null,
                 statusHistoryId = null,
-                activityId = null,
                 editedAt = null,
                 createdAt = OffsetDateTime.now(clock),
                 updatedAt = OffsetDateTime.now(clock),
@@ -361,7 +358,6 @@ private fun commentRecord(
     bodyFormat = CreateWorkItemCommentCommand.HTML_FORMAT,
     transitionId = null,
     statusHistoryId = null,
-    activityId = null,
     editedAt = null,
     createdAt = OffsetDateTime.now(clock),
     updatedAt = OffsetDateTime.now(clock),

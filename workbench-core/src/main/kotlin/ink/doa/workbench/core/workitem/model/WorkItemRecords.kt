@@ -3,7 +3,6 @@ package ink.doa.workbench.core.workitem.model
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
 import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
-import ink.doa.workbench.core.workitem.activity.PendingWorkItemActivity
 import ink.doa.workbench.core.workitem.query.WorkItemGroupKey
 import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
 import java.time.OffsetDateTime
@@ -154,8 +153,8 @@ data class WorkItemMutationResult(
   val workItem: WorkItemRecord,
   val eventType: String,
   val statusHistoryId: UUID? = null,
-  val activityId: UUID? = null,
-  val pendingActivity: PendingWorkItemActivity? = null,
+  val streamEventId: UUID? = null,
+  val streamEventApiId: PublicId? = null,
 )
 
 data class WorkItemResponse(
