@@ -352,10 +352,10 @@ private fun workItemService(
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
       mutationSupport = WorkItemMutationSupport(repository, configs, events),
       activityEnqueueSupport = mockk(relaxed = true),
-      fieldMutation =
-        WorkItemFieldMutationFacade(
-          AgileServiceFactory.fieldMutationEngine(clock),
-          AgileServiceFactory.mockDescriptionAttachmentValidator(),
+      fieldPipeline =
+        AgileServiceFactory.fieldMutationPipeline(
+          clock,
+          descriptionAttachmentValidator = AgileServiceFactory.mockDescriptionAttachmentValidator(),
         ),
     )
   }

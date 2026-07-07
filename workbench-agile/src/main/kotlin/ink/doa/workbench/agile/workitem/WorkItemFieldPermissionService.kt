@@ -25,15 +25,16 @@ class WorkItemFieldPermissionService(
     spec: TransitionFieldSpec,
   ): FieldMutationPolicy {
     val bindingAllowsWrite = bindingAllowsWrite(context, field)
-    val allowsUserSubmission =
-      spec.participation != FieldParticipation.AUTOMATIC &&
-        when (spec.writeGrant) {
-          FieldWriteGrant.IMMUTABLE,
-          FieldWriteGrant.SYSTEM_ONLY -> false
-          FieldWriteGrant.TRANSITION_WRITABLE -> true
-          FieldWriteGrant.INHERIT -> bindingAllowsWrite
-        }
-    return FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
+    val submission =
+      when {
+        spec.participation == FieldParticipation.AUTOMATIC -> FieldSubmissionPolicy.READ_ONLY
+        spec.writeGrant == FieldWriteGrant.IMMUTABLE -> FieldSubmissionPolicy.READ_ONLY
+        spec.writeGrant == FieldWriteGrant.SYSTEM_ONLY -> FieldSubmissionPolicy.READ_ONLY
+        spec.writeGrant == FieldWriteGrant.TRANSITION_WRITABLE ->
+          FieldSubmissionPolicy.TRANSITION_OVERRIDE
+        else -> FieldSubmissionPolicy.INHERIT_BINDING
+      }
+    return FieldMutationPolicy(submission, bindingAllowsWrite)
   }
 
   suspend fun resolvePatchPolicy(
@@ -41,10 +42,13 @@ class WorkItemFieldPermissionService(
     field: TemplateField,
   ): FieldMutationPolicy {
     val bindingAllowsWrite = bindingAllowsWrite(context, field)
-    return FieldMutationPolicy(
-      allowsUserSubmission = bindingAllowsWrite,
-      bindingAllowsWrite = bindingAllowsWrite,
-    )
+    val submission =
+      if (bindingAllowsWrite) {
+        FieldSubmissionPolicy.INHERIT_BINDING
+      } else {
+        FieldSubmissionPolicy.READ_ONLY
+      }
+    return FieldMutationPolicy(submission, bindingAllowsWrite)
   }
 
   suspend fun bindingAllowsWrite(

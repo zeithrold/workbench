@@ -144,7 +144,7 @@ class WorkItemRecordsTest :
     }
 
     "comment and transition commands store actor metadata" {
-      TransitionWorkItemCommand(
+      TransitionRequest(
           tenantId = tenantId,
           projectId = projectId,
           workItemApiId = "wki_abc",

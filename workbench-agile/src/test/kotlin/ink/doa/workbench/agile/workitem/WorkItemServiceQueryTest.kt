@@ -24,7 +24,7 @@ class WorkItemServiceQueryTest :
       val createParentGuard = mockk<WorkItemCreateParentGuard>(relaxed = true)
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
       val mutationSupport = mockk<WorkItemMutationSupport>(relaxed = true)
-      val fieldMutation = mockk<WorkItemFieldMutationFacade>(relaxed = true)
+      val fieldPipeline = mockk<WorkItemFieldMutationPipeline>(relaxed = true)
       val now = OffsetDateTime.now(ZoneOffset.UTC)
       val record =
         WorkItemRecord(
@@ -59,7 +59,7 @@ class WorkItemServiceQueryTest :
           createParentGuard,
           mutationSupport,
           mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
-          fieldMutation,
+          fieldPipeline,
         )
 
       service.get(tenantId, projectId, "WB-1") shouldBe record

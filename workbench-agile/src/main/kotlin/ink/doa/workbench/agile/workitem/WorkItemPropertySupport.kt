@@ -4,7 +4,6 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
@@ -55,49 +54,6 @@ internal object WorkItemPropertySupport {
     command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
     inputs.putAll(command.properties)
     return inputs
-  }
-
-  fun transitionFieldInputs(command: TransitionWorkItemCommand): Map<String, JsonElement> {
-    val inputs = linkedMapOf<String, JsonElement>()
-    command.title?.let { inputs["title"] = JsonPrimitive(it) }
-    command.description?.let { inputs["description"] = JsonPrimitive(it) }
-    command.assigneeApiId?.let { inputs["assignee"] = JsonPrimitive(it) }
-    command.priorityApiId?.let { inputs["priority"] = JsonPrimitive(it) }
-    command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
-    inputs.putAll(command.properties)
-    return inputs
-  }
-
-  fun applyCreateSystemFields(
-    command: CreateWorkItemCommand,
-    systemFields: Map<String, String?>,
-  ): CreateWorkItemCommand {
-    val description = systemFields["description"] ?: command.description
-    val processed = RichTextProcessor.processDescriptionInput(description)
-    return command.copy(
-      title = systemFields["title"] ?: command.title,
-      description = processed?.html,
-      descriptionPlainText = processed?.plainText,
-      assigneeApiId = systemFields["assignee"] ?: command.assigneeApiId,
-      priorityApiId = systemFields["priority"] ?: command.priorityApiId,
-      sprintApiId = systemFields["sprint"] ?: command.sprintApiId,
-    )
-  }
-
-  fun applyTransitionSystemFields(
-    command: TransitionWorkItemCommand,
-    systemFields: Map<String, String?>,
-  ): TransitionWorkItemCommand {
-    val description = command.description ?: systemFields["description"]
-    val processed = RichTextProcessor.processDescriptionInput(description)
-    return command.copy(
-      title = command.title ?: systemFields["title"],
-      description = processed?.html,
-      descriptionPlainText = processed?.plainText,
-      assigneeApiId = command.assigneeApiId ?: systemFields["assignee"],
-      priorityApiId = command.priorityApiId ?: systemFields["priority"],
-      sprintApiId = command.sprintApiId ?: systemFields["sprint"],
-    )
   }
 
   fun applyDescriptionProcessing(command: UpdateWorkItemCommand): UpdateWorkItemCommand {

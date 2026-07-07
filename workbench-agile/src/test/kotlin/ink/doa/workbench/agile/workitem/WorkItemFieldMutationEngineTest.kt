@@ -42,13 +42,12 @@ class WorkItemFieldMutationEngineTest :
     val engine = WorkItemFieldMutationEngine(fieldPermissions, clock)
 
     beforeTest {
-      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns fieldMutationPolicy()
     }
 
     "transition_writable allows user override without field permission" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
+        transitionOverridePolicy()
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
@@ -76,35 +75,38 @@ class WorkItemFieldMutationEngineTest :
       result.propertyValues["resolution"] shouldBe JsonPrimitive("wont_fix")
     }
 
-    "preserve_current rejects unauthorized user input at request hygiene" {
+    "preserve_current keeps current value when user override is unauthorized" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
+        fieldMutationPolicy(
+          submission = FieldSubmissionPolicy.INHERIT_BINDING,
+          bindingAllowsWrite = false,
+        )
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
-      shouldThrow<PermissionDeniedException> {
-          engine.applyTemplate(
-            transitionContext(
-              template =
-                template(
-                  TemplateField.Property(apiId = null, code = "resolution") to
-                    TransitionFieldSpec(
-                      participation = FieldParticipation.OPTIONAL,
-                      onUnauthorized = UnauthorizedMutationBehavior.PRESERVE_CURRENT,
-                    )
-                ),
-              config = config,
-              templateContext = templateContext(),
-              properties =
-                FieldReconciliationPropertyMaps(
-                  current = mapOf("resolution" to JsonPrimitive("existing")),
-                  user = mapOf("resolution" to JsonPrimitive("wont_fix")),
-                ),
-              permissionContext = permissionContext(),
-            )
+      val result =
+        engine.applyTemplate(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    onUnauthorized = UnauthorizedMutationBehavior.PRESERVE_CURRENT,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                current = mapOf("resolution" to JsonPrimitive("existing")),
+                user = mapOf("resolution" to JsonPrimitive("wont_fix")),
+              ),
+            permissionContext = permissionContext(),
           )
-        }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+        )
+
+      result.propertyValues["resolution"] shouldBe JsonPrimitive("existing")
     }
 
     "create applies automatic defaults" {
@@ -172,7 +174,7 @@ class WorkItemFieldMutationEngineTest :
 
     "A2 create automatic field rejects explicit literal submission" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
 
       shouldThrow<PermissionDeniedException> {
@@ -265,39 +267,38 @@ class WorkItemFieldMutationEngineTest :
       result.propertyValues["labels"] shouldBe JsonPrimitive("default-label")
     }
 
-    "A5 create optional inherit without permission rejects explicit submission" {
-      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
+    "A5 create optional inherit without permission ignores explicit submission" {
+      mockPropertyWriteDenied(fieldPermissions)
       val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
 
-      shouldThrow<PermissionDeniedException> {
-          engine.applyTemplate(
-            createContext(
-              template =
-                createTemplate(
-                  TemplateField.System("title") to
-                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                  TemplateField.Property(apiId = null, code = "labels") to
-                    TransitionFieldSpec(
-                      participation = FieldParticipation.OPTIONAL,
-                      value = TemplateValueExpression.Literal(JsonPrimitive("default-label")),
-                    ),
-                ),
-              config = config,
-              templateContext = templateContext(),
-              properties =
-                FieldReconciliationPropertyMaps(
-                  user =
-                    mapOf(
-                      "title" to JsonPrimitive("Task"),
-                      "labels" to JsonPrimitive("custom"),
-                    )
-                ),
-              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
-            )
+      val result =
+        engine.applyTemplate(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.Property(apiId = null, code = "labels") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("default-label")),
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user =
+                  mapOf(
+                    "title" to JsonPrimitive("Task"),
+                    "labels" to JsonPrimitive("custom"),
+                  )
+              ),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
           )
-        }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+        )
+
+      result.propertyValues.containsKey("labels") shouldBe false
     }
 
     "A6 create required inherit rejects when user omits and no default exists" {
@@ -355,7 +356,7 @@ class WorkItemFieldMutationEngineTest :
 
     "A8 create rejects non-editable property submitted by apiId" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
 
@@ -394,7 +395,7 @@ class WorkItemFieldMutationEngineTest :
 
     "A9 create rejects non-editable property submitted by code" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
@@ -428,76 +429,60 @@ class WorkItemFieldMutationEngineTest :
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
     }
 
-    "A11 create rejects non-editable system assignee submission" {
+    "A11 create applies system_only assignee from template when user submits" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
           val allowed = field is TemplateField.System && field.canonicalName == "title"
-          FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
+          FieldMutationPolicy(
+            submission =
+              if (allowed) {
+                FieldSubmissionPolicy.INHERIT_BINDING
+              } else {
+                FieldSubmissionPolicy.READ_ONLY
+              },
+            bindingAllowsWrite = allowed,
+          )
         }
       val config = configWithProperties(emptyList())
 
-      shouldThrow<PermissionDeniedException> {
-          engine.applyTemplate(
-            createContext(
-              template =
-                createTemplate(
-                  TemplateField.System("title") to
-                    TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
-                  TemplateField.System("assignee") to
-                    TransitionFieldSpec(
-                      participation = FieldParticipation.OPTIONAL,
-                      value = TemplateValueExpression.Variable("user.currentUser"),
-                      writeGrant = FieldWriteGrant.SYSTEM_ONLY,
-                    ),
-                ),
-              config = config,
-              templateContext = templateContext(),
-              properties =
-                FieldReconciliationPropertyMaps(
-                  user =
-                    mapOf(
-                      "title" to JsonPrimitive("Task"),
-                      "assignee" to JsonPrimitive("usr_other"),
-                    )
-                ),
-              permissionContext = permissionContext(FieldPermissionOperation.CREATE),
-            )
+      val result =
+        engine.applyTemplate(
+          createContext(
+            template =
+              createTemplate(
+                TemplateField.System("title") to
+                  TransitionFieldSpec(participation = FieldParticipation.REQUIRED),
+                TemplateField.System("assignee") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    value = TemplateValueExpression.Variable("user.currentUser"),
+                    writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+                  ),
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user =
+                  mapOf(
+                    "title" to JsonPrimitive("Task"),
+                    "assignee" to JsonPrimitive("usr_other"),
+                  )
+              ),
+            permissionContext = permissionContext(FieldPermissionOperation.CREATE),
           )
-        }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+        )
+
+      result.systemFields["assignee"] shouldBe "usr_test"
     }
 
     "B2 transition inherit without permission rejects override" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
-      val config =
-        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
-
-      shouldThrow<PermissionDeniedException> {
-          engine.applyTemplate(
-            transitionContext(
-              template =
-                template(
-                  TemplateField.Property(apiId = null, code = "resolution") to
-                    TransitionFieldSpec(participation = FieldParticipation.OPTIONAL)
-                ),
-              config = config,
-              templateContext = templateContext(),
-              properties =
-                FieldReconciliationPropertyMaps(
-                  user = mapOf("resolution" to JsonPrimitive("wont_fix"))
-                ),
-              permissionContext = permissionContext(),
-            )
-          )
-        }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
-    }
-
-    "B3 transition immutable rejects user override" {
-      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        fieldMutationPolicy(
+          submission = FieldSubmissionPolicy.INHERIT_BINDING,
+          bindingAllowsWrite = false,
+        )
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
@@ -509,39 +494,7 @@ class WorkItemFieldMutationEngineTest :
                   TemplateField.Property(apiId = null, code = "resolution") to
                     TransitionFieldSpec(
                       participation = FieldParticipation.OPTIONAL,
-                      writeGrant = FieldWriteGrant.IMMUTABLE,
-                    )
-                ),
-              config = config,
-              templateContext = templateContext(),
-              properties =
-                FieldReconciliationPropertyMaps(
-                  current = mapOf("resolution" to JsonPrimitive("existing")),
-                  user = mapOf("resolution" to JsonPrimitive("wont_fix")),
-                ),
-              permissionContext = permissionContext(),
-            )
-          )
-        }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
-    }
-
-    "B4 transition system_only rejects user override" {
-      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
-      val config =
-        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
-
-      shouldThrow<PermissionDeniedException> {
-          engine.applyTemplate(
-            transitionContext(
-              template =
-                template(
-                  TemplateField.Property(apiId = null, code = "resolution") to
-                    TransitionFieldSpec(
-                      participation = FieldParticipation.OPTIONAL,
-                      value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
-                      writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+                      onUnauthorized = UnauthorizedMutationBehavior.REJECT,
                     )
                 ),
               config = config,
@@ -554,12 +507,74 @@ class WorkItemFieldMutationEngineTest :
             )
           )
         }
-        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_UNAUTHORIZED_FIELD_MUTATION
+    }
+
+    "B3 transition immutable preserves current despite user override" {
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        readOnlyFieldMutationPolicy()
+      val config =
+        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
+
+      val result =
+        engine.applyTemplate(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    writeGrant = FieldWriteGrant.IMMUTABLE,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                current = mapOf("resolution" to JsonPrimitive("existing")),
+                user = mapOf("resolution" to JsonPrimitive("wont_fix")),
+              ),
+            permissionContext = permissionContext(),
+          )
+        )
+
+      result.propertyValues["resolution"] shouldBe JsonPrimitive("existing")
+    }
+
+    "B4 transition system_only applies template despite user override" {
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        readOnlyFieldMutationPolicy()
+      val config =
+        configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
+
+      val result =
+        engine.applyTemplate(
+          transitionContext(
+            template =
+              template(
+                TemplateField.Property(apiId = null, code = "resolution") to
+                  TransitionFieldSpec(
+                    participation = FieldParticipation.OPTIONAL,
+                    value = TemplateValueExpression.Literal(JsonPrimitive("fixed")),
+                    writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+                  )
+              ),
+            config = config,
+            templateContext = templateContext(),
+            properties =
+              FieldReconciliationPropertyMaps(
+                user = mapOf("resolution" to JsonPrimitive("wont_fix"))
+              ),
+            permissionContext = permissionContext(),
+          )
+        )
+
+      result.propertyValues["resolution"] shouldBe JsonPrimitive("fixed")
     }
 
     "B5 transition applies var default when user omits" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val config =
         configWithProperties(listOf(property("resolvedAt", WorkItemPropertyDataType.DATETIME)))
       val result =
@@ -585,7 +600,7 @@ class WorkItemFieldMutationEngineTest :
 
     "B7 transition allows JsonNull on non-editable field and preserves current" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
@@ -770,7 +785,7 @@ class WorkItemFieldMutationEngineTest :
 
     "D transition applies user.currentUser to assignee system field" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+        readOnlyFieldMutationPolicy()
       val config = configWithProperties(emptyList())
       val result =
         engine.applyTemplate(
@@ -872,7 +887,7 @@ class WorkItemFieldMutationEngineTest :
 
     "assertPatch throws when property write permission denied" {
       coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
+        readOnlyFieldMutationPolicy(bindingAllowsWrite = false)
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
 
@@ -894,7 +909,15 @@ class WorkItemFieldMutationEngineTest :
         {
           val field = secondArg<TemplateField>()
           val allowed = field is TemplateField.System && field.canonicalName == "title"
-          FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
+          FieldMutationPolicy(
+            submission =
+              if (allowed) {
+                FieldSubmissionPolicy.INHERIT_BINDING
+              } else {
+                FieldSubmissionPolicy.READ_ONLY
+              },
+            bindingAllowsWrite = allowed,
+          )
         }
 
       shouldThrow<PermissionDeniedException> {
@@ -984,7 +1007,10 @@ class WorkItemFieldMutationEngineTest :
 
     "transition reject unauthorized mutation throws when user overrides" {
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
+        fieldMutationPolicy(
+          submission = FieldSubmissionPolicy.INHERIT_BINDING,
+          bindingAllowsWrite = false,
+        )
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
@@ -1109,7 +1135,15 @@ private fun mockTitleOnlyEditable(fieldPermissions: WorkItemFieldPermissionServi
     {
       val field = secondArg<TemplateField>()
       val allowed = field is TemplateField.System && field.canonicalName == "title"
-      FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
+      FieldMutationPolicy(
+        submission =
+          if (allowed) {
+            FieldSubmissionPolicy.INHERIT_BINDING
+          } else {
+            FieldSubmissionPolicy.READ_ONLY
+          },
+        bindingAllowsWrite = allowed,
+      )
     }
 }
 
@@ -1118,8 +1152,16 @@ private fun mockPropertyWriteDenied(fieldPermissions: WorkItemFieldPermissionSer
     {
       val field = secondArg<TemplateField>()
       val bindingAllowsWrite = field is TemplateField.System
-      val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
-      FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
+      val allowsTitle = field is TemplateField.System && field.canonicalName == "title"
+      FieldMutationPolicy(
+        submission =
+          if (allowsTitle) {
+            FieldSubmissionPolicy.INHERIT_BINDING
+          } else {
+            FieldSubmissionPolicy.READ_ONLY
+          },
+        bindingAllowsWrite = bindingAllowsWrite,
+      )
     }
 }
 

@@ -5,7 +5,7 @@ import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
@@ -291,7 +291,7 @@ class ExposedWorkItemRepository(
     }
 
   override suspend fun transition(
-    command: TransitionWorkItemCommand,
+    command: TransitionPersistenceCommand,
     fromStatusId: UUID,
     toStatusId: UUID,
     transitionId: UUID,
