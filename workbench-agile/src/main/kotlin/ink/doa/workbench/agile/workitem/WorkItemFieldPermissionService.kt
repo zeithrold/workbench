@@ -12,27 +12,42 @@ import ink.doa.workbench.core.workitem.template.toPermissionResourceId
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.UUID
 import org.springframework.stereotype.Service
-
-enum class FieldPermissionOperation {
-  CREATE,
-  UPDATE,
-}
-
-data class WorkItemFieldPermissionContext(
-  val tenantId: UUID,
-  val projectId: UUID,
-  val actorUserId: UUID,
-  val operation: FieldPermissionOperation,
-)
 
 @Service
 class WorkItemFieldPermissionService(
   private val bindings: PermissionBindingRepository,
   private val clock: Clock,
 ) {
-  suspend fun canWriteField(
+  suspend fun resolvePolicy(
+    context: WorkItemFieldPermissionContext,
+    field: TemplateField,
+    spec: TransitionFieldSpec,
+  ): FieldMutationPolicy {
+    val bindingAllowsWrite = bindingAllowsWrite(context, field)
+    val allowsUserSubmission =
+      spec.participation != FieldParticipation.AUTOMATIC &&
+        when (spec.writeGrant) {
+          FieldWriteGrant.IMMUTABLE,
+          FieldWriteGrant.SYSTEM_ONLY -> false
+          FieldWriteGrant.TRANSITION_WRITABLE -> true
+          FieldWriteGrant.INHERIT -> bindingAllowsWrite
+        }
+    return FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
+  }
+
+  suspend fun resolvePatchPolicy(
+    context: WorkItemFieldPermissionContext,
+    field: TemplateField,
+  ): FieldMutationPolicy {
+    val bindingAllowsWrite = bindingAllowsWrite(context, field)
+    return FieldMutationPolicy(
+      allowsUserSubmission = bindingAllowsWrite,
+      bindingAllowsWrite = bindingAllowsWrite,
+    )
+  }
+
+  suspend fun bindingAllowsWrite(
     context: WorkItemFieldPermissionContext,
     field: TemplateField,
   ): Boolean {
@@ -52,32 +67,6 @@ class WorkItemFieldPermissionService(
       FieldPermissionOperation.UPDATE -> rules.any { it.matchesIssueUpdate() }
     }
   }
-
-  suspend fun isFieldEditableInTransition(
-    context: WorkItemFieldPermissionContext,
-    field: TemplateField,
-    writeGrant: FieldWriteGrant,
-  ): Boolean = isFieldEditable(context, field, writeGrant)
-
-  suspend fun isFormFieldEditable(
-    context: WorkItemFieldPermissionContext,
-    field: TemplateField,
-    spec: TransitionFieldSpec,
-  ): Boolean =
-    spec.participation != FieldParticipation.AUTOMATIC &&
-      isFieldEditable(context, field, spec.writeGrant)
-
-  suspend fun isFieldEditable(
-    context: WorkItemFieldPermissionContext,
-    field: TemplateField,
-    writeGrant: FieldWriteGrant,
-  ): Boolean =
-    when (writeGrant) {
-      FieldWriteGrant.IMMUTABLE,
-      FieldWriteGrant.SYSTEM_ONLY -> false
-      FieldWriteGrant.TRANSITION_WRITABLE -> true
-      FieldWriteGrant.INHERIT -> canWriteField(context, field)
-    }
 
   private fun ResolvedPermissionRule.matchesFieldWrite(fieldResource: String): Boolean =
     action == FIELD_WRITE_ACTION &&

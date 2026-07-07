@@ -40,15 +40,27 @@ data class FieldReconciliationContext(
   val permissionContext: WorkItemFieldPermissionContext,
 )
 
+data class FieldFormPlan(
+  val editableWirePaths: List<String>,
+  val fieldMeta: List<WorkItemFormFieldMeta>,
+)
+
+data class PatchMutationContext(
+  val config: IssueTypeConfigDetails,
+  val permissionContext: WorkItemFieldPermissionContext,
+  val propertyInputs: Map<String, JsonElement>,
+  val systemFieldInputs: Map<String, String?>,
+)
+
 @Service
 @Suppress("TooManyFunctions")
-class WorkItemFieldMutationReconciler(
-  private val fieldPermissions: WorkItemFieldPermissionService,
+class WorkItemFieldMutationEngine(
+  private val permissions: WorkItemFieldPermissionService,
   clock: Clock,
 ) {
   private val templates = WorkItemValueTemplateEvaluator(clock)
 
-  suspend fun reconcileFields(context: FieldReconciliationContext): TransitionFieldReconcileResult {
+  suspend fun applyTemplate(context: FieldReconciliationContext): TransitionFieldReconcileResult {
     TransitionFieldsValidator.validate(context.template, context.config, context.expectedTarget)
     assertMutationRequestAllowed(
       context.template,
@@ -72,13 +84,14 @@ class WorkItemFieldMutationReconciler(
           userValueForField(field, outputKey, context.userProperties)
         }
 
+      val policy = permissions.resolvePolicy(context.permissionContext, field, spec)
       val effective =
         reconcileField(
           spec = spec,
           currentValue = currentValue,
           templateValue = templateValue,
           userValue = userValue,
-          canWrite = fieldPermissions.canWriteField(context.permissionContext, field),
+          canWrite = policy.bindingAllowsWrite,
         )
 
       if (spec.participation == FieldParticipation.REQUIRED && !effective.isNonNullValue()) {
@@ -104,29 +117,49 @@ class WorkItemFieldMutationReconciler(
     return TransitionFieldReconcileResult(propertyValues, systemFields)
   }
 
-  suspend fun assertWritableProperties(
-    context: WorkItemFieldPermissionContext,
+  suspend fun planForm(
+    template: WorkItemTransitionFieldsTemplate,
     config: IssueTypeConfigDetails,
-    properties: Map<String, JsonElement>,
-  ) {
-    properties.forEach { (key, _) ->
-      val field = propertyField(key, config)
-      if (!fieldPermissions.canWriteField(context, field)) {
+    templateContext: WorkItemValueTemplateContext,
+    permissionContext: WorkItemFieldPermissionContext,
+  ): FieldFormPlan {
+    val editableWirePaths = mutableListOf<String>()
+    val fieldMeta = mutableListOf<WorkItemFormFieldMeta>()
+    template.fields.forEach { (field, spec) ->
+      val policy = permissions.resolvePolicy(permissionContext, field, spec)
+      if (policy.allowsFormEdit(spec)) {
+        editableWirePaths += field.toWirePath()
+      }
+      fieldMeta +=
+        WorkItemFormFieldMeta(
+          path = field.toWirePath(),
+          editable = policy.allowsFormEdit(spec),
+          participation = spec.participation.wireName,
+          defaultValue = evaluateTemplateValue(field, spec, config, templateContext),
+        )
+    }
+    return FieldFormPlan(editableWirePaths, fieldMeta)
+  }
+
+  suspend fun assertPatch(context: PatchMutationContext) {
+    context.propertyInputs.forEach { (key, _) ->
+      val field = propertyField(key, context.config)
+      val policy = permissions.resolvePatchPolicy(context.permissionContext, field)
+      if (!policy.allowsUserSubmission) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED,
           "Work item field write permission denied: $key",
         )
       }
     }
-  }
-
-  suspend fun assertWritableSystemFields(
-    context: WorkItemFieldPermissionContext,
-    fields: Map<String, String?>,
-  ) {
-    fields.forEach { (name, value) ->
+    context.systemFieldInputs.forEach { (name, value) ->
       if (value == null) return@forEach
-      if (!fieldPermissions.canWriteField(context, TemplateField.System(name))) {
+      val policy =
+        permissions.resolvePatchPolicy(
+          context.permissionContext,
+          TemplateField.System(name),
+        )
+      if (!policy.allowsUserSubmission) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED,
           "Work item field write permission denied: $name",
@@ -163,7 +196,8 @@ class WorkItemFieldMutationReconciler(
       if (!isSubmitted(value)) return@forEach
       val field = resolveRequestField(key, template, config) ?: throwUnexpectedField(key)
       val spec = template.fields[field] ?: throwUnexpectedField(key)
-      if (!fieldPermissions.isFormFieldEditable(permissionContext, field, spec)) {
+      val policy = permissions.resolvePolicy(permissionContext, field, spec)
+      if (!policy.allowsUserSubmission) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE,
           "Field is not editable in this mutation request: ${field.toWirePath()}",
@@ -336,22 +370,6 @@ class WorkItemFieldMutationReconciler(
         )
     }
   }
-
-  suspend fun buildFieldMeta(
-    template: WorkItemTransitionFieldsTemplate,
-    config: IssueTypeConfigDetails,
-    templateContext: WorkItemValueTemplateContext,
-    permissionContext: WorkItemFieldPermissionContext,
-  ): List<WorkItemFormFieldMeta> =
-    template.fields.map { (field, spec) ->
-      val defaultValue = evaluateTemplateValue(field, spec, config, templateContext)
-      WorkItemFormFieldMeta(
-        path = field.toWirePath(),
-        editable = fieldPermissions.isFormFieldEditable(permissionContext, field, spec),
-        participation = spec.participation.wireName,
-        defaultValue = defaultValue,
-      )
-    }
 
   fun buildCommentMeta(
     spec: CommentFieldSpec?,

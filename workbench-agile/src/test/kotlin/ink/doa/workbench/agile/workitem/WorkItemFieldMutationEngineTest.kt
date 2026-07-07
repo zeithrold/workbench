@@ -35,24 +35,24 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-class WorkItemFieldMutationReconcilerTest :
+class WorkItemFieldMutationEngineTest :
   StringSpec({
     val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
     val fieldPermissions = mockk<WorkItemFieldPermissionService>()
-    val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+    val engine = WorkItemFieldMutationEngine(fieldPermissions, clock)
 
     beforeTest {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
     }
 
     "transition_writable allows user override without field permission" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -77,13 +77,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "preserve_current rejects unauthorized user input at request hygiene" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -111,7 +111,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           createContext(
             template =
               createTemplate(
@@ -139,7 +139,7 @@ class WorkItemFieldMutationReconcilerTest :
       mockPropertyWriteDenied(fieldPermissions)
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           createContext(
             template =
               createTemplate(
@@ -171,11 +171,12 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "A2 create automatic field rejects explicit literal submission" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -208,7 +209,7 @@ class WorkItemFieldMutationReconcilerTest :
       mockTitleOnlyEditable(fieldPermissions)
       val config = configWithProperties(listOf(property("dueDate", WorkItemPropertyDataType.DATE)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           createContext(
             template =
               createTemplate(
@@ -241,7 +242,7 @@ class WorkItemFieldMutationReconcilerTest :
       mockPropertyWriteDenied(fieldPermissions)
       val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           createContext(
             template =
               createTemplate(
@@ -265,12 +266,12 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "A5 create optional inherit without permission rejects explicit submission" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
       val config = configWithProperties(listOf(property("labels", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -303,7 +304,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(property("summary", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -328,7 +329,7 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -353,12 +354,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "A8 create rejects non-editable property submitted by apiId" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -391,12 +393,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "A9 create rejects non-editable property submitted by code" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -426,15 +429,16 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "A11 create rejects non-editable system assignee submission" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          field is TemplateField.System && field.canonicalName == "title"
+          val allowed = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
         }
       val config = configWithProperties(emptyList())
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             createContext(
               template =
                 createTemplate(
@@ -465,13 +469,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "B2 transition inherit without permission rejects override" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -492,12 +496,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "B3 transition immutable rejects user override" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -522,12 +527,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "B4 transition system_only rejects user override" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -552,11 +558,12 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "B5 transition applies var default when user omits" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config =
         configWithProperties(listOf(property("resolvedAt", WorkItemPropertyDataType.DATETIME)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -577,11 +584,12 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "B7 transition allows JsonNull on non-editable field and preserves current" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -610,7 +618,7 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -632,7 +640,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -659,7 +667,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -684,7 +692,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           createContext(
             template =
               createTemplate(
@@ -711,7 +719,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -740,7 +748,7 @@ class WorkItemFieldMutationReconcilerTest :
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -761,10 +769,11 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "D transition applies user.currentUser to assignee system field" {
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns false
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
       val config = configWithProperties(emptyList())
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -787,7 +796,7 @@ class WorkItemFieldMutationReconcilerTest :
     "reconciles title and description together on transition" {
       val config = configWithProperties(emptyList())
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -822,7 +831,7 @@ class WorkItemFieldMutationReconcilerTest :
 
     "reconcileTransitionComment uses template default when user comment absent" {
       val body =
-        reconciler.reconcileTransitionComment(
+        engine.reconcileTransitionComment(
           spec =
             ink.doa.workbench.core.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
@@ -837,7 +846,7 @@ class WorkItemFieldMutationReconcilerTest :
 
     "reconcileTransitionComment accepts html user comment" {
       val body =
-        reconciler.reconcileTransitionComment(
+        engine.reconcileTransitionComment(
           spec =
             ink.doa.workbench.core.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
@@ -852,7 +861,7 @@ class WorkItemFieldMutationReconcilerTest :
 
     "reconcileTransitionComment rejects unexpected comment when disabled" {
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransitionComment(
+          engine.reconcileTransitionComment(
             spec = null,
             templateContext = templateContext(),
             userComment = "unexpected",
@@ -861,42 +870,51 @@ class WorkItemFieldMutationReconcilerTest :
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
     }
 
-    "assertWritableProperties throws when write permission denied" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
+    "assertPatch throws when property write permission denied" {
+      coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.assertWritableProperties(
-            permissionContext(),
-            config,
-            mapOf("resolution" to JsonPrimitive("blocked")),
+          engine.assertPatch(
+            PatchMutationContext(
+              config = config,
+              permissionContext = permissionContext(),
+              propertyInputs = mapOf("resolution" to JsonPrimitive("blocked")),
+              systemFieldInputs = emptyMap(),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED
     }
 
-    "assertWritableSystemFields skips null values and denies protected fields" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
+    "assertPatch denies protected system fields" {
+      coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          field is TemplateField.System && field.canonicalName == "title"
+          val allowed = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
         }
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.assertWritableSystemFields(
-            permissionContext(),
-            mapOf("title" to "Allowed", "assignee" to "usr_other"),
+          engine.assertPatch(
+            PatchMutationContext(
+              config = configWithProperties(emptyList()),
+              permissionContext = permissionContext(),
+              propertyInputs = emptyMap(),
+              systemFieldInputs = mapOf("title" to "Allowed", "assignee" to "usr_other"),
+            )
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED
     }
 
-    "buildFieldMeta returns editable metadata with defaults" {
+    "planForm returns editable metadata with defaults" {
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
-      val meta =
-        reconciler.buildFieldMeta(
+      val plan =
+        engine.planForm(
           template =
             template(
               TemplateField.Property(apiId = null, code = "resolution") to
@@ -910,18 +928,18 @@ class WorkItemFieldMutationReconcilerTest :
           permissionContext = permissionContext(),
         )
 
-      meta.single().path shouldBe "property.resolution"
-      meta.single().defaultValue shouldBe JsonPrimitive("default")
-      meta.single().editable shouldBe true
+      plan.fieldMeta.single().path shouldBe "property.resolution"
+      plan.fieldMeta.single().defaultValue shouldBe JsonPrimitive("default")
+      plan.fieldMeta.single().editable shouldBe true
     }
 
     "buildCommentMeta returns null when comment spec absent" {
-      reconciler.buildCommentMeta(spec = null, templateContext = templateContext()) shouldBe null
+      engine.buildCommentMeta(spec = null, templateContext = templateContext()) shouldBe null
     }
 
     "buildCommentMeta returns editable metadata with default template" {
       val meta =
-        reconciler.buildCommentMeta(
+        engine.buildCommentMeta(
           spec =
             ink.doa.workbench.core.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
@@ -936,7 +954,7 @@ class WorkItemFieldMutationReconcilerTest :
 
     "reconcileTransitionComment rejects automatic participation" {
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransitionComment(
+          engine.reconcileTransitionComment(
             spec =
               ink.doa.workbench.core.workitem.template.CommentFieldSpec(
                 participation = FieldParticipation.AUTOMATIC,
@@ -951,7 +969,7 @@ class WorkItemFieldMutationReconcilerTest :
 
     "reconcileTransitionComment requires body when participation is required" {
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileTransitionComment(
+          engine.reconcileTransitionComment(
             spec =
               ink.doa.workbench.core.workitem.template.CommentFieldSpec(
                 participation = FieldParticipation.REQUIRED,
@@ -965,13 +983,13 @@ class WorkItemFieldMutationReconcilerTest :
     }
 
     "transition reject unauthorized mutation throws when user overrides" {
-      coEvery { fieldPermissions.canWriteField(any(), any()) } returns false
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
       val config =
         configWithProperties(listOf(property("resolution", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<PermissionDeniedException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -999,7 +1017,7 @@ class WorkItemFieldMutationReconcilerTest :
       val config = configWithProperties(listOf(property("summary", WorkItemPropertyDataType.TEXT)))
 
       shouldThrow<InvalidRequestException> {
-          reconciler.reconcileFields(
+          engine.applyTemplate(
             transitionContext(
               template =
                 template(
@@ -1029,7 +1047,7 @@ class WorkItemFieldMutationReconcilerTest :
           workItem = issue,
         )
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -1059,7 +1077,7 @@ class WorkItemFieldMutationReconcilerTest :
       val resolution = property("resolution", WorkItemPropertyDataType.TEXT)
       val config = configWithProperties(listOf(resolution))
       val result =
-        reconciler.reconcileFields(
+        engine.applyTemplate(
           transitionContext(
             template =
               template(
@@ -1087,19 +1105,22 @@ class WorkItemFieldMutationReconcilerTest :
   })
 
 private fun mockTitleOnlyEditable(fieldPermissions: WorkItemFieldPermissionService) {
-  coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+  coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
     {
       val field = secondArg<TemplateField>()
-      field is TemplateField.System && field.canonicalName == "title"
+      val allowed = field is TemplateField.System && field.canonicalName == "title"
+      FieldMutationPolicy(allowsUserSubmission = allowed, bindingAllowsWrite = allowed)
     }
 }
 
 private fun mockPropertyWriteDenied(fieldPermissions: WorkItemFieldPermissionService) {
-  coEvery { fieldPermissions.canWriteField(any(), any()) } answers
+  coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
     {
-      secondArg<TemplateField>() is TemplateField.System
+      val field = secondArg<TemplateField>()
+      val bindingAllowsWrite = field is TemplateField.System
+      val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
+      FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
     }
-  mockTitleOnlyEditable(fieldPermissions)
 }
 
 private fun permissionContext(

@@ -11,7 +11,6 @@ import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
 import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.toWirePath
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 import org.springframework.stereotype.Component
@@ -30,8 +29,7 @@ data class TransitionOptionBuildContext(
 @Component
 class WorkItemTransitionOptionBuilder(
   private val mutationSupport: WorkItemMutationSupport,
-  private val fieldMutationReconciler: WorkItemFieldMutationReconciler,
-  private val fieldPermissions: WorkItemFieldPermissionService,
+  private val fieldMutationEngine: WorkItemFieldMutationEngine,
   private val transitionValidator: WorkItemTransitionValidator,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
@@ -120,31 +118,20 @@ class WorkItemTransitionOptionBuilder(
     templateContext: WorkItemValueTemplateContext,
     permissionContext: WorkItemFieldPermissionContext,
   ): TransitionFormDetails {
-    val editableFields =
-      fieldsTemplate
-        ?.fields
-        ?.filter { (field, spec) ->
-          fieldPermissions.isFormFieldEditable(permissionContext, field, spec)
-        }
-        ?.map { (field, _) -> field.toWirePath() }
-        .orEmpty()
-    val fieldMeta =
-      fieldsTemplate
-        ?.let {
-          fieldMutationReconciler.buildFieldMeta(
-            template = it,
-            config = config,
-            templateContext = templateContext,
-            permissionContext = permissionContext,
-          )
-        }
-        .orEmpty()
+    val formPlan = fieldsTemplate?.let {
+      fieldMutationEngine.planForm(
+        template = it,
+        config = config,
+        templateContext = templateContext,
+        permissionContext = permissionContext,
+      )
+    }
     val commentMeta = fieldsTemplate?.let {
-      fieldMutationReconciler.buildCommentMeta(it.comment, templateContext)
+      fieldMutationEngine.buildCommentMeta(it.comment, templateContext)
     }
     return TransitionFormDetails(
-      editableFields = editableFields,
-      fieldMeta = fieldMeta,
+      editableFields = formPlan?.editableWirePaths.orEmpty(),
+      fieldMeta = formPlan?.fieldMeta.orEmpty(),
       commentMeta = commentMeta,
     )
   }
