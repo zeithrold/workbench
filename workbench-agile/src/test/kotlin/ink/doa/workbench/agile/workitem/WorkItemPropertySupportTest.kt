@@ -6,7 +6,6 @@ import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
@@ -138,23 +137,5 @@ class WorkItemPropertySupportTest :
 
       updated.descriptionPlainText shouldBe "Hello world"
       updated.description?.contains("<strong>world</strong>") shouldBe true
-    }
-
-    "transitionFieldInputs captures optional system fields" {
-      val inputs =
-        WorkItemPropertySupport.transitionFieldInputs(
-          TransitionWorkItemCommand(
-            tenantId = tenantId,
-            projectId = UUID.randomUUID(),
-            workItemApiId = "iss_bug",
-            transitionApiId = "trn_done",
-            actorUserId = UUID.randomUUID(),
-            title = "Updated title",
-            properties = mapOf("points" to JsonPrimitive(8)),
-          )
-        )
-
-      inputs["title"] shouldBe JsonPrimitive("Updated title")
-      inputs["points"] shouldBe JsonPrimitive(8)
     }
   })

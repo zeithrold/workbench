@@ -16,7 +16,8 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.core.workitem.model.TransitionRequest
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
@@ -106,7 +107,7 @@ class WorkItemServiceTemplateDefaultsTest :
       val config = config(defaultDueDate = false)
       val issue = workItem(tenantId, projectId, config)
       val propertyValues = slot<List<WorkItemPropertyValue>>()
-      val command = slot<TransitionWorkItemCommand>()
+      val command = slot<TransitionPersistenceCommand>()
       val transition = transition(config)
 
       coEvery { repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns issue
@@ -124,7 +125,7 @@ class WorkItemServiceTemplateDefaultsTest :
 
       AgileServiceFactory.workItemTransitionService(repository, configs, workflows, events, clock)
         .transition(
-          TransitionWorkItemCommand(
+          TransitionRequest(
             tenantId = tenantId,
             projectId = projectId,
             workItemApiId = issue.apiId.value,
@@ -165,9 +166,16 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          val bindingAllowsWrite = field is TemplateField.System
-          val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
-          FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
+          val allowsTitle = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(
+            submission =
+              if (allowsTitle) {
+                FieldSubmissionPolicy.INHERIT_BINDING
+              } else {
+                FieldSubmissionPolicy.READ_ONLY
+              },
+            bindingAllowsWrite = field is TemplateField.System,
+          )
         }
       coEvery {
         repository.create(capture(createCommand))
@@ -210,9 +218,16 @@ class WorkItemServiceTemplateDefaultsTest :
       coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          val bindingAllowsWrite = field is TemplateField.System
-          val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
-          FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
+          val allowsTitle = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(
+            submission =
+              if (allowsTitle) {
+                FieldSubmissionPolicy.INHERIT_BINDING
+              } else {
+                FieldSubmissionPolicy.READ_ONLY
+              },
+            bindingAllowsWrite = field is TemplateField.System,
+          )
         }
 
       shouldThrow<PermissionDeniedException> {

@@ -3,14 +3,26 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
 
+enum class FieldSubmissionPolicy {
+  /**
+   * Inherit field-write binding; unauthorized submissions follow
+   * [TransitionFieldSpec.onUnauthorized].
+   */
+  INHERIT_BINDING,
+  /** Allow user submission regardless of field-write binding. */
+  TRANSITION_OVERRIDE,
+  /** User may not submit; reconciliation applies template or current values. */
+  READ_ONLY,
+}
+
 /**
  * Unified permission decision for a single field in a work-item mutation.
  *
- * [allowsUserSubmission] governs request hygiene (may the client include this key?).
+ * [submission] governs whether the client may include the field in the request.
  * [bindingAllowsWrite] governs inherit-grant value selection during reconciliation.
  */
 data class FieldMutationPolicy(
-  val allowsUserSubmission: Boolean,
+  val submission: FieldSubmissionPolicy,
   val bindingAllowsWrite: Boolean,
 )
 
@@ -27,4 +39,16 @@ data class WorkItemFieldPermissionContext(
 )
 
 fun FieldMutationPolicy.allowsFormEdit(spec: TransitionFieldSpec): Boolean =
-  spec.participation != FieldParticipation.AUTOMATIC && allowsUserSubmission
+  spec.participation != FieldParticipation.AUTOMATIC &&
+    when (submission) {
+      FieldSubmissionPolicy.TRANSITION_OVERRIDE -> true
+      FieldSubmissionPolicy.INHERIT_BINDING -> bindingAllowsWrite
+      FieldSubmissionPolicy.READ_ONLY -> false
+    }
+
+fun FieldMutationPolicy.allowsPatchSubmission(): Boolean =
+  when (submission) {
+    FieldSubmissionPolicy.TRANSITION_OVERRIDE -> true
+    FieldSubmissionPolicy.INHERIT_BINDING -> bindingAllowsWrite
+    FieldSubmissionPolicy.READ_ONLY -> false
+  }

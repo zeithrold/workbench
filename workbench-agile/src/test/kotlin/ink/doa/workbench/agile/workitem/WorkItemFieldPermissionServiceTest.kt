@@ -98,7 +98,7 @@ class WorkItemFieldPermissionServiceTest :
       service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe false
     }
 
-    "resolvePolicy returns non-submittable for immutable and system-only grants" {
+    "resolvePolicy returns read-only submission for immutable and system-only grants" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow())
 
@@ -109,7 +109,11 @@ class WorkItemFieldPermissionServiceTest :
           participation = FieldParticipation.OPTIONAL,
           writeGrant = FieldWriteGrant.IMMUTABLE,
         ),
-      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+      ) shouldBe
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.READ_ONLY,
+          bindingAllowsWrite = true,
+        )
 
       service.resolvePolicy(
         context(FieldPermissionOperation.UPDATE),
@@ -118,7 +122,11 @@ class WorkItemFieldPermissionServiceTest :
           participation = FieldParticipation.OPTIONAL,
           writeGrant = FieldWriteGrant.SYSTEM_ONLY,
         ),
-      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+      ) shouldBe
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.READ_ONLY,
+          bindingAllowsWrite = true,
+        )
     }
 
     "resolvePolicy honors transition writable without binding lookup" {
@@ -132,7 +140,11 @@ class WorkItemFieldPermissionServiceTest :
           participation = FieldParticipation.OPTIONAL,
           writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
         ),
-      ) shouldBe FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
+      ) shouldBe
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.TRANSITION_OVERRIDE,
+          bindingAllowsWrite = false,
+        )
     }
 
     "resolvePolicy inherit delegates binding to bindingAllowsWrite" {
@@ -146,7 +158,11 @@ class WorkItemFieldPermissionServiceTest :
           participation = FieldParticipation.OPTIONAL,
           writeGrant = FieldWriteGrant.INHERIT,
         ),
-      ) shouldBe FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+      ) shouldBe
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.INHERIT_BINDING,
+          bindingAllowsWrite = true,
+        )
     }
 
     "resolvePolicy rejects automatic participation" {
@@ -160,7 +176,11 @@ class WorkItemFieldPermissionServiceTest :
           participation = FieldParticipation.AUTOMATIC,
           writeGrant = FieldWriteGrant.INHERIT,
         ),
-      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+      ) shouldBe
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.READ_ONLY,
+          bindingAllowsWrite = true,
+        )
     }
 
     "resolvePatchPolicy mirrors bindingAllowsWrite" {
@@ -168,6 +188,9 @@ class WorkItemFieldPermissionServiceTest :
         listOf(issueUpdateAllow())
 
       service.resolvePatchPolicy(context(FieldPermissionOperation.UPDATE), field) shouldBe
-        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+        FieldMutationPolicy(
+          submission = FieldSubmissionPolicy.INHERIT_BINDING,
+          bindingAllowsWrite = true,
+        )
     }
   })

@@ -3,7 +3,7 @@ package ink.doa.workbench.web.workitem
 import com.fasterxml.jackson.databind.JsonNode
 import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionRequest
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -76,8 +76,8 @@ data class TransitionWorkItemRequest(
     context: ProjectRequestContext,
     workItemId: String,
     actorUserId: UUID,
-  ): TransitionWorkItemCommand =
-    TransitionWorkItemCommand(
+  ): TransitionRequest =
+    TransitionRequest(
       tenantId = context.tenant.id,
       projectId = context.project.id,
       workItemApiId = workItemId,

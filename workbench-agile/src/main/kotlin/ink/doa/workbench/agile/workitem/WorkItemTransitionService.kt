@@ -2,235 +2,59 @@ package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionRequest
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
-import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.util.UUID
-import kotlinx.serialization.json.JsonElement
 import org.springframework.stereotype.Service
-
-private data class TransitionFieldReconciliationCommand(
-  val command: TransitionWorkItemCommand,
-  val config: IssueTypeConfigDetails,
-  val fieldsTemplate: WorkItemTransitionFieldsTemplate,
-  val templateContext: WorkItemValueTemplateContext,
-  val currentProperties: Map<String, JsonElement>,
-  val permissionContext: WorkItemFieldPermissionContext,
-)
 
 @Service
 class WorkItemTransitionService(
-  private val repository: WorkItemRepository,
   private val workflows: WorkflowConfigurationRepository,
-  private val collaborators: WorkItemTransitionCollaborators,
-  private val descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator,
+  private val contextLoader: WorkItemTransitionContextLoader,
+  private val evaluator: WorkItemTransitionEvaluator,
+  private val fieldPipeline: WorkItemFieldMutationPipeline,
+  private val optionBuilder: WorkItemTransitionOptionBuilder,
+  private val executor: WorkItemTransitionExecutor,
 ) {
-  private val transitionFieldsParser = TransitionFieldsParser()
-
   suspend fun availableTransitions(
     tenantId: UUID,
     projectId: UUID,
     workItemApiId: String,
     actorUserId: UUID,
   ): List<WorkItemTransitionOption> {
-    val issue = get(tenantId, projectId, workItemApiId)
-    val config =
-      collaborators.mutationSupport.requireConfig(tenantId, issue.issueTypeConfigApiId.value)
-    val currentProperties = repository.listPropertyValues(tenantId, issue.id)
-    val context =
-      collaborators.transitionValidator.conditionContext(issue, actorUserId, currentProperties)
-    val permissionContext =
-      fieldPermissionContext(tenantId, projectId, actorUserId, FieldPermissionOperation.UPDATE)
-    val buildContext =
-      TransitionOptionBuildContext(
-        issue = issue,
-        config = config,
-        tenantId = tenantId,
-        projectId = projectId,
-        actorUserId = actorUserId,
-        currentProperties = currentProperties,
-        context = context,
-        permissionContext = permissionContext,
-      )
+    val context = contextLoader.loadForIssue(tenantId, projectId, workItemApiId, actorUserId)
     return workflows
-      .listTransitions(tenantId, config.config.workflowId)
-      .filter { it.fromStatusId == null || it.fromStatusId == issue.statusId }
-      .map { collaborators.transitionOptions.build(it, buildContext) }
+      .listTransitions(tenantId, context.config.config.workflowId)
+      .filter { it.fromStatusId == null || it.fromStatusId == context.issue.statusId }
+      .map { transition ->
+        val evaluation = evaluator.evaluate(context, transition)
+        optionBuilder.build(transition, context, evaluation)
+      }
   }
 
-  suspend fun transition(command: TransitionWorkItemCommand): WorkItemMutationResult {
-    val issue = get(command.tenantId, command.projectId, command.workItemApiId)
-    val config =
-      collaborators.mutationSupport.requireConfig(
-        command.tenantId,
-        issue.issueTypeConfigApiId.value,
-      )
+  suspend fun transition(request: TransitionRequest): WorkItemMutationResult {
+    val context = contextLoader.load(request)
     val transition =
-      workflows.findTransition(command.tenantId, command.transitionApiId)
+      workflows.findTransition(request.tenantId, request.transitionApiId)
         ?: throw ResourceNotFoundException(
           WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
         )
-    collaborators.transitionValidator.requireTransitionApplicable(issue, config, transition)
-
-    val currentProperties = repository.listPropertyValues(command.tenantId, issue.id)
-    val context =
-      collaborators.transitionValidator.conditionContext(
-        issue,
-        command.actorUserId,
-        currentProperties,
-      )
-    collaborators.transitionValidator.requireTransitionPermission(transition, context)
-    collaborators.transitionValidator.requireTransitionPrecondition(transition, context)
-
-    return executeTransition(command, issue, config, transition, currentProperties)
-  }
-
-  private suspend fun executeTransition(
-    command: TransitionWorkItemCommand,
-    issue: WorkItemRecord,
-    config: IssueTypeConfigDetails,
-    transition: WorkflowTransitionRecord,
-    currentProperties: Map<String, JsonElement>,
-  ): WorkItemMutationResult {
-    val fieldsTemplate = transitionFieldsParser.parse(transition.fields)
-    val templateContext =
-      collaborators.mutationSupport.templateContext(
-        WorkItemTemplateContextRequest(
-          tenantId = command.tenantId,
-          projectId = command.projectId,
-          actorUserId = command.actorUserId,
-          workItem = issue,
-          currentProperties = currentProperties,
-        )
-      )
-    val permissionContext =
-      fieldPermissionContext(
-        command.tenantId,
-        command.projectId,
-        command.actorUserId,
-        FieldPermissionOperation.UPDATE,
-      )
-    val reconciled =
-      reconcileTransitionFields(
-        TransitionFieldReconciliationCommand(
-          command = command,
-          config = config,
-          fieldsTemplate = fieldsTemplate,
-          templateContext = templateContext,
-          currentProperties = currentProperties,
-          permissionContext = permissionContext,
-        )
-      )
-    val commentBody =
-      collaborators.fieldMutationEngine.reconcileTransitionComment(
-        spec = fieldsTemplate.comment,
-        templateContext = templateContext,
-        userComment = command.comment,
-      )
-    val effectiveCommand =
-      WorkItemPropertySupport.applyTransitionSystemFields(command, reconciled.systemFields)
-    descriptionAttachmentValidator.validateReferences(
-      tenantId = command.tenantId,
-      projectId = command.projectId,
-      workItemApiId = command.workItemApiId,
-      issueId = issue.id,
-      descriptionHtml = effectiveCommand.description,
-    )
-    val values = WorkItemPropertySupport.normalizeProperties(config, reconciled.propertyValues)
-    val result =
-      persistTransition(
-        command = effectiveCommand,
-        issue = issue,
+    val evaluation = evaluator.evaluateOrThrow(context, transition)
+    val fieldsTemplate =
+      evaluation.fieldsTemplate
+        ?: error("Transition fields template must be present after evaluation")
+    val plan = fieldPipeline.applyTransition(request, context, fieldsTemplate)
+    return executor.execute(
+      TransitionExecutionCommand(
+        request = request,
+        issueStatusId = context.issue.statusId,
         transition = transition,
-        propertyValues = values,
-      )
-    createTransitionComment(command, transition, commentBody, result)
-    return result
-  }
-
-  private suspend fun persistTransition(
-    command: TransitionWorkItemCommand,
-    issue: WorkItemRecord,
-    transition: WorkflowTransitionRecord,
-    propertyValues: List<WorkItemPropertyValue>,
-  ): WorkItemMutationResult =
-    repository
-      .transition(
-        command = command,
-        fromStatusId = issue.statusId,
-        toStatusId = transition.toStatusId,
-        transitionId = transition.id,
-        propertyValues = propertyValues,
-      )
-      .also {
-        collaborators.mutationSupport.publishAndEnqueue(it, collaborators.activityEnqueueSupport)
-      }
-
-  private suspend fun createTransitionComment(
-    command: TransitionWorkItemCommand,
-    transition: WorkflowTransitionRecord,
-    commentBody: String?,
-    result: WorkItemMutationResult,
-  ) {
-    if (commentBody == null) return
-    collaborators.commentService.create(
-      CreateWorkItemCommentCommand(
-        tenantId = command.tenantId,
-        projectId = command.projectId,
-        workItemApiId = command.workItemApiId,
-        authorId = command.actorUserId,
-        body = commentBody,
-        transitionId = transition.id,
-        statusHistoryId = result.statusHistoryId,
-        activityId = result.activityId,
+        persistence = plan.persistence,
+        propertyValues = plan.propertyValues,
+        commentBody = plan.commentBody,
       )
     )
   }
-
-  private suspend fun get(
-    tenantId: UUID,
-    projectId: UUID,
-    workItemApiId: String,
-  ): WorkItemRecord =
-    repository.findByApiId(tenantId, projectId, workItemApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
-
-  private suspend fun reconcileTransitionFields(
-    reconciliation: TransitionFieldReconciliationCommand
-  ): TransitionFieldReconcileResult =
-    collaborators.fieldMutationEngine.applyTemplate(
-      FieldReconciliationContext(
-        template = reconciliation.fieldsTemplate,
-        expectedTarget = WorkItemValueTemplateTarget.TRANSITION,
-        config = reconciliation.config,
-        templateContext = reconciliation.templateContext,
-        currentProperties = reconciliation.currentProperties,
-        userProperties = WorkItemPropertySupport.transitionFieldInputs(reconciliation.command),
-        permissionContext = reconciliation.permissionContext,
-      )
-    )
-
-  private fun fieldPermissionContext(
-    tenantId: UUID,
-    projectId: UUID,
-    actorUserId: UUID,
-    operation: FieldPermissionOperation,
-  ): WorkItemFieldPermissionContext =
-    WorkItemFieldPermissionContext(
-      tenantId = tenantId,
-      projectId = projectId,
-      actorUserId = actorUserId,
-      operation = operation,
-    )
 }

@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.repository.workitem.WorkItemActivityContext
@@ -11,7 +11,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 internal data class WorkItemTransitionCompletion(
-  val command: TransitionWorkItemCommand,
+  val command: TransitionPersistenceCommand,
   val issueId: UUID,
   val fromStatusId: UUID,
   val toStatusId: UUID,

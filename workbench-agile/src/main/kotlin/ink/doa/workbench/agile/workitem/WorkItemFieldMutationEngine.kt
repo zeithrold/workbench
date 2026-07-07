@@ -62,11 +62,10 @@ class WorkItemFieldMutationEngine(
 
   suspend fun applyTemplate(context: FieldReconciliationContext): TransitionFieldReconcileResult {
     TransitionFieldsValidator.validate(context.template, context.config, context.expectedTarget)
-    assertMutationRequestAllowed(
+    validateMutationRequest(
       context.template,
       context.config,
       context.userProperties,
-      context.permissionContext,
     )
     val propertyValues = mutableMapOf<String, JsonElement>()
     val systemFields = mutableMapOf<String, String?>()
@@ -145,7 +144,7 @@ class WorkItemFieldMutationEngine(
     context.propertyInputs.forEach { (key, _) ->
       val field = propertyField(key, context.config)
       val policy = permissions.resolvePatchPolicy(context.permissionContext, field)
-      if (!policy.allowsUserSubmission) {
+      if (!policy.allowsPatchSubmission()) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED,
           "Work item field write permission denied: $key",
@@ -159,7 +158,7 @@ class WorkItemFieldMutationEngine(
           context.permissionContext,
           TemplateField.System(name),
         )
-      if (!policy.allowsUserSubmission) {
+      if (!policy.allowsPatchSubmission()) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_FIELD_WRITE_DENIED,
           "Work item field write permission denied: $name",
@@ -186,21 +185,19 @@ class WorkItemFieldMutationEngine(
       )
     )
 
-  private suspend fun assertMutationRequestAllowed(
+  private fun validateMutationRequest(
     template: WorkItemTransitionFieldsTemplate,
     config: IssueTypeConfigDetails,
     userProperties: Map<String, JsonElement>,
-    permissionContext: WorkItemFieldPermissionContext,
   ) {
     userProperties.forEach { (key, value) ->
       if (!isSubmitted(value)) return@forEach
       val field = resolveRequestField(key, template, config) ?: throwUnexpectedField(key)
       val spec = template.fields[field] ?: throwUnexpectedField(key)
-      val policy = permissions.resolvePolicy(permissionContext, field, spec)
-      if (!policy.allowsUserSubmission) {
+      if (spec.participation == FieldParticipation.AUTOMATIC) {
         throw PermissionDeniedException(
           WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE,
-          "Field is not editable in this mutation request: ${field.toWirePath()}",
+          "Automatic field is not editable in this mutation request: ${field.toWirePath()}",
         )
       }
     }
