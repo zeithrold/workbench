@@ -34,6 +34,7 @@ class ProjectVisibilityPermissionDecoratorTest :
         subject =
           AuthorizationSubject(
             userId = userId,
+            userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
             loginAccountId = null,
             credentialType = CredentialType.SESSION,
             credentialId = null,

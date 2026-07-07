@@ -76,6 +76,7 @@ data class TransitionWorkItemRequest(
     context: ProjectRequestContext,
     workItemId: String,
     actorUserId: UUID,
+    actorUserApiId: String,
   ): TransitionRequest =
     TransitionRequest(
       tenantId = context.tenant.id,
@@ -83,6 +84,7 @@ data class TransitionWorkItemRequest(
       workItemApiId = workItemId,
       transitionApiId = transitionId,
       actorUserId = actorUserId,
+      actorUserApiId = actorUserApiId,
       title = title,
       description = description,
       comment = comment,

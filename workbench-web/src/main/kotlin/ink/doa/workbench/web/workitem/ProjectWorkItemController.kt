@@ -223,6 +223,7 @@ class ProjectWorkItemController(
         projectContext.project.id,
         workItemId,
         actorUserId(projectContext),
+        actorUserApiId(projectContext),
       )
       .map(WorkItemTransitionResponse::from)
 
@@ -239,12 +240,23 @@ class ProjectWorkItemController(
   ): WorkItemResponse =
     WorkItemResponse.from(
       transitionService
-        .transition(request.toCommand(projectContext, workItemId, actorUserId(projectContext)))
+        .transition(
+          request.toCommand(
+            projectContext,
+            workItemId,
+            actorUserId(projectContext),
+            actorUserApiId(projectContext),
+          )
+        )
         .workItem
     )
 
   private fun actorUserId(projectContext: ProjectRequestContext) =
     projectContext.actor?.id
+      ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+
+  private fun actorUserApiId(projectContext: ProjectRequestContext) =
+    projectContext.actor?.publicId?.value
       ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
 
   private fun location(projectId: String, workItemId: String): URI =

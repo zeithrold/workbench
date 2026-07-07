@@ -3,6 +3,7 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service
 class WorkItemService(
   private val repository: WorkItemRepository,
   private val configs: IssueTypeConfigRepository,
+  private val users: UserRepository,
   private val createParentGuard: WorkItemCreateParentGuard,
   private val mutationSupport: WorkItemMutationSupport,
   private val fieldPipeline: WorkItemFieldMutationPipeline,
@@ -185,16 +187,21 @@ class WorkItemService(
     return permissionContext to templateContext
   }
 
-  private fun fieldPermissionContext(
+  private suspend fun fieldPermissionContext(
     tenantId: UUID,
     projectId: UUID,
     actorUserId: UUID,
     operation: FieldPermissionOperation,
-  ): WorkItemFieldPermissionContext =
-    WorkItemFieldPermissionContext(
+  ): WorkItemFieldPermissionContext {
+    val actorUserApiId =
+      users.findById(actorUserId)?.apiId?.value
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
+    return WorkItemFieldPermissionContext(
       tenantId = tenantId,
       projectId = projectId,
       actorUserId = actorUserId,
+      actorUserApiId = actorUserApiId,
       operation = operation,
     )
+  }
 }

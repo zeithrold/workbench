@@ -946,6 +946,14 @@ enum class WorkbenchErrorCode(
     "work_item.condition.unsupported",
     "Unsupported work item condition expression.",
   ),
+  WORK_ITEM_CONDITION_LEGACY_SYNTAX(
+    "work_item.condition.legacy_syntax",
+    "Legacy condition syntax is not supported.",
+  ),
+  WORK_ITEM_CONDITION_UUID_LITERAL_FORBIDDEN(
+    "work_item.condition.uuid_literal_forbidden",
+    "Condition literals for entity identifiers must use public apiId values, not UUIDs.",
+  ),
   DOMAIN_EVENT_ENVELOPE_INVALID_JSON(
     "domain_event.envelope.invalid_json",
     "Invalid domain event envelope JSON.",

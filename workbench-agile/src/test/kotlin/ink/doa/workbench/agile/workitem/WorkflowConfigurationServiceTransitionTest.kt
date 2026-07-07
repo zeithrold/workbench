@@ -31,7 +31,6 @@ import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 class WorkflowConfigurationServiceTransitionTest :
   StringSpec({
@@ -118,7 +117,6 @@ class WorkflowConfigurationServiceTransitionTest :
           toStatusId = doneStatus.id,
           toStatusApiId = doneStatus.apiId,
           rank = 100,
-          permissionCondition = JsonObject(emptyMap()),
           preconditionAst = JsonObject(emptyMap()),
           fields = command.fields,
           isActive = true,
@@ -202,7 +200,6 @@ class WorkflowConfigurationServiceTransitionTest :
           toStatusId = doneStatus.id,
           toStatusApiId = doneStatus.apiId,
           rank = 100,
-          permissionCondition = JsonObject(emptyMap()),
           preconditionAst = JsonObject(emptyMap()),
           fields = JsonObject(emptyMap()),
           isActive = true,
@@ -253,7 +250,6 @@ class WorkflowConfigurationServiceTransitionTest :
           toStatusId = doneStatus.id,
           toStatusApiId = doneStatus.apiId,
           rank = 100,
-          permissionCondition = JsonObject(emptyMap()),
           preconditionAst = JsonObject(emptyMap()),
           fields = JsonObject(emptyMap()),
           isActive = true,
@@ -271,11 +267,69 @@ class WorkflowConfigurationServiceTransitionTest :
         .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND
     }
 
-    "createTransition canonicalizes conditions before persisting" {
+    "createTransition canonicalizes precondition before persisting" {
       val repository = mockk<WorkflowConfigurationRepository>()
       val catalog = mockk<WorkItemCatalogRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
       val rawCondition =
+        Json.parseToJsonElement(
+            """
+            {
+              "field": "issue.statusGroup",
+              "op": "eq",
+              "value": "todo"
+            }
+            """
+              .trimIndent()
+          )
+          .jsonObject
+      val command =
+        CreateWorkflowTransitionCommand(
+          tenantId = tenantId,
+          workflowApiId = workflow.apiId.value,
+          name = "Complete",
+          fromStatusApiId = todoStatus.apiId.value,
+          toStatusApiId = doneStatus.apiId.value,
+          preconditionAst = rawCondition,
+          fields = transitionFields,
+        )
+      val commandSlot = slot<CreateWorkflowTransitionCommand>()
+      val created =
+        WorkflowTransitionRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("trn"),
+          tenantId = tenantId,
+          workflowId = workflow.id,
+          name = "Complete",
+          fromStatusId = todoStatus.id,
+          fromStatusApiId = todoStatus.apiId,
+          toStatusId = doneStatus.id,
+          toStatusApiId = doneStatus.apiId,
+          rank = 100,
+          preconditionAst = JsonObject(emptyMap()),
+          fields = command.fields,
+          isActive = true,
+          createdAt = now,
+          updatedAt = now,
+        )
+
+      coEvery { repository.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
+      coEvery { catalog.findStatus(tenantId, todoStatus.apiId.value) } returns todoStatus
+      coEvery { catalog.findStatus(tenantId, doneStatus.apiId.value) } returns doneStatus
+      coEvery { configs.listConfigs(tenantId) } returns emptyList()
+      coEvery { repository.createTransition(capture(commandSlot)) } returns created
+
+      WorkflowConfigurationService(repository, catalog, configs, clock).createTransition(command)
+
+      commandSlot.captured.preconditionAst shouldBe rawCondition
+      coVerify { repository.createTransition(any()) }
+    }
+
+    "createTransition rejects legacy condition syntax" {
+      val repository = mockk<WorkflowConfigurationRepository>()
+      val catalog = mockk<WorkItemCatalogRepository>()
+      val configs = mockk<IssueTypeConfigRepository>()
+      val legacyCondition =
         Json.parseToJsonElement(
             """
             {
@@ -294,44 +348,18 @@ class WorkflowConfigurationServiceTransitionTest :
           name = "Complete",
           fromStatusApiId = todoStatus.apiId.value,
           toStatusApiId = doneStatus.apiId.value,
-          permissionCondition = rawCondition,
-          preconditionAst = rawCondition,
+          preconditionAst = legacyCondition,
           fields = transitionFields,
-        )
-      val commandSlot = slot<CreateWorkflowTransitionCommand>()
-      val created =
-        WorkflowTransitionRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("trn"),
-          tenantId = tenantId,
-          workflowId = workflow.id,
-          name = "Complete",
-          fromStatusId = todoStatus.id,
-          fromStatusApiId = todoStatus.apiId,
-          toStatusId = doneStatus.id,
-          toStatusApiId = doneStatus.apiId,
-          rank = 100,
-          permissionCondition = JsonObject(emptyMap()),
-          preconditionAst = JsonObject(emptyMap()),
-          fields = command.fields,
-          isActive = true,
-          createdAt = now,
-          updatedAt = now,
         )
 
       coEvery { repository.findWorkflow(tenantId, workflow.apiId.value) } returns workflow
       coEvery { catalog.findStatus(tenantId, todoStatus.apiId.value) } returns todoStatus
       coEvery { catalog.findStatus(tenantId, doneStatus.apiId.value) } returns doneStatus
       coEvery { configs.listConfigs(tenantId) } returns emptyList()
-      coEvery { repository.createTransition(capture(commandSlot)) } returns created
 
-      WorkflowConfigurationService(repository, catalog, configs, clock).createTransition(command)
-
-      commandSlot.captured.permissionCondition shouldBe JsonObject(emptyMap())
-      commandSlot.captured.preconditionAst["op"]!!.jsonPrimitive.content shouldBe "eq"
-      commandSlot.captured.preconditionAst["field"]!!.jsonPrimitive.content shouldBe
-        "issue.statusGroup"
-      coVerify { repository.createTransition(any()) }
+      shouldThrow<InvalidRequestException> {
+        WorkflowConfigurationService(repository, catalog, configs, clock).createTransition(command)
+      }
     }
 
     "createTransition rejects unsupported condition operators before persisting" {
@@ -399,7 +427,6 @@ class WorkflowConfigurationServiceTransitionTest :
           toStatusId = doneStatus.id,
           toStatusApiId = doneStatus.apiId,
           rank = 100,
-          permissionCondition = JsonObject(emptyMap()),
           preconditionAst = JsonObject(emptyMap()),
           fields = command.fields,
           isActive = true,

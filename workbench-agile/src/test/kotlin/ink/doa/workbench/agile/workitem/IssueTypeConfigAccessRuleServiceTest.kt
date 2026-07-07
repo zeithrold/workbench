@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.permission.PermissionGroupRepository
 import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
@@ -34,20 +35,23 @@ class IssueTypeConfigAccessRuleServiceTest :
     val configApiId = PublicId.new("itc").value
     val workflowId = UUID.randomUUID()
     val transitionId = UUID.randomUUID()
+    val transitionApiId = PublicId.new("wtr").value
     val configId = UUID.randomUUID()
     val configs = mockk<IssueTypeConfigRepository>()
     val accessRules = mockk<WorkItemAccessRuleRepository>()
     val workflows = mockk<WorkflowConfigurationRepository>()
     val groups = mockk<PermissionGroupRepository>()
-    val service = IssueTypeConfigAccessRuleService(configs, accessRules, workflows, groups)
+    val users = mockk<UserRepository>()
+    val service = IssueTypeConfigAccessRuleService(configs, accessRules, workflows, groups, users)
     val configDetails = sampleConfigDetails(tenantId, configId, configApiId, workflowId)
     val savedRule = sampleRule(tenantId, configId)
 
     coEvery { configs.findConfig(tenantId, configApiId) } returns configDetails
+    coEvery { workflows.listTransitions(tenantId, workflowId) } returns emptyList()
 
     "list returns rules for config" {
       coEvery { accessRules.listByConfig(tenantId, configId) } returns listOf(savedRule)
-      service.list(tenantId, configApiId) shouldBe listOf(savedRule)
+      service.list(tenantId, configApiId).single().id shouldBe savedRule.apiId.value
     }
 
     "create persists comment allow rule" {
@@ -65,33 +69,32 @@ class IssueTypeConfigAccessRuleServiceTest :
           )
         )
 
-      created shouldBe savedRule
+      created.id shouldBe savedRule.apiId.value
       commandSlot.captured.issueTypeConfigId shouldBe configId
       commandSlot.captured.actionType shouldBe WorkItemAccessActionType.COMMENT
     }
 
     "create validates transition belongs to workflow" {
-      coEvery { workflows.listTransitions(tenantId, workflowId) } returns
-        listOf(
-          WorkflowTransitionRecord(
-            id = transitionId,
-            apiId = PublicId.new("wtr"),
-            tenantId = tenantId,
-            workflowId = workflowId,
-            name = "Start",
-            fromStatusId = UUID.randomUUID(),
-            fromStatusApiId = PublicId.new("sts"),
-            toStatusId = UUID.randomUUID(),
-            toStatusApiId = PublicId.new("sts"),
-            rank = 1,
-            preconditionAst = JsonObject(emptyMap()),
-            permissionCondition = JsonObject(emptyMap()),
-            fields = JsonObject(emptyMap()),
-            isActive = true,
-            createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-            updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
-          )
+      val transition =
+        WorkflowTransitionRecord(
+          id = transitionId,
+          apiId = PublicId(transitionApiId),
+          tenantId = tenantId,
+          workflowId = workflowId,
+          name = "Start",
+          fromStatusId = UUID.randomUUID(),
+          fromStatusApiId = PublicId.new("sts"),
+          toStatusId = UUID.randomUUID(),
+          toStatusApiId = PublicId.new("sts"),
+          rank = 1,
+          preconditionAst = JsonObject(emptyMap()),
+          fields = JsonObject(emptyMap()),
+          isActive = true,
+          createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
         )
+      coEvery { workflows.findTransition(tenantId, transitionApiId) } returns transition
+      coEvery { workflows.listTransitions(tenantId, workflowId) } returns listOf(transition)
       coEvery { accessRules.create(any()) } returns savedRule
 
       service.create(
@@ -100,7 +103,7 @@ class IssueTypeConfigAccessRuleServiceTest :
           configApiId = configApiId,
           subjectType = WorkItemAccessSubjectType.ANYONE,
           actionType = WorkItemAccessActionType.TRANSITION,
-          transitionId = transitionId,
+          transitionId = transitionApiId,
           effect = PermissionEffect.ALLOW,
         )
       )
@@ -109,16 +112,16 @@ class IssueTypeConfigAccessRuleServiceTest :
     }
 
     "create rejects unknown transition" {
-      coEvery { workflows.listTransitions(tenantId, workflowId) } returns emptyList()
+      coEvery { workflows.findTransition(tenantId, transitionApiId) } returns null
 
-      shouldThrow<InvalidRequestException> {
+      shouldThrow<ResourceNotFoundException> {
           service.create(
             CreateIssueTypeAccessRuleCommand(
               tenantId = tenantId,
               configApiId = configApiId,
               subjectType = WorkItemAccessSubjectType.ANYONE,
               actionType = WorkItemAccessActionType.TRANSITION,
-              transitionId = transitionId,
+              transitionId = transitionApiId,
               effect = PermissionEffect.ALLOW,
             )
           )

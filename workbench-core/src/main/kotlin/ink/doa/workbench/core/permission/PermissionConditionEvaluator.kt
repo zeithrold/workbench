@@ -14,7 +14,7 @@ class PermissionConditionEvaluator(
       conditionJson = conditionJson,
       context =
         AccessConditionContext.fromResourceAttributes(
-          actorUserId = context.actorUserId,
+          actorUserApiId = context.actorUserApiId,
           resourceAttributes = context.resourceAttributes,
         ),
     )

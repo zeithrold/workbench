@@ -11,6 +11,15 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Component
 
+data class WorkItemTransitionEvaluationRequest(
+  val issue: WorkItemRecord,
+  val actorUserId: UUID,
+  val actorUserApiId: String,
+  val projectApiId: String,
+  val properties: Map<String, JsonElement>,
+  val issueTypeConfigId: UUID,
+)
+
 @Component
 class WorkItemTransitionValidator(
   private val repository: WorkItemRepository,
@@ -20,34 +29,40 @@ class WorkItemTransitionValidator(
 
   suspend fun conditionContext(
     issue: WorkItemRecord,
-    actorUserId: UUID,
+    actorUserApiId: String,
+    projectApiId: String,
     properties: Map<String, JsonElement>,
   ): WorkItemConditionContext =
     WorkItemConditionContext(
       workItem = issue,
-      actorUserId = actorUserId,
+      actorUserApiId = actorUserApiId,
+      projectApiId = projectApiId,
       properties = properties,
       childIssuesNotDone =
         repository.countChildrenNotInStatusGroups(issue.tenantId, issue.id, setOf("done")),
     )
 
   suspend fun accessEvaluationContext(
-    issue: WorkItemRecord,
-    actorUserId: UUID,
-    properties: Map<String, JsonElement>,
-    issueTypeConfigId: UUID,
+    request: WorkItemTransitionEvaluationRequest
   ): ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext {
-    val conditionContext = conditionContext(issue, actorUserId, properties)
+    val conditionContext =
+      conditionContext(
+        request.issue,
+        request.actorUserApiId,
+        request.projectApiId,
+        request.properties,
+      )
     return ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
       actor =
         accessPolicy.resolveActor(
-          tenantId = issue.tenantId,
-          projectId = issue.projectId,
-          actorUserId = actorUserId,
+          tenantId = request.issue.tenantId,
+          projectId = request.issue.projectId,
+          actorUserId = request.actorUserId,
         ),
-      workItem = issue,
-      issueTypeConfigId = issueTypeConfigId,
-      properties = properties,
+      workItem = request.issue,
+      issueTypeConfigId = request.issueTypeConfigId,
+      projectApiId = request.projectApiId,
+      properties = request.properties,
       childIssuesNotDone = conditionContext.childIssuesNotDone,
     )
   }

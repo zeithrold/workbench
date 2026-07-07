@@ -86,23 +86,14 @@ class WorkItemCommentService(
     ) {
       throw PermissionDeniedException(permissionError(action))
     }
-    val issue =
-      repository.findByApiId(tenantId, projectId, workItemApiId)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
-    val properties = repository.listPropertyValues(tenantId, issue.id)
-    val config =
-      configs.findConfig(tenantId, issue.issueTypeConfigApiId.value)
-        ?: throw ResourceNotFoundException(
-          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
-        )
     val evaluation =
-      ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
-        actor = accessPolicy.resolveActor(tenantId, projectId, actorUserId),
-        workItem = issue,
-        issueTypeConfigId = config.config.id,
-        properties = properties,
+      WorkItemCommentPermissionSupport.evaluationContext(
+        repository,
+        configs,
+        accessPolicy,
+        CommentPermissionRequest(tenantId, projectId, actorUserId, workItemApiId),
       )
-    if (!accessPolicy.isCommentPermitted(config.config.id, evaluation)) {
+    if (!accessPolicy.isCommentPermitted(evaluation.issueTypeConfigId, evaluation.context)) {
       throw PermissionDeniedException(permissionError(action))
     }
   }

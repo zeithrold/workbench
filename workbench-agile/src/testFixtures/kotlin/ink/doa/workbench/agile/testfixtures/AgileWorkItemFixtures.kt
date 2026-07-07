@@ -19,7 +19,7 @@ object AgileWorkItemFixtures {
   fun permissiveCondition(): JsonObject =
     JsonObject(
       mapOf(
-        "field" to JsonPrimitive("statusGroup"),
+        "field" to JsonPrimitive("issue.statusGroup"),
         "op" to JsonPrimitive("eq"),
         "value" to JsonPrimitive("todo"),
       )
@@ -118,7 +118,6 @@ object AgileWorkItemFixtures {
       toStatusId = status.statusId,
       toStatusApiId = status.statusApiId,
       rank = 100,
-      permissionCondition = permissiveCondition(),
       preconditionAst = permissiveCondition(),
       fields =
         Json.parseToJsonElement(

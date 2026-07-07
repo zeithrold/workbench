@@ -20,6 +20,7 @@ data class AuthorizationRequest(
 
 data class AuthorizationSubject(
   val userId: UUID,
+  val userApiId: String,
   val loginAccountId: UUID?,
   val credentialType: CredentialType,
   val credentialId: String?,

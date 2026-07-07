@@ -20,7 +20,9 @@ class AccessConditionEvaluatorTest :
   StringSpec({
     val evaluator = AccessConditionEvaluator()
     val actorId = UUID.randomUUID()
-    val workItem = sampleWorkItem(actorId)
+    val actorApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+    val projectApiId = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1"
+    val workItem = sampleWorkItem(actorId, actorApiId)
 
     fun context(
       item: WorkItemRecord? = workItem,
@@ -29,8 +31,9 @@ class AccessConditionEvaluatorTest :
       attributes: Map<String, String> = emptyMap(),
     ): AccessConditionContext =
       AccessConditionContext(
-        actorUserId = actorId,
+        actorUserApiId = actorApiId,
         workItem = item,
+        projectApiId = projectApiId,
         properties = properties,
         childIssuesNotDone = childIssuesNotDone,
         resourceAttributes = attributes,
@@ -43,7 +46,7 @@ class AccessConditionEvaluatorTest :
     "evaluateJsonString matches assignee from work item" {
       val condition =
         """
-        {"op":"eq","field":"assignee","value":{"var":"user.currentUser"}}
+        {"op":"eq","field":"issue.assignee","value":{"var":"user.currentUser"}}
         """
           .trimIndent()
 
@@ -53,12 +56,14 @@ class AccessConditionEvaluatorTest :
     "evaluateJsonString fails when assignee differs" {
       val condition =
         """
-        {"op":"eq","field":"assignee","value":{"var":"user.currentUser"}}
+        {"op":"eq","field":"issue.assignee","value":{"var":"user.currentUser"}}
         """
           .trimIndent()
 
-      evaluator.evaluateJsonString(condition, context(sampleWorkItem(UUID.randomUUID()))) shouldBe
-        PermissionConditionResult.NO_MATCH
+      evaluator.evaluateJsonString(
+        condition,
+        context(sampleWorkItem(UUID.randomUUID(), "usr_01JABCDEFGHJKMNPQRSTVWXYZ2")),
+      ) shouldBe PermissionConditionResult.NO_MATCH
     }
 
     "evaluateJsonString treats blank condition as match" {
@@ -74,8 +79,12 @@ class AccessConditionEvaluatorTest :
           "args",
           JsonArray(
             listOf(
-              predicate("statusGroup", "eq", JsonPrimitive("todo")),
-              predicate("actor", "eq", JsonPrimitive(actorId.toString())),
+              predicate("issue.statusGroup", "eq", JsonPrimitive("todo")),
+              predicate(
+                "issue.assignee",
+                "eq",
+                JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+              ),
             )
           ),
         )
@@ -86,15 +95,15 @@ class AccessConditionEvaluatorTest :
           "args",
           JsonArray(
             listOf(
-              predicate("statusGroup", "eq", JsonPrimitive("done")),
-              predicate("statusGroup", "eq", JsonPrimitive("todo")),
+              predicate("issue.statusGroup", "eq", JsonPrimitive("done")),
+              predicate("issue.statusGroup", "eq", JsonPrimitive("todo")),
             )
           ),
         )
       }
       val notCondition = buildJsonObject {
         put("op", JsonPrimitive("not"))
-        put("arg", predicate("statusGroup", "eq", JsonPrimitive("done")))
+        put("arg", predicate("issue.statusGroup", "eq", JsonPrimitive("done")))
       }
 
       evaluator.evaluateObject(andCondition, context()) shouldBe true
@@ -117,11 +126,16 @@ class AccessConditionEvaluatorTest :
     "evaluates membership operators" {
       val statusApiId = workItem.statusApiId.value
       val ctx = context()
-      evaluator.evaluateObject(predicate("status", "in", JsonPrimitive(statusApiId)), ctx) shouldBe
-        true
-      evaluator.evaluateObject(predicate("status", "neq", JsonPrimitive("done")), ctx) shouldBe true
       evaluator.evaluateObject(
-        predicate("status", "not_in", JsonArray(listOf(JsonPrimitive("sts_other")))),
+        predicate("issue.status", "in", JsonPrimitive(statusApiId)),
+        ctx,
+      ) shouldBe true
+      evaluator.evaluateObject(
+        predicate("issue.statusGroup", "neq", JsonPrimitive("done")),
+        ctx,
+      ) shouldBe true
+      evaluator.evaluateObject(
+        predicate("issue.status", "not_in", JsonArray(listOf(JsonPrimitive("sts_other")))),
         ctx,
       ) shouldBe true
     }
@@ -130,12 +144,14 @@ class AccessConditionEvaluatorTest :
       val withAssignee =
         context(
           item = null,
-          attributes = mapOf("assignee" to actorId.toString(), "statusGroup" to "todo"),
+          attributes = mapOf("assignee" to actorApiId, "statusGroup" to "todo"),
         )
       val withoutAssignee = context(item = null, attributes = mapOf("statusGroup" to "todo"))
 
-      evaluator.evaluateObject(predicate("assignee", "is_not_empty"), withAssignee) shouldBe true
-      evaluator.evaluateObject(predicate("assignee", "is_empty"), withoutAssignee) shouldBe true
+      evaluator.evaluateObject(predicate("issue.assignee", "is_not_empty"), withAssignee) shouldBe
+        true
+      evaluator.evaluateObject(predicate("issue.assignee", "is_empty"), withoutAssignee) shouldBe
+        true
     }
 
     "evaluates issue prefixed system fields" {
@@ -145,15 +161,15 @@ class AccessConditionEvaluatorTest :
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issue.reporter", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.reporter", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issue.assignee", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.assignee", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issue.project", "eq", JsonPrimitive(workItem.projectId.toString())),
+        predicate("issue.project", "eq", JsonPrimitive(projectApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
@@ -185,14 +201,20 @@ class AccessConditionEvaluatorTest :
 
     "evaluates status group from work item record" {
       val ctx = context()
-      evaluator.evaluateObject(predicate("statusGroup", "eq", JsonPrimitive("todo")), ctx) shouldBe
-        true
+      evaluator.evaluateObject(
+        predicate("issue.statusGroup", "eq", JsonPrimitive("todo")),
+        ctx,
+      ) shouldBe true
       evaluator.evaluateObject(
         predicate("issue.status", "eq", JsonPrimitive(workItem.statusApiId.value)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issueTypeConfig", "eq", JsonPrimitive(workItem.issueTypeConfigApiId.value)),
+        predicate(
+          "issue.issueTypeConfig",
+          "eq",
+          JsonPrimitive(workItem.issueTypeConfigApiId.value),
+        ),
         ctx,
       ) shouldBe true
     }
@@ -200,7 +222,10 @@ class AccessConditionEvaluatorTest :
     "reads custom values from work item properties map" {
       val item = workItem.copy(properties = JsonObject(mapOf("custom" to JsonPrimitive("value"))))
       val ctx = context(item = item)
-      evaluator.evaluateObject(predicate("custom", "eq", JsonPrimitive("value")), ctx) shouldBe true
+      evaluator.evaluateObject(
+        predicate("property.custom", "eq", JsonPrimitive("value")),
+        ctx,
+      ) shouldBe true
     }
 
     "issue reporter falls back to null without work item or attribute" {
@@ -211,11 +236,11 @@ class AccessConditionEvaluatorTest :
     "actor aliases resolve to current user id" {
       val ctx = context()
       evaluator.evaluateObject(
-        predicate("actorId", "eq", JsonPrimitive(actorId.toString())),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("user.currentUser", "eq", JsonPrimitive(actorId.toString())),
+        predicate(
+          "issue.assignee",
+          "eq",
+          JsonObject(mapOf("var" to JsonPrimitive("user.currentUser"))),
+        ),
         ctx,
       ) shouldBe true
     }
@@ -248,7 +273,7 @@ class AccessConditionEvaluatorTest :
       shouldThrow<InvalidRequestException> {
         evaluator.evaluateObject(
           buildJsonObject {
-            put("field", JsonPrimitive("statusGroup"))
+            put("field", JsonPrimitive("issue.statusGroup"))
             put("op", JsonPrimitive("unknown"))
             put("value", JsonPrimitive("todo"))
           },
@@ -296,37 +321,41 @@ class AccessConditionEvaluatorTest :
           item = null,
           attributes =
             mapOf(
-              "reporter" to actorId.toString(),
-              "assignee" to actorId.toString(),
+              "reporter" to actorApiId,
+              "assignee" to actorApiId,
               "status" to workItem.statusApiId.value,
               "statusGroup" to "todo",
               "issueType" to workItem.issueTypeApiId.value,
               "issueTypeConfig" to workItem.issueTypeConfigApiId.value,
-              "project" to workItem.projectId.toString(),
+              "project" to projectApiId,
             ),
         )
       evaluator.evaluateObject(
-        predicate("reporterId", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.reporter", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("assigneeId", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.assignee", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("statusId", "eq", JsonPrimitive(workItem.statusApiId.value)),
+        predicate("issue.status", "eq", JsonPrimitive(workItem.statusApiId.value)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issueTypeId", "eq", JsonPrimitive(workItem.issueTypeApiId.value)),
+        predicate("issue.issueType", "eq", JsonPrimitive(workItem.issueTypeApiId.value)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("issueTypeConfigId", "eq", JsonPrimitive(workItem.issueTypeConfigApiId.value)),
+        predicate(
+          "issue.issueTypeConfig",
+          "eq",
+          JsonPrimitive(workItem.issueTypeConfigApiId.value),
+        ),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("projectId", "eq", JsonPrimitive(workItem.projectId.toString())),
+        predicate("issue.project", "eq", JsonPrimitive(projectApiId)),
         ctx,
       ) shouldBe true
     }
@@ -334,47 +363,31 @@ class AccessConditionEvaluatorTest :
     "evaluates work item backed aliases" {
       val ctx = context()
       evaluator.evaluateObject(
-        predicate("reporter", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.reporter", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("reporterId", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.assignee", "eq", JsonPrimitive(actorApiId)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("assignee", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.status", "eq", JsonPrimitive(workItem.statusApiId.value)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("assigneeId", "eq", JsonPrimitive(actorId.toString())),
+        predicate("issue.issueType", "eq", JsonPrimitive(workItem.issueTypeApiId.value)),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("status", "eq", JsonPrimitive(workItem.statusApiId.value)),
+        predicate(
+          "issue.issueTypeConfig",
+          "eq",
+          JsonPrimitive(workItem.issueTypeConfigApiId.value),
+        ),
         ctx,
       ) shouldBe true
       evaluator.evaluateObject(
-        predicate("statusId", "eq", JsonPrimitive(workItem.statusApiId.value)),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("issueType", "eq", JsonPrimitive(workItem.issueTypeApiId.value)),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("issueTypeId", "eq", JsonPrimitive(workItem.issueTypeApiId.value)),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("issueTypeConfig", "eq", JsonPrimitive(workItem.issueTypeConfigApiId.value)),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("project", "eq", JsonPrimitive(workItem.projectId.toString())),
-        ctx,
-      ) shouldBe true
-      evaluator.evaluateObject(
-        predicate("projectId", "eq", JsonPrimitive(workItem.projectId.toString())),
+        predicate("issue.project", "eq", JsonPrimitive(projectApiId)),
         ctx,
       ) shouldBe true
     }
@@ -383,7 +396,7 @@ class AccessConditionEvaluatorTest :
       shouldThrow<InvalidRequestException> {
         evaluator.evaluateObject(
           buildJsonObject {
-            put("field", JsonPrimitive("statusGroup"))
+            put("field", JsonPrimitive("issue.statusGroup"))
             put("op", JsonPrimitive("eq"))
             put("value", JsonObject(mapOf("var" to JsonPrimitive("unknown.variable"))))
           },
@@ -393,17 +406,24 @@ class AccessConditionEvaluatorTest :
     }
 
     "AccessConditionContext fromEvaluation copies actor and work item state" {
-      val actor = WorkItemAccessActor(actorId, setOf(UUID.randomUUID()), setOf("admin"))
+      val actor =
+        WorkItemAccessActor(
+          userId = actorId,
+          userApiId = actorApiId,
+          groupIds = setOf(UUID.randomUUID()),
+          projectRoles = setOf("admin"),
+        )
       val evaluation =
         WorkItemAccessEvaluationContext(
           actor = actor,
           workItem = workItem,
           issueTypeConfigId = UUID.randomUUID(),
+          projectApiId = projectApiId,
           properties = mapOf("priority" to JsonPrimitive("high")),
           childIssuesNotDone = 2,
         )
-      val derived = AccessConditionContext.fromEvaluation(evaluation)
-      derived.actorUserId shouldBe actorId
+      val derived = AccessConditionContext.fromEvaluation(evaluation, projectApiId)
+      derived.actorUserApiId shouldBe actorApiId
       derived.actorGroupIds shouldBe actor.groupIds
       derived.workItem shouldBe workItem
       derived.childIssuesNotDone shouldBe 2
@@ -412,11 +432,11 @@ class AccessConditionEvaluatorTest :
     "AccessConditionContext fromResourceAttributes stores actor attributes" {
       val derived =
         AccessConditionContext.fromResourceAttributes(
-          actorUserId = actorId,
-          resourceAttributes = mapOf("assignee" to actorId.toString()),
+          actorUserApiId = actorApiId,
+          resourceAttributes = mapOf("assignee" to actorApiId),
         )
-      derived.actorUserId shouldBe actorId
-      derived.resourceAttributes["assignee"] shouldBe actorId.toString()
+      derived.actorUserApiId shouldBe actorApiId
+      derived.resourceAttributes["assignee"] shouldBe actorApiId
     }
   })
 
@@ -444,7 +464,13 @@ class WorkItemAccessRuleRecordsTest :
       val userId = UUID.randomUUID()
       val groupId = UUID.randomUUID()
       val configId = UUID.randomUUID()
-      val actor = WorkItemAccessActor(userId, setOf(groupId), setOf("member"))
+      val actor =
+        WorkItemAccessActor(
+          userId = userId,
+          userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          groupIds = setOf(groupId),
+          projectRoles = setOf("member"),
+        )
       actor.userId shouldBe userId
       actor.groupIds shouldBe setOf(groupId)
 
@@ -496,8 +522,9 @@ private fun predicate(
   }
 }
 
-private fun sampleWorkItem(assigneeId: UUID): WorkItemRecord {
+private fun sampleWorkItem(assigneeId: UUID, assigneeApiId: String): WorkItemRecord {
   val issueTypeId = UUID.randomUUID()
+  val userApiId = PublicId(assigneeApiId)
   return WorkItemRecord(
     id = UUID.randomUUID(),
     apiId = PublicId.new("iss"),
@@ -515,8 +542,8 @@ private fun sampleWorkItem(assigneeId: UUID): WorkItemRecord {
     reporterId = assigneeId,
     assigneeId = assigneeId,
     priorityApiId = null,
-    reporterApiId = PublicId.new("usr"),
-    assigneeApiId = PublicId.new("usr"),
+    reporterApiId = userApiId,
+    assigneeApiId = userApiId,
     sprintApiId = null,
     properties = JsonObject(emptyMap()),
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),

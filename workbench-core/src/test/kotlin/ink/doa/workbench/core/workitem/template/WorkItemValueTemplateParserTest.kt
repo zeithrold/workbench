@@ -101,13 +101,13 @@ class WorkItemValueTemplateParserTest :
         TemplateValueExpression.Literal(JsonPrimitive("ready"))
     }
 
-    "parses relativeDateTime expressions" {
+    "parses relativeDate expressions" {
       val expression =
         parser.parseExpression(
           kotlinx.serialization.json.Json.parseToJsonElement(
             """
               {
-                "relativeDateTime": {
+                "relativeDate": {
                   "amount": 1,
                   "unit": "week",
                   "direction": "past",

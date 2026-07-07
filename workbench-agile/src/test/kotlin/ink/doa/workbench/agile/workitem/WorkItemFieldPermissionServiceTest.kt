@@ -42,7 +42,13 @@ class WorkItemFieldPermissionServiceTest :
     coEvery { accessPolicy.isFieldWritePermitted(any(), any(), any()) } returns true
 
     fun context(operation: FieldPermissionOperation) =
-      WorkItemFieldPermissionContext(tenantId, projectId, userId, operation)
+      WorkItemFieldPermissionContext(
+        tenantId,
+        projectId,
+        userId,
+        "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+        operation,
+      )
 
     fun issueUpdateAllow() =
       ResolvedPermissionRule(
