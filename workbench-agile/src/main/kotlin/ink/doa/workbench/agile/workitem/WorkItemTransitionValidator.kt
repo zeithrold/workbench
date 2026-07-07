@@ -1,6 +1,5 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.PermissionDeniedException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.WorkItemRepository
@@ -13,7 +12,10 @@ import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Component
 
 @Component
-class WorkItemTransitionValidator(private val repository: WorkItemRepository) {
+class WorkItemTransitionValidator(
+  private val repository: WorkItemRepository,
+  private val accessPolicy: WorkItemAccessPolicyEngine,
+) {
   private val conditions = WorkItemConditionEvaluator()
 
   suspend fun conditionContext(
@@ -28,6 +30,27 @@ class WorkItemTransitionValidator(private val repository: WorkItemRepository) {
       childIssuesNotDone =
         repository.countChildrenNotInStatusGroups(issue.tenantId, issue.id, setOf("done")),
     )
+
+  suspend fun accessEvaluationContext(
+    issue: WorkItemRecord,
+    actorUserId: UUID,
+    properties: Map<String, JsonElement>,
+    issueTypeConfigId: UUID,
+  ): ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext {
+    val conditionContext = conditionContext(issue, actorUserId, properties)
+    return ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
+      actor =
+        accessPolicy.resolveActor(
+          tenantId = issue.tenantId,
+          projectId = issue.projectId,
+          actorUserId = actorUserId,
+        ),
+      workItem = issue,
+      issueTypeConfigId = issueTypeConfigId,
+      properties = properties,
+      childIssuesNotDone = conditionContext.childIssuesNotDone,
+    )
+  }
 
   fun checkCondition(
     ast: JsonObject,
@@ -50,18 +73,29 @@ class WorkItemTransitionValidator(private val repository: WorkItemRepository) {
       transition.workflowId != config.config.workflowId ||
         (transition.fromStatusId != null && transition.fromStatusId != issue.statusId)
     ) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_STATUS_MISMATCH)
+      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_TRANSITION_STATUS_MISMATCH
+      )
     }
     if (config.statuses.none { it.statusId == transition.toStatusId }) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE)
+      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+        WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE
+      )
     }
   }
 
-  fun requireTransitionPermission(
+  suspend fun requireTransitionPermission(
+    issueTypeConfigId: UUID,
     transition: WorkflowTransitionRecord,
-    context: WorkItemConditionContext,
+    evaluationContext: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext,
   ) {
-    if (!conditions.evaluate(transition.permissionCondition, context)) {
+    if (
+      !accessPolicy.isTransitionPermitted(
+        issueTypeConfigId = issueTypeConfigId,
+        transitionId = transition.id,
+        evaluationContext = evaluationContext,
+      )
+    ) {
       throw PermissionDeniedException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_PERMISSION_DENIED)
     }
   }
@@ -71,7 +105,9 @@ class WorkItemTransitionValidator(private val repository: WorkItemRepository) {
     context: WorkItemConditionContext,
   ) {
     if (!conditions.evaluate(transition.preconditionAst, context)) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED)
+      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED
+      )
     }
   }
 }

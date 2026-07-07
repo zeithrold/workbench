@@ -1,7 +1,6 @@
 package ink.doa.workbench.agile.testfixtures
 
-import ink.doa.workbench.agile.workitem.FieldMutationPolicy
-import ink.doa.workbench.agile.workitem.FieldSubmissionPolicy
+import ink.doa.workbench.agile.workitem.WorkItemAccessPolicyEngine
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
 import ink.doa.workbench.agile.workitem.WorkItemDescriptionAttachmentValidator
@@ -16,32 +15,43 @@ import ink.doa.workbench.agile.workitem.WorkItemTransitionExecutor
 import ink.doa.workbench.agile.workitem.WorkItemTransitionOptionBuilder
 import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.agile.workitem.WorkItemTransitionValidator
+import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.core.workitem.access.WorkItemAccessActor
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import io.mockk.coEvery
 import io.mockk.mockk
 import java.time.Clock
 
 object AgileServiceFactory {
-  fun mockFieldPermissions(): WorkItemFieldPermissionService {
-    val fieldPermissions = mockk<WorkItemFieldPermissionService>()
-    coEvery { fieldPermissions.bindingAllowsWrite(any(), any()) } returns true
-    coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-      FieldMutationPolicy(
-        submission = FieldSubmissionPolicy.INHERIT_BINDING,
-        bindingAllowsWrite = true,
+  fun mockAccessPolicy(): WorkItemAccessPolicyEngine {
+    val accessPolicy = mockk<WorkItemAccessPolicyEngine>(relaxed = true)
+    coEvery { accessPolicy.resolveActor(any(), any(), any()) } returns
+      WorkItemAccessActor(
+        userId = java.util.UUID.randomUUID(),
+        groupIds = emptySet(),
+        projectRoles = setOf("admin", "member"),
       )
-    coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } returns
-      FieldMutationPolicy(
-        submission = FieldSubmissionPolicy.INHERIT_BINDING,
-        bindingAllowsWrite = true,
-      )
-    return fieldPermissions
+    coEvery { accessPolicy.isTransitionPermitted(any(), any(), any()) } returns true
+    coEvery { accessPolicy.isFieldWritePermitted(any(), any(), any()) } returns true
+    coEvery { accessPolicy.isCommentPermitted(any(), any()) } returns true
+    coEvery { accessPolicy.bindingAllowsFieldWrite(any(), any(), any()) } returns true
+    listOf("issue.comment.create", "issue.comment.update", "issue.comment.delete").forEach { action
+      ->
+      coEvery {
+        accessPolicy.bindingAllowsComment(any(), any(), any(), AuthorizationAction(action))
+      } returns true
+    }
+    return accessPolicy
   }
+
+  fun mockFieldPermissions(
+    accessPolicy: WorkItemAccessPolicyEngine = mockAccessPolicy()
+  ): WorkItemFieldPermissionService = WorkItemFieldPermissionService(accessPolicy)
 
   fun fieldMutationEngine(
     clock: Clock,
@@ -94,13 +104,14 @@ object AgileServiceFactory {
     events: DomainEventPublisher,
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+    accessPolicy: WorkItemAccessPolicyEngine = mockAccessPolicy(),
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
     commentService: WorkItemCommentService = mockk(relaxed = true),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemTransitionService {
     val mutationSupport = WorkItemMutationSupport(repository, configs, events)
-    val transitionValidator = WorkItemTransitionValidator(repository)
+    val transitionValidator = WorkItemTransitionValidator(repository, accessPolicy)
     val fieldPipeline =
       fieldMutationPipeline(
         clock,
@@ -116,7 +127,12 @@ object AgileServiceFactory {
           mutationSupport,
           transitionValidator,
         ),
-      evaluator = WorkItemTransitionEvaluator(transitionValidator, transitionFieldsParser),
+      evaluator =
+        WorkItemTransitionEvaluator(
+          transitionValidator,
+          accessPolicy,
+          transitionFieldsParser,
+        ),
       fieldPipeline = fieldPipeline,
       optionBuilder = WorkItemTransitionOptionBuilder(fieldPipeline),
       executor =

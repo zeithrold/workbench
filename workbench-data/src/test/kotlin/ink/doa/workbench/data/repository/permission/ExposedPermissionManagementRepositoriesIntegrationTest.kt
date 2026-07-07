@@ -101,6 +101,30 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
       }
     }
 
+    "listActiveGroupIdsForUser returns only active memberships" {
+      withCorePostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val users = ExposedUserRepository(database)
+        val groups = ExposedPermissionGroupRepository(database)
+        val user = users.create(CreateUserCommand("Cara", "cara-permissions@example.test"))
+        val group =
+          groups.create(
+            CreatePermissionGroupCommand(
+              tenantId = tenantId,
+              code = "qa",
+              name = "QA",
+              description = null,
+            )
+          )
+        groups.addMember(AddGroupMemberCommand(group.id, user.id))
+
+        groups.listActiveGroupIdsForUser(tenantId, user.id) shouldBe setOf(group.id)
+
+        groups.removeMember(group.id, user.id, OffsetDateTime.now(ZoneOffset.UTC))
+        groups.listActiveGroupIdsForUser(tenantId, user.id).shouldBeEmpty()
+      }
+    }
+
     "user bindings resolve direct policy rules" {
       withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)

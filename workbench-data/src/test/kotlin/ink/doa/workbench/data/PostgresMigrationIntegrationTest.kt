@@ -14,7 +14,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "Flyway migrations run on PostgreSQL" {
       withMigratedPostgres { _, result ->
-        result.migrationsExecuted shouldBe 39
+        result.migrationsExecuted shouldBe 42
       }
     }
 
@@ -63,6 +63,48 @@ class PostgresMigrationIntegrationTest :
           row["body_format"] shouldBe "html"
         }
     }
+
+    "V44 migrates workflow transition permissions into access rules" {
+      WorkbenchPostgresTestSupport.openDatabase(
+          WorkbenchPostgresTestSupport.customMigration(configure = { target("43") })
+        )
+        .use { lease ->
+          val jdbc = lease.jdbcTemplate()
+          val seed = seedTransitionPermissionFixture(jdbc)
+          org.flywaydb.core.Flyway.configure()
+            .dataSource(lease.jdbcUrl, lease.username, lease.password)
+            .locations(*MigrationSpec.Full.locations())
+            .load()
+            .migrate()
+
+          val migratedRuleCount =
+            jdbc.queryForObject(
+              """
+              SELECT COUNT(*)
+              FROM issue_type_config_access_rules
+              WHERE tenant_id = ? AND transition_id = ? AND effect = 'deny'
+              """
+                .trimIndent(),
+              Int::class.java,
+              seed.tenantId,
+              seed.transitionId,
+            )
+          migratedRuleCount shouldBe 1
+
+          val clearedPermission =
+            jdbc.queryForObject(
+              """
+              SELECT permission_condition::text
+              FROM workflow_transitions
+              WHERE id = ?
+              """
+                .trimIndent(),
+              String::class.java,
+              seed.transitionId,
+            )
+          clearedPermission shouldBe "{}"
+        }
+    }
   })
 
 private data class CommentFixtureSeed(
@@ -71,6 +113,11 @@ private data class CommentFixtureSeed(
   val issueId: UUID,
   val commentId: UUID,
   val commentApiId: String,
+)
+
+private data class TransitionPermissionFixtureSeed(
+  val tenantId: UUID,
+  val transitionId: UUID,
 )
 
 private fun seedCommentFixture(jdbc: JdbcTemplate): CommentFixtureSeed {
@@ -179,6 +226,95 @@ private fun seedCommentFixture(jdbc: JdbcTemplate): CommentFixtureSeed {
     commentId = commentId,
     commentApiId = "icm_${commentId.toString().replace("-", "").take(12)}",
   )
+}
+
+private fun seedTransitionPermissionFixture(jdbc: JdbcTemplate): TransitionPermissionFixtureSeed {
+  val tenantId = UUID.randomUUID()
+  val workflowId = UUID.randomUUID()
+  val issueTypeId = UUID.randomUUID()
+  val issueTypeConfigId = UUID.randomUUID()
+  val fromStatusId = UUID.randomUUID()
+  val toStatusId = UUID.randomUUID()
+  val transitionId = UUID.randomUUID()
+  jdbc.update(
+    "INSERT INTO tenants (id, api_id, name, slug) VALUES (?, ?, ?, ?)",
+    tenantId,
+    "ten_${tenantId.toString().replace("-", "").take(12)}",
+    "Tenant",
+    "tenant-${tenantId.toString().take(8)}",
+  )
+  jdbc.update(
+    """
+    INSERT INTO issue_statuses (id, api_id, tenant_id, code, name, status_group)
+    VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)
+    """
+      .trimIndent(),
+    fromStatusId,
+    "sts_${fromStatusId.toString().replace("-", "").take(12)}",
+    tenantId,
+    "todo",
+    "Todo",
+    "todo",
+    toStatusId,
+    "sts_${toStatusId.toString().replace("-", "").take(12)}",
+    tenantId,
+    "done",
+    "Done",
+    "done",
+  )
+  jdbc.update(
+    "INSERT INTO workflows (id, api_id, tenant_id, code, name) VALUES (?, ?, ?, ?, ?)",
+    workflowId,
+    "wfl_${workflowId.toString().replace("-", "").take(12)}",
+    tenantId,
+    "default",
+    "Default",
+  )
+  jdbc.update(
+    """
+    INSERT INTO issue_types (id, api_id, tenant_id, scope, code, name)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """
+      .trimIndent(),
+    issueTypeId,
+    "typ_${issueTypeId.toString().replace("-", "").take(12)}",
+    tenantId,
+    "tenant",
+    "task",
+    "Task",
+  )
+  jdbc.update(
+    """
+    INSERT INTO issue_type_configs (id, api_id, tenant_id, scope, issue_type_id, workflow_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """
+      .trimIndent(),
+    issueTypeConfigId,
+    "itc_${issueTypeConfigId.toString().replace("-", "").take(12)}",
+    tenantId,
+    "tenant",
+    issueTypeId,
+    workflowId,
+  )
+  jdbc.update(
+    """
+    INSERT INTO workflow_transitions (
+      id, api_id, tenant_id, workflow_id, name, from_status_id, to_status_id,
+      permission_condition, precondition_ast, fields
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb, '{}'::jsonb, '{}'::jsonb)
+    """
+      .trimIndent(),
+    transitionId,
+    "wtr_${transitionId.toString().replace("-", "").take(12)}",
+    tenantId,
+    workflowId,
+    "Start",
+    fromStatusId,
+    toStatusId,
+    """{"op":"eq","field":"statusGroup","value":"todo"}""",
+  )
+  return TransitionPermissionFixtureSeed(tenantId = tenantId, transitionId = transitionId)
 }
 
 private fun withMigratedPostgres(

@@ -36,6 +36,7 @@ import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Service
 
 @Service
@@ -160,10 +161,9 @@ class WorkflowConfigurationService(
     validateTransitionAgainstActiveConfigs(command, workflow)
     val canonicalCommand =
       command.copy(
-        permissionCondition = WorkItemConditionJson.canonicalize(command.permissionCondition),
+        permissionCondition = JsonObject(emptyMap()),
         preconditionAst = WorkItemConditionJson.canonicalize(command.preconditionAst),
       )
-    transitionConditionValidator.validate(canonicalCommand.permissionCondition)
     transitionConditionValidator.validate(canonicalCommand.preconditionAst)
     return repository.createTransition(canonicalCommand)
   }

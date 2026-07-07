@@ -34,22 +34,27 @@ data class TransitionFailure(val errorCode: WorkbenchErrorCode)
 @Component
 class WorkItemTransitionEvaluator(
   private val transitionValidator: WorkItemTransitionValidator,
+  private val accessPolicy: WorkItemAccessPolicyEngine,
   private val transitionFieldsParser: TransitionFieldsParser,
 ) {
-  fun evaluate(
+  suspend fun evaluate(
     context: WorkItemTransitionContext,
     transition: WorkflowTransitionRecord,
   ): TransitionEvaluation {
     val applicable = isApplicable(context, transition)
     val targetStatusAvailable =
       transition.toStatusId in context.config.statuses.map { it.statusId }.toSet()
-    val permissionCondition =
-      transitionValidator.checkCondition(
-        transition.permissionCondition,
-        context.conditionContext,
-        failedReason = "Transition permission condition is not satisfied.",
-        invalidReason = "Transition permission condition is invalid.",
-      )
+    val accessEvaluation = context.accessEvaluation
+    val permitted =
+      if (applicable && targetStatusAvailable) {
+        accessPolicy.isTransitionPermitted(
+          issueTypeConfigId = context.config.config.id,
+          transitionId = transition.id,
+          evaluationContext = accessEvaluation,
+        )
+      } else {
+        false
+      }
     val precondition =
       transitionValidator.checkCondition(
         transition.preconditionAst,
@@ -60,7 +65,7 @@ class WorkItemTransitionEvaluator(
     val fieldsTemplate = runCatching { transitionFieldsParser.parse(transition.fields) }
     return TransitionEvaluation(
       applicable = applicable && targetStatusAvailable,
-      permitted = permissionCondition.enabled,
+      permitted = permitted,
       preconditionMet = precondition.enabled,
       fieldsValid = fieldsTemplate.isSuccess,
       fieldsTemplate = fieldsTemplate.getOrNull(),
@@ -68,7 +73,7 @@ class WorkItemTransitionEvaluator(
         when {
           !applicable -> "Transition is not available from the work item's current status."
           !targetStatusAvailable -> "Transition target status is not available in this type config."
-          permissionCondition.reason != null -> permissionCondition.reason
+          !permitted -> "Transition permission condition is not satisfied."
           precondition.reason != null -> precondition.reason
           fieldsTemplate.isFailure -> "Transition field requirements are invalid."
           else -> null
@@ -76,7 +81,7 @@ class WorkItemTransitionEvaluator(
     )
   }
 
-  fun evaluateOrThrow(
+  suspend fun evaluateOrThrow(
     context: WorkItemTransitionContext,
     transition: WorkflowTransitionRecord,
   ): TransitionEvaluation {
