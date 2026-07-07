@@ -2,7 +2,6 @@ package ink.doa.workbench.data.support
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCodec
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
@@ -10,17 +9,18 @@ import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.repository.workitem.ExposedIssueTypeConfigRepository
-import ink.doa.workbench.data.repository.workitem.ExposedWorkItemActivityRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCommentRepository
+import ink.doa.workbench.data.repository.workitem.ExposedWorkItemEventRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemTimelineRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
-import ink.doa.workbench.data.repository.workitem.WorkItemActivityFactory
+import ink.doa.workbench.data.repository.workitem.WorkItemEventFactory
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import java.time.OffsetDateTime
@@ -167,21 +167,21 @@ internal suspend fun seedWorkItemStack(database: Database): WorkItemStack {
 }
 
 internal fun workItemRepository(database: Database): ExposedWorkItemRepository {
-  val codec = WorkItemActivityCodec()
-  val factory = WorkItemActivityFactory()
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
   return ExposedWorkItemRepository(database, factory, codec)
 }
 
 internal fun workItemCommentRepository(database: Database): ExposedWorkItemCommentRepository {
-  val codec = WorkItemActivityCodec()
-  val factory = WorkItemActivityFactory()
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
   return ExposedWorkItemCommentRepository(database, factory, codec)
 }
 
 internal fun workItemTimelineRepository(database: Database): ExposedWorkItemTimelineRepository {
-  val codec = WorkItemActivityCodec()
-  val factory = WorkItemActivityFactory()
-  val activities = ExposedWorkItemActivityRepository(database, codec)
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
+  val events = ExposedWorkItemEventRepository(database, codec)
   val comments = ExposedWorkItemCommentRepository(database, factory, codec)
-  return ExposedWorkItemTimelineRepository(database, activities, comments)
+  return ExposedWorkItemTimelineRepository(database, events, comments)
 }

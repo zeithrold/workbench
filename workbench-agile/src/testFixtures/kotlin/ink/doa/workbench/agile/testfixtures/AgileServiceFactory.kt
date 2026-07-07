@@ -2,7 +2,6 @@ package ink.doa.workbench.agile.testfixtures
 
 import ink.doa.workbench.agile.workitem.FieldMutationPolicy
 import ink.doa.workbench.agile.workitem.FieldSubmissionPolicy
-import ink.doa.workbench.agile.workitem.WorkItemActivityEnqueueSupport
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
 import ink.doa.workbench.agile.workitem.WorkItemDescriptionAttachmentValidator
@@ -68,8 +67,6 @@ object AgileServiceFactory {
     events: DomainEventPublisher,
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
-    activityEnqueueSupport: WorkItemActivityEnqueueSupport =
-      mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
@@ -81,7 +78,6 @@ object AgileServiceFactory {
       configs,
       WorkItemCreateParentGuard(repository, subtypeConstraints),
       WorkItemMutationSupport(repository, configs, events),
-      activityEnqueueSupport,
       fieldMutationPipeline(
         clock,
         fieldPermissions,
@@ -98,8 +94,6 @@ object AgileServiceFactory {
     events: DomainEventPublisher,
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
-    activityEnqueueSupport: WorkItemActivityEnqueueSupport =
-      mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
     commentService: WorkItemCommentService = mockk(relaxed = true),
@@ -129,7 +123,6 @@ object AgileServiceFactory {
         WorkItemTransitionExecutor(
           repository,
           mutationSupport,
-          activityEnqueueSupport,
           commentService,
         ),
     )

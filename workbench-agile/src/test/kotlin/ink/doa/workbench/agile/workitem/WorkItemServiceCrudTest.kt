@@ -351,7 +351,6 @@ private fun workItemService(
       configs = configs,
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
       mutationSupport = WorkItemMutationSupport(repository, configs, events),
-      activityEnqueueSupport = mockk(relaxed = true),
       fieldPipeline =
         AgileServiceFactory.fieldMutationPipeline(
           clock,

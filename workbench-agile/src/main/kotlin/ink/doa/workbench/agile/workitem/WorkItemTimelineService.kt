@@ -2,7 +2,7 @@ package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.pagination.WorkbenchCursor
+import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkItemTimelineRepository
 import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
@@ -23,7 +23,7 @@ class WorkItemTimelineService(
     cursorToken: String? = null,
   ): WorkItemTimelinePage {
     requireWorkItem(tenantId, projectId, workItemApiId)
-    val cursor = cursorToken?.let(WorkbenchCursor::decode)
+    val cursor = cursorToken?.let(WorkItemStreamCursor::decode)
     return timeline.listByWorkItem(
       ListWorkItemTimelineQuery(
         tenantId = tenantId,

@@ -56,6 +56,18 @@ class WorkItemActivityCodec(private val json: Json = defaultJson) {
         encode(WorkItemActivitySpecs.StatusChanged, payload.value)
       is WorkItemActivityPayload.CommentCreated ->
         encode(WorkItemActivitySpecs.CommentCreated, payload.value)
+      is WorkItemActivityPayload.CommentAdded ->
+        encode(WorkItemActivitySpecs.CommentCreated, payload.value)
+      is WorkItemActivityPayload.CommentEdited ->
+        json.encodeToJsonElement(
+          WorkItemCommentEditedPayload.serializer(),
+          payload.value,
+        )
+      is WorkItemActivityPayload.CommentDeleted ->
+        json.encodeToJsonElement(
+          WorkItemCommentDeletedPayload.serializer(),
+          payload.value,
+        )
       is WorkItemActivityPayload.Unknown -> payload.raw
     }
 

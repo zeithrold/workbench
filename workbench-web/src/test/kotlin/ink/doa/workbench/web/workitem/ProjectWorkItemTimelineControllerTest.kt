@@ -3,17 +3,18 @@ package ink.doa.workbench.web.workitem
 import ink.doa.workbench.agile.project.ProjectResolver
 import ink.doa.workbench.agile.workitem.WorkItemTimelineService
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.pagination.WorkbenchCursor
-import ink.doa.workbench.core.common.pagination.WorkbenchTimelineEntryKind
+import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCommentRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityRecord
-import ink.doa.workbench.core.workitem.activity.WorkItemActivitySourceType
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusSnapshot
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityType
+import ink.doa.workbench.core.workitem.activity.WorkItemCommentCreatedPayload
 import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.core.workitem.stream.WorkItemEventType
 import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
 import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
 import ink.doa.workbench.security.SecurityConfiguration
@@ -89,12 +90,12 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].kind").value("activity"))
-      .andExpect(jsonPath("$[0].id").isNotEmpty())
       .andExpect(jsonPath("$[0].type").value("work_item.created"))
+      .andExpect(jsonPath("$[0].id").isNotEmpty())
+      .andExpect(jsonPath("$[0].sequence").value(2))
       .andExpect(jsonPath("$[0].actor.displayName").value("Ada"))
       .andExpect(jsonPath("$[0].summary").value("Created with status To Do"))
-      .andExpect(jsonPath("$[1].kind").value("comment"))
+      .andExpect(jsonPath("$[1].type").value("comment.added"))
       .andExpect(jsonPath("$[1].body").value("<p>Ship it</p>"))
       .andExpect(header().exists(WORKBENCH_NEXT_CURSOR_HEADER))
   }
@@ -143,21 +144,48 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
       val tenantId = TenantWebMvcFixtures.TENANT_ID
       val projectId = TenantWebMvcFixtures.PROJECT_ID
       val workItemId = UUID.randomUUID()
+      val commentId = UUID.randomUUID()
+      val commentApiId = PublicId.new("icm")
+      val commentEvent =
+        WorkItemEventRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("evt"),
+          tenantId = tenantId,
+          projectId = projectId,
+          workItemId = workItemId,
+          workItemApiId = PublicId.new("iss"),
+          sequence = 1,
+          eventType = WorkItemEventType.COMMENT_ADDED,
+          actorUserId = TenantWebMvcFixtures.USER_ID,
+          actorApiId = PublicId.new("usr"),
+          actorDisplayName = "Ada",
+          occurredAt = now.minusMinutes(1),
+          summary = null,
+          payload =
+            WorkItemActivityPayload.CommentAdded(
+              WorkItemCommentCreatedPayload(
+                comment = WorkItemActivityCommentRef(commentApiId.value, "Ship it")
+              )
+            ),
+          sourceType = WorkItemEventSourceType.USER,
+          createdAt = now.minusMinutes(1),
+        )
       return WorkItemTimelinePage(
         items =
           listOf(
-            WorkItemTimelineEntry.Activity(
-              WorkItemActivityRecord(
+            WorkItemTimelineEntry.Event(
+              WorkItemEventRecord(
                 id = UUID.randomUUID(),
-                apiId = PublicId.new("act"),
+                apiId = PublicId.new("evt"),
                 tenantId = tenantId,
                 projectId = projectId,
                 workItemId = workItemId,
                 workItemApiId = PublicId.new("iss"),
+                sequence = 2,
+                eventType = WorkItemEventType.CREATED,
                 actorUserId = TenantWebMvcFixtures.USER_ID,
                 actorApiId = PublicId.new("usr"),
                 actorDisplayName = "Ada",
-                activityType = WorkItemActivityType.CREATED,
                 occurredAt = now,
                 summary = "Created with status To Do",
                 payload =
@@ -170,36 +198,32 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
                       issueType = WorkItemActivityEntityRef("ity_task", "Task"),
                     )
                   ),
-                sourceType = WorkItemActivitySourceType.USER,
+                sourceType = WorkItemEventSourceType.USER,
                 createdAt = now,
               )
             ),
             WorkItemTimelineEntry.Comment(
-              WorkItemCommentRecord(
-                id = UUID.randomUUID(),
-                apiId = PublicId.new("icm"),
-                tenantId = tenantId,
-                issueId = workItemId,
-                authorId = TenantWebMvcFixtures.USER_ID,
-                authorApiId = PublicId.new("usr"),
-                body = "<p>Ship it</p>",
-                bodyPlainText = "Ship it",
-                bodyFormat = "html",
-                transitionId = null,
-                statusHistoryId = null,
-                activityId = null,
-                editedAt = null,
-                createdAt = now.minusMinutes(1),
-                updatedAt = now.minusMinutes(1),
-              )
+              event = commentEvent,
+              comment =
+                WorkItemCommentRecord(
+                  id = commentId,
+                  apiId = commentApiId,
+                  tenantId = tenantId,
+                  issueId = workItemId,
+                  authorId = TenantWebMvcFixtures.USER_ID,
+                  authorApiId = PublicId.new("usr"),
+                  body = "<p>Ship it</p>",
+                  bodyPlainText = "Ship it",
+                  bodyFormat = "html",
+                  transitionId = null,
+                  statusHistoryId = null,
+                  editedAt = null,
+                  createdAt = now.minusMinutes(1),
+                  updatedAt = now.minusMinutes(1),
+                ),
             ),
           ),
-        nextCursor =
-          WorkbenchCursor(
-            occurredAt = now.minusMinutes(1),
-            entryKind = WorkbenchTimelineEntryKind.COMMENT,
-            entryId = UUID.randomUUID(),
-          ),
+        nextCursor = WorkItemStreamCursor(sequence = 1),
       )
     }
   }

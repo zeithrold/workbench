@@ -196,7 +196,7 @@ class WorkItemTransitionServiceTest :
       }
     }
 
-    "transition comment links to status activity id" {
+    "transition comment links to status history id" {
       runTest {
         val tenantId = UUID.randomUUID()
         val projectId = UUID.randomUUID()
@@ -221,13 +221,13 @@ class WorkItemTransitionServiceTest :
                   )
                   .jsonObject
             )
-        val activityId = UUID.randomUUID()
         val mutationResult =
           ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
             issue,
             "work_item.transitioned",
             statusHistoryId = UUID.randomUUID(),
-            activityId = activityId,
+            streamEventId = UUID.randomUUID(),
+            streamEventApiId = PublicId.new("evt"),
           )
 
         coEvery { harness.repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns
@@ -254,7 +254,7 @@ class WorkItemTransitionServiceTest :
             )
           )
 
-        commentSlot.captured.activityId shouldBe activityId
+        commentSlot.captured.transitionId shouldBe transition.id
         commentSlot.captured.statusHistoryId shouldBe mutationResult.statusHistoryId
       }
     }

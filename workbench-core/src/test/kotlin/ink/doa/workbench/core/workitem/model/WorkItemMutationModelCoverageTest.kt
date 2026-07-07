@@ -106,12 +106,46 @@ class WorkItemMutationModelCoverageTest :
           bodyFormat = "html",
           transitionId = UUID.randomUUID(),
           statusHistoryId = UUID.randomUUID(),
-          activityId = null,
           editedAt = now,
           createdAt = now,
           updatedAt = now,
         )
         .bodyFormat shouldBe "html"
+    }
+
+    "work item mutation result stores stream event references" {
+      val streamEventId = UUID.randomUUID()
+      val streamEventApiId = PublicId.new("evt")
+      WorkItemMutationResult(
+          workItem =
+            WorkItemRecord(
+              id = UUID.randomUUID(),
+              apiId = PublicId.new("iss"),
+              tenantId = tenantId,
+              projectId = projectId,
+              issueTypeApiId = PublicId.new("typ"),
+              issueTypeConfigApiId = PublicId.new("itc"),
+              key = "WB-1",
+              title = "Issue",
+              description = null,
+              statusId = UUID.randomUUID(),
+              statusApiId = PublicId.new("sts"),
+              statusGroup = WorkItemStatusGroup.TODO,
+              reporterId = userId,
+              assigneeId = null,
+              priorityApiId = null,
+              reporterApiId = PublicId.new("usr"),
+              assigneeApiId = null,
+              sprintApiId = null,
+              properties = JsonObject(emptyMap()),
+              createdAt = now,
+              updatedAt = now,
+            ),
+          eventType = "work_item.created",
+          streamEventId = streamEventId,
+          streamEventApiId = streamEventApiId,
+        )
+        .streamEventApiId shouldBe streamEventApiId
     }
 
     "transition and create form models expose field metadata" {
