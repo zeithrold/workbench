@@ -58,7 +58,13 @@ class V44__MigrateWorkflowTransitionPermissions : BaseJavaMigration() {
   private fun insertMigratedRule(connection: Connection, rows: java.sql.ResultSet) {
     val permissionCondition =
       json.parseToJsonElement(rows.getString("permission_condition")).jsonObject
-    if (WorkItemConditionJson.parse(permissionCondition) == null) {
+    val parsedCondition =
+      try {
+        WorkItemConditionJson.parse(permissionCondition)
+      } catch (_: Exception) {
+        null
+      }
+    if (parsedCondition == null) {
       return
     }
     val denyCondition = negateCondition(permissionCondition)

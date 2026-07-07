@@ -1,7 +1,5 @@
 package ink.doa.workbench.core.permission
 
-import java.util.UUID
-
 enum class PermissionConditionResult {
   MATCH,
   NO_MATCH,
@@ -9,6 +7,6 @@ enum class PermissionConditionResult {
 }
 
 data class PermissionConditionContext(
-  val actorUserId: UUID,
+  val actorUserApiId: String,
   val resourceAttributes: Map<String, String> = emptyMap(),
 )

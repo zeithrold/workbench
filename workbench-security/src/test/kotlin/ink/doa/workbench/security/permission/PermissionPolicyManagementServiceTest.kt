@@ -201,7 +201,7 @@ class PermissionPolicyManagementServiceTest :
       val policy = samplePolicy(tenantId, "custom", builtin = false)
       val conditionJson =
         """
-        {"field":"statusGroup","op":"eq","value":"todo"}
+        {"field":"issue.statusGroup","op":"eq","value":"todo"}
         """
           .trimIndent()
       val rule =

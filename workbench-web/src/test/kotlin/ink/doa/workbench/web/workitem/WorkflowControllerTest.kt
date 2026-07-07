@@ -277,7 +277,6 @@ class WorkflowControllerTest(@Autowired private val mockMvc: MockMvc) {
         toStatusId = java.util.UUID.randomUUID(),
         toStatusApiId = PublicId("sts_01JABCDEFGHJKMNPQRSTVWXYZ1"),
         rank = 10,
-        permissionCondition = kotlinx.serialization.json.JsonObject(emptyMap()),
         preconditionAst = kotlinx.serialization.json.JsonObject(emptyMap()),
         fields = kotlinx.serialization.json.JsonObject(emptyMap()),
         isActive = true,

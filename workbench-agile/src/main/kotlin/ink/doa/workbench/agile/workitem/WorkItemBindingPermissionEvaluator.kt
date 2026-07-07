@@ -30,7 +30,7 @@ class WorkItemBindingPermissionEvaluator(
     val fieldRules = rules.filter { it.matchesFieldWrite(fieldResource) }
     val conditionContext =
       AccessConditionContext.fromResourceAttributes(
-        actorUserId = context.actorUserId,
+        actorUserApiId = context.actorUserApiId,
         resourceAttributes = resourceAttributes,
       )
     if (fieldRules.any { it.denies(conditionContext) }) return false

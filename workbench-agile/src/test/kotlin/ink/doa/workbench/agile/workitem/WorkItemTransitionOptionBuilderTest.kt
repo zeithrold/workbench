@@ -76,6 +76,9 @@ class WorkItemTransitionOptionBuilderTest :
     }
   })
 
+private const val ACTOR_API_ID = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+private const val PROJECT_API_ID = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1"
+
 private fun sampleBuildContext(): WorkItemTransitionContext {
   val tenantId = UUID.randomUUID()
   val projectId = UUID.randomUUID()
@@ -87,28 +90,31 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
       actor =
         ink.doa.workbench.core.workitem.access.WorkItemAccessActor(
           userId = actorUserId,
+          userApiId = ACTOR_API_ID,
           groupIds = emptySet(),
           projectRoles = emptySet(),
         ),
       workItem = issue,
       issueTypeConfigId = config.config.id,
+      projectApiId = PROJECT_API_ID,
       properties = emptyMap(),
     )
   return WorkItemTransitionContext(
     tenantId = tenantId,
     projectId = projectId,
     actorUserId = actorUserId,
+    actorUserApiId = ACTOR_API_ID,
     issue = issue,
     config = config,
     currentProperties = emptyMap(),
-    conditionContext = WorkItemConditionContext(issue, actorUserId, emptyMap()),
+    conditionContext = WorkItemConditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap()),
     accessEvaluation = accessEvaluation,
     templateContext =
       ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext(
         tenantId = tenantId,
         projectId = projectId,
-        currentUserApiId = "usr_test",
-        currentProjectApiId = "prj_test",
+        currentUserApiId = ACTOR_API_ID,
+        currentProjectApiId = PROJECT_API_ID,
         actorUserId = actorUserId,
       ),
     permissionContext =
@@ -116,6 +122,7 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
         tenantId = tenantId,
         projectId = projectId,
         actorUserId = actorUserId,
+        actorUserApiId = ACTOR_API_ID,
         operation = FieldPermissionOperation.UPDATE,
       ),
   )

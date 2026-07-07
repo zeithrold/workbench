@@ -11,8 +11,8 @@ class PermissionConditionJsonTest :
     fun assigneeIsCurrentUserCondition(): String =
       """
       {"op":"and","args":[
-        {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}},
-        {"field":"statusGroup","op":"eq","value":"todo"}
+        {"field":"issue.assignee","op":"eq","value":{"var":"user.currentUser"}},
+        {"field":"issue.statusGroup","op":"eq","value":"todo"}
       ]}
       """
         .trimIndent()

@@ -14,7 +14,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "Flyway migrations run on PostgreSQL" {
       withMigratedPostgres { _, result ->
-        result.migrationsExecuted shouldBe 42
+        result.migrationsExecuted shouldBe 43
       }
     }
 
@@ -74,6 +74,7 @@ class PostgresMigrationIntegrationTest :
           org.flywaydb.core.Flyway.configure()
             .dataSource(lease.jdbcUrl, lease.username, lease.password)
             .locations(*MigrationSpec.Full.locations())
+            .target("44")
             .load()
             .migrate()
 
@@ -312,7 +313,7 @@ private fun seedTransitionPermissionFixture(jdbc: JdbcTemplate): TransitionPermi
     "Start",
     fromStatusId,
     toStatusId,
-    """{"op":"eq","field":"statusGroup","value":"todo"}""",
+    """{"field":"issue.statusGroup","op":"eq","value":"todo"}""",
   )
   return TransitionPermissionFixtureSeed(tenantId = tenantId, transitionId = transitionId)
 }

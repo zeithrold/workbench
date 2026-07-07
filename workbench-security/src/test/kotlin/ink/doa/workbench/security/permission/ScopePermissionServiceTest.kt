@@ -52,12 +52,15 @@ class ScopePermissionServiceTest :
         clock = clock,
       )
 
+    val userApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+
     fun request(scope: AuthorizationScope, project: UUID? = null) =
       AuthorizationRequest(
         scope = scope,
         subject =
           AuthorizationSubject(
             userId = userId,
+            userApiId = userApiId,
             loginAccountId = null,
             credentialType = CredentialType.SESSION,
             credentialId = null,
@@ -177,6 +180,7 @@ class ScopePermissionServiceTest :
             subject =
               AuthorizationSubject(
                 userId = userId,
+                userApiId = userApiId,
                 loginAccountId = null,
                 credentialType = CredentialType.BEARER_TOKEN,
                 credentialId = "token-id",
@@ -244,6 +248,7 @@ class ScopePermissionServiceTest :
             subject =
               AuthorizationSubject(
                 userId = userId,
+                userApiId = userApiId,
                 loginAccountId = null,
                 credentialType = CredentialType.BEARER_TOKEN,
                 credentialId = "token-id",
@@ -283,6 +288,7 @@ class ScopePermissionServiceTest :
             subject =
               AuthorizationSubject(
                 userId = userId,
+                userApiId = userApiId,
                 loginAccountId = null,
                 credentialType = CredentialType.BEARER_TOKEN,
                 credentialId = "token-id",
@@ -308,7 +314,7 @@ class ScopePermissionServiceTest :
             effect = PermissionEffect.ALLOW,
             conditionJson =
               """
-              {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}}
+              {"field":"issue.assignee","op":"eq","value":{"var":"user.currentUser"}}
               """
                 .trimIndent(),
           )
@@ -324,7 +330,7 @@ class ScopePermissionServiceTest :
                 id = "iss_01",
                 tenantId = tenantId,
                 projectId = projectId,
-                attributes = mapOf("assignee" to userId.toString()),
+                attributes = mapOf("assignee" to userApiId),
               ),
           )
 
@@ -345,7 +351,7 @@ class ScopePermissionServiceTest :
             effect = PermissionEffect.ALLOW,
             conditionJson =
               """
-              {"field":"assignee","op":"eq","value":{"var":"user.currentUser"}}
+              {"field":"issue.assignee","op":"eq","value":{"var":"user.currentUser"}}
               """
                 .trimIndent(),
           )
@@ -361,7 +367,7 @@ class ScopePermissionServiceTest :
                 id = "iss_01",
                 tenantId = tenantId,
                 projectId = projectId,
-                attributes = mapOf("assignee" to UUID.randomUUID().toString()),
+                attributes = mapOf("assignee" to "usr_01JOTHERUSERABCDEFGHJKMNPQRST"),
               ),
           )
 
@@ -383,7 +389,7 @@ class ScopePermissionServiceTest :
             effect = PermissionEffect.DENY,
             conditionJson =
               """
-              {"field":"statusGroup","op":"eq","value":"done"}
+              {"field":"issue.statusGroup","op":"eq","value":"done"}
               """
                 .trimIndent(),
           )
@@ -421,7 +427,7 @@ class ScopePermissionServiceTest :
             effect = PermissionEffect.DENY,
             conditionJson =
               """
-              {"field":"statusGroup","op":"eq","value":"done"}
+              {"field":"issue.statusGroup","op":"eq","value":"done"}
               """
                 .trimIndent(),
           )

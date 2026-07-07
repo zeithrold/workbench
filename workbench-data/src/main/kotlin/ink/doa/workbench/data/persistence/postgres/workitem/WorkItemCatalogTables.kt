@@ -189,7 +189,6 @@ object WorkflowTransitionsTable : Table("workflow_transitions") {
   val fromStatusId = uuid("from_status_id").references(IssueStatusesTable.id).nullable()
   val toStatusId = uuid("to_status_id").references(IssueStatusesTable.id)
   val rank = integer("rank")
-  val permissionCondition = jsonb("permission_condition", Json.Default, JsonElement.serializer())
   val preconditionAst = jsonb("precondition_ast", Json.Default, JsonElement.serializer())
   val transitionFields = jsonb("fields", Json.Default, JsonElement.serializer())
   val isActive = bool("is_active")

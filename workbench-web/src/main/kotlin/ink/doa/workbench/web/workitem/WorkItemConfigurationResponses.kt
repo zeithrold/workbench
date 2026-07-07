@@ -2,7 +2,7 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
+import ink.doa.workbench.agile.workitem.WorkItemAccessRulePresentation
 import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
 import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
@@ -16,7 +16,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import jakarta.validation.constraints.NotBlank
-import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -63,7 +62,6 @@ data class CreateWorkflowTransitionRequest(
   val fromStatusId: String? = null,
   @field:NotBlank val toStatusId: String,
   val rank: Int? = null,
-  val permissionCondition: JsonNode? = null,
   val preconditionAst: JsonNode? = null,
   val fields: JsonNode? = null,
 )
@@ -205,7 +203,6 @@ data class WorkflowTransitionResponse(
   val fromStatusId: String?,
   val toStatusId: String?,
   val rank: Int,
-  val permissionCondition: JsonObject,
   val preconditionAst: JsonObject,
   val fields: JsonObject,
 ) {
@@ -217,7 +214,6 @@ data class WorkflowTransitionResponse(
         fromStatusId = record.fromStatusApiId?.value,
         toStatusId = record.toStatusApiId?.value,
         rank = record.rank,
-        permissionCondition = record.permissionCondition,
         preconditionAst = record.preconditionAst,
         fields = record.fields,
       )
@@ -402,11 +398,11 @@ data class WorkItemAttachmentUploadSessionResponse(
 
 data class CreateWorkItemAccessRuleRequest(
   @field:NotBlank val subjectType: String,
-  val subjectUserId: UUID? = null,
-  val subjectGroupId: UUID? = null,
+  val subjectUserId: String? = null,
+  val subjectGroupId: String? = null,
   val subjectRoleCode: String? = null,
   @field:NotBlank val actionType: String,
-  val transitionId: UUID? = null,
+  val transitionId: String? = null,
   val fieldKey: String? = null,
   @field:NotBlank val effect: String,
   val condition: JsonNode? = null,
@@ -427,17 +423,17 @@ data class WorkItemAccessRuleResponse(
   val rank: Int,
 ) {
   companion object {
-    fun from(record: WorkItemAccessRuleRecord) =
+    fun from(record: WorkItemAccessRulePresentation) =
       WorkItemAccessRuleResponse(
-        id = record.apiId.value,
-        subjectType = record.subjectType.dbValue,
-        subjectUserId = record.subjectUserId?.toString(),
-        subjectGroupId = record.subjectGroupId?.toString(),
+        id = record.id,
+        subjectType = record.subjectType,
+        subjectUserId = record.subjectUserId,
+        subjectGroupId = record.subjectGroupId,
         subjectRoleCode = record.subjectRoleCode,
-        actionType = record.actionType.dbValue,
-        transitionId = record.transitionId?.toString(),
+        actionType = record.actionType,
+        transitionId = record.transitionId,
         fieldKey = record.fieldKey,
-        effect = record.effect.name.lowercase(),
+        effect = record.effect,
         condition = record.condition,
         rank = record.rank,
       )

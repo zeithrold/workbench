@@ -150,6 +150,7 @@ class WorkItemRecordsTest :
           workItemApiId = "wki_abc",
           transitionApiId = "trn_abc",
           actorUserId = userId,
+          actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
         )
         .transitionApiId shouldBe "trn_abc"
 

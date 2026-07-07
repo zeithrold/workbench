@@ -180,7 +180,7 @@ class ScopePermissionService(
         conditionJson = conditionJson,
         context =
           PermissionConditionContext(
-            actorUserId = request.subject.userId,
+            actorUserApiId = request.subject.userApiId,
             resourceAttributes = request.resource.attributes,
           ),
       )

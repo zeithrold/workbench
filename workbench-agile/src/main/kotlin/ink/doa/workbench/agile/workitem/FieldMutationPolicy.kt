@@ -35,6 +35,7 @@ data class WorkItemFieldPermissionContext(
   val tenantId: java.util.UUID,
   val projectId: java.util.UUID,
   val actorUserId: java.util.UUID,
+  val actorUserApiId: String,
   val operation: FieldPermissionOperation,
   val accessEvaluation: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext? =
     null,

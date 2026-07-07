@@ -25,6 +25,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+private const val ACTOR_API_ID = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0"
+private const val PROJECT_API_ID = "prj_01JABCDEFGHJKMNPQRSTVWXYZ1"
+
 class WorkItemTransitionValidatorTest :
   StringSpec({
     val repository = mockk<WorkItemRepository>()
@@ -38,7 +41,7 @@ class WorkItemTransitionValidatorTest :
       } returns 2
 
       val context = runBlocking {
-        validator.conditionContext(issue, issue.assigneeId!!, emptyMap())
+        validator.conditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap())
       }
 
       context.childIssuesNotDone shouldBe 2
@@ -49,7 +52,7 @@ class WorkItemTransitionValidatorTest :
       val ast =
         JsonObject(
           mapOf(
-            "field" to JsonPrimitive("statusGroup"),
+            "field" to JsonPrimitive("issue.statusGroup"),
             "op" to JsonPrimitive("eq"),
             "value" to JsonPrimitive("todo"),
           )
@@ -58,7 +61,7 @@ class WorkItemTransitionValidatorTest :
       validator
         .checkCondition(
           ast,
-          WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
+          WorkItemConditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap()),
           failedReason = "failed",
           invalidReason = "invalid",
         )
@@ -67,12 +70,12 @@ class WorkItemTransitionValidatorTest :
 
     "checkCondition returns invalid reason when ast is malformed" {
       val issue = sampleIssue()
-      val ast = JsonObject(mapOf("field" to JsonPrimitive("statusGroup")))
+      val ast = JsonObject(mapOf("field" to JsonPrimitive("issue.statusGroup")))
 
       val result =
         validator.checkCondition(
           ast,
-          WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
+          WorkItemConditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap()),
           failedReason = "failed",
           invalidReason = "invalid",
         )
@@ -119,9 +122,16 @@ class WorkItemTransitionValidatorTest :
       val transition = sampleTransition(workflowId = config.config.workflowId)
       val evaluation =
         WorkItemAccessEvaluationContext(
-          actor = WorkItemAccessActor(issue.assigneeId!!, emptySet(), emptySet()),
+          actor =
+            WorkItemAccessActor(
+              userId = issue.assigneeId!!,
+              userApiId = ACTOR_API_ID,
+              groupIds = emptySet(),
+              projectRoles = emptySet(),
+            ),
           workItem = issue,
           issueTypeConfigId = config.config.id,
+          projectApiId = PROJECT_API_ID,
           properties = emptyMap(),
         )
       coEvery {
@@ -147,7 +157,7 @@ class WorkItemTransitionValidatorTest :
           preconditionAst =
             JsonObject(
               mapOf(
-                "field" to JsonPrimitive("statusGroup"),
+                "field" to JsonPrimitive("issue.statusGroup"),
                 "op" to JsonPrimitive("eq"),
                 "value" to JsonPrimitive("done"),
               )
@@ -157,7 +167,7 @@ class WorkItemTransitionValidatorTest :
       shouldThrow<InvalidRequestException> {
           validator.requireTransitionPrecondition(
             transition,
-            WorkItemConditionContext(issue, issue.assigneeId!!, emptyMap()),
+            WorkItemConditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap()),
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED
@@ -182,8 +192,8 @@ private fun sampleIssue(): WorkItemRecord {
     reporterId = actorId,
     assigneeId = actorId,
     priorityApiId = null,
-    reporterApiId = PublicId.new("usr"),
-    assigneeApiId = PublicId.new("usr"),
+    reporterApiId = PublicId(ACTOR_API_ID),
+    assigneeApiId = PublicId(ACTOR_API_ID),
     sprintApiId = null,
     properties = JsonObject(emptyMap()),
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
@@ -244,7 +254,6 @@ private fun sampleTransition(
   workflowId: UUID = UUID.randomUUID(),
   fromStatusId: UUID? = null,
   toStatusId: UUID = UUID.randomUUID(),
-  permissionCondition: JsonObject = JsonObject(emptyMap()),
   preconditionAst: JsonObject = JsonObject(emptyMap()),
 ): WorkflowTransitionRecord =
   WorkflowTransitionRecord(
@@ -258,7 +267,6 @@ private fun sampleTransition(
     toStatusId = toStatusId,
     toStatusApiId = PublicId.new("sts"),
     rank = 100,
-    permissionCondition = permissionCondition,
     preconditionAst = preconditionAst,
     fields = JsonObject(emptyMap()),
     isActive = true,

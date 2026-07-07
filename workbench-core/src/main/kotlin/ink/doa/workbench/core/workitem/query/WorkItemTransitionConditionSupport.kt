@@ -4,28 +4,6 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.json.JsonObject
 
-val TRANSITION_SYSTEM_FIELD_ALIASES: Map<String, String> =
-  mapOf(
-    "actor" to "user.currentUser",
-    "actorId" to "user.currentUser",
-    "reporter" to "issue.reporter",
-    "reporterId" to "issue.reporter",
-    "assignee" to "issue.assignee",
-    "assigneeId" to "issue.assignee",
-    "status" to "issue.status",
-    "statusId" to "issue.status",
-    "statusGroup" to "issue.statusGroup",
-    "issueType" to "issue.issueType",
-    "issueTypeId" to "issue.issueType",
-    "issueTypeConfig" to "issue.issueTypeConfig",
-    "issueTypeConfigId" to "issue.issueTypeConfig",
-    "project" to "issue.project",
-    "projectId" to "issue.project",
-  )
-
-fun canonicalizeTransitionSystemField(name: String): String =
-  TRANSITION_SYSTEM_FIELD_ALIASES[name] ?: name
-
 val WORK_ITEM_TRANSITION_CONDITION_OPERATORS: Set<QueryOperator> =
   setOf(
     QueryOperator.EQ,
@@ -54,6 +32,7 @@ val WORK_ITEM_TRANSITION_CONDITION_VARIABLES: Set<String> =
 
 class WorkItemTransitionConditionValidator {
   fun validate(ast: JsonObject) {
+    WorkItemConditionSyntax.validate(ast)
     val node = WorkItemConditionJson.parse(ast) ?: return
     validateNode(node)
   }
