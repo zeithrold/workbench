@@ -2,6 +2,7 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.agile.project.ProjectService
+import ink.doa.workbench.agile.workitem.IssueTypeConfigAccessRuleService
 import ink.doa.workbench.agile.workitem.IssueTypeConfigService
 import ink.doa.workbench.core.common.context.ApiVersion
 import ink.doa.workbench.core.common.context.InstanceContextSummary
@@ -9,6 +10,10 @@ import ink.doa.workbench.core.common.context.TenantContextSummary
 import ink.doa.workbench.core.common.context.TenantRequestContext
 import ink.doa.workbench.core.common.context.UserContextSummary
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
+import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
@@ -16,6 +21,7 @@ import ink.doa.workbench.web.support.TenantWebMvcFixtures
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -26,8 +32,9 @@ class WorkItemTypeConfigControllerDirectTest :
   StringSpec({
     val mapper = ObjectMapper()
     val configs = mockk<IssueTypeConfigService>()
+    val accessRules = mockk<IssueTypeConfigAccessRuleService>(relaxed = true)
     val projects = mockk<ProjectService>()
-    val controller = WorkItemTypeConfigController(configs, projects)
+    val controller = WorkItemTypeConfigController(configs, accessRules, projects)
     val tenantContext =
       TenantRequestContext(
         requestId = "req",
@@ -73,6 +80,77 @@ class WorkItemTypeConfigControllerDirectTest :
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         createFields = JsonObject(emptyMap()),
       )
+    val sampleAccessRule =
+      WorkItemAccessRuleRecord(
+        id = java.util.UUID.randomUUID(),
+        apiId = PublicId("iar_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        tenantId = TenantWebMvcFixtures.TENANT_ID,
+        issueTypeConfigId = sampleConfig.id,
+        subjectType = WorkItemAccessSubjectType.ANYONE,
+        subjectUserId = null,
+        subjectGroupId = null,
+        subjectRoleCode = null,
+        actionType = WorkItemAccessActionType.COMMENT,
+        transitionId = null,
+        fieldKey = null,
+        effect = PermissionEffect.ALLOW,
+        condition = JsonObject(emptyMap()),
+        rank = 100,
+        isActive = true,
+        createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+      )
+
+    "list access rules delegates to access rule service" {
+      coEvery { accessRules.list(TenantWebMvcFixtures.TENANT_ID, sampleConfig.apiId.value) } returns
+        listOf(sampleAccessRule)
+
+      val response = runBlocking {
+        controller.listAccessRules(sampleConfig.apiId.value, tenantContext)
+      }
+
+      response.single().id shouldBe sampleAccessRule.apiId.value
+      response.single().actionType shouldBe "comment"
+    }
+
+    "create access rule delegates to access rule service" {
+      coEvery { accessRules.create(any()) } returns sampleAccessRule
+
+      val response = runBlocking {
+        controller.createAccessRule(
+          sampleConfig.apiId.value,
+          CreateWorkItemAccessRuleRequest(
+            subjectType = "anyone",
+            actionType = "comment",
+            effect = "allow",
+            condition = mapper.readTree("{}"),
+            rank = 50,
+          ),
+          tenantContext,
+        )
+      }
+
+      response.effect shouldBe "allow"
+      response.rank shouldBe 100
+    }
+
+    "deactivate access rule delegates to access rule service" {
+      runBlocking {
+        controller.deactivateAccessRule(
+          sampleConfig.apiId.value,
+          sampleAccessRule.apiId.value,
+          tenantContext,
+        )
+      }
+
+      coVerify {
+        accessRules.deactivate(
+          TenantWebMvcFixtures.TENANT_ID,
+          sampleConfig.apiId.value,
+          sampleAccessRule.apiId.value,
+        )
+      }
+    }
 
     "create delegates to issue type config service" {
       coEvery { configs.create(any()) } returns

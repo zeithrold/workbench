@@ -117,7 +117,6 @@ class WorkflowController(private val workflows: WorkflowConfigurationService) {
           fromStatusApiId = request.fromStatusId,
           toStatusApiId = request.toStatusId,
           rank = request.rank ?: 100,
-          permissionCondition = request.permissionCondition.toJsonObject(),
           preconditionAst = request.preconditionAst.toJsonObject(),
           fields = request.fields.toJsonObject(),
         )

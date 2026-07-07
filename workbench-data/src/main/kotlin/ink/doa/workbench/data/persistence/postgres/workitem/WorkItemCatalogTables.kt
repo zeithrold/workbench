@@ -197,3 +197,27 @@ object WorkflowTransitionsTable : Table("workflow_transitions") {
   val updatedAt = timestampWithTimeZone("updated_at")
   override val primaryKey = PrimaryKey(id)
 }
+
+object IssueTypeConfigAccessRulesTable : Table("issue_type_config_access_rules") {
+  val id = uuid("id")
+  val apiId = text("api_id").uniqueIndex()
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val issueTypeConfigId = uuid("issue_type_config_id").references(IssueTypeConfigsTable.id)
+  val subjectType = text("subject_type")
+  val subjectUserId = uuid("subject_user_id").references(UsersTable.id).nullable()
+  val subjectGroupId =
+    uuid("subject_group_id")
+      .references(ink.doa.workbench.data.persistence.postgres.permission.GroupsTable.id)
+      .nullable()
+  val subjectRoleCode = text("subject_role_code").nullable()
+  val actionType = text("action_type")
+  val transitionId = uuid("transition_id").references(WorkflowTransitionsTable.id).nullable()
+  val fieldKey = text("field_key").nullable()
+  val effect = text("effect")
+  val conditionJson = jsonb("condition_json", Json.Default, JsonElement.serializer())
+  val rank = integer("rank")
+  val isActive = bool("is_active")
+  val createdAt = timestampWithTimeZone("created_at")
+  val updatedAt = timestampWithTimeZone("updated_at")
+  override val primaryKey = PrimaryKey(id)
+}

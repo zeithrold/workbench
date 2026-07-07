@@ -1,6 +1,7 @@
 package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.project.ProjectService
+import ink.doa.workbench.agile.workitem.IssueTypeConfigAccessRuleService
 import ink.doa.workbench.agile.workitem.IssueTypeConfigService
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
@@ -93,6 +94,9 @@ class WorkItemTypeConfigControllerTest(@Autowired private val mockMvc: MockMvc) 
     }
 
     @Bean fun issueTypeConfigService(): IssueTypeConfigService = mockk(relaxed = true)
+
+    @Bean
+    fun issueTypeConfigAccessRuleService(): IssueTypeConfigAccessRuleService = mockk(relaxed = true)
 
     @Bean fun projectService(): ProjectService = mockk(relaxed = true)
 

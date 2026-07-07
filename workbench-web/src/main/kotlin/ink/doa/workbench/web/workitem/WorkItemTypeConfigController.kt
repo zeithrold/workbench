@@ -2,8 +2,13 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.agile.project.ProjectService
+import ink.doa.workbench.agile.workitem.CreateIssueTypeAccessRuleCommand
+import ink.doa.workbench.agile.workitem.IssueTypeConfigAccessRuleService
 import ink.doa.workbench.agile.workitem.IssueTypeConfigService
 import ink.doa.workbench.core.common.context.TenantRequestContext
+import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyInput
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
@@ -17,7 +22,9 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -31,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 class WorkItemTypeConfigController(
   private val configs: IssueTypeConfigService,
+  private val accessRules: IssueTypeConfigAccessRuleService,
   private val projects: ProjectService,
 ) {
   private val objectMapper = ObjectMapper()
@@ -90,5 +98,60 @@ class WorkItemTypeConfigController(
         )
       )
     )
+  }
+
+  @GetMapping("/{id}/access-rules")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "workitem.config.read", resource = "workitem.config")
+  @Operation(summary = "List work item type config access rules")
+  suspend fun listAccessRules(
+    @PathVariable id: String,
+    tenantContext: TenantRequestContext,
+  ): List<WorkItemAccessRuleResponse> =
+    accessRules.list(tenantContext.tenant.id, id).map(WorkItemAccessRuleResponse::from)
+
+  @PostMapping("/{id}/access-rules")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Create work item type config access rule")
+  suspend fun createAccessRule(
+    @PathVariable id: String,
+    @Valid @RequestBody request: CreateWorkItemAccessRuleRequest,
+    tenantContext: TenantRequestContext,
+  ): WorkItemAccessRuleResponse =
+    WorkItemAccessRuleResponse.from(
+      accessRules.create(
+        CreateIssueTypeAccessRuleCommand(
+          tenantId = tenantContext.tenant.id,
+          configApiId = id,
+          subjectType = WorkItemAccessSubjectType.fromDbValue(request.subjectType),
+          subjectUserId = request.subjectUserId,
+          subjectGroupId = request.subjectGroupId,
+          subjectRoleCode = request.subjectRoleCode,
+          actionType = WorkItemAccessActionType.fromDbValue(request.actionType),
+          transitionId = request.transitionId,
+          fieldKey = request.fieldKey,
+          effect = PermissionEffect.valueOf(request.effect.uppercase()),
+          condition = request.condition.toJsonObject(objectMapper),
+          rank = request.rank ?: 100,
+        )
+      )
+    )
+
+  @DeleteMapping("/{id}/access-rules/{ruleId}")
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "workitem.config.manage", resource = "workitem.config")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(summary = "Deactivate work item type config access rule")
+  suspend fun deactivateAccessRule(
+    @PathVariable id: String,
+    @PathVariable ruleId: String,
+    tenantContext: TenantRequestContext,
+  ) {
+    accessRules.deactivate(tenantContext.tenant.id, id, ruleId)
   }
 }

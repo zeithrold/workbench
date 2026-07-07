@@ -36,6 +36,9 @@ data class WorkItemFieldPermissionContext(
   val projectId: java.util.UUID,
   val actorUserId: java.util.UUID,
   val operation: FieldPermissionOperation,
+  val accessEvaluation: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext? =
+    null,
+  val resourceAttributes: Map<String, String> = emptyMap(),
 )
 
 fun FieldMutationPolicy.allowsFormEdit(spec: TransitionFieldSpec): Boolean =
