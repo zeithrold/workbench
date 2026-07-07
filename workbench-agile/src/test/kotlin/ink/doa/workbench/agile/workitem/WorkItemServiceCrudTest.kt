@@ -1,5 +1,6 @@
 package ink.doa.workbench.agile.workitem
 
+import ink.doa.workbench.agile.testfixtures.AgileServiceFactory
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.ids.PublicId
@@ -342,35 +343,23 @@ private fun workItemService(
   events: DomainEventPublisher = mockk(relaxed = true),
   subtypeConstraints: IssueSubtypeConstraintRepository? = null,
 ): WorkItemService {
-  val effectiveSubtypeConstraints =
-    subtypeConstraints
-      ?: mockk<IssueSubtypeConstraintRepository>().also {
-        coEvery { it.isChildOnlyType(any(), any(), any()) } returns false
-      }
-  val fieldPermissions = mockk<WorkItemFieldPermissionService>()
-  coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
-  coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
-  val mutationSupport = WorkItemMutationSupport(repository, configs, events)
-  val descriptionAttachmentValidator = mockk<WorkItemDescriptionAttachmentValidator>()
-  coEvery { descriptionAttachmentValidator.rejectCreateDescriptionReferences(any()) } returns Unit
-  coEvery {
-    descriptionAttachmentValidator.validateReferences(any(), any(), any(), any(), any())
-  } returns Unit
   val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
-  val fieldMutationSupport =
-    WorkItemFieldMutationSupport(
-      WorkItemFieldMutationReconciler(fieldPermissions, clock),
-      fieldPermissions,
-      descriptionAttachmentValidator,
+  val service = AgileServiceFactory.workItemService(repository, configs, events, clock)
+  if (subtypeConstraints != null) {
+    return WorkItemService(
+      repository = repository,
+      configs = configs,
+      createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
+      mutationSupport = WorkItemMutationSupport(repository, configs, events),
+      activityEnqueueSupport = mockk(relaxed = true),
+      fieldMutation =
+        WorkItemFieldMutationFacade(
+          AgileServiceFactory.fieldMutationEngine(clock),
+          AgileServiceFactory.mockDescriptionAttachmentValidator(),
+        ),
     )
-  return WorkItemService(
-    repository = repository,
-    configs = configs,
-    subtypeConstraints = effectiveSubtypeConstraints,
-    mutationSupport = mutationSupport,
-    activityEnqueueSupport = mockk(relaxed = true),
-    fieldMutationSupport = fieldMutationSupport,
-  )
+  }
+  return service
 }
 
 private fun workItem(tenantId: UUID, projectId: UUID): WorkItemRecord {

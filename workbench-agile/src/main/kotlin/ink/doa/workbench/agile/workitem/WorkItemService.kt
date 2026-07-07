@@ -4,7 +4,6 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
@@ -14,7 +13,8 @@ import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
-import ink.doa.workbench.core.workitem.template.toWirePath
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -22,10 +22,10 @@ import org.springframework.stereotype.Service
 class WorkItemService(
   private val repository: WorkItemRepository,
   private val configs: IssueTypeConfigRepository,
-  private val subtypeConstraints: IssueSubtypeConstraintRepository,
+  private val createParentGuard: WorkItemCreateParentGuard,
   private val mutationSupport: WorkItemMutationSupport,
   private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
-  private val fieldMutationSupport: WorkItemFieldMutationSupport,
+  private val fieldMutation: WorkItemFieldMutationFacade,
 ) {
   private val transitionFieldsParser = TransitionFieldsParser()
 
@@ -40,36 +40,24 @@ class WorkItemService(
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED
         )
-    val parentIssue = resolveParentIssue(command)
-    validateCreateParentConstraint(command, config.config.config.issueTypeId, parentIssue)
-    val permissionContext =
-      fieldPermissionContext(
-        command.tenantId,
-        command.projectId,
-        command.actorUserId,
-        FieldPermissionOperation.CREATE,
-      )
-    val templateContext =
-      mutationSupport.templateContext(
-        WorkItemTemplateContextRequest(
-          tenantId = command.tenantId,
-          projectId = command.projectId,
-          actorUserId = command.actorUserId,
-          reporterUserId = command.reporterId,
-        )
-      )
-    val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
+    val parentIssue =
+      createParentGuard.resolveAndValidate(command, config.config.config.issueTypeId)
+    val (permissionContext, templateContext) = createMutationContexts(command)
     val reconciled =
-      fieldMutationSupport.reconcileCreate(
-        command = command,
-        config = config.config,
-        fieldsTemplate = fieldsTemplate,
-        templateContext = templateContext,
-        permissionContext = permissionContext,
+      fieldMutation.engine.applyTemplate(
+        FieldReconciliationContext(
+          template = transitionFieldsParser.parseCreateFields(config.config.config.createFields),
+          expectedTarget = WorkItemValueTemplateTarget.CREATE,
+          config = config.config,
+          templateContext = templateContext,
+          currentProperties = emptyMap(),
+          userProperties = WorkItemPropertySupport.createFieldInputs(command),
+          permissionContext = permissionContext,
+        )
       )
     val effectiveCommand =
       WorkItemPropertySupport.applyCreateSystemFields(command, reconciled.systemFields)
-    fieldMutationSupport.descriptionAttachments.rejectCreateDescriptionReferences(
+    fieldMutation.descriptionAttachments.rejectCreateDescriptionReferences(
       effectiveCommand.description
     )
     val values =
@@ -116,14 +104,8 @@ class WorkItemService(
           reporterUserId = actorUserId,
         )
       )
-    val editableFields =
-      fieldsTemplate.fields
-        .filter { (field, spec) ->
-          fieldMutationSupport.permissions.isFormFieldEditable(permissionContext, field, spec)
-        }
-        .map { (field, _) -> field.toWirePath() }
-    val fieldMeta =
-      fieldMutationSupport.reconciler.buildFieldMeta(
+    val formPlan =
+      fieldMutation.engine.planForm(
         template = fieldsTemplate,
         config = config.config,
         templateContext = templateContext,
@@ -133,8 +115,8 @@ class WorkItemService(
       issueTypeId = config.config.config.issueTypeApiId,
       initialStatusId = initial.statusApiId,
       fields = config.config.config.createFields,
-      editableFields = editableFields,
-      fieldMeta = fieldMeta,
+      editableFields = formPlan.editableWirePaths,
+      fieldMeta = formPlan.fieldMeta,
     )
   }
 
@@ -163,20 +145,20 @@ class WorkItemService(
         command.actorUserId,
         FieldPermissionOperation.UPDATE,
       )
-    fieldMutationSupport.reconciler.assertWritableProperties(
-      permissionContext,
-      config,
-      WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
-    )
-    fieldMutationSupport.reconciler.assertWritableSystemFields(
-      permissionContext,
-      mapOf(
-        "title" to command.title,
-        "description" to command.description,
-        "assignee" to command.assigneeApiId,
-        "priority" to command.priorityApiId,
-        "sprint" to command.sprintApiId,
-      ),
+    fieldMutation.engine.assertPatch(
+      PatchMutationContext(
+        config = config,
+        permissionContext = permissionContext,
+        propertyInputs = WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
+        systemFieldInputs =
+          mapOf(
+            "title" to command.title,
+            "description" to command.description,
+            "assignee" to command.assigneeApiId,
+            "priority" to command.priorityApiId,
+            "sprint" to command.sprintApiId,
+          ),
+      )
     )
     val values =
       WorkItemPropertySupport.normalizeProperties(
@@ -184,7 +166,7 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
-    fieldMutationSupport.descriptionAttachments.validateReferences(
+    fieldMutation.descriptionAttachments.validateReferences(
       tenantId = command.tenantId,
       projectId = command.projectId,
       workItemApiId = command.workItemApiId,
@@ -199,47 +181,26 @@ class WorkItemService(
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =
     repository.softDelete(command).also { mutationSupport.publish(it) }
 
-  private suspend fun resolveParentIssue(command: CreateWorkItemCommand): WorkItemRecord? =
-    command.parentWorkItemApiId?.let {
-      repository.findByApiId(command.tenantId, it)
-        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
-    }
-
-  private suspend fun validateCreateParentConstraint(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-    parentIssue: WorkItemRecord?,
-  ) {
-    if (parentIssue == null) {
-      validateRootSubtypeAllowed(command, issueTypeId)
-      return
-    }
-    validateChildSubtypeAllowed(command, issueTypeId, parentIssue)
-  }
-
-  private suspend fun validateRootSubtypeAllowed(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-  ) {
-    if (subtypeConstraints.isChildOnlyType(command.tenantId, command.projectId, issueTypeId)) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_PARENT_REQUIRED)
-    }
-  }
-
-  private suspend fun validateChildSubtypeAllowed(
-    command: CreateWorkItemCommand,
-    issueTypeId: UUID,
-    parentIssue: WorkItemRecord,
-  ) {
-    if (parentIssue.projectId != command.projectId) {
-      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_CROSS_PROJECT_FORBIDDEN)
-    }
-    subtypeConstraints.findAllowedChildType(
-      tenantId = command.tenantId,
-      projectId = command.projectId,
-      parentIssueTypeId = parentIssue.issueTypeId,
-      childIssueTypeId = issueTypeId,
-    ) ?: throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_SUBTYPE_NOT_ALLOWED)
+  private suspend fun createMutationContexts(
+    command: CreateWorkItemCommand
+  ): Pair<WorkItemFieldPermissionContext, WorkItemValueTemplateContext> {
+    val permissionContext =
+      fieldPermissionContext(
+        command.tenantId,
+        command.projectId,
+        command.actorUserId,
+        FieldPermissionOperation.CREATE,
+      )
+    val templateContext =
+      mutationSupport.templateContext(
+        WorkItemTemplateContextRequest(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          actorUserId = command.actorUserId,
+          reporterUserId = command.reporterId,
+        )
+      )
+    return permissionContext to templateContext
   }
 
   private fun fieldPermissionContext(

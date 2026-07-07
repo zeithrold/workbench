@@ -1,7 +1,6 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
@@ -22,10 +21,10 @@ class WorkItemServiceQueryTest :
 
     "get and list delegate to repository" {
       val repository = mockk<WorkItemRepository>()
+      val createParentGuard = mockk<WorkItemCreateParentGuard>(relaxed = true)
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
-      val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>(relaxed = true)
       val mutationSupport = mockk<WorkItemMutationSupport>(relaxed = true)
-      val fieldMutationSupport = mockk<WorkItemFieldMutationSupport>(relaxed = true)
+      val fieldMutation = mockk<WorkItemFieldMutationFacade>(relaxed = true)
       val now = OffsetDateTime.now(ZoneOffset.UTC)
       val record =
         WorkItemRecord(
@@ -57,10 +56,10 @@ class WorkItemServiceQueryTest :
         WorkItemService(
           repository,
           configs,
-          subtypeConstraints,
+          createParentGuard,
           mutationSupport,
           mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
-          fieldMutationSupport,
+          fieldMutation,
         )
 
       service.get(tenantId, projectId, "WB-1") shouldBe record

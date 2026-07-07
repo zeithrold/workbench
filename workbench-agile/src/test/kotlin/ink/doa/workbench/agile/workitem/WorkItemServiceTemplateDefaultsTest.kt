@@ -162,14 +162,12 @@ class WorkItemServiceTemplateDefaultsTest :
         EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
-      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
-        {
-          secondArg<TemplateField>() is TemplateField.System
-        }
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          field is TemplateField.System && field.canonicalName == "title"
+          val bindingAllowsWrite = field is TemplateField.System
+          val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
         }
       coEvery {
         repository.create(capture(createCommand))
@@ -209,14 +207,12 @@ class WorkItemServiceTemplateDefaultsTest :
         EffectiveIssueTypeConfig(config, WorkItemConfigScope.TENANT)
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
-      coEvery { fieldPermissions.canWriteField(any(), any()) } answers
-        {
-          secondArg<TemplateField>() is TemplateField.System
-        }
-      coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } answers
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } answers
         {
           val field = secondArg<TemplateField>()
-          field is TemplateField.System && field.canonicalName == "title"
+          val bindingAllowsWrite = field is TemplateField.System
+          val allowsUserSubmission = field is TemplateField.System && field.canonicalName == "title"
+          FieldMutationPolicy(allowsUserSubmission, bindingAllowsWrite)
         }
 
       shouldThrow<PermissionDeniedException> {

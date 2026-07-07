@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 class WorkItemTransitionCollaborators(
   val mutationSupport: WorkItemMutationSupport,
   val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
-  val fieldMutationReconciler: WorkItemFieldMutationReconciler,
+  val fieldMutationEngine: WorkItemFieldMutationEngine,
   val commentService: WorkItemCommentService,
   val transitionValidator: WorkItemTransitionValidator,
   val transitionOptions: WorkItemTransitionOptionBuilder,
