@@ -13,7 +13,10 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.time.Clock
+import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -23,15 +26,15 @@ import kotlinx.serialization.json.jsonObject
 
 class WorkItemTransitionOptionBuilderTest :
   StringSpec({
+    val clock = Clock.fixed(Instant.parse("2026-07-04T10:15:30Z"), ZoneOffset.UTC)
     val mutationSupport = mockk<WorkItemMutationSupport>()
-    val fieldMutationReconciler = mockk<WorkItemFieldMutationReconciler>()
     val fieldPermissions = mockk<WorkItemFieldPermissionService>()
+    val fieldMutationEngine = WorkItemFieldMutationEngine(fieldPermissions, clock)
     val transitionValidator = WorkItemTransitionValidator(mockk(relaxed = true))
     val builder =
       WorkItemTransitionOptionBuilder(
         mutationSupport,
-        fieldMutationReconciler,
-        fieldPermissions,
+        fieldMutationEngine,
         transitionValidator,
       )
 
@@ -39,12 +42,8 @@ class WorkItemTransitionOptionBuilderTest :
       val buildContext = sampleBuildContext()
       val transition = sampleTransition(buildContext.config, buildContext.issue.statusId)
       coEvery { mutationSupport.templateContext(any()) } returns templateContext(buildContext)
-      coEvery {
-        fieldPermissions.isFormFieldEditable(any(), any(), any())
-      } returns true
-      coEvery { fieldMutationReconciler.buildFieldMeta(any(), any(), any(), any()) } returns
-        emptyList()
-      coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
 
       val option = runBlocking { builder.build(transition, buildContext) }
 
@@ -62,12 +61,8 @@ class WorkItemTransitionOptionBuilderTest :
             toStatusApiId = PublicId.new("sts"),
           )
       coEvery { mutationSupport.templateContext(any()) } returns templateContext(buildContext)
-      coEvery {
-        fieldPermissions.isFormFieldEditable(any(), any(), any())
-      } returns false
-      coEvery { fieldMutationReconciler.buildFieldMeta(any(), any(), any(), any()) } returns
-        emptyList()
-      coEvery { fieldMutationReconciler.buildCommentMeta(any(), any()) } returns null
+      coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+        FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = false)
 
       val option = runBlocking { builder.build(transition, buildContext) }
 

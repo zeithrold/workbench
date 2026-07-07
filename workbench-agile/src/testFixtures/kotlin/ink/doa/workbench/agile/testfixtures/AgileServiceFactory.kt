@@ -1,10 +1,12 @@
 package ink.doa.workbench.agile.testfixtures
 
+import ink.doa.workbench.agile.workitem.FieldMutationPolicy
 import ink.doa.workbench.agile.workitem.WorkItemActivityEnqueueSupport
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
+import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
 import ink.doa.workbench.agile.workitem.WorkItemDescriptionAttachmentValidator
-import ink.doa.workbench.agile.workitem.WorkItemFieldMutationReconciler
-import ink.doa.workbench.agile.workitem.WorkItemFieldMutationSupport
+import ink.doa.workbench.agile.workitem.WorkItemFieldMutationEngine
+import ink.doa.workbench.agile.workitem.WorkItemFieldMutationFacade
 import ink.doa.workbench.agile.workitem.WorkItemFieldPermissionService
 import ink.doa.workbench.agile.workitem.WorkItemMutationSupport
 import ink.doa.workbench.agile.workitem.WorkItemService
@@ -24,12 +26,18 @@ import java.time.Clock
 object AgileServiceFactory {
   fun mockFieldPermissions(): WorkItemFieldPermissionService {
     val fieldPermissions = mockk<WorkItemFieldPermissionService>()
-    coEvery { fieldPermissions.canWriteField(any(), any()) } returns true
-    coEvery { fieldPermissions.isFieldEditableInTransition(any(), any(), any()) } returns true
-    coEvery { fieldPermissions.isFieldEditable(any(), any(), any()) } returns true
-    coEvery { fieldPermissions.isFormFieldEditable(any(), any(), any()) } returns true
+    coEvery { fieldPermissions.bindingAllowsWrite(any(), any()) } returns true
+    coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
+      FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+    coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } returns
+      FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
     return fieldPermissions
   }
+
+  fun fieldMutationEngine(
+    clock: Clock,
+    fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+  ): WorkItemFieldMutationEngine = WorkItemFieldMutationEngine(fieldPermissions, clock)
 
   fun workItemService(
     repository: WorkItemRepository,
@@ -42,18 +50,16 @@ object AgileServiceFactory {
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
   ): WorkItemService {
-    val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
     val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
     coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
     return WorkItemService(
       repository,
       configs,
-      subtypeConstraints,
+      WorkItemCreateParentGuard(repository, subtypeConstraints),
       WorkItemMutationSupport(repository, configs, events),
       activityEnqueueSupport,
-      WorkItemFieldMutationSupport(
-        reconciler,
-        fieldPermissions,
+      WorkItemFieldMutationFacade(
+        fieldMutationEngine(clock, fieldPermissions),
         descriptionAttachmentValidator,
       ),
     )
@@ -70,23 +76,23 @@ object AgileServiceFactory {
       mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
+    commentService: WorkItemCommentService = mockk(relaxed = true),
   ): WorkItemTransitionService {
-    val reconciler = WorkItemFieldMutationReconciler(fieldPermissions, clock)
+    val engine = fieldMutationEngine(clock, fieldPermissions)
     val mutationSupport = WorkItemMutationSupport(repository, configs, events)
     val transitionValidator = WorkItemTransitionValidator(repository)
     val transitionOptions =
       WorkItemTransitionOptionBuilder(
         mutationSupport,
-        reconciler,
-        fieldPermissions,
+        engine,
         transitionValidator,
       )
     val collaborators =
       WorkItemTransitionCollaborators(
         mutationSupport,
         activityEnqueueSupport,
-        reconciler,
-        mockk<WorkItemCommentService>(relaxed = true),
+        engine,
+        commentService,
         transitionValidator,
         transitionOptions,
       )

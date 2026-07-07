@@ -133,7 +133,7 @@ class WorkItemTransitionService(
         )
       )
     val commentBody =
-      collaborators.fieldMutationReconciler.reconcileTransitionComment(
+      collaborators.fieldMutationEngine.reconcileTransitionComment(
         spec = fieldsTemplate.comment,
         templateContext = templateContext,
         userComment = command.comment,
@@ -209,7 +209,7 @@ class WorkItemTransitionService(
   private suspend fun reconcileTransitionFields(
     reconciliation: TransitionFieldReconciliationCommand
   ): TransitionFieldReconcileResult =
-    collaborators.fieldMutationReconciler.reconcileFields(
+    collaborators.fieldMutationEngine.applyTemplate(
       FieldReconciliationContext(
         template = reconciliation.fieldsTemplate,
         expectedTarget = WorkItemValueTemplateTarget.TRANSITION,
@@ -217,8 +217,7 @@ class WorkItemTransitionService(
         templateContext = reconciliation.templateContext,
         currentProperties = reconciliation.currentProperties,
         userProperties = WorkItemPropertySupport.transitionFieldInputs(reconciliation.command),
-        permissionContext =
-          reconciliation.permissionContext.copy(operation = FieldPermissionOperation.UPDATE),
+        permissionContext = reconciliation.permissionContext,
       )
     )
 

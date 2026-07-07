@@ -50,7 +50,7 @@ class WorkItemFieldPermissionServiceTest :
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow())
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe true
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe true
     }
 
     "explicit field deny overrides issue.update" {
@@ -60,116 +60,114 @@ class WorkItemFieldPermissionServiceTest :
           fieldWriteRule("issue:field:property.resolution", PermissionEffect.DENY),
         )
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe false
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe false
     }
 
     "create allows field write when no rules match" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         emptyList()
 
-      service.canWriteField(context(FieldPermissionOperation.CREATE), field) shouldBe true
+      service.bindingAllowsWrite(context(FieldPermissionOperation.CREATE), field) shouldBe true
     }
 
     "update denies field write when no rules match" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         emptyList()
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe false
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe false
     }
 
     "field allow rule grants write without issue.update" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(fieldWriteRule("issue:field:property.resolution", PermissionEffect.ALLOW))
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe true
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe true
     }
 
     "wildcard field allow grants write for any property field" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(fieldWriteRule("issue:field:*", PermissionEffect.ALLOW))
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe true
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe true
     }
 
     "wildcard field deny blocks write even with issue.update" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow(), fieldWriteRule("issue:field:*", PermissionEffect.DENY))
 
-      service.canWriteField(context(FieldPermissionOperation.UPDATE), field) shouldBe false
+      service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe false
     }
 
-    "isFieldEditable returns false for immutable and system-only grants" {
+    "resolvePolicy returns non-submittable for immutable and system-only grants" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow())
 
-      service.isFieldEditable(
+      service.resolvePolicy(
         context(FieldPermissionOperation.UPDATE),
         field,
-        FieldWriteGrant.IMMUTABLE,
-      ) shouldBe false
-      service.isFieldEditable(
+        TransitionFieldSpec(
+          participation = FieldParticipation.OPTIONAL,
+          writeGrant = FieldWriteGrant.IMMUTABLE,
+        ),
+      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+
+      service.resolvePolicy(
         context(FieldPermissionOperation.UPDATE),
         field,
-        FieldWriteGrant.SYSTEM_ONLY,
-      ) shouldBe false
+        TransitionFieldSpec(
+          participation = FieldParticipation.OPTIONAL,
+          writeGrant = FieldWriteGrant.SYSTEM_ONLY,
+        ),
+      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
     }
 
-    "isFieldEditable honors transition writable without binding lookup" {
+    "resolvePolicy honors transition writable without binding lookup" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         emptyList()
 
-      service.isFieldEditable(
+      service.resolvePolicy(
         context(FieldPermissionOperation.UPDATE),
         field,
-        FieldWriteGrant.TRANSITION_WRITABLE,
-      ) shouldBe true
-    }
-
-    "isFieldEditable inherit delegates to canWriteField" {
-      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
-        listOf(issueUpdateAllow())
-
-      service.isFieldEditable(
-        context(FieldPermissionOperation.UPDATE),
-        field,
-        FieldWriteGrant.INHERIT,
-      ) shouldBe true
-    }
-
-    "isFormFieldEditable rejects automatic participation" {
-      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
-        listOf(issueUpdateAllow())
-      val spec =
         TransitionFieldSpec(
-          participation = FieldParticipation.AUTOMATIC,
-          writeGrant = FieldWriteGrant.INHERIT,
-        )
-
-      service.isFormFieldEditable(context(FieldPermissionOperation.UPDATE), field, spec) shouldBe
-        false
+          participation = FieldParticipation.OPTIONAL,
+          writeGrant = FieldWriteGrant.TRANSITION_WRITABLE,
+        ),
+      ) shouldBe FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = false)
     }
 
-    "isFormFieldEditable checks inherit grant for optional fields" {
+    "resolvePolicy inherit delegates binding to bindingAllowsWrite" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow())
-      val spec =
+
+      service.resolvePolicy(
+        context(FieldPermissionOperation.UPDATE),
+        field,
         TransitionFieldSpec(
           participation = FieldParticipation.OPTIONAL,
           writeGrant = FieldWriteGrant.INHERIT,
-        )
-
-      service.isFormFieldEditable(context(FieldPermissionOperation.UPDATE), field, spec) shouldBe
-        true
+        ),
+      ) shouldBe FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
     }
 
-    "isFieldEditableInTransition delegates to isFieldEditable" {
+    "resolvePolicy rejects automatic participation" {
       coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
         listOf(issueUpdateAllow())
 
-      service.isFieldEditableInTransition(
+      service.resolvePolicy(
         context(FieldPermissionOperation.UPDATE),
         field,
-        FieldWriteGrant.TRANSITION_WRITABLE,
-      ) shouldBe true
+        TransitionFieldSpec(
+          participation = FieldParticipation.AUTOMATIC,
+          writeGrant = FieldWriteGrant.INHERIT,
+        ),
+      ) shouldBe FieldMutationPolicy(allowsUserSubmission = false, bindingAllowsWrite = true)
+    }
+
+    "resolvePatchPolicy mirrors bindingAllowsWrite" {
+      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
+        listOf(issueUpdateAllow())
+
+      service.resolvePatchPolicy(context(FieldPermissionOperation.UPDATE), field) shouldBe
+        FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
     }
   })
