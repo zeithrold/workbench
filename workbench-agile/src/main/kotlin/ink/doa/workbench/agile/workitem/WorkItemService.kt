@@ -3,7 +3,6 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
@@ -12,9 +11,6 @@ import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -25,10 +21,8 @@ class WorkItemService(
   private val createParentGuard: WorkItemCreateParentGuard,
   private val mutationSupport: WorkItemMutationSupport,
   private val activityEnqueueSupport: WorkItemActivityEnqueueSupport,
-  private val fieldMutation: WorkItemFieldMutationFacade,
+  private val fieldPipeline: WorkItemFieldMutationPipeline,
 ) {
-  private val transitionFieldsParser = TransitionFieldsParser()
-
   suspend fun create(command: CreateWorkItemCommand): WorkItemMutationResult {
     val config =
       configs.resolveEffective(command.tenantId, command.projectId, command.issueTypeApiId)
@@ -43,34 +37,23 @@ class WorkItemService(
     val parentIssue =
       createParentGuard.resolveAndValidate(command, config.config.config.issueTypeId)
     val (permissionContext, templateContext) = createMutationContexts(command)
-    val reconciled =
-      fieldMutation.engine.applyTemplate(
-        FieldReconciliationContext(
-          template = transitionFieldsParser.parseCreateFields(config.config.config.createFields),
-          expectedTarget = WorkItemValueTemplateTarget.CREATE,
-          config = config.config,
-          templateContext = templateContext,
-          currentProperties = emptyMap(),
-          userProperties = WorkItemPropertySupport.createFieldInputs(command),
-          permissionContext = permissionContext,
-        )
+    val plan =
+      fieldPipeline.applyCreate(
+        command = command,
+        config = config.config,
+        templateContext = templateContext,
+        permissionContext = permissionContext,
+        createFields = config.config.config.createFields,
       )
-    val effectiveCommand =
-      WorkItemPropertySupport.applyCreateSystemFields(command, reconciled.systemFields)
-    fieldMutation.descriptionAttachments.rejectCreateDescriptionReferences(
-      effectiveCommand.description
-    )
-    val values =
-      WorkItemPropertySupport.normalizeProperties(config.config, reconciled.propertyValues)
     return repository
       .create(
-        CreateWorkItemPersistenceCommand(
-          command = effectiveCommand,
+        ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand(
+          command = plan.command,
           issueTypeId = config.config.config.issueTypeId,
           issueTypeConfigId = config.config.config.id,
           initialStatusId = initial.statusId,
           parentIssueId = parentIssue?.id,
-          propertyValues = values,
+          propertyValues = plan.propertyValues,
         )
       )
       .also { mutationSupport.publishAndEnqueue(it, activityEnqueueSupport) }
@@ -92,7 +75,6 @@ class WorkItemService(
         ?: throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED
         )
-    val fieldsTemplate = transitionFieldsParser.parseCreateFields(config.config.config.createFields)
     val permissionContext =
       fieldPermissionContext(tenantId, projectId, actorUserId, FieldPermissionOperation.CREATE)
     val templateContext =
@@ -105,9 +87,9 @@ class WorkItemService(
         )
       )
     val formPlan =
-      fieldMutation.engine.planForm(
-        template = fieldsTemplate,
+      fieldPipeline.planCreateForm(
         config = config.config,
+        createFields = config.config.config.createFields,
         templateContext = templateContext,
         permissionContext = permissionContext,
       )
@@ -145,7 +127,7 @@ class WorkItemService(
         command.actorUserId,
         FieldPermissionOperation.UPDATE,
       )
-    fieldMutation.engine.assertPatch(
+    fieldPipeline.engine.assertPatch(
       PatchMutationContext(
         config = config,
         permissionContext = permissionContext,
@@ -166,7 +148,7 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
-    fieldMutation.descriptionAttachments.validateReferences(
+    fieldPipeline.descriptionAttachments.validateReferences(
       tenantId = command.tenantId,
       projectId = command.projectId,
       workItemApiId = command.workItemApiId,
@@ -183,7 +165,10 @@ class WorkItemService(
 
   private suspend fun createMutationContexts(
     command: CreateWorkItemCommand
-  ): Pair<WorkItemFieldPermissionContext, WorkItemValueTemplateContext> {
+  ): Pair<
+    WorkItemFieldPermissionContext,
+    ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext,
+  > {
     val permissionContext =
       fieldPermissionContext(
         command.tenantId,

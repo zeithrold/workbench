@@ -5,7 +5,7 @@ import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintHistoryTable
@@ -188,11 +188,10 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val result =
           repository.transition(
-            TransitionWorkItemCommand(
+            TransitionPersistenceCommand(
               tenantId = stack.tenantId,
               projectId = stack.projectId,
               workItemApiId = created.workItem.apiId.value,
-              transitionApiId = transition.apiId.value,
               actorUserId = stack.actorId,
             ),
             fromStatusId = stack.todoStatus.id,

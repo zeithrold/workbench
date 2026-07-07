@@ -1,16 +1,19 @@
 package ink.doa.workbench.agile.testfixtures
 
 import ink.doa.workbench.agile.workitem.FieldMutationPolicy
+import ink.doa.workbench.agile.workitem.FieldSubmissionPolicy
 import ink.doa.workbench.agile.workitem.WorkItemActivityEnqueueSupport
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
 import ink.doa.workbench.agile.workitem.WorkItemDescriptionAttachmentValidator
 import ink.doa.workbench.agile.workitem.WorkItemFieldMutationEngine
-import ink.doa.workbench.agile.workitem.WorkItemFieldMutationFacade
+import ink.doa.workbench.agile.workitem.WorkItemFieldMutationPipeline
 import ink.doa.workbench.agile.workitem.WorkItemFieldPermissionService
 import ink.doa.workbench.agile.workitem.WorkItemMutationSupport
 import ink.doa.workbench.agile.workitem.WorkItemService
-import ink.doa.workbench.agile.workitem.WorkItemTransitionCollaborators
+import ink.doa.workbench.agile.workitem.WorkItemTransitionContextLoader
+import ink.doa.workbench.agile.workitem.WorkItemTransitionEvaluator
+import ink.doa.workbench.agile.workitem.WorkItemTransitionExecutor
 import ink.doa.workbench.agile.workitem.WorkItemTransitionOptionBuilder
 import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.agile.workitem.WorkItemTransitionValidator
@@ -19,6 +22,7 @@ import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
 import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
 import io.mockk.coEvery
 import io.mockk.mockk
 import java.time.Clock
@@ -28,9 +32,15 @@ object AgileServiceFactory {
     val fieldPermissions = mockk<WorkItemFieldPermissionService>()
     coEvery { fieldPermissions.bindingAllowsWrite(any(), any()) } returns true
     coEvery { fieldPermissions.resolvePolicy(any(), any(), any()) } returns
-      FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+      FieldMutationPolicy(
+        submission = FieldSubmissionPolicy.INHERIT_BINDING,
+        bindingAllowsWrite = true,
+      )
     coEvery { fieldPermissions.resolvePatchPolicy(any(), any()) } returns
-      FieldMutationPolicy(allowsUserSubmission = true, bindingAllowsWrite = true)
+      FieldMutationPolicy(
+        submission = FieldSubmissionPolicy.INHERIT_BINDING,
+        bindingAllowsWrite = true,
+      )
     return fieldPermissions
   }
 
@@ -38,6 +48,19 @@ object AgileServiceFactory {
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
   ): WorkItemFieldMutationEngine = WorkItemFieldMutationEngine(fieldPermissions, clock)
+
+  fun fieldMutationPipeline(
+    clock: Clock,
+    fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
+    transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
+    descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
+      mockDescriptionAttachmentValidator(),
+  ): WorkItemFieldMutationPipeline =
+    WorkItemFieldMutationPipeline(
+      engine = fieldMutationEngine(clock, fieldPermissions),
+      descriptionAttachments = descriptionAttachmentValidator,
+      transitionFieldsParser = transitionFieldsParser,
+    )
 
   fun workItemService(
     repository: WorkItemRepository,
@@ -49,6 +72,7 @@ object AgileServiceFactory {
       mockk<WorkItemActivityEnqueueSupport>(relaxed = true),
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
+    transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemService {
     val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
     coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
@@ -58,8 +82,10 @@ object AgileServiceFactory {
       WorkItemCreateParentGuard(repository, subtypeConstraints),
       WorkItemMutationSupport(repository, configs, events),
       activityEnqueueSupport,
-      WorkItemFieldMutationFacade(
-        fieldMutationEngine(clock, fieldPermissions),
+      fieldMutationPipeline(
+        clock,
+        fieldPermissions,
+        transitionFieldsParser,
         descriptionAttachmentValidator,
       ),
     )
@@ -77,30 +103,35 @@ object AgileServiceFactory {
     descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
       mockDescriptionAttachmentValidator(),
     commentService: WorkItemCommentService = mockk(relaxed = true),
+    transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemTransitionService {
-    val engine = fieldMutationEngine(clock, fieldPermissions)
     val mutationSupport = WorkItemMutationSupport(repository, configs, events)
     val transitionValidator = WorkItemTransitionValidator(repository)
-    val transitionOptions =
-      WorkItemTransitionOptionBuilder(
-        mutationSupport,
-        engine,
-        transitionValidator,
-      )
-    val collaborators =
-      WorkItemTransitionCollaborators(
-        mutationSupport,
-        activityEnqueueSupport,
-        engine,
-        commentService,
-        transitionValidator,
-        transitionOptions,
+    val fieldPipeline =
+      fieldMutationPipeline(
+        clock,
+        fieldPermissions,
+        transitionFieldsParser,
+        descriptionAttachmentValidator,
       )
     return WorkItemTransitionService(
-      repository,
-      workflows,
-      collaborators,
-      descriptionAttachmentValidator,
+      workflows = workflows,
+      contextLoader =
+        WorkItemTransitionContextLoader(
+          repository,
+          mutationSupport,
+          transitionValidator,
+        ),
+      evaluator = WorkItemTransitionEvaluator(transitionValidator, transitionFieldsParser),
+      fieldPipeline = fieldPipeline,
+      optionBuilder = WorkItemTransitionOptionBuilder(fieldPipeline),
+      executor =
+        WorkItemTransitionExecutor(
+          repository,
+          mutationSupport,
+          activityEnqueueSupport,
+          commentService,
+        ),
     )
   }
 

@@ -5,7 +5,7 @@ import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
 import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.TransitionWorkItemCommand
+import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
@@ -55,7 +55,7 @@ interface WorkItemRepository {
   ): WorkItemMutationResult
 
   suspend fun transition(
-    command: TransitionWorkItemCommand,
+    command: TransitionPersistenceCommand,
     fromStatusId: UUID,
     toStatusId: UUID,
     transitionId: UUID,

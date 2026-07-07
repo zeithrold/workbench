@@ -81,7 +81,8 @@ data class DeleteWorkItemCommand(
   val deleteReason: String? = null,
 )
 
-data class TransitionWorkItemCommand(
+/** API / service boundary for executing a workflow transition. */
+data class TransitionRequest(
   val tenantId: UUID,
   val projectId: UUID,
   val workItemApiId: String,
@@ -90,8 +91,18 @@ data class TransitionWorkItemCommand(
   val properties: Map<String, JsonElement> = emptyMap(),
   val title: String? = null,
   val description: String? = null,
-  val descriptionPlainText: String? = null,
   val comment: String? = null,
+)
+
+/** Persistence payload after field reconciliation. */
+data class TransitionPersistenceCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val actorUserId: UUID,
+  val title: String? = null,
+  val description: String? = null,
+  val descriptionPlainText: String? = null,
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
   val sprintApiId: String? = null,
