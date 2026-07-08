@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -120,6 +121,21 @@ tasks.register("check") {
     dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
 }
 
+val koverProjects = listOf(rootProject) + backendProjects
+
+tasks.register<Delete>("cleanKover") {
+    group = "verification"
+    description =
+        "Deletes Kover instrumentation and report artifacts so unit-only coverage can be regenerated."
+    koverProjects.forEach { project ->
+        delete(
+            project.layout.buildDirectory.dir("kover"),
+            project.layout.buildDirectory.dir("reports/kover"),
+            project.layout.buildDirectory.dir("tmp/koverXmlReport"),
+        )
+    }
+}
+
 tasks.register("koverXmlReportUnit") {
     group = "verification"
     description =
@@ -142,6 +158,7 @@ tasks.register("koverUnitCoverage") {
     description =
         "Runs backend unit tests and writes unit-only Kover XML. Invoke with: " +
             "./gradlew koverUnitCoverage -Pkover.unitOnly"
+    dependsOn(tasks.named("cleanKover"))
     dependsOn(backendProjects.map { "${it.path}:unitTest" })
     dependsOn(tasks.named("koverXmlReport"))
     finalizedBy(tasks.named("koverXmlReportUnit"))
