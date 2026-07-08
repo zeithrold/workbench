@@ -172,8 +172,11 @@ jobs:
             cp -a "${unit_artifact}/." build/reports/kover/unit/
           fi
 
-      - name: Aggregate PIT reports
-        run: ./gradlew pitestReportAggregate --no-daemon --no-configuration-cache
+      - name: Merge PIT reports
+        working-directory: scripts/ci
+        env:
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run merge-pit-reports
 
       - name: Merge Kover reports
         working-directory: scripts/ci
