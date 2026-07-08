@@ -1,14 +1,16 @@
 package ink.doa.workbench.security.identity.auth
 
 import ink.doa.workbench.core.tenantconfig.model.MailSmtpTenantConfig
+import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.JavaMailSenderImpl
 import org.springframework.mail.javamail.MimeMessageHelper
 import org.springframework.stereotype.Component
 
 @Component
-class JavaMailMagicLinkDeliveryAdapter : MagicLinkDeliveryPort {
+class JavaMailMagicLinkDeliveryAdapter(private val mailSenderFactory: MagicLinkMailSenderFactory) :
+  MagicLinkDeliveryPort {
   override suspend fun send(command: SendMagicLinkCommand) {
-    val mailSender = buildMailSender(command.mailConfig)
+    val mailSender = mailSenderFactory.create(command.mailConfig)
     val message = mailSender.createMimeMessage()
     MimeMessageHelper(message, true).apply {
       setFrom(command.mailConfig.fromAddress ?: "noreply@workbench.local")
@@ -21,8 +23,11 @@ class JavaMailMagicLinkDeliveryAdapter : MagicLinkDeliveryPort {
     }
     mailSender.send(message)
   }
+}
 
-  private fun buildMailSender(config: MailSmtpTenantConfig): JavaMailSenderImpl {
+@Component
+open class MagicLinkMailSenderFactory {
+  open fun create(config: MailSmtpTenantConfig): JavaMailSender {
     val sender = JavaMailSenderImpl()
     sender.host = config.host ?: "localhost"
     sender.port = config.port
