@@ -24,7 +24,7 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 |------|---------|--------|
 | **Quick** (local loop) | `./gradlew quickCheck` | Spotless + Detekt + **unit tests**; frontend ESLint only |
 | **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
-| **Extended** (Nightly CI) | `./gradlew extendedCheck` | Full + fuzz + mutation; also generates **unit-only** Kover XML |
+| **Extended** (Nightly CI) | `./gradlew extendedCheck` | Full + `fuzzTest` + `mutationTest` + unit Kover XML (local serial equivalent) |
 
 Backend test tasks: `unitTest` (excludes integration and fuzz tags), `integrationTest` (integration-tagged only), `test` (runs both). Kotest specs use `@Tags("integration")`; JUnit `@Test` classes use `@Tag("integration")`. Integration tests need Docker.
 

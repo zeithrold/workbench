@@ -6,11 +6,182 @@ on:
     - cron: "0 18 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  quality-gate:
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/quality-gate.yml
-    with:
-      extended-tests: true
+  backend-module:
+    name: Nightly (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - module: core
+            timeout: 30
+          - module: service
+            timeout: 30
+          - module: agile
+            timeout: 30
+          - module: tenant
+            timeout: 30
+          - module: data
+            timeout: 45
+          - module: security
+            timeout: 35
+          - module: web
+            timeout: 45
+          - module: worker
+            timeout: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Module nightly verification
+        run: |
+          ./gradlew :workbench-${{ matrix.module }}:nightlyModule \
+            --no-daemon --no-parallel --no-configuration-cache
+
+      - name: Upload module reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ matrix.module }}-${{ github.run_id }}
+          path: |
+            workbench-${{ matrix.module }}/build/kover/
+            workbench-${{ matrix.module }}/build/reports/kover/
+            workbench-${{ matrix.module }}/build/reports/pitest/
+          retention-days: 14
+
+  frontend:
+    name: Nightly (frontend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Frontend verification
+        run: ./gradlew :workbench-frontend:check --no-daemon
+
+      - name: Frontend coverage report
+        if: success()
+        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+
+      - name: Upload frontend reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-frontend-${{ github.run_id }}
+          path: workbench-frontend/coverage/
+          retention-days: 14
+
+  unit-coverage:
+    name: Nightly (unit coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Generate unit-only Kover XML
+        run: |
+          ./gradlew koverUnitCoverage -Pkover.unitOnly \
+            --no-daemon --no-configuration-cache
+
+      - name: Upload unit coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-unit-coverage-${{ github.run_id }}
+          path: build/reports/kover/unit/
+          retention-days: 14
+
+  aggregate-report:
+    name: Nightly (aggregate report)
+    needs: [backend-module, frontend, unit-coverage]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Download module reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-*-${{ github.run_id }}
+          merge-multiple: true
+          path: .
+
+      - name: Aggregate PIT and Kover reports
+        run: |
+          ./gradlew pitestReportAggregate koverXmlReport \
+            --no-daemon --no-configuration-cache
+
+      - name: Publish nightly report
+        if: always()
+        working-directory: scripts/ci
+        env:
+          EXTENDED_TESTS: "true"
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run render-quality-summary >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload aggregated reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-reports-${{ github.run_id }}
+          path: |
+            build/reports/kover/
+            build/reports/pitest/
+            workbench-*/build/reports/kover/
+            workbench-*/build/reports/pitest/
+            workbench-frontend/coverage/
+          retention-days: 30
+
+  gate:
+    name: Nightly (gate)
+    needs: [backend-module, frontend, unit-coverage, aggregate-report]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Require all nightly jobs to succeed
+        env:
+          BACKEND_RESULT: ${{ needs.backend-module.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
+          AGGREGATE_RESULT: ${{ needs.aggregate-report.result }}
+        run: |
+          set -euo pipefail
+          failed=0
+          for name in BACKEND FRONTEND UNIT_COVERAGE AGGREGATE; do
+            result_var="${name}_RESULT"
+            result="${!result_var}"
+            if [ "${result}" != "success" ]; then
+              echo "::error::Nightly job ${name} finished with: ${result}"
+              failed=1
+            fi
+          done
+          exit "${failed}"

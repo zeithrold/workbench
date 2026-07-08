@@ -382,7 +382,7 @@ def render_mutation_section(root: Path) -> MutationSectionResult:
     lines = ["### Mutation Testing (PIT)", ""]
 
     if not extended_tests_enabled():
-        lines.append("_Skipped — mutation tests run only on Nightly (`extended-tests: true`)._")
+        lines.append("_Skipped — mutation tests run only on Nightly CI._")
         lines.append("")
         return lines, {}, None
 
