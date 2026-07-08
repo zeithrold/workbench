@@ -2,6 +2,8 @@ package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
 import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
+import ink.doa.workbench.data.persistence.postgres.findColumn
+import ink.doa.workbench.data.persistence.postgres.requireColumn
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.eq
@@ -43,14 +45,9 @@ internal fun loadEntityRefByApiId(
   table: org.jetbrains.exposed.v1.core.Table,
   id: UUID,
 ): WorkItemActivityEntityRef {
-  val apiIdColumn =
-    table.columns.single { it.name == "api_id" } as org.jetbrains.exposed.v1.core.Column<String>
-  val nameColumn =
-    table.columns.singleOrNull { it.name == "name" }
-      as org.jetbrains.exposed.v1.core.Column<String>?
-  val idColumn =
-    table.columns.single { it.name == "id" }
-      as org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid>
+  val apiIdColumn = table.requireColumn<String>("api_id")
+  val nameColumn = table.findColumn<String>("name")
+  val idColumn = table.requireColumn<kotlin.uuid.Uuid>("id")
   val row = table.selectAll().where { idColumn eq id.toKotlinUuid() }.single()
   return WorkItemActivityEntityRef(
     id = row[apiIdColumn],

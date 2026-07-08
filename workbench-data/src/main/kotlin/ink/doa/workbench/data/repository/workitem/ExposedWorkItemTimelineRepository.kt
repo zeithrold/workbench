@@ -120,6 +120,5 @@ private fun ink.doa.workbench.core.workitem.stream.WorkItemEventRecord.commentAp
   when (val payload = payload) {
     is WorkItemActivityPayload.CommentAdded -> payload.value.comment.id
     is WorkItemActivityPayload.CommentEdited -> payload.value.comment.id
-    is WorkItemActivityPayload.CommentCreated -> payload.value.comment.id
     else -> null
   }

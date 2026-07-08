@@ -67,14 +67,14 @@ class WorkItemActivityCodecTest :
       decoded.value shouldBe payload
     }
 
-    "round-trips comment created payload" {
+    "round-trips comment added payload" {
       val payload =
         WorkItemCommentCreatedPayload(
           comment = WorkItemActivityCommentRef("cmt_test", "Looks good")
         )
-      val encoded = codec.encode(WorkItemActivitySpecs.CommentCreated, payload)
+      val encoded = codec.encode(WorkItemActivitySpecs.CommentAdded, payload)
       val decoded = codec.decode(WorkItemActivityType.COMMENT_CREATED, encoded)
-      decoded.shouldBeInstanceOf<WorkItemActivityPayload.CommentCreated>()
+      decoded.shouldBeInstanceOf<WorkItemActivityPayload.CommentAdded>()
       decoded.value shouldBe payload
     }
 
@@ -124,15 +124,15 @@ class WorkItemActivityCodecTest :
         .decode(WorkItemActivityType.STATUS_CHANGED, codec.encodePayload(statusChanged))
         .shouldBeInstanceOf<WorkItemActivityPayload.StatusChanged>()
 
-      val commentCreated =
-        WorkItemActivityPayload.CommentCreated(
+      val commentAdded =
+        WorkItemActivityPayload.CommentAdded(
           WorkItemCommentCreatedPayload(
             comment = WorkItemActivityCommentRef("cmt_test", "Looks good")
           )
         )
       codec
-        .decode(WorkItemActivityType.COMMENT_CREATED, codec.encodePayload(commentCreated))
-        .shouldBeInstanceOf<WorkItemActivityPayload.CommentCreated>()
+        .decode(WorkItemActivityType.COMMENT_CREATED, codec.encodePayload(commentAdded))
+        .shouldBeInstanceOf<WorkItemActivityPayload.CommentAdded>()
 
       val raw = buildJsonObject {}
       codec.encodePayload(WorkItemActivityPayload.Unknown(raw)) shouldBe raw
