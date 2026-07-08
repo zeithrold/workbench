@@ -256,7 +256,9 @@ configure(backendProjects) {
             instrumentation {
                 disabledForTestTasks.add("fuzzVerification")
                 if (providers.gradleProperty("kover.unitOnly").isPresent) {
-                    disabledForTestTasks.add("integrationTest")
+                    // Kover wires report tasks through the disabled `test` aggregator, which
+                    // otherwise pulls integrationTest back into unit-only runs.
+                    disabledForTestTasks.addAll("test", "integrationTest")
                 }
             }
         }
