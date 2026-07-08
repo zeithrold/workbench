@@ -87,7 +87,10 @@ def main() -> int:
     root = repo_root()
     module_reports = discover_module_reports(root)
     if not module_reports:
-        print("No module Kover reports found under workbench-*/build/reports/kover/", file=sys.stderr)
+        print(
+            "No module Kover reports found under workbench-*/build/reports/kover/",
+            file=sys.stderr,
+        )
         return 1
 
     counters = merge_counters(module_reports)
