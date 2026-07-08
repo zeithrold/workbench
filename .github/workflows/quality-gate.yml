@@ -99,6 +99,10 @@ jobs:
         if: inputs.extended-tests
         run: ./gradlew mutationTest --no-daemon --no-parallel --no-configuration-cache
 
+      - name: Clean Kover artifacts
+        if: inputs.extended-tests && success()
+        run: ./gradlew cleanKover --no-daemon --no-configuration-cache
+
       - name: Generate unit Kover XML report
         if: inputs.extended-tests && success()
         run: ./gradlew koverUnitCoverage -Pkover.unitOnly --no-daemon --no-configuration-cache

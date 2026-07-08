@@ -169,6 +169,7 @@ tasks.named("koverHtmlReport") {
 }
 
 tasks.named("koverXmlReport") {
+    mustRunAfter(tasks.named("cleanKover"))
     mustRunAfter(backendProjects.map { "${it.path}:check" })
 }
 
@@ -224,6 +225,10 @@ configure(backendProjects) {
         }
 
         configureUnitAndIntegrationTests()
+
+        val cleanKoverTask = rootProject.tasks.named("cleanKover")
+        tasks.named("unitTest").configure { mustRunAfter(cleanKoverTask) }
+        tasks.named("integrationTest").configure { mustRunAfter(cleanKoverTask) }
 
         tasks.register("quickCheck") {
             group = "verification"
