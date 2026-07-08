@@ -19,14 +19,14 @@ object WorkItemActivitySpecs {
       serializer = WorkItemStatusChangedPayload.serializer(),
     )
 
-  val CommentCreated =
+  val CommentAdded =
     WorkItemActivitySpec(
       type = WorkItemActivityType.COMMENT_CREATED,
       serializer = WorkItemCommentCreatedPayload.serializer(),
     )
 
   private val byType: Map<WorkItemActivityType, WorkItemActivitySpec<*>> =
-    listOf(Created, Updated, StatusChanged, CommentCreated).associateBy { it.type }
+    listOf(Created, Updated, StatusChanged, CommentAdded).associateBy { it.type }
 
   fun specFor(type: WorkItemActivityType): WorkItemActivitySpec<*>? = byType[type]
 }
