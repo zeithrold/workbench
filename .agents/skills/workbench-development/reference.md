@@ -9,6 +9,7 @@ Detailed paths and commands. Read when implementing a specific change type.
 | Quick verify (local loop) | `./gradlew quickCheck --no-daemon` |
 | Full verify (CI gate) | `./gradlew check --no-daemon` |
 | Extended verify (Nightly) | `./gradlew extendedCheck --no-parallel --no-configuration-cache` |
+| Per-module nightly (CI) | `./gradlew :workbench-<module>:nightlyModule --no-parallel --no-configuration-cache` |
 | Unit-only coverage report | `./gradlew koverUnitCoverage -Pkover.unitOnly` |
 | Module unit tests | `./gradlew :workbench-<module>:unitTest` |
 | Module integration tests | `./gradlew :workbench-<module>:integrationTest` |
@@ -117,37 +118,53 @@ Full-project Kover (90%) and Vitest thresholds (70%) remain separate from the di
 
 ## CI Pipeline Stages
 
-Workflow: [.github/workflows/quality-gate.yml](../../../.github/workflows/quality-gate.yml)
+### Quality Gate ([quality-gate.yml](../../../.github/workflows/quality-gate.yml))
 
-### Job: quality-gate
+Triggered by [ci.yml](../../../.github/workflows/ci.yml) on push and PR.
 
-1. Checkout (`fetch-depth: 0`), fetch PR base branch, JDK 25, pnpm 10.33, Node 24, Gradle, uv
+**Job: quality-gate**
+
+1. Checkout (`fetch-depth: 0`), fetch PR base branch, toolchain setup (JDK 25, pnpm, Node, Gradle, uv)
 2. `uv run ruff check` + `uv run ruff format --check` in `scripts/ci/`
 3. `./gradlew check --no-daemon`
 4. `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon`
 5. Upload boot jars artifact
-6. (nightly only) `fuzzTest`, `mutationTest`
-7. `koverXmlReport`
-8. (CI push/PR only, after successful `check`) `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage`
-9. `uv run check-diff-coverage` → Step Summary (diff coverage); `uv run render-quality-summary` → Step Summary (Kover, PIT)
-10. Upload artifacts: Kover, PIT, diff-cover HTML, `diff-coverage-results.json`, frontend `coverage/` (14-day retention)
+6. `koverXmlReport`
+7. (after successful `check`) `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage`
+8. `uv run render-quality-summary` → Step Summary (Kover + diff)
+9. Upload artifacts: Kover, diff-cover HTML, `diff-coverage-results.json`, frontend `coverage/` (14-day retention)
 
-### Job: docker (after quality-gate)
+**Job: docker** (after quality-gate, non-PR only)
 
 - Matrix: amd64 + arm64
 - Build `workbench-web` and `workbench-worker` images
 - Push to GHCR **only when not a PR**
 
-### Job: docker-manifest (non-PR)
+**Job: docker-manifest** (non-PR)
 
 - Multi-arch manifest for web and worker images on default branch
 
+### Nightly ([nightly.yml](../../../.github/workflows/nightly.yml))
+
+Independent workflow; does **not** reuse quality-gate. No diff coverage or Docker.
+
+| Job | Parallelism | What runs |
+|-----|-------------|-----------|
+| `backend-module` | Matrix (8 modules, `max-parallel: 4`) | `:workbench-<module>:nightlyModule` (check + fuzz + pitest) |
+| `test-support` | Single | `:workbench-test-support:check` |
+| `frontend` | Single | `:workbench-frontend:check`, `pnpmCoverage` |
+| `unit-coverage` | Single (parallel with above) | `koverUnitCoverage -Pkover.unitOnly` |
+| `aggregate-report` | After report jobs | Download per-artifact → restore `workbench-*/build/...` → `pitestReportAggregate` + `merge-kover-reports` → Step Summary |
+| `gate` | Final | Fail if any upstream job failed |
+
+Reports retained 30 days (`nightly-reports-*` artifact).
+
 ### Triggers
 
-| Workflow | When | Extended tests |
-|----------|------|----------------|
-| `ci.yml` | push to any branch, all PRs | no |
-| `nightly.yml` | cron 02:00 Asia/Shanghai, manual | yes (fuzz + mutation) |
+| Workflow | When | Scope |
+|----------|------|-------|
+| `ci.yml` | push to any branch, all PRs | Quality Gate + Docker |
+| `nightly.yml` | cron 02:00 Asia/Shanghai, manual | Extended tests (parallel by module) |
 
 ## Related Skills
 

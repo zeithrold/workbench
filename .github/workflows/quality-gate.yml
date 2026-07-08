@@ -2,12 +2,6 @@ name: Quality Gate
 
 on:
   workflow_call:
-    inputs:
-      extended-tests:
-        description: Run fuzz and mutation testing in addition to the standard quality gate
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -41,35 +35,8 @@ jobs:
             git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
           fi
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "25"
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: pnpm
-          cache-dependency-path: workbench-frontend/pnpm-lock.yaml
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: wrapper
-          cache-provider: basic
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: scripts/ci/uv.lock
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
 
       - name: Lint CI Python scripts
         working-directory: scripts/ci
@@ -91,32 +58,16 @@ jobs:
             workbench-web/build/libs/workbench-web.jar
             workbench-worker/build/libs/workbench-worker.jar
 
-      - name: Fuzz tests
-        if: inputs.extended-tests
-        run: ./gradlew fuzzTest --no-daemon
-
-      - name: Mutation tests
-        if: inputs.extended-tests
-        run: ./gradlew mutationTest --no-daemon --no-parallel --no-configuration-cache
-
-      - name: Clean Kover artifacts
-        if: inputs.extended-tests && success()
-        run: ./gradlew cleanKover --no-daemon --no-configuration-cache
-
-      - name: Generate unit Kover XML report
-        if: inputs.extended-tests && success()
-        run: ./gradlew koverUnitCoverage -Pkover.unitOnly --no-daemon --no-configuration-cache
-
       - name: Generate Kover XML report
         if: success() || failure()
         run: ./gradlew koverXmlReport --no-daemon
 
       - name: Frontend coverage report
-        if: success() && !inputs.extended-tests
+        if: success()
         run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
 
       - name: Check diff coverage
-        if: success() && !inputs.extended-tests
+        if: success()
         working-directory: scripts/ci
         env:
           COMPARE_BRANCH: >-
@@ -134,7 +85,6 @@ jobs:
         if: always()
         working-directory: scripts/ci
         env:
-          EXTENDED_TESTS: ${{ inputs.extended-tests }}
           REPO_ROOT: ${{ github.workspace }}
         run: uv run render-quality-summary >> "$GITHUB_STEP_SUMMARY"
 
@@ -145,7 +95,6 @@ jobs:
           name: quality-reports-${{ github.run_id }}
           path: |
             build/reports/kover/
-            build/reports/pitest/
             scripts/ci/diff-cover-backend.html
             scripts/ci/diff-cover-frontend.html
             scripts/ci/diff-coverage-results.json

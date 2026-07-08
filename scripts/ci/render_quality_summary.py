@@ -111,6 +111,45 @@ def discover_backend_modules(root: Path) -> list[str]:
     return modules
 
 
+def aggregate_module_coverage(root: Path, modules: list[str]) -> CoverageMetrics | None:
+    counter_totals: dict[str, tuple[int, int]] = {}
+    for module in modules:
+        report = module_kover_report(root, module)
+        if not report.is_file():
+            continue
+        try:
+            document = ET.parse(report)
+        except ET.ParseError:
+            continue
+        for counter in document.getroot().findall("counter"):
+            counter_type = counter.get("type")
+            if counter_type is None:
+                continue
+            missed = int(counter.get("missed", "0"))
+            covered = int(counter.get("covered", "0"))
+            if counter_type in counter_totals:
+                prev_missed, prev_covered = counter_totals[counter_type]
+                counter_totals[counter_type] = (prev_missed + missed, prev_covered + covered)
+            else:
+                counter_totals[counter_type] = (missed, covered)
+
+    def pct(counter_type: str) -> float | None:
+        if counter_type not in counter_totals:
+            return None
+        missed, covered = counter_totals[counter_type]
+        total = missed + covered
+        if total == 0:
+            return None
+        return covered / total * 100.0
+
+    metrics = CoverageMetrics(
+        line=pct("LINE"),
+        branch=pct("BRANCH"),
+        instruction=pct("INSTRUCTION"),
+    )
+    return metrics if has_coverage_data(metrics) else None
+
+
 def parse_pit_mutations(path: Path) -> MutationMetrics | None:
     if not path.is_file():
         return None
@@ -312,6 +351,9 @@ def render_coverage_section(root: Path) -> list[str]:
     full_total = parse_kover_report(full_total_path)
     unit_total = parse_kover_report(unit_total_path)
 
+    if full_total is None and modules:
+        full_total = aggregate_module_coverage(root, modules)
+
     if not modules and full_total is None:
         lines.append("_No Kover report found. Run `./gradlew check` or `koverXmlReport` first._")
         lines.append("")
@@ -382,7 +424,7 @@ def render_mutation_section(root: Path) -> MutationSectionResult:
     lines = ["### Mutation Testing (PIT)", ""]
 
     if not extended_tests_enabled():
-        lines.append("_Skipped — mutation tests run only on Nightly (`extended-tests: true`)._")
+        lines.append("_Skipped — mutation tests run only on Nightly CI._")
         lines.append("")
         return lines, {}, None
 
