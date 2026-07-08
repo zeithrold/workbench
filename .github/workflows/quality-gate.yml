@@ -101,7 +101,7 @@ jobs:
 
       - name: Generate unit Kover XML report
         if: inputs.extended-tests && success()
-        run: ./gradlew cleanKover koverUnitCoverage -Pkover.unitOnly --no-daemon
+        run: ./gradlew koverUnitCoverage -Pkover.unitOnly --no-daemon --no-configuration-cache
 
       - name: Generate Kover XML report
         if: success() || failure()
