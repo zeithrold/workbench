@@ -22,7 +22,6 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -55,7 +54,15 @@ class MagicLinkAuthServiceTest :
         magicLinkTokens,
       )
     val crypto = CredentialCryptoSupport(secretGenerator, credentialHasher)
-    val service = MagicLinkAuthService(repositories, crypto, tenantConfig, clock)
+    val tokenIssuer = MagicLinkTokenIssuer(repositories, crypto, clock)
+    val tokenVerifier = MagicLinkTokenVerifier(repositories, crypto, clock)
+    val delivery = RecordingMagicLinkDeliveryPort()
+    val service =
+      MagicLinkAuthService(repositories, tokenIssuer, tokenVerifier, delivery, tenantConfig)
+
+    beforeTest {
+      delivery.sent.clear()
+    }
 
     "resolveToken throws when token is invalid" {
       coEvery { credentialHasher.hash("invalid-token") } returns "hashed-invalid"
@@ -320,7 +327,7 @@ class MagicLinkAuthServiceTest :
         .errorCode shouldBe WorkbenchErrorCode.IDENTITY_MAGIC_LINK_DISABLED
     }
 
-    "requestMagicLink creates token before attempting delivery" {
+    "requestMagicLink creates token and submits delivery command" {
       val tenantId = UUID.randomUUID()
       val methodId = UUID.randomUUID()
       val tenant =
@@ -391,20 +398,31 @@ class MagicLinkAuthServiceTest :
           createdAt = now,
         )
 
-      shouldThrow<Exception> {
-        runBlocking {
-          service.requestMagicLink("Ada@Example.Test", tenant.apiId.value, method.apiId.value)
-        }
+      runBlocking {
+        service.requestMagicLink("Ada@Example.Test", tenant.apiId.value, method.apiId.value)
       }
 
-      coVerify(exactly = 1) {
-        magicLinkTokens.create(
-          tokenHash = "magic-hash",
-          loginMethodId = methodId,
-          tenantId = tenantId,
-          normalizedSubject = "ada@example.test",
-          expiresAt = now.plusMinutes(15),
+      delivery.sent.single() shouldBe
+        SendMagicLinkCommand(
+          to = "ada@example.test",
+          token = "magic-secret",
+          mailConfig =
+            MailSmtpTenantConfig(
+              enabled = true,
+              fromAddress = "noreply@acme.test",
+              host = "127.0.0.1",
+              port = 1,
+              username = null,
+              passwordSecretRef = null,
+            ),
         )
-      }
     }
   })
+
+private class RecordingMagicLinkDeliveryPort : MagicLinkDeliveryPort {
+  val sent = mutableListOf<SendMagicLinkCommand>()
+
+  override suspend fun send(command: SendMagicLinkCommand) {
+    sent += command
+  }
+}
