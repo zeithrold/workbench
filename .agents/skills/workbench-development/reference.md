@@ -151,9 +151,10 @@ Independent workflow; does **not** reuse quality-gate. No diff coverage or Docke
 | Job | Parallelism | What runs |
 |-----|-------------|-----------|
 | `backend-module` | Matrix (8 modules, `max-parallel: 4`) | `:workbench-<module>:nightlyModule` (check + fuzz + pitest) |
+| `test-support` | Single | `:workbench-test-support:check` |
 | `frontend` | Single | `:workbench-frontend:check`, `pnpmCoverage` |
 | `unit-coverage` | Single (parallel with above) | `koverUnitCoverage -Pkover.unitOnly` |
-| `aggregate-report` | After all report jobs | Download artifacts → `pitestReportAggregate` + `koverXmlReport` → Step Summary |
+| `aggregate-report` | After report jobs | Download per-artifact → restore `workbench-*/build/...` → `pitestReportAggregate` + `merge-kover-reports` → Step Summary |
 | `gate` | Final | Fail if any upstream job failed |
 
 Reports retained 30 days (`nightly-reports-*` artifact).

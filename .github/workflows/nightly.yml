@@ -53,12 +53,24 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-${{ matrix.module }}-${{ github.run_id }}
-          path: |
-            workbench-${{ matrix.module }}/build/kover/
-            workbench-${{ matrix.module }}/build/reports/kover/
-            workbench-${{ matrix.module }}/build/reports/pitest/
+          name: nightly-backend-${{ matrix.module }}-${{ github.run_id }}
+          path: workbench-${{ matrix.module }}/build
           retention-days: 14
+
+  test-support:
+    name: Nightly (test-support)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Test-support verification
+        run: ./gradlew :workbench-test-support:check --no-daemon
 
   frontend:
     name: Nightly (frontend)
@@ -84,7 +96,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-frontend-${{ github.run_id }}
-          path: workbench-frontend/coverage/
+          path: workbench-frontend/coverage
           retention-days: 14
 
   unit-coverage:
@@ -109,7 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-unit-coverage-${{ github.run_id }}
-          path: build/reports/kover/unit/
+          path: build/reports/kover/unit
           retention-days: 14
 
   aggregate-report:
@@ -126,17 +138,48 @@ jobs:
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
 
-      - name: Download module reports
+      - name: Download nightly artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: nightly-*-${{ github.run_id }}
-          merge-multiple: true
-          path: .
+          merge-multiple: false
+          path: nightly-artifacts
 
-      - name: Aggregate PIT and Kover reports
+      - name: Restore report paths
+        env:
+          RUN_ID: ${{ github.run_id }}
         run: |
-          ./gradlew pitestReportAggregate koverXmlReport \
-            --no-daemon --no-configuration-cache
+          set -euo pipefail
+          shopt -s nullglob
+
+          for artifact_dir in nightly-artifacts/nightly-backend-*; do
+            base="$(basename "${artifact_dir}")"
+            module="${base#nightly-backend-}"
+            module="${module%-${RUN_ID}}"
+            mkdir -p "workbench-${module}/build"
+            cp -a "${artifact_dir}/." "workbench-${module}/build/"
+          done
+
+          frontend_artifact="nightly-artifacts/nightly-frontend-${RUN_ID}"
+          if [ -d "${frontend_artifact}" ]; then
+            mkdir -p workbench-frontend/coverage
+            cp -a "${frontend_artifact}/." workbench-frontend/coverage/
+          fi
+
+          unit_artifact="nightly-artifacts/nightly-unit-coverage-${RUN_ID}"
+          if [ -d "${unit_artifact}" ]; then
+            mkdir -p build/reports/kover/unit
+            cp -a "${unit_artifact}/." build/reports/kover/unit/
+          fi
+
+      - name: Aggregate PIT reports
+        run: ./gradlew pitestReportAggregate --no-daemon --no-configuration-cache
+
+      - name: Merge Kover reports
+        working-directory: scripts/ci
+        env:
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run merge-kover-reports
 
       - name: Publish nightly report
         if: always()
@@ -161,7 +204,7 @@ jobs:
 
   gate:
     name: Nightly (gate)
-    needs: [backend-module, frontend, unit-coverage, aggregate-report]
+    needs: [backend-module, test-support, frontend, unit-coverage, aggregate-report]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -170,13 +213,14 @@ jobs:
       - name: Require all nightly jobs to succeed
         env:
           BACKEND_RESULT: ${{ needs.backend-module.result }}
+          TEST_SUPPORT_RESULT: ${{ needs.test-support.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           UNIT_COVERAGE_RESULT: ${{ needs.unit-coverage.result }}
           AGGREGATE_RESULT: ${{ needs.aggregate-report.result }}
         run: |
           set -euo pipefail
           failed=0
-          for name in BACKEND FRONTEND UNIT_COVERAGE AGGREGATE; do
+          for name in BACKEND TEST_SUPPORT FRONTEND UNIT_COVERAGE AGGREGATE; do
             result_var="${name}_RESULT"
             result="${!result_var}"
             if [ "${result}" != "success" ]; then
