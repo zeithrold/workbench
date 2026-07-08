@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.testing.Test
 
 plugins {
@@ -120,6 +121,21 @@ tasks.register("check") {
     dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
 }
 
+val koverProjects = listOf(rootProject) + backendProjects
+
+tasks.register<Delete>("cleanKover") {
+    group = "verification"
+    description =
+        "Deletes Kover instrumentation and report artifacts so unit-only coverage can be regenerated."
+    koverProjects.forEach { project ->
+        delete(
+            project.layout.buildDirectory.dir("kover"),
+            project.layout.buildDirectory.dir("reports/kover"),
+            project.layout.buildDirectory.dir("tmp/koverXmlReport"),
+        )
+    }
+}
+
 tasks.register("koverXmlReportUnit") {
     group = "verification"
     description =
@@ -142,6 +158,7 @@ tasks.register("koverUnitCoverage") {
     description =
         "Runs backend unit tests and writes unit-only Kover XML. Invoke with: " +
             "./gradlew koverUnitCoverage -Pkover.unitOnly"
+    dependsOn(tasks.named("cleanKover"))
     dependsOn(backendProjects.map { "${it.path}:unitTest" })
     dependsOn(tasks.named("koverXmlReport"))
     finalizedBy(tasks.named("koverXmlReportUnit"))
@@ -152,6 +169,7 @@ tasks.named("koverHtmlReport") {
 }
 
 tasks.named("koverXmlReport") {
+    mustRunAfter(tasks.named("cleanKover"))
     mustRunAfter(backendProjects.map { "${it.path}:check" })
 }
 
@@ -208,6 +226,10 @@ configure(backendProjects) {
 
         configureUnitAndIntegrationTests()
 
+        val cleanKoverTask = rootProject.tasks.named("cleanKover")
+        tasks.named("unitTest").configure { mustRunAfter(cleanKoverTask) }
+        tasks.named("integrationTest").configure { mustRunAfter(cleanKoverTask) }
+
         tasks.register("quickCheck") {
             group = "verification"
             description = "Spotless, Detekt, and unit tests for this module."
@@ -234,7 +256,9 @@ configure(backendProjects) {
             instrumentation {
                 disabledForTestTasks.add("fuzzVerification")
                 if (providers.gradleProperty("kover.unitOnly").isPresent) {
-                    disabledForTestTasks.add("integrationTest")
+                    // Kover wires report tasks through the disabled `test` aggregator, which
+                    // otherwise pulls integrationTest back into unit-only runs.
+                    disabledForTestTasks.addAll("test", "integrationTest")
                 }
             }
         }
