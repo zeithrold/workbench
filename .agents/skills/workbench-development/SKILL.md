@@ -209,7 +209,7 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 | Trigger | Workflow | What runs |
 |---------|----------|-----------|
 | Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → [quality-gate.yml](../../../.github/workflows/quality-gate.yml) | `check` (full), bootJar, diff coverage, Docker build (no push on PR) |
-| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | Per-module `nightlyModule` (parallel) + frontend `check` + unit Kover → aggregate PIT/Kover report (no diff coverage, no Docker) |
+| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | Per-module `nightlyModule` (parallel) + `test-support:check` + frontend `check` + unit Kover → aggregate PIT/Kover report (no diff coverage, no Docker) |
 
 Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary (Quality Gate only); `uv run render-quality-summary` writes Kover/PIT (both workflows).
 
