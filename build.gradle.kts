@@ -377,6 +377,13 @@ configure(backendProjects) {
                 }
             }
         }
+
+        tasks.register("nightlyModule") {
+            group = "verification"
+            description = "Nightly per-module verification: check, fuzz, and mutation tests."
+            dependsOn("check", "fuzzVerification")
+            dependsOn(tasks.matching { it.name == "pitest" })
+        }
     }
 }
 

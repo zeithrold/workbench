@@ -46,7 +46,8 @@ Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 ```bash
 ./gradlew quickCheck                              # local: unit tests + static analysis
 ./gradlew check                                   # pre-PR / CI: + integration tests + full Kover (90%)
-./gradlew extendedCheck                           # Nightly: + fuzz + mutation
+./gradlew extendedCheck                           # local serial equivalent of Nightly CI
+./gradlew :workbench-core:nightlyModule           # per-module nightly (matches CI matrix)
 ./gradlew koverUnitCoverage -Pkover.unitOnly      # unit-only coverage report (no gate)
 ```
 

@@ -99,7 +99,7 @@ Run in separate terminals:
 |------|---------|------|----------|
 | **Quick** | `./gradlew quickCheck` | Local edit loop | Spotless, Detekt, backend `unitTest`, frontend `pnpmLint` |
 | **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
-| **Extended** | `./gradlew extendedCheck` | Nightly CI | Full + `fuzzTest` + `mutationTest` + unit Kover XML |
+| **Extended** | `./gradlew extendedCheck` | Nightly CI (local serial equivalent) | Full + `fuzzTest` + `mutationTest` + unit Kover XML |
 
 Module tasks: `unitTest` (no integration/fuzz tags), `integrationTest` (integration-tagged only), `test` (both). Integration tests require Docker.
 
@@ -208,10 +208,10 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 
 | Trigger | Workflow | What runs |
 |---------|----------|-----------|
-| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → quality-gate | `check` (full), bootJar, diff coverage, Docker build (no push on PR) |
-| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | `check` + fuzz + mutation + `koverUnitCoverage -Pkover.unitOnly` (no diff coverage) |
+| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → [quality-gate.yml](../../../.github/workflows/quality-gate.yml) | `check` (full), bootJar, diff coverage, Docker build (no push on PR) |
+| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | Per-module `nightlyModule` (parallel) + frontend `check` + unit Kover → aggregate PIT/Kover report (no diff coverage, no Docker) |
 
-Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary; `uv run render-quality-summary` writes Kover/PIT. Diff coverage runs on CI push/PR when `./gradlew check` succeeds.
+Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary (Quality Gate only); `uv run render-quality-summary` writes Kover/PIT (both workflows).
 
 ## PR Checklist
 
