@@ -13,5 +13,3 @@ jobs:
       contents: read
       packages: write
     uses: ./.github/workflows/quality-gate.yml
-    with:
-      extended-tests: false

@@ -1,0 +1,47 @@
+name: Workbench toolchain setup
+description: JDK 25, pnpm, Node.js, Gradle, and uv for Workbench CI jobs
+
+inputs:
+  fetch-depth:
+    description: Git fetch depth for checkout (omit to skip checkout)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      if: inputs.fetch-depth != ''
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "25"
+
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.33.0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+        cache: pnpm
+        cache-dependency-path: workbench-frontend/pnpm-lock.yaml
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v6
+      with:
+        gradle-version: wrapper
+        cache-provider: basic
+
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: scripts/ci/uv.lock
