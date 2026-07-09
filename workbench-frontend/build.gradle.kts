@@ -40,12 +40,14 @@ tasks.register("snapshotFrontendUnitCoverage") {
     group = "verification"
     description = "Copies Vitest LCOV into coverage/unit/ for unit-vs-full reporting."
     dependsOn("pnpmCoverage")
+    val lcovFile = layout.projectDirectory.file("coverage/lcov.info")
+    val unitDir = layout.projectDirectory.dir("coverage/unit")
     doLast {
-        val lcov = layout.projectDirectory.file("coverage/lcov.info").asFile
+        val lcov = lcovFile.asFile
         if (lcov.isFile) {
-            val unitDir = layout.projectDirectory.dir("coverage/unit").asFile
-            unitDir.mkdirs()
-            lcov.copyTo(unitDir.resolve("lcov.info"), overwrite = true)
+            val targetDir = unitDir.asFile
+            targetDir.mkdirs()
+            lcov.copyTo(targetDir.resolve("lcov.info"), overwrite = true)
         }
     }
 }

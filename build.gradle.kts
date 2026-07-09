@@ -61,6 +61,18 @@ val backendProjects = listOf(
     project(":workbench-worker"),
 )
 
+val backendModuleNames =
+    listOf(
+        "workbench-core",
+        "workbench-service",
+        "workbench-agile",
+        "workbench-tenant",
+        "workbench-data",
+        "workbench-security",
+        "workbench-web",
+        "workbench-worker",
+    )
+
 val koverExcludedClasses =
   arrayOf(
       "*.WorkbenchApplication*",
@@ -141,18 +153,21 @@ tasks.register("snapshotModuleUnitKoverReports") {
     description =
         "Copies per-module and root Kover XML reports into unit/ subdirectories " +
             "(unit-test coverage snapshot before integration tests run)."
+    val rootBuildDir = layout.buildDirectory
+    val repoDir = layout.projectDirectory
+    val moduleNames = backendModuleNames
     doLast {
-        val rootReport = layout.buildDirectory.file("reports/kover/report.xml").get().asFile
+        val rootReport = rootBuildDir.file("reports/kover/report.xml").get().asFile
         if (rootReport.isFile) {
-            val unitDir = layout.buildDirectory.dir("reports/kover/unit").get().asFile
+            val unitDir = rootBuildDir.dir("reports/kover/unit").get().asFile
             unitDir.mkdirs()
             rootReport.copyTo(unitDir.resolve("report.xml"), overwrite = true)
         }
-        backendProjects.forEach { project ->
+        moduleNames.forEach { moduleName ->
             val moduleReport =
-                project.layout.buildDirectory.file("reports/kover/report.xml").get().asFile
+                repoDir.dir(moduleName).dir("build").file("reports/kover/report.xml").asFile
             if (moduleReport.isFile) {
-                val unitDir = project.layout.buildDirectory.dir("reports/kover/unit").get().asFile
+                val unitDir = repoDir.dir(moduleName).dir("build").dir("reports/kover/unit").asFile
                 unitDir.mkdirs()
                 moduleReport.copyTo(unitDir.resolve("report.xml"), overwrite = true)
             }
