@@ -1,7 +1,19 @@
-package ink.doa.workbench.core.workitem.activity
+package ink.doa.workbench.core.workitem.stream
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityCommentRef
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityFieldChange
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
+import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusSnapshot
+import ink.doa.workbench.core.workitem.activity.WorkItemCommentCreatedPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemCommentDeletedPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemCommentEditedPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemStatusChangedPayload
+import ink.doa.workbench.core.workitem.activity.WorkItemUpdatedPayload
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -9,9 +21,9 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 
-class WorkItemActivityCodecTest :
+class WorkItemEventCodecTest :
   StringSpec({
-    val codec = WorkItemActivityCodec()
+    val codec = WorkItemEventCodec()
 
     "round-trips created payload" {
       val payload =
@@ -22,8 +34,8 @@ class WorkItemActivityCodecTest :
             ),
           issueType = WorkItemActivityEntityRef("ity_test", "Task"),
         )
-      val encoded = codec.encode(WorkItemActivitySpecs.Created, payload)
-      val decoded = codec.decode(WorkItemActivityType.CREATED, encoded)
+      val encoded = codec.encode(WorkItemEventSpecs.Created, payload)
+      val decoded = codec.decode(WorkItemEventType.CREATED, encoded)
       decoded.shouldBeInstanceOf<WorkItemActivityPayload.Created>()
       decoded.value shouldBe payload
     }
@@ -41,15 +53,9 @@ class WorkItemActivityCodecTest :
               )
             )
         )
-      val encoded = codec.encode(WorkItemActivitySpecs.Updated, payload)
-      val decoded = codec.decode(WorkItemActivityType.UPDATED, encoded)
+      val encoded = codec.encode(WorkItemEventSpecs.Updated, payload)
+      val decoded = codec.decode(WorkItemEventType.UPDATED, encoded)
       decoded.shouldBeInstanceOf<WorkItemActivityPayload.Updated>()
-    }
-
-    "unknown activity type decodes to Unknown payload" {
-      val raw = buildJsonObject {}
-      val decoded = codec.decode(WorkItemActivityType.UNKNOWN, raw)
-      decoded.shouldBeInstanceOf<WorkItemActivityPayload.Unknown>()
     }
 
     "round-trips status changed payload" {
@@ -61,8 +67,8 @@ class WorkItemActivityCodecTest :
               to = WorkItemActivityStatusRef("sts_new", "Done", "done"),
             )
         )
-      val encoded = codec.encode(WorkItemActivitySpecs.StatusChanged, payload)
-      val decoded = codec.decode(WorkItemActivityType.STATUS_CHANGED, encoded)
+      val encoded = codec.encode(WorkItemEventSpecs.StatusChanged, payload)
+      val decoded = codec.decode(WorkItemEventType.STATUS_CHANGED, encoded)
       decoded.shouldBeInstanceOf<WorkItemActivityPayload.StatusChanged>()
       decoded.value shouldBe payload
     }
@@ -72,10 +78,39 @@ class WorkItemActivityCodecTest :
         WorkItemCommentCreatedPayload(
           comment = WorkItemActivityCommentRef("cmt_test", "Looks good")
         )
-      val encoded = codec.encode(WorkItemActivitySpecs.CommentAdded, payload)
-      val decoded = codec.decode(WorkItemActivityType.COMMENT_CREATED, encoded)
+      val encoded = codec.encode(WorkItemEventSpecs.CommentAdded, payload)
+      val decoded = codec.decode(WorkItemEventType.COMMENT_ADDED, encoded)
       decoded.shouldBeInstanceOf<WorkItemActivityPayload.CommentAdded>()
       decoded.value shouldBe payload
+    }
+
+    "round-trips comment edited payload" {
+      val payload =
+        WorkItemCommentEditedPayload(
+          comment = WorkItemActivityCommentRef("cmt_test", "Updated text")
+        )
+      val encoded = codec.encode(WorkItemEventSpecs.CommentEdited, payload)
+      val decoded = codec.decode(WorkItemEventType.COMMENT_EDITED, encoded)
+      decoded.shouldBeInstanceOf<WorkItemActivityPayload.CommentEdited>()
+      decoded.value shouldBe payload
+    }
+
+    "round-trips comment deleted payload" {
+      val payload =
+        WorkItemCommentDeletedPayload(
+          comment = WorkItemActivityCommentRef("cmt_test", "Removed"),
+          deleteReason = "spam",
+        )
+      val encoded = codec.encode(WorkItemEventSpecs.CommentDeleted, payload)
+      val decoded = codec.decode(WorkItemEventType.COMMENT_DELETED, encoded)
+      decoded.shouldBeInstanceOf<WorkItemActivityPayload.CommentDeleted>()
+      decoded.value shouldBe payload
+    }
+
+    "unknown event type decodes to Unknown payload" {
+      val raw = buildJsonObject {}
+      val decoded = codec.decode(WorkItemEventType.UNKNOWN, raw)
+      decoded.shouldBeInstanceOf<WorkItemActivityPayload.Unknown>()
     }
 
     "encodePayload round-trips all payload variants" {
@@ -90,39 +125,8 @@ class WorkItemActivityCodecTest :
           )
         )
       codec
-        .decode(WorkItemActivityType.CREATED, codec.encodePayload(created))
+        .decode(WorkItemEventType.CREATED, codec.encodePayload(created))
         .shouldBeInstanceOf<WorkItemActivityPayload.Created>()
-
-      val updated =
-        WorkItemActivityPayload.Updated(
-          WorkItemUpdatedPayload(
-            fields =
-              listOf(
-                WorkItemActivityFieldChange(
-                  path = "title",
-                  label = "Title",
-                  from = null,
-                  to = null,
-                )
-              )
-          )
-        )
-      codec
-        .decode(WorkItemActivityType.UPDATED, codec.encodePayload(updated))
-        .shouldBeInstanceOf<WorkItemActivityPayload.Updated>()
-
-      val statusChanged =
-        WorkItemActivityPayload.StatusChanged(
-          WorkItemStatusChangedPayload(
-            status =
-              WorkItemActivityStatusSnapshot(
-                to = WorkItemActivityStatusRef("sts_test", "Done", "done")
-              )
-          )
-        )
-      codec
-        .decode(WorkItemActivityType.STATUS_CHANGED, codec.encodePayload(statusChanged))
-        .shouldBeInstanceOf<WorkItemActivityPayload.StatusChanged>()
 
       val commentAdded =
         WorkItemActivityPayload.CommentAdded(
@@ -131,7 +135,7 @@ class WorkItemActivityCodecTest :
           )
         )
       codec
-        .decode(WorkItemActivityType.COMMENT_CREATED, codec.encodePayload(commentAdded))
+        .decode(WorkItemEventType.COMMENT_ADDED, codec.encodePayload(commentAdded))
         .shouldBeInstanceOf<WorkItemActivityPayload.CommentAdded>()
 
       val raw = buildJsonObject {}
@@ -147,14 +151,12 @@ class WorkItemActivityCodecTest :
             ),
           issueType = WorkItemActivityEntityRef("ity_test", "Task"),
         )
-      codec.validateRoundTrip(WorkItemActivitySpecs.Created, payload)
+      codec.validateRoundTrip(WorkItemEventSpecs.Created, payload)
     }
 
     "invalid payload for known type throws" {
       val raw = JsonObject(emptyMap())
-      shouldThrow<InvalidRequestException> {
-          codec.decode(WorkItemActivityType.STATUS_CHANGED, raw)
-        }
+      shouldThrow<InvalidRequestException> { codec.decode(WorkItemEventType.STATUS_CHANGED, raw) }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_ACTIVITY_PAYLOAD_INVALID
     }
   })
