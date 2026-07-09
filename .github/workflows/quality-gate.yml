@@ -38,14 +38,14 @@ jobs:
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
 
-      - name: Lint CI Python scripts
+      - name: Lint diff coverage Python wrapper
         working-directory: scripts/ci
         run: |
           uv run ruff check .
           uv run ruff format --check .
 
       - name: Static checks, tests, and coverage gate
-        run: ./gradlew check --no-daemon
+        run: ./gradlew workbenchCiCheck --no-daemon
 
       - name: Build web and worker boot jars
         run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
@@ -58,9 +58,13 @@ jobs:
             workbench-web/build/libs/workbench-web.jar
             workbench-worker/build/libs/workbench-worker.jar
 
-      - name: Generate Kover XML report
+      - name: Generate full Kover XML report
         if: success() || failure()
-        run: ./gradlew koverXmlReport --no-daemon
+        run: ./gradlew workbenchCiFullCoverage --no-daemon
+
+      - name: Generate unit Kover XML report
+        if: success() || failure()
+        run: ./gradlew workbenchCiUnitCoverage --no-daemon
 
       - name: Frontend coverage report
         if: success()
@@ -83,10 +87,9 @@ jobs:
 
       - name: Publish quality gate report
         if: always()
-        working-directory: scripts/ci
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: uv run render-quality-summary >> "$GITHUB_STEP_SUMMARY"
+        run: ./gradlew -q workbenchCiRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload quality reports
         if: always()
@@ -98,6 +101,7 @@ jobs:
             scripts/ci/diff-cover-backend.html
             scripts/ci/diff-cover-frontend.html
             scripts/ci/diff-coverage-results.json
+            build/reports/workbench-ci/
             workbench-frontend/coverage/
           retention-days: 14
 

@@ -46,7 +46,7 @@ jobs:
 
       - name: Module nightly verification
         run: |
-          ./gradlew :workbench-${{ matrix.module }}:nightlyModule \
+          ./gradlew :workbench-${{ matrix.module }}:workbenchCiNightlyModule \
             --no-daemon --no-parallel --no-configuration-cache
 
       - name: Upload module reports
@@ -113,7 +113,7 @@ jobs:
 
       - name: Generate unit-only Kover XML
         run: |
-          ./gradlew koverUnitCoverage -Pkover.unitOnly \
+          ./gradlew workbenchCiUnitCoverage \
             --no-daemon --no-configuration-cache
 
       - name: Upload unit coverage report
@@ -173,24 +173,21 @@ jobs:
           fi
 
       - name: Merge PIT reports
-        working-directory: scripts/ci
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: uv run merge-pit-reports
+        run: ./gradlew workbenchCiMergePitReports --no-daemon
 
       - name: Merge Kover reports
-        working-directory: scripts/ci
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: uv run merge-kover-reports
+        run: ./gradlew workbenchCiMergeKoverReports --no-daemon
 
       - name: Publish nightly report
         if: always()
-        working-directory: scripts/ci
         env:
           EXTENDED_TESTS: "true"
           REPO_ROOT: ${{ github.workspace }}
-        run: uv run render-quality-summary >> "$GITHUB_STEP_SUMMARY"
+        run: ./gradlew -q workbenchCiRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload aggregated reports
         if: always()
@@ -200,6 +197,7 @@ jobs:
           path: |
             build/reports/kover/
             build/reports/pitest/
+            build/reports/workbench-ci/
             workbench-*/build/reports/kover/
             workbench-*/build/reports/pitest/
             workbench-frontend/coverage/

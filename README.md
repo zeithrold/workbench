@@ -44,17 +44,17 @@ OpenAPI is available at `http://localhost:8080/api/openapi`. Scalar is available
 Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 
 ```bash
-./gradlew quickCheck                              # local: unit tests + static analysis
-./gradlew check                                   # pre-PR / CI: + integration tests + full Kover (90%)
-./gradlew extendedCheck                           # local serial equivalent of Nightly CI
-./gradlew :workbench-core:nightlyModule           # per-module nightly (matches CI matrix)
-./gradlew koverUnitCoverage -Pkover.unitOnly      # unit-only coverage report (no gate)
+./gradlew workbenchQuickCheck                     # local: unit tests + static analysis
+./gradlew workbenchCiCheck                        # pre-PR / CI: + integration tests + full Kover (90%)
+./gradlew workbenchExtendedCheck                  # local serial equivalent of Nightly CI
+./gradlew :workbench-core:workbenchCiNightlyModule # per-module nightly (matches CI matrix)
+./gradlew workbenchCiUnitCoverage                  # unit-only coverage report (soft warnings)
 ```
 
 Legacy per-module debug:
 
 ```bash
-./gradlew mutationTest
+./gradlew workbenchMutationTest
 ./gradlew :workbench-core:pitest
 ./gradlew :workbench-frontend:pnpmCoverage
 ./gradlew :workbench-frontend:pnpmE2e
@@ -63,7 +63,7 @@ Legacy per-module debug:
 **Diff coverage** (same gate as CI; requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-./gradlew check
+./gradlew workbenchCiCheck
 ./gradlew :workbench-frontend:pnpmCoverage
 git fetch origin main
 uv run --directory scripts/ci check-diff-coverage

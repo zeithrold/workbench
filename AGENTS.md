@@ -22,23 +22,23 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 | Tier | Command | Scope |
 |------|---------|--------|
-| **Quick** (local loop) | `./gradlew quickCheck` | Spotless + Detekt + **unit tests**; frontend ESLint only |
-| **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
-| **Extended** (Nightly CI) | `./gradlew extendedCheck` | Full + `fuzzTest` + `mutationTest` + unit Kover XML (local serial equivalent) |
+| **Quick** (local loop) | `./gradlew workbenchQuickCheck` | Spotless + Detekt + **unit tests**; frontend ESLint only |
+| **Full** (pre-PR / CI) | `./gradlew workbenchCiCheck` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
+| **Extended** (Nightly CI) | `./gradlew workbenchExtendedCheck` | Full + `workbenchFuzzTest` + `workbenchMutationTest` + unit Kover XML (local serial equivalent) |
 
-Backend test tasks: `unitTest` (excludes integration and fuzz tags), `integrationTest` (integration-tagged only), `test` (runs both). Kotest specs use `@Tags("integration")`; JUnit `@Test` classes use `@Tag("integration")`. Integration tests need Docker.
+Backend test tasks: `workbenchUnitTest` (excludes integration and fuzz tags), `workbenchIntegrationTest` (integration-tagged only), `test` (standard Gradle lifecycle test task, excluding fuzz by convention). Kotest specs use `@Tags("integration")`; JUnit `@Test` classes use `@Tag("integration")`. Integration tests need Docker.
 
 **Coverage (two metrics):**
-- **Full** — `build/reports/kover/report.xml` — unit + integration; gated at 90% on `check`.
-- **Unit** — `build/reports/kover/unit/report.xml` — unit tests only; report-only for now (soft target 70%+). Generate with `./gradlew koverUnitCoverage -Pkover.unitOnly`.
+- **Full** — `build/reports/kover/report.xml` — unit + integration; gated at 90% on `workbenchCiCheck` and standard `check`.
+- **Unit** — `build/reports/kover/unit/report.xml` — unit tests only; soft warnings at 70% and full-unit delta >15pp. Generate with `./gradlew workbenchCiUnitCoverage`.
 
 Unit vs integration responsibilities and thresholds: [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
 
 ### Lint / test caveats
-- Run `./gradlew quickCheck` during local iteration; `./gradlew check` before push; `./gradlew extendedCheck` matches Nightly.
-- **Diff coverage:** after `./gradlew check`, run `./gradlew :workbench-frontend:pnpmCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this on push/PR (not nightly) when `check` succeeds. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
+- Run `./gradlew workbenchQuickCheck` during local iteration; `./gradlew workbenchCiCheck` before push; `./gradlew workbenchExtendedCheck` matches Nightly.
+- **Diff coverage:** after `./gradlew workbenchCiCheck`, run `./gradlew :workbench-frontend:pnpmCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this on push/PR (not nightly) when `workbenchCiCheck` succeeds. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
-- Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
+- Mutation testing: `./gradlew workbenchMutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
 
 ### Dependency notes
 - Redisson is pinned to `4.6.1` (3.x's `RedissonAutoConfigurationV2` is incompatible with Spring Boot 4's package relocation), and `workbench-web` includes `kotlinx-coroutines-reactor` at runtime (required for Spring MVC to invoke `suspend` handler functions). Both are needed for the apps to boot and serve requests on Spring Boot 4.

@@ -41,7 +41,7 @@ tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmE2e") {
     args.set(listOf("test:e2e"))
 }
 
-tasks.register("quickCheck") {
+tasks.register("workbenchQuickCheck") {
     dependsOn("pnpmLint")
 }
 
