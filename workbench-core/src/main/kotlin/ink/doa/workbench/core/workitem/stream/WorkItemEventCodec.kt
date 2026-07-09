@@ -75,8 +75,6 @@ class WorkItemEventCodec(private val json: Json = defaultJson) {
         encode(WorkItemEventSpecs.CommentEdited, payload.value)
       is WorkItemActivityPayload.CommentDeleted ->
         encode(WorkItemEventSpecs.CommentDeleted, payload.value)
-      is WorkItemActivityPayload.CommentCreated ->
-        encode(WorkItemEventSpecs.CommentAdded, payload.value)
       is WorkItemActivityPayload.Unknown -> payload.raw
     }
 

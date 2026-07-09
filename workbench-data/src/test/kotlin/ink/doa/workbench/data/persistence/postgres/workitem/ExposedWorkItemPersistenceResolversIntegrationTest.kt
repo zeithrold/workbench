@@ -61,6 +61,11 @@ class ExposedWorkItemPersistenceResolversIntegrationTest :
           resolveUser(user.apiId.value) shouldBe stack.actorId
           resolveProject(stack.tenantId, project.apiId.value) shouldBe stack.projectId
           resolveIssue(stack.tenantId, created.workItem.apiId.value) shouldBe created.workItem.id
+          requirePublicId(IssueTypesTable, stack.issueType.id) shouldBe stack.issueType.apiId
+          loadEntityRefByApiId(IssueTypesTable, stack.issueType.id).let { ref ->
+            ref.id shouldBe stack.issueType.apiId.value
+            ref.display shouldBe stack.issueType.name
+          }
 
           val now = OffsetDateTime.now(ZoneOffset.UTC)
           val priorityId = UUID.randomUUID()

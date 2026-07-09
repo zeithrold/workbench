@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
+import ink.doa.workbench.data.persistence.postgres.requireColumn
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -81,11 +82,8 @@ internal fun allocateSequence(projectId: UUID): Long {
 }
 
 internal fun requirePublicId(table: org.jetbrains.exposed.v1.core.Table, id: UUID): PublicId {
-  val apiIdColumn =
-    table.columns.single { it.name == "api_id" } as org.jetbrains.exposed.v1.core.Column<String>
-  val idColumn =
-    table.columns.single { it.name == "id" }
-      as org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid>
+  val apiIdColumn = table.requireColumn<String>("api_id")
+  val idColumn = table.requireColumn<kotlin.uuid.Uuid>("id")
   return PublicId(table.selectAll().where { idColumn eq id.toKotlinUuid() }.single()[apiIdColumn])
 }
 

@@ -1,6 +1,6 @@
 package ink.doa.workbench.core.common.errors
 
-inline fun requireValid(
+fun requireValid(
   condition: Boolean,
   errorCode: WorkbenchErrorCode,
   detail: String? = null,
@@ -10,7 +10,7 @@ inline fun requireValid(
   }
 }
 
-inline fun requireFound(
+fun requireFound(
   condition: Boolean,
   errorCode: WorkbenchErrorCode,
   detail: String? = null,

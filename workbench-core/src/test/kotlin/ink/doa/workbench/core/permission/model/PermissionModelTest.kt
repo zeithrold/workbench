@@ -30,8 +30,7 @@ class PermissionModelTest :
     "authorization decisions expose allow and deny reasons" {
       val allow = AuthorizationDecision.Allow(DecisionReason("grant_allowed", "allowed"))
       val deny = AuthorizationDecision.Deny(DecisionReason("grant_missing", "denied"))
-      (allow is AuthorizationDecision.Allow) shouldBe true
-      (deny is AuthorizationDecision.Deny) shouldBe true
       allow.reason.code shouldBe "grant_allowed"
+      deny.reason.code shouldBe "grant_missing"
     }
   })

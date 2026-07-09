@@ -41,6 +41,9 @@ class WorkItemActivityModelsCoverageTest :
     "activity specs resolve by type" {
       WorkItemActivitySpecs.specFor(WorkItemActivityType.CREATED)?.type shouldBe
         WorkItemActivityType.CREATED
+      WorkItemActivitySpecs.specFor(WorkItemActivityType.COMMENT_CREATED)?.type shouldBe
+        WorkItemActivityType.COMMENT_CREATED
+      WorkItemActivitySpecs.CommentAdded.type shouldBe WorkItemActivityType.COMMENT_CREATED
       WorkItemActivitySpecs.specFor(WorkItemActivityType.UNKNOWN).shouldBeNull()
     }
 
