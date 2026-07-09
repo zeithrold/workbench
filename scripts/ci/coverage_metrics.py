@@ -80,8 +80,8 @@ def parse_lcov_report(path: Path) -> CoverageMetrics | None:
     if not path.is_file():
         return None
 
-    line_hits: dict[int, int] = {}
-    branch_hits: dict[tuple[int, int], int] = {}
+    line_hits: dict[tuple[str, int], int] = {}
+    branch_hits: dict[tuple[str, int, int, int], int] = {}
     current_file: str | None = None
 
     for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -100,7 +100,7 @@ def parse_lcov_report(path: Path) -> CoverageMetrics | None:
                 hits = int(parts[1])
             except ValueError:
                 continue
-            line_hits[line_no] = hits
+            line_hits[(current_file, line_no)] = hits
         elif line.startswith("BRDA:"):
             parts = line[5:].split(",")
             if len(parts) != 4:
@@ -112,7 +112,7 @@ def parse_lcov_report(path: Path) -> CoverageMetrics | None:
                 hits = int(parts[3])
             except ValueError:
                 continue
-            branch_hits[(line_no, block, branch)] = hits
+            branch_hits[(current_file, line_no, block, branch)] = hits
         elif line == "end_of_record":
             current_file = None
 

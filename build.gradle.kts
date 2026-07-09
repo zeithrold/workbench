@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.tasks.GradleBuild
 import org.gradle.api.tasks.Delete
 import org.gradle.api.tasks.testing.Test
 
@@ -209,43 +210,63 @@ val backendStaticCheckTasks =
 val backendUnitTestTasks = backendProjects.map { "${it.path}:unitTest" }
 val backendIntegrationTestTasks = backendProjects.map { "${it.path}:integrationTest" }
 val backendKoverVerifyTasks = backendProjects.map { "${it.path}:koverVerify" }
+val backendModuleKoverXmlTasks = backendProjects.map { "${it.path}:koverXmlReport" }
 
-tasks.register("dualCoverageUnitPhase") {
+tasks.register("dualCoverageUnitSnapshot") {
     group = "verification"
-    description = "Runs backend unit tests and snapshots unit-only Kover reports."
+    description =
+        "Runs backend unit tests and snapshots unit-only Kover reports. " +
+            "Invoke with -Pkover.unitOnly (see dualCoverageUnitPhase)."
     dependsOn(tasks.named("cleanKover"))
     dependsOn(backendUnitTestTasks)
+    dependsOn(backendModuleKoverXmlTasks)
     dependsOn(tasks.named("koverXmlReport"))
     finalizedBy(tasks.named("snapshotModuleUnitKoverReports"))
+    onlyIf("kover.unitOnly property must be set") {
+        providers.gradleProperty("kover.unitOnly").isPresent
+    }
 }
 
-tasks.register("dualCoverageFullPhase") {
+val dualCoverageUnitPhase =
+    tasks.register<GradleBuild>("dualCoverageUnitPhase") {
+        group = "verification"
+        description = "Child build: unit coverage snapshot with -Pkover.unitOnly."
+        tasks = listOf("dualCoverageUnitSnapshot")
+        startParameter.projectProperties["kover.unitOnly"] = "true"
+    }
+
+tasks.register("dualCoverageFullCoverage") {
     group = "verification"
-    description = "Runs backend integration tests and regenerates full Kover reports."
-    dependsOn(backendIntegrationTestTasks)
-    dependsOn(backendKoverVerifyTasks)
-    dependsOn(tasks.named("koverXmlReport"), tasks.named("koverHtmlReport"))
-    mustRunAfter(tasks.named("dualCoverageUnitPhase"))
+    description =
+        "Runs integration tests and full Kover reports without re-running backend unit tests."
+    dependsOn(
+        backendStaticCheckTasks,
+        backendIntegrationTestTasks,
+        backendKoverVerifyTasks,
+        ":workbench-test-support:check",
+        ":workbench-frontend:pnpmLint",
+        ":workbench-frontend:pnpmTest",
+        ":workbench-frontend:snapshotFrontendUnitCoverage",
+        tasks.named("koverXmlReport"),
+        tasks.named("koverHtmlReport"),
+    )
 }
+
+val dualCoverageFullPhase =
+    tasks.register<GradleBuild>("dualCoverageFullPhase") {
+        group = "verification"
+        description =
+            "Child build: integration tests and full coverage (backend unit tests excluded)."
+        dependsOn(dualCoverageUnitPhase)
+        tasks = listOf("dualCoverageFullCoverage", "koverVerify")
+        startParameter.excludedTaskNames.addAll(backendUnitTestTasks)
+    }
 
 tasks.register("dualCoverageCheck") {
     group = "verification"
     description =
         "Full verification with dual unit+full coverage snapshots (single unit test run)."
-    dependsOn(
-        backendStaticCheckTasks,
-        ":workbench-test-support:unitTest",
-        ":workbench-frontend:pnpmLint",
-        tasks.named("dualCoverageUnitPhase"),
-        tasks.named("dualCoverageFullPhase"),
-        ":workbench-frontend:pnpmTest",
-        ":workbench-frontend:snapshotFrontendUnitCoverage",
-        tasks.named("koverVerify"),
-    )
-}
-
-tasks.named("koverVerify") {
-    mustRunAfter(tasks.named("dualCoverageFullPhase"))
+    dependsOn(dualCoverageFullPhase)
 }
 
 tasks.named("koverHtmlReport") {
