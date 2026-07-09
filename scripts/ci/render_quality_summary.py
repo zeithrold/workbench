@@ -5,20 +5,23 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 
+from coverage_metrics import (
+    FRONTEND_MODULE,
+    INTEGRATION_LIFT_WARN_THRESHOLD,
+    discover_backend_modules,
+    has_coverage_data,
+    module_full_kover_report,
+    parse_kover_report,
+    repo_root,
+)
+from module_coverage_delta import build_payload
+
 BACKEND_MODULE_PREFIX = "workbench-"
-
-
-@dataclass(frozen=True)
-class CoverageMetrics:
-    line: float | None = None
-    branch: float | None = None
-    instruction: float | None = None
 
 
 @dataclass(frozen=True)
@@ -35,119 +38,33 @@ class MutationMetrics:
 MutationSectionResult = tuple[list[str], dict[str, MutationMetrics], MutationMetrics | None]
 
 
-def repo_root() -> Path:
-    env = os.environ.get("REPO_ROOT")
-    if env:
-        path = Path(env).resolve()
-        if env != "." or (path / "build.gradle.kts").is_file():
-            return path
-
-    result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
-        return Path(result.stdout.strip()).resolve()
-    return Path(".").resolve()
-
-
 def extended_tests_enabled() -> bool:
     return os.environ.get("EXTENDED_TESTS", "false").lower() == "true"
 
 
-def module_kover_report(root: Path, module: str) -> Path:
-    return root / module / "build" / "reports" / "kover" / "report.xml"
+def fmt_pct(value: float | None, bold: bool = False) -> str:
+    if value is None:
+        return "N/A"
+    text = f"{value:.1f}%"
+    return f"**{text}**" if bold else text
 
 
-def parse_kover_report(path: Path) -> CoverageMetrics | None:
-    if not path.is_file():
-        return None
-    try:
-        root = ET.parse(path).getroot()
-    except ET.ParseError:
-        return None
-
-    counters: dict[str, tuple[int, int]] = {}
-    for counter in root.iter("counter"):
-        counter_type = counter.get("type")
-        if counter_type is None:
-            continue
-        missed = int(counter.get("missed", "0"))
-        covered = int(counter.get("covered", "0"))
-        if counter_type in counters:
-            prev_missed, prev_covered = counters[counter_type]
-            counters[counter_type] = (prev_missed + missed, prev_covered + covered)
-        else:
-            counters[counter_type] = (missed, covered)
-
-    def pct(counter_type: str) -> float | None:
-        if counter_type not in counters:
-            return None
-        missed, covered = counters[counter_type]
-        total = missed + covered
-        if total == 0:
-            return None
-        return covered / total * 100.0
-
-    return CoverageMetrics(
-        line=pct("LINE"),
-        branch=pct("BRANCH"),
-        instruction=pct("INSTRUCTION"),
-    )
+def fmt_delta(delta: float | None, *, warn: bool = False) -> str:
+    if delta is None:
+        return "N/A"
+    sign = "+" if delta > 0 else ""
+    text = f"{sign}{delta:.1f}%"
+    if warn:
+        return f"**{text}** :warning:"
+    return text
 
 
-def discover_backend_modules(root: Path) -> list[str]:
-    modules: list[str] = []
-    for child in sorted(root.iterdir()):
-        if not child.is_dir():
-            continue
-        if not child.name.startswith(BACKEND_MODULE_PREFIX):
-            continue
-        report = child / "build" / "reports" / "kover" / "report.xml"
-        if report.is_file():
-            modules.append(child.name)
-    return modules
-
-
-def aggregate_module_coverage(root: Path, modules: list[str]) -> CoverageMetrics | None:
-    counter_totals: dict[str, tuple[int, int]] = {}
-    for module in modules:
-        report = module_kover_report(root, module)
-        if not report.is_file():
-            continue
-        try:
-            document = ET.parse(report)
-        except ET.ParseError:
-            continue
-        for counter in document.getroot().findall("counter"):
-            counter_type = counter.get("type")
-            if counter_type is None:
-                continue
-            missed = int(counter.get("missed", "0"))
-            covered = int(counter.get("covered", "0"))
-            if counter_type in counter_totals:
-                prev_missed, prev_covered = counter_totals[counter_type]
-                counter_totals[counter_type] = (prev_missed + missed, prev_covered + covered)
-            else:
-                counter_totals[counter_type] = (missed, covered)
-
-    def pct(counter_type: str) -> float | None:
-        if counter_type not in counter_totals:
-            return None
-        missed, covered = counter_totals[counter_type]
-        total = missed + covered
-        if total == 0:
-            return None
-        return covered / total * 100.0
-
-    metrics = CoverageMetrics(
-        line=pct("LINE"),
-        branch=pct("BRANCH"),
-        instruction=pct("INSTRUCTION"),
-    )
-    return metrics if has_coverage_data(metrics) else None
+def fmt_pit_delta(kover_line: float | None, pit_line: float | None) -> str:
+    if kover_line is None or pit_line is None:
+        return "N/A"
+    delta = pit_line - kover_line
+    sign = "+" if delta > 0 else ""
+    return f"{sign}{delta:.1f}%"
 
 
 def parse_pit_mutations(path: Path) -> MutationMetrics | None:
@@ -268,10 +185,8 @@ def parse_pit_index_summary(path: Path) -> MutationMetrics | None:
     )
 
 
-def has_coverage_data(metrics: CoverageMetrics | None) -> bool:
-    if metrics is None:
-        return False
-    return any(value is not None for value in (metrics.line, metrics.branch, metrics.instruction))
+def module_kover_report(root: Path, module: str) -> Path:
+    return module_full_kover_report(root, module)
 
 
 def resolve_aggregate_mutation(
@@ -328,84 +243,74 @@ def load_mutation_metrics(path: Path) -> MutationMetrics | None:
     )
 
 
-def fmt_pct(value: float | None, bold: bool = False) -> str:
-    if value is None:
-        return "N/A"
-    text = f"{value:.1f}%"
-    return f"**{text}**" if bold else text
-
-
-def fmt_delta(kover_line: float | None, pit_line: float | None) -> str:
-    if kover_line is None or pit_line is None:
-        return "N/A"
-    delta = pit_line - kover_line
-    sign = "+" if delta > 0 else ""
-    return f"{sign}{delta:.1f}%"
-
-
 def render_coverage_section(root: Path) -> list[str]:
-    lines = ["### Coverage (Kover)", ""]
-    modules = discover_backend_modules(root)
-    full_total_path = root / "build" / "reports" / "kover" / "report.xml"
-    unit_total_path = root / "build" / "reports" / "kover" / "unit" / "report.xml"
-    full_total = parse_kover_report(full_total_path)
-    unit_total = parse_kover_report(unit_total_path)
+    lines = ["### Coverage (unit vs full)", ""]
+    payload = build_payload(root)
+    module_rows = payload.get("modules", {})
+    totals = payload.get("totals", {})
 
-    if full_total is None and modules:
-        full_total = aggregate_module_coverage(root, modules)
-
-    if not modules and full_total is None:
-        lines.append("_No Kover report found. Run `./gradlew check` or `koverXmlReport` first._")
+    if not module_rows:
+        lines.append(
+            "_No coverage reports found. Run `./gradlew dualCoverageCheck` "
+            "or `./gradlew check` with unit snapshots first._"
+        )
         lines.append("")
         return lines
 
-    lines.append("#### Full coverage (unit + integration)")
+    lines.append(
+        f"Δ = full line % - unit line % (integration lift). "
+        f"Values above **{INTEGRATION_LIFT_WARN_THRESHOLD:g}%** are warnings only."
+    )
     lines.append("")
-    lines.append("| Module | Line | Branch | Instruction |")
-    lines.append("|--------|------|--------|-------------|")
+    lines.append("| Module | Unit Line | Full Line | Δ | Unit Branch | Full Branch |")
+    lines.append("|--------|-----------|-----------|---|-------------|-------------|")
 
-    for module in modules:
-        metrics = parse_kover_report(module_kover_report(root, module))
-        if not has_coverage_data(metrics):
-            continue
-        line = fmt_pct(metrics.line)
-        branch = fmt_pct(metrics.branch)
-        instruction = fmt_pct(metrics.instruction)
-        lines.append(f"| {module} | {line} | {branch} | {instruction} |")
-
-    if full_total is not None:
-        total_line = fmt_pct(full_total.line, bold=True)
-        total_branch = fmt_pct(full_total.branch, bold=True)
-        total_instruction = fmt_pct(full_total.instruction, bold=True)
-        lines.append(f"| **Total** | {total_line} | {total_branch} | {total_instruction} |")
-
-    lines.append("")
-
-    if unit_total is not None:
-        lines.append("#### Unit coverage (unit tests only)")
-        lines.append("")
-        lines.append("| Scope | Line | Branch | Instruction |")
-        lines.append("|-------|------|--------|-------------|")
+    for module in sorted(module_rows.keys()):
+        data = module_rows[module]
+        unit = data.get("unit") or {}
+        full = data.get("full") or {}
+        delta_line = data.get("delta", {}).get("line")
+        warn = bool(data.get("warn_integration_lift"))
+        note = data.get("note")
+        module_label = module
+        if note:
+            module_label = f"{module} *"
         lines.append(
-            f"| **Total** | {fmt_pct(unit_total.line, bold=True)} | "
-            f"{fmt_pct(unit_total.branch, bold=True)} | "
-            f"{fmt_pct(unit_total.instruction, bold=True)} |"
+            f"| {module_label} | {fmt_pct(unit.get('line'))} | {fmt_pct(full.get('line'))} | "
+            f"{fmt_delta(delta_line, warn=warn)} | {fmt_pct(unit.get('branch'))} | "
+            f"{fmt_pct(full.get('branch'))} |"
         )
-        if full_total is not None and full_total.line is not None and unit_total.line is not None:
-            integration_lift = full_total.line - unit_total.line
-            sign = "+" if integration_lift > 0 else ""
-            lines.append("")
-            lines.append(
-                f"_Integration test lift (full - unit line): {sign}{integration_lift:.1f}%_"
-            )
-        lines.append("")
-    else:
+
+    total_unit = totals.get("unit") or {}
+    total_full = totals.get("full") or {}
+    total_delta = totals.get("delta", {}).get("line")
+    total_warn = bool(totals.get("warn_integration_lift"))
+    lines.append(
+        f"| **Backend Total** | {fmt_pct(total_unit.get('line'), bold=True)} | "
+        f"{fmt_pct(total_full.get('line'), bold=True)} | "
+        f"{fmt_delta(total_delta, warn=total_warn)} | "
+        f"{fmt_pct(total_unit.get('branch'), bold=True)} | "
+        f"{fmt_pct(total_full.get('branch'), bold=True)} |"
+    )
+    lines.append("")
+
+    warnings = payload.get("warnings") or []
+    if warnings:
         lines.append(
-            "_Unit-only coverage not generated. "
-            "Run `./gradlew koverUnitCoverage -Pkover.unitOnly` (Nightly does this after `check`)._"
+            f":warning: **Integration lift warnings (non-blocking):** "
+            f"{', '.join(warnings)} exceed {INTEGRATION_LIFT_WARN_THRESHOLD:g}%."
         )
         lines.append("")
 
+    if FRONTEND_MODULE in module_rows and module_rows[FRONTEND_MODULE].get("note"):
+        lines.append(f"_\\* {module_rows[FRONTEND_MODULE]['note']}_")
+        lines.append("")
+
+    lines.append(
+        "Detailed JSON: `scripts/ci/module-coverage-delta.json` "
+        "(generated by `uv run module-coverage-delta`)."
+    )
+    lines.append("")
     return lines
 
 
@@ -501,7 +406,7 @@ def render_correlation_section(
         mutation = module_metrics.get(module)
         kover_line = kover.line if kover else None
         pit_line = mutation.pit_line if mutation else None
-        delta = fmt_delta(kover_line, pit_line)
+        delta = fmt_pit_delta(kover_line, pit_line)
         mutation_score = fmt_pct(mutation.mutation_score if mutation else None)
         test_strength = fmt_pct(mutation.test_strength if mutation else None)
         lines.append(
@@ -515,7 +420,8 @@ def render_correlation_section(
         pit_line = aggregate.pit_line
         lines.append(
             f"| **Total** | {fmt_pct(kover_line, bold=True)} | {fmt_pct(pit_line, bold=True)} | "
-            f"{fmt_delta(kover_line, pit_line)} | {fmt_pct(aggregate.mutation_score, bold=True)} | "
+            f"{fmt_pit_delta(kover_line, pit_line)} | "
+            f"{fmt_pct(aggregate.mutation_score, bold=True)} | "
             f"{fmt_pct(aggregate.test_strength, bold=True)} |"
         )
 

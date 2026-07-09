@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import xml.etree.ElementTree as ET
@@ -19,12 +20,18 @@ def repo_root() -> Path:
     return Path(".").resolve()
 
 
-def discover_module_reports(root: Path) -> list[Path]:
+def discover_module_reports(root: Path, *, unit: bool) -> list[Path]:
     reports: list[Path] = []
     for child in sorted(root.iterdir()):
         if not child.is_dir() or not child.name.startswith(BACKEND_MODULE_PREFIX):
             continue
-        report = child / "build" / "reports" / "kover" / "report.xml"
+        if child.name == "workbench-frontend":
+            continue
+        report = (
+            child / "build" / "reports" / "kover" / "unit" / "report.xml"
+            if unit
+            else child / "build" / "reports" / "kover" / "report.xml"
+        )
         if report.is_file():
             reports.append(report)
     return reports
@@ -63,11 +70,14 @@ def merge_counters(reports: list[Path]) -> dict[str, tuple[int, int]]:
     return merged
 
 
-def write_aggregate_report(output: Path, counters: dict[str, tuple[int, int]]) -> None:
+def write_aggregate_report(
+    output: Path, counters: dict[str, tuple[int, int]], *, unit: bool
+) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
+    label = "unit" if unit else "full"
     report = ET.Element(
         "report",
-        name="Kover aggregated report (Nightly CI module merge)",
+        name=f"Kover aggregated report (Nightly CI module merge, {label})",
     )
     for counter_type in COUNTER_TYPES:
         if counter_type not in counters:
@@ -83,12 +93,26 @@ def write_aggregate_report(output: Path, counters: dict[str, tuple[int, int]]) -
     ET.ElementTree(report).write(output, encoding="unicode", xml_declaration=True)
 
 
-def main() -> int:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--scope",
+        choices=("full", "unit"),
+        default="full",
+        help="Merge full (default) or unit-only per-module Kover reports",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    unit = args.scope == "unit"
     root = repo_root()
-    module_reports = discover_module_reports(root)
+    module_reports = discover_module_reports(root, unit=unit)
     if not module_reports:
+        suffix = "unit/" if unit else ""
         print(
-            "No module Kover reports found under workbench-*/build/reports/kover/",
+            f"No module Kover reports found under workbench-*/build/reports/kover/{suffix}",
             file=sys.stderr,
         )
         return 1
@@ -98,9 +122,16 @@ def main() -> int:
         print("Module Kover reports contained no aggregate counters.", file=sys.stderr)
         return 1
 
-    output = root / "build" / "reports" / "kover" / "report.xml"
-    write_aggregate_report(output, counters)
-    print(f"Wrote aggregated Kover report for {len(module_reports)} modules to {output}")
+    output = (
+        root / "build" / "reports" / "kover" / "unit" / "report.xml"
+        if unit
+        else root / "build" / "reports" / "kover" / "report.xml"
+    )
+    write_aggregate_report(output, counters, unit=unit)
+    scope_label = "unit" if unit else "full"
+    print(
+        f"Wrote aggregated {scope_label} Kover report for {len(module_reports)} modules to {output}"
+    )
     return 0
 
 

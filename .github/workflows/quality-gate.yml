@@ -45,7 +45,7 @@ jobs:
           uv run ruff format --check .
 
       - name: Static checks, tests, and coverage gate
-        run: ./gradlew check --no-daemon
+        run: ./gradlew dualCoverageCheck --no-daemon
 
       - name: Build web and worker boot jars
         run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
@@ -57,14 +57,6 @@ jobs:
           path: |
             workbench-web/build/libs/workbench-web.jar
             workbench-worker/build/libs/workbench-worker.jar
-
-      - name: Generate Kover XML report
-        if: success() || failure()
-        run: ./gradlew koverXmlReport --no-daemon
-
-      - name: Frontend coverage report
-        if: success()
-        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
 
       - name: Check diff coverage
         if: success()
@@ -81,6 +73,13 @@ jobs:
           REPO_ROOT: ${{ github.workspace }}
         run: uv run check-diff-coverage --target all
 
+      - name: Module coverage delta
+        if: always()
+        working-directory: scripts/ci
+        env:
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run module-coverage-delta
+
       - name: Publish quality gate report
         if: always()
         working-directory: scripts/ci
@@ -95,10 +94,12 @@ jobs:
           name: quality-reports-${{ github.run_id }}
           path: |
             build/reports/kover/
+            workbench-*/build/reports/kover/
+            workbench-frontend/coverage/
             scripts/ci/diff-cover-backend.html
             scripts/ci/diff-cover-frontend.html
             scripts/ci/diff-coverage-results.json
-            workbench-frontend/coverage/
+            scripts/ci/module-coverage-delta.json
           retention-days: 14
 
   docker:

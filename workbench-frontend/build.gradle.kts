@@ -36,6 +36,20 @@ tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmCoverage") {
     args.set(listOf("coverage"))
 }
 
+tasks.register("snapshotFrontendUnitCoverage") {
+    group = "verification"
+    description = "Copies Vitest LCOV into coverage/unit/ for unit-vs-full reporting."
+    dependsOn("pnpmCoverage")
+    doLast {
+        val lcov = layout.projectDirectory.file("coverage/lcov.info").asFile
+        if (lcov.isFile) {
+            val unitDir = layout.projectDirectory.dir("coverage/unit").asFile
+            unitDir.mkdirs()
+            lcov.copyTo(unitDir.resolve("lcov.info"), overwrite = true)
+        }
+    }
+}
+
 tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmE2e") {
     dependsOn("pnpmInstall")
     args.set(listOf("test:e2e"))

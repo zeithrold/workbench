@@ -89,7 +89,7 @@ jobs:
 
       - name: Frontend coverage report
         if: success()
-        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+        run: ./gradlew :workbench-frontend:snapshotFrontendUnitCoverage --no-daemon
 
       - name: Upload frontend reports
         if: always()
@@ -121,7 +121,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-unit-coverage-${{ github.run_id }}
-          path: build/reports/kover/unit
+          path: |
+            build/reports/kover/unit
+            workbench-*/build/reports/kover/unit
           retention-days: 14
 
   aggregate-report:
@@ -168,8 +170,17 @@ jobs:
 
           unit_artifact="nightly-artifacts/nightly-unit-coverage-${RUN_ID}"
           if [ -d "${unit_artifact}" ]; then
-            mkdir -p build/reports/kover/unit
-            cp -a "${unit_artifact}/." build/reports/kover/unit/
+            if [ -d "${unit_artifact}/build/reports/kover/unit" ]; then
+              mkdir -p build/reports/kover/unit
+              cp -a "${unit_artifact}/build/reports/kover/unit/." build/reports/kover/unit/
+            fi
+            for module_dir in "${unit_artifact}"/workbench-*; do
+              if [ -d "${module_dir}/build/reports/kover/unit" ]; then
+                module="$(basename "${module_dir}")"
+                mkdir -p "${module}/build/reports/kover/unit"
+                cp -a "${module_dir}/build/reports/kover/unit/." "${module}/build/reports/kover/unit/"
+              fi
+            done
           fi
 
       - name: Merge PIT reports
@@ -182,7 +193,15 @@ jobs:
         working-directory: scripts/ci
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: uv run merge-kover-reports
+        run: |
+          uv run merge-kover-reports --scope full
+          uv run merge-kover-reports --scope unit
+
+      - name: Module coverage delta
+        working-directory: scripts/ci
+        env:
+          REPO_ROOT: ${{ github.workspace }}
+        run: uv run module-coverage-delta
 
       - name: Publish nightly report
         if: always()
@@ -202,6 +221,7 @@ jobs:
             build/reports/pitest/
             workbench-*/build/reports/kover/
             workbench-*/build/reports/pitest/
+            scripts/ci/module-coverage-delta.json
             workbench-frontend/coverage/
           retention-days: 30
 

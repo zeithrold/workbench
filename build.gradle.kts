@@ -136,6 +136,30 @@ tasks.register<Delete>("cleanKover") {
     }
 }
 
+tasks.register("snapshotModuleUnitKoverReports") {
+    group = "verification"
+    description =
+        "Copies per-module and root Kover XML reports into unit/ subdirectories " +
+            "(unit-test coverage snapshot before integration tests run)."
+    doLast {
+        val rootReport = layout.buildDirectory.file("reports/kover/report.xml").get().asFile
+        if (rootReport.isFile) {
+            val unitDir = layout.buildDirectory.dir("reports/kover/unit").get().asFile
+            unitDir.mkdirs()
+            rootReport.copyTo(unitDir.resolve("report.xml"), overwrite = true)
+        }
+        backendProjects.forEach { project ->
+            val moduleReport =
+                project.layout.buildDirectory.file("reports/kover/report.xml").get().asFile
+            if (moduleReport.isFile) {
+                val unitDir = project.layout.buildDirectory.dir("reports/kover/unit").get().asFile
+                unitDir.mkdirs()
+                moduleReport.copyTo(unitDir.resolve("report.xml"), overwrite = true)
+            }
+        }
+    }
+}
+
 tasks.register("koverXmlReportUnit") {
     group = "verification"
     description =
@@ -145,12 +169,7 @@ tasks.register("koverXmlReportUnit") {
     onlyIf("kover.unitOnly property must be set") {
         providers.gradleProperty("kover.unitOnly").isPresent
     }
-    doLast {
-        val report = layout.buildDirectory.file("reports/kover/report.xml").get().asFile
-        val unitDir = layout.buildDirectory.dir("reports/kover/unit").get().asFile
-        unitDir.mkdirs()
-        report.copyTo(unitDir.resolve("report.xml"), overwrite = true)
-    }
+    finalizedBy(tasks.named("snapshotModuleUnitKoverReports"))
 }
 
 tasks.register("koverUnitCoverage") {
@@ -162,6 +181,56 @@ tasks.register("koverUnitCoverage") {
     dependsOn(backendProjects.map { "${it.path}:unitTest" })
     dependsOn(tasks.named("koverXmlReport"))
     finalizedBy(tasks.named("koverXmlReportUnit"))
+}
+
+val backendStaticCheckTasks =
+    backendProjects.flatMap { project ->
+        listOf(
+            "${project.path}:spotlessCheck",
+            "${project.path}:detektMain",
+            "${project.path}:detektTest",
+        )
+    }
+val backendUnitTestTasks = backendProjects.map { "${it.path}:unitTest" }
+val backendIntegrationTestTasks = backendProjects.map { "${it.path}:integrationTest" }
+val backendKoverVerifyTasks = backendProjects.map { "${it.path}:koverVerify" }
+
+tasks.register("dualCoverageUnitPhase") {
+    group = "verification"
+    description = "Runs backend unit tests and snapshots unit-only Kover reports."
+    dependsOn(tasks.named("cleanKover"))
+    dependsOn(backendUnitTestTasks)
+    dependsOn(tasks.named("koverXmlReport"))
+    finalizedBy(tasks.named("snapshotModuleUnitKoverReports"))
+}
+
+tasks.register("dualCoverageFullPhase") {
+    group = "verification"
+    description = "Runs backend integration tests and regenerates full Kover reports."
+    dependsOn(backendIntegrationTestTasks)
+    dependsOn(backendKoverVerifyTasks)
+    dependsOn(tasks.named("koverXmlReport"), tasks.named("koverHtmlReport"))
+    mustRunAfter(tasks.named("dualCoverageUnitPhase"))
+}
+
+tasks.register("dualCoverageCheck") {
+    group = "verification"
+    description =
+        "Full verification with dual unit+full coverage snapshots (single unit test run)."
+    dependsOn(
+        backendStaticCheckTasks,
+        ":workbench-test-support:unitTest",
+        ":workbench-frontend:pnpmLint",
+        tasks.named("dualCoverageUnitPhase"),
+        tasks.named("dualCoverageFullPhase"),
+        ":workbench-frontend:pnpmTest",
+        ":workbench-frontend:snapshotFrontendUnitCoverage",
+        tasks.named("koverVerify"),
+    )
+}
+
+tasks.named("koverVerify") {
+    mustRunAfter(tasks.named("dualCoverageFullPhase"))
 }
 
 tasks.named("koverHtmlReport") {

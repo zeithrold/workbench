@@ -8,6 +8,7 @@ dependencies = ["diff-cover>=9.2"]
 check-diff-coverage = "check_diff_coverage:main"
 merge-kover-reports = "merge_kover_reports:main"
 merge-pit-reports = "merge_pit_reports:main"
+module-coverage-delta = "module_coverage_delta:main"
 render-quality-summary = "render_quality_summary:main"
 
 [dependency-groups]
@@ -23,8 +24,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 only-include = [
     "check_diff_coverage.py",
+    "coverage_metrics.py",
     "merge_kover_reports.py",
     "merge_pit_reports.py",
+    "module_coverage_delta.py",
     "render_quality_summary.py",
 ]
 
@@ -50,8 +53,10 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = [
     "check_diff_coverage",
+    "coverage_metrics",
     "merge_kover_reports",
     "merge_pit_reports",
+    "module_coverage_delta",
     "render_quality_summary",
 ]
 
