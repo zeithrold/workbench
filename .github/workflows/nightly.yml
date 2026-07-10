@@ -105,6 +105,8 @@ jobs:
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
+        with:
+          install-playwright: "true"
 
       - name: Frontend verification
         run: ./gradlew :workbench-frontend:check --no-daemon
