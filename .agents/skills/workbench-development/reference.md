@@ -174,6 +174,7 @@ Reports retained 30 days (`nightly-reports-*` artifact).
 | Exposed + repositories | [kotlin-exposed-patterns](../kotlin-exposed-patterns/SKILL.md) |
 | Kotlin idioms | [kotlin-patterns](../kotlin-patterns/SKILL.md) |
 | Testing / TDD | [kotlin-testing](../kotlin-testing/SKILL.md) |
+| Test governance (principles + boundaries) | [testing-governance.md](../../../docs/testing-governance.md) |
 | Spring architecture | [springboot-patterns](../springboot-patterns/SKILL.md) |
 | Verification patterns | [springboot-verification](../springboot-verification/SKILL.md) |
 | Svelte UI | [svelte](../svelte/SKILL.md) |

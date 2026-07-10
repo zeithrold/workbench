@@ -796,6 +796,7 @@ class ApiRoutesTest : FunSpec({
 - Test behavior, not implementation
 - Use property-based testing for pure functions
 - Use `data class` test fixtures for clarity
+- Stop and flag design issues when a test requires excessive mocking or layer violations; see [testing-governance](../../../docs/testing-governance.md).
 
 **DON'T:**
 - Mix testing frameworks (pick Kotest and stick with it)

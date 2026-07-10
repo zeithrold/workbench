@@ -117,6 +117,10 @@ Module tasks: `workbenchUnitTest` (no integration/fuzz tags), `workbenchIntegrat
 
 **Consistency:** share fixtures (`workbench-test-support` / module `testFixtures`); use Fake implementations of `workbench-core` ports in unit tests; reserve integration tests for adapter/wiring proof. Do not duplicate the same business matrix in both layers.
 
+### Testing principles
+
+- Prioritize test correctness over speed. If writing a test exposes unreasonable code or architecture (e.g., untestable coupling, missing ports, logic in the wrong layer), **stop** and propose design changes before continuing with workaround tests. Canonical reference: [testing-governance.md](../../../docs/testing-governance.md).
+
 ### Coverage standards (two metrics)
 
 | Metric | Report | Gate | Target |
@@ -234,6 +238,7 @@ Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summar
 - PR with only module `workbenchUnitTest` — skips Spotless, Detekt, integration tests, frontend lint
 - Opening a PR after only `./gradlew check` when source changed but diff coverage was not run locally
 - Changing Kotlin or frontend business logic without tests for the new/changed lines
+- Writing contorted or shallow tests to work around bad design instead of flagging the design issue
 
 ## Additional Resources
 

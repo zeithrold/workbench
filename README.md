@@ -79,7 +79,7 @@ qodana scan --within-docker false
 
 The CI workflow uses the same non-Docker mode for both token-authenticated Cloud scans and Fork PR local scans.
 
-Unit tests must not start Spring. Integration tests may use Testcontainers. Tag Kotest specs with `@Tags("integration")`; tag JUnit `@Test` classes with `@Tag("integration")`. See [test governance](docs/testing-governance.md) for naming, layering, and framework rules.
+Unit tests must not start Spring. Integration tests may use Testcontainers. Tag Kotest specs with `@Tags("integration")`; tag JUnit `@Test` classes with `@Tag("integration")`. See [test governance](docs/testing-governance.md) for principles, naming, layering, and framework rules.
 
 ## Architecture Notes
 

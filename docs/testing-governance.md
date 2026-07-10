@@ -1,5 +1,9 @@
 # Test Governance
 
+## Principles
+
+- Prioritize test correctness over speed. If writing a test exposes unreasonable code or architecture (e.g., untestable coupling, missing ports, logic in the wrong layer), stop and propose design changes before continuing with workaround tests.
+
 Workbench uses four complementary test types. Each test should cover one boundary and use the matching framework, tag, and name.
 
 | Type | Purpose | Framework | Name and tag |
