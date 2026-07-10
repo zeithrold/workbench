@@ -73,21 +73,27 @@ tasks.register<PnpmTask>("pnpmE2e") {
     args.set(listOf("test:e2e"))
 }
 
+tasks.register<PnpmTask>("pnpmE2eStack") {
+    dependsOn(
+        "pnpmInstall",
+        "pnpmBuild",
+        ":workbench-web:bootJar",
+        ":workbench-worker:bootJar",
+        ":workbenchPrepareKoverE2eAgent",
+    )
+    args.set(listOf("test:e2e:stack"))
+}
+
 tasks.register("workbenchE2eCheck") {
     group = "verification"
     description = "Full-stack E2E via Testcontainers Compose, Spring Boot API, and Playwright."
-    dependsOn(
-        ":workbench-web:bootJar",
-        ":workbench-worker:bootJar",
-        "pnpmInstall",
-        "pnpmBuild",
-        "pnpmE2eStack",
-    )
+    dependsOn("pnpmE2eStack", ":workbenchKoverE2eReport")
 }
 
-tasks.register<PnpmTask>("pnpmE2eStack") {
-    dependsOn("pnpmInstall")
-    args.set(listOf("test:e2e:stack"))
+gradle.projectsEvaluated {
+    rootProject.tasks.named("workbenchKoverE2eReport").configure {
+        mustRunAfter(tasks.named("pnpmE2eStack"))
+    }
 }
 
 tasks.register("workbenchQuickCheck") {

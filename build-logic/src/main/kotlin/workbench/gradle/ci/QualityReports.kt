@@ -26,6 +26,18 @@ data class MutationMetrics(
     val total: Int = 0,
 )
 
+data class BackendCoverageDelta(
+    val full: CoverageMetrics?,
+    val unit: CoverageMetrics?,
+    val e2e: CoverageMetrics?,
+) {
+    val fullMinusUnit: Double? =
+        if (full?.line != null && unit?.line != null) full.line - unit.line else null
+
+    val e2eMinusFull: Double? =
+        if (e2e?.line != null && full?.line != null) e2e.line - full.line else null
+}
+
 data class FrontendCoverageDelta(
     val unit: CoverageMetrics?,
     val full: CoverageMetrics?,
@@ -226,6 +238,13 @@ object QualityReports {
         return CoverageMetrics(line = hitLines.toDouble() / totalLines * 100.0)
     }
 
+    fun backendCoverageDelta(repoRoot: File): BackendCoverageDelta =
+        BackendCoverageDelta(
+            full = parseKoverReport(repoRoot.resolve("build/reports/kover/report.xml")),
+            unit = parseKoverReport(repoRoot.resolve("build/reports/kover/unit/report.xml")),
+            e2e = parseKoverReport(repoRoot.resolve("build/reports/kover/e2e/report.xml")),
+        )
+
     fun frontendCoverageDelta(repoRoot: File): FrontendCoverageDelta {
         val frontendRoot = repoRoot.resolve("workbench-frontend")
         return FrontendCoverageDelta(
@@ -267,6 +286,7 @@ object QualityReports {
             parseKoverReport(repoRoot.resolve("build/reports/kover/unit/report.xml"))
                 ?: aggregateCoverage(repoRoot, modules, unit = true)
         val deltas = moduleCoverageDeltas(repoRoot, modules)
+        val backendDelta = backendCoverageDelta(repoRoot)
         val frontendDelta = frontendCoverageDelta(repoRoot)
 
         val markdown =
@@ -274,11 +294,45 @@ object QualityReports {
                 appendLine("## Quality Gate Report")
                 appendLine()
                 appendCoverageSection(modules, repoRoot, fullTotal, unitTotal, deltas)
+                appendBackendE2eCoverageSection(backendDelta)
                 appendFrontendCoverageSection(frontendDelta)
                 val mutationResult = appendMutationSection(repoRoot, extendedTests)
                 appendCorrelationSection(repoRoot, extendedTests, mutationResult)
             }
-        return markdown to coverageSummaryJson(fullTotal, unitTotal, deltas, frontendDelta)
+        return markdown to coverageSummaryJson(fullTotal, unitTotal, deltas, backendDelta, frontendDelta)
+    }
+
+    private fun StringBuilder.appendBackendE2eCoverageSection(backendDelta: BackendCoverageDelta) {
+        appendLine("### Backend E2E Coverage (Kover runtime)")
+        appendLine()
+        if (backendDelta.full == null && backendDelta.unit == null && backendDelta.e2e == null) {
+            appendLine("_No backend Kover reports found. Run `./gradlew workbenchE2eCheck` first._")
+            appendLine()
+            return
+        }
+
+        appendLine("| Layer | Line | Branch | Instruction |")
+        appendLine("|-------|------|--------|-------------|")
+        appendLine(
+            "| Full (unit + integration) | ${backendDelta.full?.line.fmt()} | " +
+                "${backendDelta.full?.branch.fmt()} | ${backendDelta.full?.instruction.fmt()} |",
+        )
+        appendLine(
+            "| Unit | ${backendDelta.unit?.line.fmt()} | ${backendDelta.unit?.branch.fmt()} | " +
+                "${backendDelta.unit?.instruction.fmt()} |",
+        )
+        appendLine(
+            "| E2E runtime | ${backendDelta.e2e?.line.fmt()} | ${backendDelta.e2e?.branch.fmt()} | " +
+                "${backendDelta.e2e?.instruction.fmt()} |",
+        )
+        appendLine()
+        appendLine("| Δ Full-Unit | Δ E2E-Full |")
+        appendLine("|-------------|-------------|")
+        appendLine(
+            "| ${backendDelta.fullMinusUnit.fmt(signed = true)} | " +
+                "${backendDelta.e2eMinusFull.fmt(signed = true)} |",
+        )
+        appendLine()
     }
 
     private fun StringBuilder.appendCoverageSection(
@@ -471,12 +525,22 @@ object QualityReports {
         fullTotal: CoverageMetrics?,
         unitTotal: CoverageMetrics?,
         deltas: List<ModuleCoverageDelta>,
+        backendDelta: BackendCoverageDelta,
         frontendDelta: FrontendCoverageDelta,
     ): String =
         buildString {
             appendLine("{")
             appendLine("  \"full\": ${fullTotal.toJson(2)},")
             appendLine("  \"unit\": ${unitTotal.toJson(2)},")
+            appendLine("  \"backend\": {")
+            appendLine("    \"full\": ${backendDelta.full.toJson(4)},")
+            appendLine("    \"unit\": ${backendDelta.unit.toJson(4)},")
+            appendLine("    \"e2e\": ${backendDelta.e2e.toJson(4)},")
+            appendLine(
+                "    \"fullMinusUnit\": ${backendDelta.fullMinusUnit.toJsonNumber()}," +
+                    "\n    \"e2eMinusFull\": ${backendDelta.e2eMinusFull.toJsonNumber()}",
+            )
+            appendLine("  },")
             appendLine("  \"frontend\": {")
             appendLine("    \"unit\": ${frontendDelta.unit.toJson(4)},")
             appendLine("    \"full\": ${frontendDelta.full.toJson(4)},")

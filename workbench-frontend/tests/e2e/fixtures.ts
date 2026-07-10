@@ -1,26 +1,43 @@
-import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { test as base, expect } from '@playwright/test'
+import { collectClientCoverage, loadNextcovConfig } from 'nextcov/playwright'
 
 const coverageEnabled = process.env.E2E_COLLECT_COVERAGE === 'true'
-const rawCoveragePath = path.join(process.cwd(), 'coverage/e2e/raw-coverage.json')
-const collectedEntries: Array<Record<string, unknown>> = []
+const previewBuildDir = '.svelte-kit/output/client'
 
-export const test = base.extend({
-  page: async ({ page }, use) => {
-    if (coverageEnabled)
-      await page.coverage.startJSCoverage({ resetOnNavigation: false })
-
-    await use(page)
-
-    if (coverageEnabled) {
-      const coverage = await page.coverage.stopJSCoverage()
-      collectedEntries.push(...coverage)
-      await mkdir(path.dirname(rawCoveragePath), { recursive: true })
-      await writeFile(rawCoveragePath, JSON.stringify(collectedEntries))
+function transformPreviewChunkUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.pathname.startsWith('/_app/')) {
+      const chunkPath = path.join(process.cwd(), previewBuildDir, parsed.pathname)
+      return `file://${chunkPath}`
     }
-  },
+  }
+  catch {
+    // Keep vite dev URLs (for example /@fs/... or /src/...) unchanged.
+  }
+  return url
+}
+
+export const test = base.extend<{
+  coverage: void
+}>({
+  coverage: [
+    async ({ page }, use, testInfo) => {
+      if (!coverageEnabled) {
+        await use()
+        return
+      }
+
+      const config = await loadNextcovConfig()
+      await collectClientCoverage(page, testInfo, use, {
+        ...config,
+        transformUrl: transformPreviewChunkUrl,
+      })
+    },
+    { scope: 'test', auto: true },
+  ],
 })
 
 export { expect }

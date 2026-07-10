@@ -106,6 +106,7 @@ jobs:
           name: quality-gate-${{ github.run_id }}
           path: |
             build/reports/kover/
+            build/reports/kover/e2e/
             workbench-frontend/coverage/unit/
             workbench-frontend/coverage/full/
             workbench-frontend/storybook-static/
@@ -138,6 +139,8 @@ jobs:
           path: |
             workbench-frontend/coverage/e2e/
             workbench-frontend/playwright-report/
+            build/reports/kover/
+            build/reports/kover/e2e/
           retention-days: 14
 
   quality-gate-finalize:
@@ -170,10 +173,11 @@ jobs:
           path: .
 
       - name: Download frontend E2E artifacts
+        if: needs.frontend-e2e.result == 'success'
         uses: actions/download-artifact@v4
         with:
           name: frontend-e2e-${{ github.run_id }}
-          path: workbench-frontend
+          path: .
 
       - name: Check diff coverage
         if: needs.quality-gate.result == 'success'
@@ -203,6 +207,7 @@ jobs:
           name: quality-reports-${{ github.run_id }}
           path: |
             build/reports/kover/
+            build/reports/kover/e2e/
             scripts/ci/diff-cover-backend.html
             scripts/ci/diff-cover-frontend.html
             scripts/ci/diff-coverage-results.json

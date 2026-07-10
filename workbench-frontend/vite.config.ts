@@ -17,6 +17,9 @@ const coverageExclude = [
 ]
 
 export default defineConfig({
+  build: {
+    sourcemap: true,
+  },
   plugins: [tailwindcss(), sveltekit()],
   resolve: {
     conditions: process.env.VITEST ? ['browser'] : undefined,
