@@ -36,6 +36,16 @@ tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmCoverage") {
     args.set(listOf("coverage"))
 }
 
+tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmStorybookBuild") {
+    dependsOn("pnpmInstall")
+    args.set(listOf("storybook:build"))
+}
+
+tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmStorybookTest") {
+    dependsOn("pnpmInstall")
+    args.set(listOf("storybook:test"))
+}
+
 tasks.register<com.github.gradle.node.pnpm.task.PnpmTask>("pnpmE2e") {
     dependsOn("pnpmInstall")
     args.set(listOf("test:e2e"))
@@ -46,7 +56,7 @@ tasks.register("workbenchQuickCheck") {
 }
 
 tasks.named("check") {
-    dependsOn("pnpmLint", "pnpmTest")
+    dependsOn("pnpmLint", "pnpmTest", "pnpmStorybookBuild", "pnpmStorybookTest")
 }
 
 tasks.named("assemble") {

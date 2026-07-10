@@ -126,6 +126,7 @@ jobs:
             scripts/ci/diff-coverage-results.json
             build/reports/workbench-ci/
             workbench-frontend/coverage/
+            workbench-frontend/storybook-static/
           retention-days: 14
 
   docker:

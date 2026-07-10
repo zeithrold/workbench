@@ -68,6 +68,9 @@ cmake-build-*/
 # IntelliJ
 out/
 
+# Eclipse / VS Code Java (Red Hat Java extension)
+**/bin/
+
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
@@ -116,6 +119,7 @@ package
 
 .pnpm-store/
 workbench-frontend/coverage/
+workbench-frontend/storybook-static/
 scripts/ci/.venv/
 scripts/ci/__pycache__/
 scripts/ci/diff-coverage-results.json
