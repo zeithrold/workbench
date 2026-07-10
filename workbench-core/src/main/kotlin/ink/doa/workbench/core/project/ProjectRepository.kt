@@ -34,6 +34,8 @@ interface ProjectRepository {
     deleteReason: String?,
   ): ProjectRecord
 
+  suspend fun requestDestroy(request: ProjectDestroyRequest): ProjectRecord
+
   suspend fun finalizeDestroy(
     tenantId: UUID,
     projectId: UUID,

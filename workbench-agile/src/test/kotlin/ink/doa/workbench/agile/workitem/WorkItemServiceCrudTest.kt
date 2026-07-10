@@ -26,7 +26,6 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.justRun
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -67,11 +66,10 @@ class WorkItemServiceCrudTest :
       service.list(tenantId, projectId, 25, 10).single().apiId shouldBe record.apiId
     }
 
-    "update publishes mutation result" {
+    "update delegates to repository" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
-      val events = mockk<DomainEventPublisher>()
-      justRun { events.publish<Any>(any(), any(), any(), any()) }
+      val events = mockk<DomainEventPublisher>(relaxed = true)
       val record = workItem(tenantId, projectId)
       val config = configDetails(tenantId, record.issueTypeConfigApiId)
       val updated = WorkItemMutationResult(record.copy(title = "Updated"), "work_item.updated")
@@ -96,10 +94,9 @@ class WorkItemServiceCrudTest :
       coVerify { repository.update(any(), any()) }
     }
 
-    "delete soft deletes and publishes event" {
+    "delete soft deletes through repository" {
       val repository = mockk<WorkItemRepository>()
-      val events = mockk<DomainEventPublisher>()
-      justRun { events.publish<Any>(any(), any(), any(), any()) }
+      val events = mockk<DomainEventPublisher>(relaxed = true)
       val record = workItem(tenantId, projectId)
       val deleted = WorkItemMutationResult(record, "work_item.updated")
 

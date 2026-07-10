@@ -12,6 +12,7 @@ import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.data.messaging.WorkItemOutboxAppender
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.InsertHierarchyLinkCommand
@@ -65,6 +66,7 @@ class ExposedWorkItemRepository(
   private val database: Database,
   private val eventFactory: WorkItemEventFactory,
   private val eventCodec: WorkItemEventCodec,
+  private val outboxAppender: WorkItemOutboxAppender,
 ) : WorkItemRepository {
   @Suppress("LongMethod")
   override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
@@ -132,16 +134,17 @@ class ExposedWorkItemRepository(
           ),
         )
       WorkItemMutationResult(
-        workItem =
-          requireWorkItem(
-            command.command.tenantId,
-            command.command.projectId,
-            prepared.issueApiId.value,
-          ),
-        eventType = "work_item.created",
-        streamEventId = insertedEvent.id,
-        streamEventApiId = insertedEvent.apiId,
-      )
+          workItem =
+            requireWorkItem(
+              command.command.tenantId,
+              command.command.projectId,
+              prepared.issueApiId.value,
+            ),
+          eventType = "work_item.created",
+          streamEventId = insertedEvent.id,
+          streamEventApiId = insertedEvent.apiId,
+        )
+        .also { outboxAppender.append(it) }
     }
 
   override suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord? =
@@ -229,7 +232,7 @@ class ExposedWorkItemRepository(
         }
     }
 
-  @Suppress("LongMethod")
+  @Suppress("LongMethod", "CyclomaticComplexMethod")
   override suspend fun update(
     command: UpdateWorkItemCommand,
     propertyValues: List<WorkItemPropertyValue>,
@@ -305,11 +308,12 @@ class ExposedWorkItemRepository(
           )
           ?.let { appendWorkItemEvent(eventCodec, it) }
       WorkItemMutationResult(
-        workItem = after,
-        eventType = "work_item.updated",
-        streamEventId = updateEvent?.id,
-        streamEventApiId = updateEvent?.apiId,
-      )
+          workItem = after,
+          eventType = "work_item.updated",
+          streamEventId = updateEvent?.id,
+          streamEventApiId = updateEvent?.apiId,
+        )
+        .also { outboxAppender.append(it) }
     }
 
   override suspend fun transition(
@@ -355,20 +359,21 @@ class ExposedWorkItemRepository(
         it[IssuesTable.updatedAt] = now
       }
       completeWorkItemTransition(
-        WorkItemTransitionCompletion(
-          command = command,
-          issueId = issueId,
-          fromStatusId = fromStatusId,
-          toStatusId = toStatusId,
-          transitionId = transitionId,
-          propertyValues = propertyValues,
-          previousSprintId = previousSprintId,
-          nextSprintId = nextSprintId,
-          now = now,
-        ),
-        eventFactory = eventFactory,
-        eventCodec = eventCodec,
-      )
+          WorkItemTransitionCompletion(
+            command = command,
+            issueId = issueId,
+            fromStatusId = fromStatusId,
+            toStatusId = toStatusId,
+            transitionId = transitionId,
+            propertyValues = propertyValues,
+            previousSprintId = previousSprintId,
+            nextSprintId = nextSprintId,
+            now = now,
+          ),
+          eventFactory = eventFactory,
+          eventCodec = eventCodec,
+        )
+        .also { outboxAppender.append(it) }
     }
 
   override suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult =
@@ -388,9 +393,10 @@ class ExposedWorkItemRepository(
           .single()
           .toWorkItemRecord()
       WorkItemMutationResult(
-        workItem = deleted,
-        eventType = "work_item.updated",
-      )
+          workItem = deleted,
+          eventType = "work_item.updated",
+        )
+        .also { outboxAppender.append(it) }
     }
 
   @Suppress("LongMethod")

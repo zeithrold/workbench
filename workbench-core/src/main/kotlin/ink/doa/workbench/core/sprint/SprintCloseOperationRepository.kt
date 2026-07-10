@@ -40,6 +40,8 @@ interface SprintCloseOperationRepository {
 
   suspend fun markQueued(id: UUID, updatedAt: OffsetDateTime): Boolean
 
+  suspend fun retryAndEnqueue(request: SprintCloseRetryRequest): SprintCloseOperationRecord
+
   suspend fun updateProgress(
     id: UUID,
     processedItems: Int,

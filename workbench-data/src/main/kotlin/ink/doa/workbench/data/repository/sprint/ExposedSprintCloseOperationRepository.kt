@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.port.messaging.DomainEventOutbox
 import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
+import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
 import ink.doa.workbench.core.sprint.events.SprintDomainEvents
 import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
 import ink.doa.workbench.core.sprint.model.SprintCloseOperationRecord
@@ -149,6 +150,55 @@ class ExposedSprintCloseOperationRepository(
         it[SprintCloseOperationsTable.lastError] = null
         it[SprintCloseOperationsTable.completedAt] = null
       } > 0
+    }
+
+  override suspend fun retryAndEnqueue(
+    request: SprintCloseRetryRequest
+  ): SprintCloseOperationRecord =
+    suspendTransaction(db = database) {
+      val operation =
+        SprintCloseOperationsTable.join(
+            SprintsTable,
+            org.jetbrains.exposed.v1.core.JoinType.INNER,
+            SprintCloseOperationsTable.sprintId,
+            SprintsTable.id,
+          )
+          .selectAll()
+          .where {
+            (SprintCloseOperationsTable.tenantId eq request.tenantId.toKotlinUuid()) and
+              (SprintCloseOperationsTable.projectId eq request.projectId.toKotlinUuid()) and
+              (SprintsTable.apiId eq request.sprintApiId) and
+              (SprintCloseOperationsTable.apiId eq request.operationApiId)
+          }
+          .singleOrNull()
+          ?.let(::toRecord)
+          ?: throw ink.doa.workbench.core.common.errors.ResourceNotFoundException(
+            ink.doa.workbench.core.common.errors.WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_NOT_FOUND
+          )
+      if (operation.status != SprintCloseOperationStatus.FAILED) {
+        throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+          ink.doa.workbench.core.common.errors.WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT
+        )
+      }
+      SprintCloseOperationsTable.update({
+        (SprintCloseOperationsTable.id eq operation.id.toKotlinUuid()) and
+          (SprintCloseOperationsTable.status eq SprintCloseOperationStatus.FAILED.name)
+      }) {
+        it[SprintCloseOperationsTable.status] = SprintCloseOperationStatus.QUEUED.name
+        it[SprintCloseOperationsTable.lastError] = null
+        it[SprintCloseOperationsTable.completedAt] = null
+      }
+      outbox.append(
+        spec = SprintDomainEvents.CloseRequested,
+        key = request.sprintApiId,
+        payload = request.payload,
+        metadata = EventMetadata(tenantId = request.metadataTenantId),
+      )
+      toRecord(
+        SprintCloseOperationsTable.selectAll()
+          .where { SprintCloseOperationsTable.id eq operation.id.toKotlinUuid() }
+          .single()
+      )
     }
 
   override suspend fun updateProgress(

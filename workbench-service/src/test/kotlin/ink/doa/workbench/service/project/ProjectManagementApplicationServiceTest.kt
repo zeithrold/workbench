@@ -11,7 +11,6 @@ import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
 import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
 import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
@@ -185,14 +184,7 @@ class ProjectManagementApplicationServiceTest :
       val actor = sampleUser(actorId)
       coEvery { projects.get(tenantId, record.apiId.value) } returns record
       coEvery { userLookupService.requireAuthenticatedUser(actorId) } returns actor
-      coEvery {
-        projects.markDestroying(
-          tenantId,
-          record.id,
-          actorUserId = actorId,
-          deleteReason = "cleanup",
-        )
-      } returns destroying
+      coEvery { projects.requestDestroy(any()) } returns destroying
       coEvery { userLookupService.requireUser(actorId) } returns actor
 
       val view = runBlocking {
@@ -206,7 +198,6 @@ class ProjectManagementApplicationServiceTest :
       }
 
       view.status shouldBe "destroying"
-      publisher.published.single().key shouldBe record.apiId.value
       verify(exactly = 1) {
         warningCollector.warn(
           WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED,
@@ -267,58 +258,6 @@ class ProjectManagementApplicationServiceTest :
       }
 
       view.lead.shouldBeNull()
-    }
-
-    "requestDestroy restores project status when event publish fails" {
-      val tenantId = UUID.randomUUID()
-      val actorId = UUID.randomUUID()
-      val record = sampleProject(tenantId, actorId)
-      val destroying = record.copy(status = ProjectStatus.DESTROYING)
-      val failingPublisher = mockk<DomainEventPublisher>()
-      val failingService =
-        ProjectManagementApplicationService(
-          ProjectManagementDependencies(
-            projects = projects,
-            userLookupService = userLookupService,
-            projectAccess = projectAccess,
-            permissionBootstrap = permissionBootstrap,
-            infrastructure =
-              ProjectManagementInfrastructure(
-                domainEventPublisher = failingPublisher,
-                warningCollector = warningCollector,
-                clock = clock,
-              ),
-          )
-        )
-      coEvery { projects.get(tenantId, record.apiId.value) } returns record
-      coEvery { userLookupService.requireAuthenticatedUser(actorId) } returns sampleUser(actorId)
-      coEvery {
-        projects.markDestroying(
-          tenantId,
-          record.id,
-          actorUserId = actorId,
-          deleteReason = "cleanup",
-        )
-      } returns destroying
-      coEvery { failingPublisher.publish(any(), any(), any(), any()) } throws
-        RuntimeException("broker down")
-      coEvery { projects.restoreStatus(tenantId, record.id, ProjectStatus.ACTIVE) } returns true
-
-      shouldThrow<RuntimeException> {
-        runBlocking {
-          failingService.requestDestroy(
-            tenantId = tenantId,
-            tenantPublicId = PublicId.new("ten"),
-            projectPublicId = record.apiId.value,
-            actorUserId = actorId,
-            deleteReason = "cleanup",
-          )
-        }
-      }
-
-      coVerify(exactly = 1) {
-        projects.restoreStatus(tenantId, record.id, ProjectStatus.ACTIVE)
-      }
     }
   })
 

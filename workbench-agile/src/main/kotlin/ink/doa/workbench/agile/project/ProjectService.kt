@@ -1,5 +1,6 @@
 package ink.doa.workbench.agile.project
 
+import ink.doa.workbench.core.project.ProjectDestroyRequest
 import ink.doa.workbench.core.project.ProjectRepository
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.ProjectRecord
@@ -52,6 +53,9 @@ class ProjectService(
       deletedBy = actorUserId,
       deleteReason = deleteReason,
     )
+
+  suspend fun requestDestroy(request: ProjectDestroyRequest): ProjectRecord =
+    repository.requestDestroy(request)
 
   suspend fun restoreStatus(
     tenantId: UUID,

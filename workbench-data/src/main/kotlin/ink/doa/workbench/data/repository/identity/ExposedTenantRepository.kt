@@ -10,6 +10,10 @@ import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UpdateTenantCommand
+import ink.doa.workbench.core.messaging.EventMetadata
+import ink.doa.workbench.core.port.messaging.DomainEventOutbox
+import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
+import ink.doa.workbench.core.tenant.events.TenantDomainEvents
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
@@ -29,7 +33,10 @@ import org.springframework.stereotype.Repository
 
 @Repository
 @Suppress("TooManyFunctions")
-class ExposedTenantRepository(private val database: Database) : TenantRepository {
+class ExposedTenantRepository(
+  private val database: Database,
+  private val outbox: DomainEventOutbox? = null,
+) : TenantRepository {
   override suspend fun create(command: CreateTenantCommand): TenantRecord =
     suspendTransaction(db = database) {
       if (
@@ -96,33 +103,52 @@ class ExposedTenantRepository(private val database: Database) : TenantRepository
     }
 
   override suspend fun markDestroying(tenantId: UUID): TenantRecord =
+    suspendTransaction(db = database) { markDestroyingWithinTransaction(tenantId) }
+
+  override suspend fun requestDestroy(
+    tenantId: UUID,
+    tenantApiId: String,
+    payload: TenantDestroyRequestedEvent,
+  ): TenantRecord =
     suspendTransaction(db = database) {
-      val existing =
-        TenantsTable.selectAll()
-          .where {
-            (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
-          }
-          .singleOrNull()
-          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
-      val currentStatus = tenantStatusOf(existing[TenantsTable.status])
-      when (currentStatus) {
-        TenantStatus.DESTROYING ->
-          throw ResourceConflictException(WorkbenchErrorCode.TENANT_ALREADY_DESTROYING)
-        TenantStatus.ACTIVE,
-        TenantStatus.PENDING_ACTIVATION -> Unit
-      }
-      val now = nowUtc()
-      TenantsTable.update({ TenantsTable.id eq tenantId.toKotlinUuid() }) {
-        it[status] = TenantStatus.DESTROYING.dbValue
-        it[updatedAt] = now
-      }
+      val destroying = markDestroyingWithinTransaction(tenantId)
+      val outboxWriter = outbox ?: error("DomainEventOutbox is required for requestDestroy")
+      outboxWriter.append(
+        spec = TenantDomainEvents.DestroyRequested,
+        key = tenantApiId,
+        payload = payload,
+        metadata = EventMetadata(tenantId = tenantApiId),
+      )
+      destroying
+    }
+
+  private fun markDestroyingWithinTransaction(tenantId: UUID): TenantRecord {
+    val existing =
       TenantsTable.selectAll()
         .where {
           (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
         }
-        .single()
-        .toTenantRecord()
+        .singleOrNull()
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
+    val currentStatus = tenantStatusOf(existing[TenantsTable.status])
+    when (currentStatus) {
+      TenantStatus.DESTROYING ->
+        throw ResourceConflictException(WorkbenchErrorCode.TENANT_ALREADY_DESTROYING)
+      TenantStatus.ACTIVE,
+      TenantStatus.PENDING_ACTIVATION -> Unit
     }
+    val now = nowUtc()
+    TenantsTable.update({ TenantsTable.id eq tenantId.toKotlinUuid() }) {
+      it[status] = TenantStatus.DESTROYING.dbValue
+      it[updatedAt] = now
+    }
+    return TenantsTable.selectAll()
+      .where {
+        (TenantsTable.deletedAt.isNull()) and (TenantsTable.id eq tenantId.toKotlinUuid())
+      }
+      .single()
+      .toTenantRecord()
+  }
 
   override suspend fun finalizeDestroy(command: FinalizeTenantDestroyCommand): Boolean =
     suspendTransaction(db = database) {

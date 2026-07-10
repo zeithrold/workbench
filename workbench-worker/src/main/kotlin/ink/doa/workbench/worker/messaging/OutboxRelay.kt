@@ -5,11 +5,15 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Profile
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
 @Component
+@Profile("worker")
+@ConditionalOnProperty(name = ["workbench.outbox.relay-enabled"], havingValue = "true")
 class OutboxRelay(
   private val repository: OutboxRelayRepository,
   private val kafka: KafkaTemplate<String, String>,
@@ -40,13 +44,24 @@ class OutboxRelay(
           nextAttemptAt = OffsetDateTime.now(ZoneOffset.UTC).plusSeconds(delaySeconds),
           error = error.message ?: error.javaClass.simpleName,
         )
-        logger.error(
-          "outbox_publish_failed id={} topic={} attempts={}",
-          message.id,
-          message.topic,
-          attempts,
-          error,
-        )
+        if (attempts >= OutboxRelayRepository.MAX_ATTEMPTS) {
+          logger.error(
+            "outbox_dead_letter id={} topic={} eventType={} attempts={}",
+            message.id,
+            message.topic,
+            message.partitionKey,
+            attempts,
+            error,
+          )
+        } else {
+          logger.error(
+            "outbox_publish_failed id={} topic={} attempts={}",
+            message.id,
+            message.topic,
+            attempts,
+            error,
+          )
+        }
       }
     }
   }

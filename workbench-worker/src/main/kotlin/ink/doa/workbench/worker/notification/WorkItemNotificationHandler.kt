@@ -19,7 +19,6 @@ class WorkItemNotificationHandler(
   private val logger = LoggerFactory.getLogger(javaClass)
 
   suspend fun handle(eventId: String, type: String, payload: WorkItemMutationEvent) {
-    if (!processed.tryClaim(CONSUMER_NAME, eventId)) return
     val tenantId = payload.tenantId.toUuidOrNull() ?: return
     val projectId = payload.projectId.toUuidOrNull() ?: return
     val workItem = workItems.findByApiId(tenantId, projectId, payload.workItemId) ?: return
@@ -42,6 +41,14 @@ class WorkItemNotificationHandler(
           },
       )
     )
+    if (!processed.tryClaim(CONSUMER_NAME, eventId)) {
+      logger.info(
+        "work_item_notification_duplicate eventId={} workItemId={}",
+        eventId,
+        payload.workItemId,
+      )
+      return
+    }
     logger.info(
       "work_item_notification_created eventId={} workItemId={} recipient={}",
       eventId,

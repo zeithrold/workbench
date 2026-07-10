@@ -35,7 +35,6 @@ import ink.doa.workbench.security.invitation.InvitationService
 import ink.doa.workbench.security.permission.AdminUserPersistenceSupport
 import ink.doa.workbench.security.permission.AdminUserService
 import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependencies
-import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.tenant.TenantService
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
@@ -142,8 +141,7 @@ class TenantCreateWithAdminIntegrationTest :
               invitationService = invitationService,
               defaultWorkItemTemplate = io.mockk.mockk(relaxed = true),
               clock = clock,
-            ),
-          domainEventPublisher = RecordingDomainEventPublisher(),
+            )
         )
 
       runBlocking {

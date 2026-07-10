@@ -45,6 +45,12 @@ class TenantService(private val tenants: TenantRepository) {
 
   suspend fun markDestroying(tenantId: UUID): TenantRecord = tenants.markDestroying(tenantId)
 
+  suspend fun requestDestroy(
+    tenantId: UUID,
+    tenantApiId: String,
+    payload: ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent,
+  ): TenantRecord = tenants.requestDestroy(tenantId, tenantApiId, payload)
+
   suspend fun restoreStatus(tenantId: UUID, status: TenantStatus): TenantRecord =
     tenants.update(UpdateTenantCommand(tenantId = tenantId, status = status))
 }

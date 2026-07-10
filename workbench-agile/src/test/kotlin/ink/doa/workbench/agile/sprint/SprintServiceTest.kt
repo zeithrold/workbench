@@ -7,7 +7,6 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
@@ -42,7 +41,6 @@ class SprintServiceTest :
     val projectOperationalGuard = mockk<ProjectOperationalGuard>()
     val closeOperations = mockk<SprintCloseOperationRepository>(relaxed = true)
     val workItems = mockk<WorkItemRepository>(relaxed = true)
-    val events = mockk<DomainEventPublisher>(relaxed = true)
     val clock = Clock.fixed(Instant.parse("2026-01-15T10:00:00Z"), ZoneOffset.UTC)
     val service =
       SprintService(
@@ -51,7 +49,6 @@ class SprintServiceTest :
         projectOperationalGuard,
         closeOperations,
         workItems,
-        events,
         clock,
       )
 

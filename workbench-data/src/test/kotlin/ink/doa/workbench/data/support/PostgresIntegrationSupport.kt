@@ -1,6 +1,7 @@
 package ink.doa.workbench.data.support
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.messaging.DomainEventEncoder
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
@@ -10,6 +11,8 @@ import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
+import ink.doa.workbench.data.messaging.WorkItemOutboxAppender
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
@@ -169,7 +172,11 @@ internal suspend fun seedWorkItemStack(database: Database): WorkItemStack {
 internal fun workItemRepository(database: Database): ExposedWorkItemRepository {
   val codec = WorkItemEventCodec()
   val factory = WorkItemEventFactory()
-  return ExposedWorkItemRepository(database, factory, codec)
+  val clock = java.time.Clock.systemUTC()
+  val encoder = DomainEventEncoder(clock)
+  val outbox = ExposedDomainEventOutbox(database, encoder)
+  val outboxAppender = WorkItemOutboxAppender(outbox)
+  return ExposedWorkItemRepository(database, factory, codec, outboxAppender)
 }
 
 internal fun workItemCommentRepository(database: Database): ExposedWorkItemCommentRepository {

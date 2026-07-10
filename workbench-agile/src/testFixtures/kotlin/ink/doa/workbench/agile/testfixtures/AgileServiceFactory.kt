@@ -150,7 +150,6 @@ object AgileServiceFactory {
       executor =
         WorkItemTransitionExecutor(
           repository,
-          mutationSupport,
           commentService,
         ),
     )

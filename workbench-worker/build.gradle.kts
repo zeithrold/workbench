@@ -21,6 +21,7 @@ dependencies {
   testImplementation(libs.testcontainers.junit)
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.kafka)
+  testImplementation(project(":workbench-test-support"))
   testImplementation(testFixtures(project(":workbench-service")))
 }
 
