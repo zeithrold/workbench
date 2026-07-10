@@ -129,3 +129,6 @@ scripts/ci/.diff-cover.patch
 scripts/ci/.diff-cover.toml
 
 .kotlin/
+
+playwright-report/
+test-results/
