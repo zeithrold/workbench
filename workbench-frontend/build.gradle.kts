@@ -13,68 +13,84 @@ node {
     nodeProjectDir.set(projectDir)
 }
 
+tasks.register("prepareFrontendEnv") {
+    group = "build"
+    description = "Copy workbench-frontend/.env.example to .env when missing (SvelteKit public env types)."
+    val envExample = layout.projectDirectory.file(".env.example")
+    val envFile = layout.projectDirectory.file(".env")
+    inputs.file(envExample)
+    outputs.file(envFile)
+    doLast {
+        val target = envFile.asFile
+        if (!target.exists()) {
+            envExample.asFile.copyTo(target)
+        }
+    }
+}
+
 tasks.register<PnpmTask>("pnpmDev") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("dev", "--host", "0.0.0.0"))
 }
 
 tasks.register<PnpmTask>("pnpmLint") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("lint"))
 }
 
 tasks.register<PnpmTask>("pnpmTest") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("test:unit"))
 }
 
 tasks.register<PnpmTask>("pnpmBuild") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("build"))
 }
 
 tasks.register<PnpmTask>("pnpmCoverage") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:unit"))
 }
 
 tasks.register<PnpmTask>("pnpmCoverageUnit") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:unit"))
 }
 
 tasks.register<PnpmTask>("pnpmCoverageStorybook") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:storybook"))
 }
 
 tasks.register<PnpmTask>("pnpmCoverageFull") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:full"))
 }
 
 tasks.register<PnpmTask>("pnpmCoverageE2e") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:e2e"))
 }
 
 tasks.register<PnpmTask>("pnpmStorybookBuild") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("storybook:build"))
 }
 
 tasks.register<PnpmTask>("pnpmStorybookTest") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("storybook:test"))
 }
 
 tasks.register<PnpmTask>("pnpmE2e") {
-    dependsOn("pnpmInstall")
+    dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("test:e2e"))
 }
 
 tasks.register<PnpmTask>("pnpmE2eStack") {
     dependsOn(
+        "prepareFrontendEnv",
         "pnpmInstall",
         "pnpmBuild",
         ":workbench-web:bootJar",
