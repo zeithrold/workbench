@@ -1,8 +1,8 @@
-import type { DemoCredentials, Session, Tenant } from './model.js'
+import type { LoginCredentials, Session, Tenant } from './model.js'
 
 export interface SessionGateway {
   current: () => Promise<Session | null>
-  signIn: (credentials: DemoCredentials) => Promise<Session>
+  signIn: (credentials: LoginCredentials) => Promise<Session>
   signOut: () => Promise<void>
   switchTenant: (tenantId: string) => Promise<Session>
 }
@@ -19,7 +19,7 @@ export class DemoSessionGateway implements SessionGateway {
     return this.#session
   }
 
-  async signIn({ email }: DemoCredentials): Promise<Session> {
+  async signIn({ email }: LoginCredentials): Promise<Session> {
     this.#session = {
       user: {
         name: email.split('@')[0] || 'Demo user',

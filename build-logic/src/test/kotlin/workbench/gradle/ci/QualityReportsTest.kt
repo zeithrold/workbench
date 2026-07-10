@@ -75,6 +75,26 @@ class QualityReportsTest {
     }
 
     @Test
+    fun `parses frontend lcov line coverage`() {
+        val root = Files.createTempDirectory("lcov")
+        val lcov = root.resolve("workbench-frontend/coverage/full/lcov.info")
+        lcov.parent.createDirectories()
+        lcov.writeText(
+            """
+            TN:
+            SF:src/example.ts
+            LF:10
+            LH:7
+            end_of_record
+            """.trimIndent(),
+        )
+
+        val delta = QualityReports.frontendCoverageDelta(root.toFile())
+
+        assertEquals(70.0, delta.full?.line)
+    }
+
+    @Test
     fun `renders coverage summary markdown and json`() {
         val root = Files.createTempDirectory("summary")
         val full = root.resolve("workbench-core/build/reports/kover/report.xml")

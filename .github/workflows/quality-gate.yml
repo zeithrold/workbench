@@ -89,12 +89,92 @@ jobs:
         if: success() || failure()
         run: ./gradlew workbenchCiUnitCoverage --no-daemon
 
-      - name: Frontend coverage report
+      - name: Frontend unit coverage report
         if: success()
-        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+        run: ./gradlew workbenchCiFrontendUnitCoverage --no-daemon
+
+      - name: Frontend full coverage report
+        if: success()
+        run: ./gradlew workbenchCiFrontendFullCoverage --no-daemon
+
+      - name: Upload quality gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-${{ github.run_id }}
+          path: |
+            build/reports/kover/
+            workbench-frontend/coverage/unit/
+            workbench-frontend/coverage/full/
+            workbench-frontend/storybook-static/
+          retention-days: 14
+
+  frontend-e2e:
+    name: Frontend E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+        with:
+          install-playwright: "true"
+
+      - name: Run frontend E2E stack
+        run: ./gradlew :workbench-frontend:workbenchE2eCheck --no-daemon
+
+      - name: Upload frontend E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-e2e-${{ github.run_id }}
+          path: |
+            workbench-frontend/coverage/e2e/
+            workbench-frontend/playwright-report/
+          retention-days: 14
+
+  quality-gate-finalize:
+    name: Quality Gate Finalize
+    needs: [quality-gate, frontend-e2e]
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch compare branches
+        run: |
+          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]; then
+            git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          fi
+
+      - name: Set up toolchain
+        uses: ./.github/actions/workbench-setup
+
+      - name: Download quality gate artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: quality-gate-${{ github.run_id }}
+          path: .
+
+      - name: Download frontend E2E artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-e2e-${{ github.run_id }}
+          path: workbench-frontend
 
       - name: Check diff coverage
-        if: success()
+        if: needs.quality-gate.result == 'success'
         working-directory: scripts/ci
         env:
           COMPARE_BRANCH: >-
@@ -114,7 +194,7 @@ jobs:
           REPO_ROOT: ${{ github.workspace }}
         run: ./gradlew -q workbenchCiRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload quality reports
+      - name: Upload finalized quality reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -129,9 +209,17 @@ jobs:
             workbench-frontend/storybook-static/
           retention-days: 14
 
+      - name: Fail if quality gate failed
+        if: needs.quality-gate.result != 'success'
+        run: exit 1
+
+      - name: Fail if frontend E2E failed
+        if: needs.frontend-e2e.result != 'success'
+        run: exit 1
+
   docker:
     name: Docker (${{ matrix.arch }})
-    needs: [quality-gate, qodana]
+    needs: [quality-gate-finalize, qodana]
     if: >-
       github.event_name != 'pull_request'
       && (github.event_name != 'push'

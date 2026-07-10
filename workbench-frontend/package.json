@@ -10,11 +10,18 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint . && pnpm check",
     "test:unit": "vitest --project unit --run",
-    "coverage": "vitest --project unit --run --coverage",
+    "coverage": "pnpm coverage:unit",
+    "coverage:unit": "vitest --project unit --run --coverage --coverage.reportsDirectory=./coverage/unit",
+    "coverage:storybook": "vitest --project storybook --run --coverage --coverage.reportsDirectory=./coverage/storybook",
+    "coverage:merge:vitest": "vitest-coverage-merge coverage/unit coverage/storybook -o coverage/vitest --reporters html,lcov,json",
+    "coverage:full": "pnpm coverage:unit && pnpm coverage:storybook && pnpm exec vitest-coverage-merge coverage/unit coverage/storybook -o coverage/full",
+    "coverage:e2e": "node tests/e2e/stack/collect-e2e-coverage.mjs",
     "storybook": "storybook dev --port 6006",
     "storybook:build": "storybook build --output-dir storybook-static",
     "storybook:test": "vitest --project storybook --run",
     "test:e2e": "playwright test",
+    "test:e2e:coverage": "E2E_COLLECT_COVERAGE=true playwright test",
+    "test:e2e:stack": "node tests/e2e/stack/run.mjs",
     "openapi": "orval --config orval.config.ts"
   },
   "dependencies": {
@@ -32,7 +39,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "latest",
     "@internationalized/date": "^3.12.2",
-    "@playwright/test": "latest",
+    "@playwright/test": "1.61.1",
     "@storybook/addon-a11y": "^10.5.0",
     "@storybook/addon-svelte-csf": "^5.1.2",
     "@storybook/addon-vitest": "^10.5.0",
@@ -47,14 +54,17 @@
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-svelte": "^3.20.0",
     "jsdom": "latest",
+    "nextcov": "^1.3.0",
     "orval": "latest",
-    "playwright": "latest",
+    "playwright": "1.61.1",
     "shadcn-svelte": "latest",
     "storybook": "^10.5.0",
     "svelte-check": "latest",
     "tailwindcss": "latest",
+    "testcontainers": "^11.12.0",
     "typescript": "latest",
     "vite": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "vitest-coverage-merge": "^0.2.0"
   }
 }

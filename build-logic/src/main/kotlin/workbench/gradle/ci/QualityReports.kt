@@ -26,6 +26,31 @@ data class MutationMetrics(
     val total: Int = 0,
 )
 
+data class FrontendCoverageDelta(
+    val unit: CoverageMetrics?,
+    val full: CoverageMetrics?,
+    val e2e: CoverageMetrics?,
+) {
+    val fullMinusUnit: Double? =
+        if (full?.line != null && unit?.line != null) full.line - unit.line else null
+
+    val e2eMinusFull: Double? =
+        if (e2e?.line != null && full?.line != null) e2e.line - full.line else null
+
+    val warnings: List<String> =
+        buildList {
+            if (unit?.line != null && unit.line < UNIT_LINE_WARNING_THRESHOLD) {
+                add("unit line ${unit.line.formatPct()} < ${UNIT_LINE_WARNING_THRESHOLD.formatPct()}")
+            }
+            if (fullMinusUnit != null && fullMinusUnit > INTEGRATION_LIFT_WARNING_THRESHOLD) {
+                add(
+                    "full-unit line delta ${fullMinusUnit.formatPct()} > " +
+                        "${INTEGRATION_LIFT_WARNING_THRESHOLD.formatPct()}",
+                )
+            }
+        }
+}
+
 data class ModuleCoverageDelta(
     val module: String,
     val full: CoverageMetrics?,
@@ -187,6 +212,29 @@ object QualityReports {
         ).takeIf { it.hasData() }
     }
 
+    fun parseLcovLineCoverage(path: File): CoverageMetrics? {
+        if (!path.isFile) return null
+        var totalLines = 0
+        var hitLines = 0
+        path.forEachLine { line ->
+            when {
+                line.startsWith("LF:") -> totalLines += line.removePrefix("LF:").toIntOrNull() ?: 0
+                line.startsWith("LH:") -> hitLines += line.removePrefix("LH:").toIntOrNull() ?: 0
+            }
+        }
+        if (totalLines == 0) return null
+        return CoverageMetrics(line = hitLines.toDouble() / totalLines * 100.0)
+    }
+
+    fun frontendCoverageDelta(repoRoot: File): FrontendCoverageDelta {
+        val frontendRoot = repoRoot.resolve("workbench-frontend")
+        return FrontendCoverageDelta(
+            unit = parseLcovLineCoverage(frontendRoot.resolve("coverage/unit/lcov.info")),
+            full = parseLcovLineCoverage(frontendRoot.resolve("coverage/full/lcov.info")),
+            e2e = parseLcovLineCoverage(frontendRoot.resolve("coverage/e2e/lcov.info")),
+        )
+    }
+
     fun loadMutationMetrics(path: File): MutationMetrics? {
         val mutations = parsePitMutations(path.resolve("mutations.xml")) ?: return null
         return mutations.copy(pitLine = parsePitLineCoverage(path))
@@ -219,16 +267,18 @@ object QualityReports {
             parseKoverReport(repoRoot.resolve("build/reports/kover/unit/report.xml"))
                 ?: aggregateCoverage(repoRoot, modules, unit = true)
         val deltas = moduleCoverageDeltas(repoRoot, modules)
+        val frontendDelta = frontendCoverageDelta(repoRoot)
 
         val markdown =
             buildString {
                 appendLine("## Quality Gate Report")
                 appendLine()
                 appendCoverageSection(modules, repoRoot, fullTotal, unitTotal, deltas)
+                appendFrontendCoverageSection(frontendDelta)
                 val mutationResult = appendMutationSection(repoRoot, extendedTests)
                 appendCorrelationSection(repoRoot, extendedTests, mutationResult)
             }
-        return markdown to coverageSummaryJson(fullTotal, unitTotal, deltas)
+        return markdown to coverageSummaryJson(fullTotal, unitTotal, deltas, frontendDelta)
     }
 
     private fun StringBuilder.appendCoverageSection(
@@ -296,6 +346,31 @@ object QualityReports {
                     "${fullTotal?.line.fmt(bold = true)} | ${totalDelta.fmt(signed = true, bold = true)} | |",
             )
         }
+        appendLine()
+    }
+
+    private fun StringBuilder.appendFrontendCoverageSection(frontendDelta: FrontendCoverageDelta) {
+        appendLine("### Frontend Coverage (Vitest / Playwright)")
+        appendLine()
+        if (frontendDelta.unit == null && frontendDelta.full == null && frontendDelta.e2e == null) {
+            appendLine("_No frontend LCOV reports found. Run frontend coverage tasks first._")
+            appendLine()
+            return
+        }
+
+        appendLine("| Layer | Line |")
+        appendLine("|-------|------|")
+        appendLine("| Unit | ${frontendDelta.unit?.line.fmt()} |")
+        appendLine("| Full | ${frontendDelta.full?.line.fmt()} |")
+        appendLine("| E2E | ${frontendDelta.e2e?.line.fmt()} |")
+        appendLine()
+        appendLine("| Δ Full-Unit | Δ E2E-Full | Warning |")
+        appendLine("|-------------|-------------|---------|")
+        val warning = frontendDelta.warnings.joinToString("<br>").ifBlank { "" }
+        appendLine(
+            "| ${frontendDelta.fullMinusUnit.fmt(signed = true)} | " +
+                "${frontendDelta.e2eMinusFull.fmt(signed = true)} | $warning |",
+        )
         appendLine()
     }
 
@@ -396,11 +471,21 @@ object QualityReports {
         fullTotal: CoverageMetrics?,
         unitTotal: CoverageMetrics?,
         deltas: List<ModuleCoverageDelta>,
+        frontendDelta: FrontendCoverageDelta,
     ): String =
         buildString {
             appendLine("{")
             appendLine("  \"full\": ${fullTotal.toJson(2)},")
             appendLine("  \"unit\": ${unitTotal.toJson(2)},")
+            appendLine("  \"frontend\": {")
+            appendLine("    \"unit\": ${frontendDelta.unit.toJson(4)},")
+            appendLine("    \"full\": ${frontendDelta.full.toJson(4)},")
+            appendLine("    \"e2e\": ${frontendDelta.e2e.toJson(4)},")
+            appendLine(
+                "    \"fullMinusUnit\": ${frontendDelta.fullMinusUnit.toJsonNumber()}," +
+                    "\n    \"e2eMinusFull\": ${frontendDelta.e2eMinusFull.toJsonNumber()}",
+            )
+            appendLine("  },")
             appendLine("  \"modules\": [")
             deltas.forEachIndexed { index, delta ->
                 appendLine("    {")

@@ -6,6 +6,10 @@ inputs:
     description: Git fetch depth for checkout (omit to skip checkout)
     required: false
     default: ""
+  install-playwright:
+    description: Install Playwright Chromium for frontend E2E jobs
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -45,3 +49,11 @@ runs:
       with:
         enable-cache: true
         cache-dependency-glob: scripts/ci/uv.lock
+
+    - name: Install Playwright browsers
+      if: inputs.install-playwright == 'true'
+      shell: bash
+      working-directory: workbench-frontend
+      run: |
+        pnpm install --frozen-lockfile
+        pnpm exec playwright install --with-deps chromium

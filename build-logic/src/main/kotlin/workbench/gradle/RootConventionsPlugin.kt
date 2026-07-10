@@ -148,6 +148,30 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn("workbenchCiCheck", "workbenchFuzzTest", "workbenchMutationTest")
         }
 
+        tasks.register("workbenchE2eCheck") {
+            group = "verification"
+            description = "Full-stack frontend E2E via Testcontainers and Playwright."
+            dependsOn(":workbench-frontend:workbenchE2eCheck")
+        }
+
+        tasks.register("workbenchCiFrontendUnitCoverage") {
+            group = "verification"
+            description = "Generates unit-only frontend Vitest coverage."
+            dependsOn(":workbench-frontend:pnpmCoverageUnit")
+        }
+
+        tasks.register("workbenchCiFrontendFullCoverage") {
+            group = "verification"
+            description = "Generates full frontend Vitest coverage (unit + storybook)."
+            dependsOn(":workbench-frontend:pnpmCoverageFull")
+        }
+
+        tasks.register("workbenchCiFrontendE2eCoverage") {
+            group = "verification"
+            description = "Generates E2E frontend Playwright coverage."
+            dependsOn(":workbench-frontend:pnpmCoverageE2e")
+        }
+
         tasks.register("dev") {
             group = "application"
             description =

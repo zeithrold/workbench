@@ -13,6 +13,12 @@ export interface Session {
   tenants: Tenant[]
 }
 
-export interface DemoCredentials {
+export interface LoginCredentials {
   email: string
+  password?: string
+  loginMethodId?: string
+  tenantId?: string
 }
+
+/** @deprecated Use {@link LoginCredentials} */
+export type DemoCredentials = LoginCredentials

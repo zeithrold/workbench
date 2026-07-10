@@ -56,15 +56,16 @@ Legacy per-module debug:
 ```bash
 ./gradlew workbenchMutationTest
 ./gradlew :workbench-core:pitest
-./gradlew :workbench-frontend:pnpmCoverage
-./gradlew :workbench-frontend:pnpmE2e
+./gradlew workbenchCiFrontendUnitCoverage
+./gradlew workbenchCiFrontendFullCoverage
+./gradlew :workbench-frontend:workbenchE2eCheck
 ```
 
 **Diff coverage** (same gate as CI; requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
 ./gradlew workbenchCiCheck
-./gradlew :workbench-frontend:pnpmCoverage
+./gradlew workbenchCiFrontendFullCoverage
 git fetch origin main
 uv run --directory scripts/ci check-diff-coverage
 ```

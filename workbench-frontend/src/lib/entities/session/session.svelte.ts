@@ -1,6 +1,6 @@
-import type { DemoCredentials, Session } from './model.js'
+import type { LoginCredentials, Session } from './model.js'
 import type { SessionGateway } from './session-gateway.js'
-import { DemoSessionGateway } from './session-gateway.js'
+import { createSessionGateway } from './create-session-gateway.js'
 
 export class SessionStore {
   current = $state<Session | null>(null)
@@ -8,7 +8,7 @@ export class SessionStore {
 
   constructor(private readonly gateway: SessionGateway) {}
 
-  async signIn(credentials: DemoCredentials) {
+  async signIn(credentials: LoginCredentials) {
     this.pending = true
     try {
       this.current = await this.gateway.signIn(credentials)
@@ -40,4 +40,4 @@ export class SessionStore {
   }
 }
 
-export const session = new SessionStore(new DemoSessionGateway())
+export const session = new SessionStore(createSessionGateway())

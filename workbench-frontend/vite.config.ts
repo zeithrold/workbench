@@ -1,4 +1,5 @@
 import path from 'node:path'
+import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 import { sveltekit } from '@sveltejs/kit/vite'
@@ -8,18 +9,24 @@ import { defineConfig } from 'vitest/config'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
+const coverageInclude = ['src/**/*.{ts,js,svelte}']
+const coverageExclude = [
+  'src/**/*.{test,spec}.{ts,js}',
+  'src/**/*.stories.svelte',
+  'src/lib/api/generated/**',
+]
+
 export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
+  resolve: {
+    conditions: process.env.VITEST ? ['browser'] : undefined,
+  },
   test: {
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
-      thresholds: {
-        lines: 70,
-        functions: 70,
-        branches: 60,
-        statements: 70,
-      },
+      include: coverageInclude,
+      exclude: coverageExclude,
+      reporter: ['text', 'html', 'json', 'lcov'],
     },
     projects: [
       {

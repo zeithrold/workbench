@@ -20,7 +20,8 @@ FRONTEND_INCLUDE_GLOBS = (
 )
 
 BACKEND_COVERAGE_XML = Path("build/reports/kover/report.xml")
-FRONTEND_COVERAGE_LCOV = Path("workbench-frontend/coverage/lcov.info")
+FRONTEND_COVERAGE_LCOV = Path("workbench-frontend/coverage/full/lcov.info")
+FRONTEND_E2E_COVERAGE_LCOV = Path("workbench-frontend/coverage/e2e/lcov.info")
 RESULTS_JSON = Path("scripts/ci/diff-coverage-results.json")
 DIFF_COVER_PATCH = Path("scripts/ci/.diff-cover.patch")
 DIFF_COVER_CONFIG = Path("scripts/ci/.diff-cover.toml")
