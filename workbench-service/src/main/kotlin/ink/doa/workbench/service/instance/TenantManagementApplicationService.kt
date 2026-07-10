@@ -30,6 +30,7 @@ class TenantManagementApplicationService(
   private val adminUserService = dependencies.adminUserService
   private val invitationService = dependencies.invitationService
   private val clock = dependencies.clock
+  private val defaultWorkItemTemplate = dependencies.defaultWorkItemTemplate
 
   suspend fun list(slug: String? = null): List<TenantRecord> = tenants.listForAdmin(slug)
 
@@ -38,6 +39,7 @@ class TenantManagementApplicationService(
   suspend fun create(command: CreateTenantCommand): TenantRecord {
     val tenant = tenants.create(command)
     tenantLoginMethods.enablePasswordLoginMethod(tenant.id)
+    defaultWorkItemTemplate.ensureProvisioned(tenant.id, null)
     return tenant
   }
 

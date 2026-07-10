@@ -9,11 +9,13 @@ import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
 import ink.doa.workbench.core.identity.model.CreateInvitationCommand
 import ink.doa.workbench.core.identity.model.CreateLoginAccountCommand
+import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
 import ink.doa.workbench.core.identity.model.CreateUserCommand
 import ink.doa.workbench.core.identity.model.InvitationRecord
 import ink.doa.workbench.core.identity.model.InvitationType
 import ink.doa.workbench.core.identity.model.LinkUserLoginAccountCommand
 import ink.doa.workbench.core.identity.model.LoginAccountParameterKey
+import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UpdateTenantCommand
 import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
@@ -28,6 +30,7 @@ import org.springframework.stereotype.Service
 private const val PASSWORD_METHOD_CODE = "password"
 
 @Service
+@Suppress("TooManyFunctions")
 class InvitationService(
   private val identity: InvitationIdentitySupport,
   private val collaborators: InvitationCollaborators,
@@ -39,19 +42,23 @@ class InvitationService(
     val normalizedEmail = normalizeSubject(command.email)
     val secret = collaborators.secretGenerator.generate()
     val now = now()
-    collaborators.invitations.create(
-      CreateInvitationCommand(
-        type = command.type,
-        tenantId = command.tenantId,
-        email = command.email.trim(),
-        normalizedEmail = normalizedEmail,
-        displayName = command.displayName,
-        tokenHash = collaborators.credentialHasher.hash(secret),
-        invitedBy = command.invitedBy,
-        expiresAt = now.plus(invitationTtl),
+    val invitation =
+      collaborators.invitations.create(
+        CreateInvitationCommand(
+          type = command.type,
+          tenantId = command.tenantId,
+          email = command.email.trim(),
+          normalizedEmail = normalizedEmail,
+          displayName = command.displayName,
+          tokenHash = collaborators.credentialHasher.hash(secret),
+          invitedBy = command.invitedBy,
+          expiresAt = now.plus(invitationTtl),
+        )
       )
-    )
     return CreateInvitationResult(
+      id = invitation.apiId.value,
+      email = invitation.email,
+      expiresAt = invitation.expiresAt,
       token = secret,
       invitationLink =
         collaborators.invitationLinkBuilder.buildInvitationLink(secret, command.requestHost),
@@ -75,9 +82,60 @@ class InvitationService(
     val invitation = requireActiveInvitation(command.token)
     return when (invitation.type) {
       InvitationType.TENANT_ADMIN -> acceptTenantAdmin(invitation, command)
-      InvitationType.TENANT_MEMBER ->
-        throw InvalidRequestException(WorkbenchErrorCode.TENANT_MEMBER_INVITATION_UNSUPPORTED)
+      InvitationType.TENANT_MEMBER -> acceptTenantMemberNewUser(invitation, command)
     }
+  }
+
+  suspend fun acceptExisting(token: String, user: UserRecord): InvitationAcceptView {
+    val invitation = requireActiveInvitation(token)
+    if (invitation.type != InvitationType.TENANT_MEMBER) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.TENANT_MEMBER_INVITATION_AUTHENTICATED_ACCEPTANCE_REQUIRED
+      )
+    }
+    if (user.primaryEmail?.let(::normalizeSubject) != invitation.normalizedEmail) {
+      throw InvalidRequestException(WorkbenchErrorCode.TENANT_MEMBER_INVITATION_EMAIL_MISMATCH)
+    }
+    return acceptTenantMember(invitation, user)
+  }
+
+  private suspend fun acceptTenantMemberNewUser(
+    invitation: InvitationRecord,
+    command: AcceptInvitationCommand,
+  ): InvitationAcceptView {
+    if (identity.users.findByPrimaryEmail(invitation.normalizedEmail) != null) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.TENANT_MEMBER_INVITATION_AUTHENTICATED_ACCEPTANCE_REQUIRED
+      )
+    }
+    return acceptTenantMember(invitation, createInvitedUser(invitation, command))
+  }
+
+  private suspend fun acceptTenantMember(
+    invitation: InvitationRecord,
+    user: UserRecord,
+  ): InvitationAcceptView {
+    val tenant =
+      identity.tenants.findById(invitation.tenantId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
+    val member = identity.tenantMembers.findByTenantAndUser(tenant.id, user.id)
+    if (member == null) {
+      identity.tenantMembers.create(
+        CreateTenantMemberCommand(
+          tenantId = tenant.id,
+          userId = user.id,
+          status = TenantMemberStatus.ACTIVE,
+          joinedAt = now(),
+          invitedBy = invitation.invitedBy,
+        )
+      )
+    }
+    collaborators.invitations.consume(invitation.id, now())
+    return InvitationAcceptView(
+      type = InvitationType.TENANT_MEMBER,
+      tenant = TenantSummary.from(tenant),
+      user = UserSummary.from(user),
+    )
   }
 
   private suspend fun acceptTenantAdmin(
@@ -166,7 +224,13 @@ class InvitationService(
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock)
 }
 
-data class CreateInvitationResult(val token: String, val invitationLink: String)
+data class CreateInvitationResult(
+  val id: String,
+  val email: String,
+  val expiresAt: OffsetDateTime,
+  val token: String,
+  val invitationLink: String,
+)
 
 data class InvitationPreviewView(
   val type: InvitationType,

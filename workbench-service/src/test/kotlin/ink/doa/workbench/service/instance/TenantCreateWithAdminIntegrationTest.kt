@@ -111,6 +111,7 @@ class TenantCreateWithAdminIntegrationTest :
           identity =
             InvitationIdentitySupport(
               tenants = tenants,
+              tenantMembers = tenantMembers,
               users = users,
               loginMethods = loginMethods,
               loginAccounts = loginAccounts,
@@ -139,6 +140,7 @@ class TenantCreateWithAdminIntegrationTest :
               userLookupService = UserLookupService(users),
               adminUserService = adminUserService,
               invitationService = invitationService,
+              defaultWorkItemTemplate = io.mockk.mockk(relaxed = true),
               clock = clock,
             ),
           domainEventPublisher = RecordingDomainEventPublisher(),

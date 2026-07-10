@@ -3,6 +3,7 @@ package ink.doa.workbench.security.invitation
 import ink.doa.workbench.core.identity.InvitationRepository
 import ink.doa.workbench.core.identity.LoginAccountStore
 import ink.doa.workbench.core.identity.LoginMethodRepository
+import ink.doa.workbench.core.identity.TenantMemberRepository
 import ink.doa.workbench.core.identity.TenantRepository
 import ink.doa.workbench.core.identity.UserLoginAccountRepository
 import ink.doa.workbench.core.identity.UserRepository
@@ -13,8 +14,10 @@ import ink.doa.workbench.security.permission.AdminUserService
 import org.springframework.stereotype.Component
 
 @Component
+@Suppress("LongParameterList")
 class InvitationIdentitySupport(
   val tenants: TenantRepository,
+  val tenantMembers: TenantMemberRepository,
   val users: UserRepository,
   val loginMethods: LoginMethodRepository,
   val loginAccounts: LoginAccountStore,

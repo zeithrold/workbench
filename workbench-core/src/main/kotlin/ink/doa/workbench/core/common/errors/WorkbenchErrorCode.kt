@@ -126,6 +126,14 @@ enum class WorkbenchErrorCode(
     "tenant.member_invitation_unsupported",
     "Tenant member invitations are not supported yet.",
   ),
+  TENANT_MEMBER_INVITATION_AUTHENTICATED_ACCEPTANCE_REQUIRED(
+    "tenant.member_invitation.authenticated_acceptance_required",
+    "Sign in with the invited account to accept this invitation.",
+  ),
+  TENANT_MEMBER_INVITATION_EMAIL_MISMATCH(
+    "tenant.member_invitation.email_mismatch",
+    "The signed-in account does not match the invitation email.",
+  ),
   TENANT_CONFIG_DECODE_FAILED("tenant.config.decode_failed", "Tenant config cannot be decoded."),
   PROJECT_ALREADY_DESTROYING("project.already_destroying", "Project is already being destroyed."),
   PROJECT_DESTROYING("project.destroying", "Project is being destroyed."),

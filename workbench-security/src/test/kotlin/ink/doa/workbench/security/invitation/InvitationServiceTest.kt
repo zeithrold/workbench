@@ -8,6 +8,7 @@ import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.InvitationRepository
 import ink.doa.workbench.core.identity.LoginAccountStore
 import ink.doa.workbench.core.identity.LoginMethodRepository
+import ink.doa.workbench.core.identity.TenantMemberRepository
 import ink.doa.workbench.core.identity.TenantRepository
 import ink.doa.workbench.core.identity.UserLoginAccountRepository
 import ink.doa.workbench.core.identity.UserRepository
@@ -47,6 +48,7 @@ class InvitationServiceTest :
     val invitations = mockk<InvitationRepository>()
     val tenants = mockk<TenantRepository>()
     val users = mockk<UserRepository>()
+    val tenantMembers = mockk<TenantMemberRepository>()
     val loginMethods = mockk<LoginMethodRepository>()
     val loginAccounts = mockk<LoginAccountStore>()
     val userLoginAccounts = mockk<UserLoginAccountRepository>()
@@ -60,6 +62,7 @@ class InvitationServiceTest :
       InvitationService(
         InvitationIdentitySupport(
           tenants,
+          tenantMembers,
           users,
           loginMethods,
           loginAccounts,
@@ -103,8 +106,15 @@ class InvitationServiceTest :
       result.invitationLink shouldBe "https://workbench.test/invite/invite-token"
     }
 
-    "accept rejects unsupported tenant member invitations" {
+    "accept requires authenticated claim when a tenant member invite matches an existing user" {
       val invitation = sampleInvitation(type = InvitationType.TENANT_MEMBER)
+      coEvery { users.findByPrimaryEmail(invitation.normalizedEmail) } returns
+        UserRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("usr"),
+          displayName = "Existing user",
+          primaryEmail = invitation.normalizedEmail,
+        )
       coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
       coEvery { credentialHasher.hash("token") } returns "hash"
 
@@ -119,7 +129,49 @@ class InvitationServiceTest :
             )
           }
         }
-        .errorCode shouldBe WorkbenchErrorCode.TENANT_MEMBER_INVITATION_UNSUPPORTED
+        .errorCode shouldBe
+        WorkbenchErrorCode.TENANT_MEMBER_INVITATION_AUTHENTICATED_ACCEPTANCE_REQUIRED
+    }
+
+    "acceptExisting activates tenant membership for matching invited user" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_MEMBER)
+      val tenant = sampleTenant(invitation.tenantId).copy(status = TenantStatus.ACTIVE)
+      val user =
+        UserRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("usr"),
+          displayName = "Existing user",
+          primaryEmail = invitation.normalizedEmail,
+        )
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+      coEvery { tenants.findById(invitation.tenantId) } returns tenant
+      coEvery { tenantMembers.findByTenantAndUser(tenant.id, user.id) } returns null
+      coEvery { tenantMembers.create(any()) } returns mockk(relaxed = true)
+      coEvery { invitations.consume(invitation.id, any()) } returns true
+
+      val accepted = runBlocking { service.acceptExisting("token", user) }
+
+      accepted.type shouldBe InvitationType.TENANT_MEMBER
+      accepted.user.id shouldBe user.apiId
+      coVerify { tenantMembers.create(match { it.tenantId == tenant.id && it.userId == user.id }) }
+      coVerify { invitations.consume(invitation.id, any()) }
+    }
+
+    "acceptExisting rejects a user whose email does not match the invitation" {
+      val invitation = sampleInvitation(type = InvitationType.TENANT_MEMBER)
+      val user =
+        UserRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("usr"),
+          displayName = "Other user",
+          primaryEmail = "other@example.test",
+        )
+      coEvery { invitations.findActiveByHash("hash", any()) } returns invitation
+      coEvery { credentialHasher.hash("token") } returns "hash"
+
+      shouldThrow<InvalidRequestException> { runBlocking { service.acceptExisting("token", user) } }
+        .errorCode shouldBe WorkbenchErrorCode.TENANT_MEMBER_INVITATION_EMAIL_MISMATCH
     }
 
     "preview returns tenant and email for active invitation" {

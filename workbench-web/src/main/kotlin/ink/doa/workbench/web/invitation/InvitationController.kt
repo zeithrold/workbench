@@ -1,15 +1,27 @@
 package ink.doa.workbench.web.invitation
 
+import ink.doa.workbench.core.common.context.TenantRequestContext
+import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
+import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.security.invitation.CreateManagedInvitationCommand
 import ink.doa.workbench.security.invitation.InvitationService
+import ink.doa.workbench.web.api.Authenticated
+import ink.doa.workbench.web.api.AuthenticatedOnly
+import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.PublicEndpoint
+import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
+import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.http.HttpClientContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -27,6 +39,31 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Invitations", description = "Tenant invitation preview and acceptance.")
 @StandardErrorResponses
 class InvitationController(private val service: InvitationService) {
+  @PostMapping
+  @SessionSecured
+  @Authenticated
+  @TenantScoped
+  @Authorize(action = "tenant.member.manage", resource = "tenant")
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Create a tenant member invitation")
+  suspend fun create(
+    @Valid @RequestBody request: CreateTenantMemberInvitationRequest,
+    tenantContext: TenantRequestContext,
+    httpRequest: HttpServletRequest,
+  ): InvitationCreatedResponse =
+    InvitationCreatedResponse.from(
+      service.create(
+        CreateManagedInvitationCommand(
+          type = ink.doa.workbench.core.identity.model.InvitationType.TENANT_MEMBER,
+          tenantId = tenantContext.tenant.id,
+          email = request.email,
+          displayName = request.displayName,
+          invitedBy = actorUserId(tenantContext),
+          requestHost = HttpClientContext.resolveRequestHost(httpRequest),
+        )
+      )
+    )
+
   @GetMapping("/preview")
   @PublicEndpoint
   @Operation(
@@ -86,7 +123,42 @@ class InvitationController(private val service: InvitationService) {
         )
       )
     )
+
+  @PostMapping("/accept-existing")
+  @SessionSecured
+  @Authenticated
+  @AuthenticatedOnly
+  @ResponseStatus(HttpStatus.CREATED)
+  @Operation(summary = "Accept a tenant invitation as an existing user")
+  suspend fun acceptExisting(
+    @Valid @RequestBody request: AcceptExistingInvitationRequest,
+    principal: AuthenticatedPrincipal,
+  ): InvitationAcceptResponse =
+    InvitationAcceptResponse.from(service.acceptExisting(request.token, principal.user))
 }
+
+data class CreateTenantMemberInvitationRequest(
+  @field:NotBlank val email: String,
+  val displayName: String? = null,
+)
+
+data class AcceptExistingInvitationRequest(@field:NotBlank val token: String)
+
+data class InvitationCreatedResponse(
+  val id: String,
+  val email: String,
+  val expiresAt: java.time.OffsetDateTime,
+  val invitationLink: String,
+) {
+  companion object {
+    fun from(result: ink.doa.workbench.security.invitation.CreateInvitationResult) =
+      InvitationCreatedResponse(result.id, result.email, result.expiresAt, result.invitationLink)
+  }
+}
+
+private fun actorUserId(tenantContext: TenantRequestContext) =
+  tenantContext.actor?.id
+    ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
 
 @Schema(description = "Accept invitation request.")
 data class AcceptInvitationRequest(

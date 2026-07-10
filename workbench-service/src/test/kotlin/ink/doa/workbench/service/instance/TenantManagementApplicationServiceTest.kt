@@ -68,6 +68,7 @@ class TenantManagementApplicationServiceTest :
             userLookupService = UserLookupService(users),
             adminUserService = adminUserService,
             invitationService = invitationService,
+            defaultWorkItemTemplate = mockk(relaxed = true),
             clock = clock,
           ),
         domainEventPublisher = publisher,
