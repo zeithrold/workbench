@@ -282,7 +282,9 @@ class SprintServiceTest :
           operation.apiId.value,
         )
       } returns failed
-      coEvery { closeOperations.markQueued(failed.id, any()) } returns true
+      coEvery {
+        closeOperations.retryAndEnqueue(any())
+      } returns failed.copy(status = SprintCloseOperationStatus.QUEUED, lastError = null)
 
       service
         .retryCloseOperation(
@@ -293,7 +295,7 @@ class SprintServiceTest :
         )
         .status shouldBe SprintCloseOperationStatus.QUEUED.name
 
-      coVerify { closeOperations.markQueued(failed.id, any()) }
+      coVerify { closeOperations.retryAndEnqueue(any()) }
     }
 
     test("retryCloseOperation rejects a non-failed operation") {

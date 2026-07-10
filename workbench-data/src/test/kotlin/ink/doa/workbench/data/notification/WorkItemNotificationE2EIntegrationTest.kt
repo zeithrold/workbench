@@ -6,7 +6,6 @@ import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
 import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.data.messaging.ProcessedDomainEventRepository
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.notification.ExposedNotificationRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
@@ -86,11 +85,11 @@ class WorkItemNotificationE2EIntegrationTest :
         }
         val payload = WorkItemMutationEvent.from(workItem)
         val notifications = ExposedNotificationRepository(database)
-        val processed = ProcessedDomainEventRepository(jdbc)
-
         repeat(3) {
           runBlocking {
-            notifications.create(
+            notifications.processIfUnprocessed(
+              consumerName,
+              eventId,
               CreateNotificationCommand(
                 recipientUserId = stack.actorId,
                 tenantId = stack.tenantId,
@@ -107,9 +106,8 @@ class WorkItemNotificationE2EIntegrationTest :
                     put("workItemId", payload.workItemId)
                     put("key", payload.key)
                   },
-              )
+              ),
             )
-            processed.tryClaim(consumerName, eventId)
           }
         }
 
