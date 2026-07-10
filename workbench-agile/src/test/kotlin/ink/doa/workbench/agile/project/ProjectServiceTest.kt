@@ -1,7 +1,9 @@
 package ink.doa.workbench.agile.project
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.project.ProjectDestroyRequest
 import ink.doa.workbench.core.project.ProjectRepository
+import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.ProjectRecord
 import io.kotest.core.spec.style.StringSpec
@@ -99,5 +101,43 @@ class ProjectServiceTest :
         )
       coEvery { repository.update(updateCommand) } returns record.copy(name = "Renamed")
       service.update(updateCommand).name shouldBe "Renamed"
+    }
+
+    "requestDestroy delegates to the project repository port" {
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actorId = UUID.randomUUID()
+      val record =
+        ProjectRecord(
+          id = projectId,
+          apiId = PublicId.new("prj"),
+          tenantId = tenantId,
+          identifier = "CORE",
+          name = "Core",
+          description = null,
+          status = ink.doa.workbench.core.project.model.ProjectStatus.DESTROYING,
+        )
+      val request =
+        ProjectDestroyRequest(
+          tenantId = tenantId,
+          projectId = projectId,
+          deletedBy = actorId,
+          deleteReason = "cleanup",
+          projectApiId = record.apiId.value,
+          tenantApiId = "ten_1",
+          payload =
+            ProjectDestroyRequestedEvent(
+              tenantId = tenantId.toString(),
+              projectId = record.apiId.value,
+              requestedBy = actorId.toString(),
+              deleteReason = "cleanup",
+              requestedAt = "2026-07-10T00:00:00Z",
+            ),
+        )
+      val repository = mockk<ProjectRepository>()
+      coEvery { repository.requestDestroy(request) } returns record
+
+      ProjectService(repository, mockk(relaxed = true)).requestDestroy(request) shouldBe record
+      coVerify(exactly = 1) { repository.requestDestroy(request) }
     }
   })

@@ -1,6 +1,7 @@
 package ink.doa.workbench.web.messaging
 
 import ink.doa.workbench.core.common.context.InstanceRequestContext
+import ink.doa.workbench.core.messaging.OutboxMessageQuery
 import ink.doa.workbench.core.messaging.OutboxMessageRecord
 import ink.doa.workbench.service.messaging.OutboxAdminApplicationService
 import ink.doa.workbench.web.api.Audit
@@ -14,10 +15,10 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Outbox Administration", description = "Instance-scoped domain outbox operations.")
 @SessionSecured
 @StandardErrorResponses
+@Suppress("UnusedParameter", "RedundantSuspendModifier")
 class OutboxAdminController(private val service: OutboxAdminApplicationService) {
   @GetMapping
   @Authenticated
@@ -32,14 +34,9 @@ class OutboxAdminController(private val service: OutboxAdminApplicationService) 
   @Authorize(action = "outbox.read", resource = "outbox")
   @Operation(summary = "List outbox messages")
   suspend fun list(
-    @RequestParam(required = false) status: String?,
-    @RequestParam(required = false) tenantId: String?,
-    @RequestParam(required = false) eventType: String?,
-    @RequestParam(defaultValue = "50") limit: Int,
-    @RequestParam(defaultValue = "0") offset: Long,
+    @ModelAttribute query: OutboxMessageQuery,
     instanceContext: InstanceRequestContext,
-  ): List<OutboxMessageResponse> =
-    service.list(status, tenantId, eventType, limit, offset).map(OutboxMessageResponse::from)
+  ): List<OutboxMessageResponse> = service.list(query).map(OutboxMessageResponse::from)
 
   @GetMapping("/{id}")
   @Authenticated

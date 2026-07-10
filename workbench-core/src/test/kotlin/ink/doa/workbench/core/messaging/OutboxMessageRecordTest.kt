@@ -31,4 +31,13 @@ class OutboxMessageRecordTest :
       record.id shouldBe id
       record.status shouldBe "DEAD"
     }
+
+    "outbox message query defaults limit and offset" {
+      val query =
+        OutboxMessageQuery(status = "DEAD", tenantId = "ten_1", eventType = "work_item.updated")
+
+      query.limit shouldBe 50
+      query.offset shouldBe 0L
+      query.status shouldBe "DEAD"
+    }
   })

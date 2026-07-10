@@ -11,22 +11,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class OutboxAdminApplicationService(private val store: OutboxAdminStore) {
-  fun list(
-    status: String?,
-    tenantId: String?,
-    eventType: String?,
-    limit: Int,
-    offset: Long,
-  ): List<OutboxMessageRecord> =
-    store.list(
-      OutboxMessageQuery(
-        status = status,
-        tenantId = tenantId,
-        eventType = eventType,
-        limit = limit,
-        offset = offset,
-      )
-    )
+  fun list(query: OutboxMessageQuery): List<OutboxMessageRecord> = store.list(query)
 
   fun get(id: UUID): OutboxMessageRecord =
     store.findById(id)

@@ -57,4 +57,8 @@ interface SprintCloseOperationRepository {
     completedAt: OffsetDateTime,
     lastError: String? = null,
   ): Boolean
+
+  suspend fun completeSucceeded(request: SprintCloseSuccessRequest): SprintCloseOperationRecord
+
+  suspend fun completeFailed(request: SprintCloseFailureRequest): SprintCloseOperationRecord
 }

@@ -404,6 +404,10 @@ class ExposedWorkItemRepository(
     command: ReassignSprintBatchCommand
   ): ReassignSprintBatchResult =
     suspendTransaction(db = database) {
+      val sourceSprintApiId =
+        SprintsTable.selectAll()
+          .where { SprintsTable.id eq command.sourceSprintId.toKotlinUuid() }
+          .single()[SprintsTable.apiId]
       val targetSprintApiId =
         command.targetSprintId?.let { targetId ->
           SprintsTable.selectAll()
@@ -474,6 +478,7 @@ class ExposedWorkItemRepository(
             )
           )
           ?.let { appendWorkItemEvent(eventCodec, it) }
+        outboxAppender.appendSprintChanged(after, command, sourceSprintApiId, targetSprintApiId)
         after
       }
       val remaining =

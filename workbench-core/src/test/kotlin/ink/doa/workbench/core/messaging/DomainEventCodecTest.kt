@@ -1,9 +1,15 @@
 package ink.doa.workbench.core.messaging
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
+import ink.doa.workbench.core.sprint.events.SprintCloseFailedEvent
+import ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent
+import ink.doa.workbench.core.sprint.events.SprintClosedEvent
+import ink.doa.workbench.core.sprint.events.SprintDomainEvents
 import ink.doa.workbench.core.tenant.events.TenantCreatedEvent
 import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import ink.doa.workbench.core.tenant.events.TenantDomainEvents
+import ink.doa.workbench.core.workitem.events.WorkItemSprintChangedEvent
+import ink.doa.workbench.core.workitem.events.WorkItemSprintDomainEvents
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -120,5 +126,61 @@ class DomainEventCodecTest :
 
     "rejects invalid envelope json" {
       shouldThrow<InvalidRequestException> { decoder.parseEnvelope("{not-json") }
+    }
+
+    "round-trips sprint close lifecycle payloads through envelope" {
+      val requested =
+        SprintCloseRequestedEvent(
+          tenantId = "ten_abc",
+          projectId = "prj_abc",
+          sprintId = "spr_abc",
+          operationId = "sop_abc",
+          requestedBy = "usr_actor",
+        )
+      val closed =
+        SprintClosedEvent(
+          tenantId = "ten_abc",
+          projectId = "prj_abc",
+          sprintId = "spr_abc",
+          operationId = "sop_abc",
+        )
+      val failed =
+        SprintCloseFailedEvent(
+          tenantId = "ten_abc",
+          projectId = "prj_abc",
+          sprintId = "spr_abc",
+          operationId = "sop_abc",
+          error = "batch failed",
+        )
+      decoder.decode(
+        SprintDomainEvents.CloseRequested,
+        decoder.parseEnvelope(encoder.encode(SprintDomainEvents.CloseRequested, requested)),
+      ) shouldBe requested
+      decoder.decode(
+        SprintDomainEvents.Closed,
+        decoder.parseEnvelope(encoder.encode(SprintDomainEvents.Closed, closed)),
+      ) shouldBe closed
+      decoder.decode(
+        SprintDomainEvents.CloseFailed,
+        decoder.parseEnvelope(encoder.encode(SprintDomainEvents.CloseFailed, failed)),
+      ) shouldBe failed
+    }
+
+    "round-trips work item sprint changed payload through envelope" {
+      val payload =
+        WorkItemSprintChangedEvent(
+          tenantId = "ten_abc",
+          projectId = "prj_abc",
+          workItemId = "wki_abc",
+          sourceSprintId = "spr_source",
+          targetSprintId = "spr_target",
+          disposition = "BACKLOG",
+          operationId = "sop_abc",
+          actorUserId = "usr_actor",
+        )
+      decoder.decode(
+        WorkItemSprintDomainEvents.SprintChanged,
+        decoder.parseEnvelope(encoder.encode(WorkItemSprintDomainEvents.SprintChanged, payload)),
+      ) shouldBe payload
     }
   })
