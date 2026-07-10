@@ -219,12 +219,21 @@ object WorkItemEventsTable : Table("work_item_events") {
 
 object DomainOutboxTable : Table("domain_outbox") {
   val id = uuid("id")
+  val eventId = text("event_id")
+  val eventType = text("event_type")
+  val eventVersion = integer("event_version")
   val topic = text("topic")
   val partitionKey = text("partition_key")
+  val tenantId = text("tenant_id").nullable()
   val payload = jsonb("payload", Json.Default, JsonElement.serializer())
+  val status = text("status")
   val createdAt = timestampWithTimeZone("created_at")
+  val updatedAt = timestampWithTimeZone("updated_at")
+  val nextAttemptAt = timestampWithTimeZone("next_attempt_at")
+  val lockedUntil = timestampWithTimeZone("locked_until").nullable()
   val publishedAt = timestampWithTimeZone("published_at").nullable()
   val attempts = integer("attempts")
+  val lastError = text("last_error").nullable()
   override val primaryKey = PrimaryKey(id)
 }
 

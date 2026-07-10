@@ -7,8 +7,10 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.kafka.annotation.EnableKafka
 import org.springframework.scheduling.annotation.EnableAsync
+import org.springframework.scheduling.annotation.EnableScheduling
 
 @EnableAsync
+@EnableScheduling
 @EnableKafka
 @EnableConfigurationProperties(InstanceProperties::class, InvitationLinkProperties::class)
 @SpringBootApplication(scanBasePackages = ["ink.doa.workbench"])
