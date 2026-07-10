@@ -12,6 +12,8 @@ import ink.doa.workbench.core.sprint.model.StartSprintCommand
 import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
+import ink.doa.workbench.web.api.AuthorizeAll
+import ink.doa.workbench.web.api.Idempotent
 import ink.doa.workbench.web.api.ProjectScoped
 import ink.doa.workbench.web.api.ResourceId
 import ink.doa.workbench.web.api.SessionSecured
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -151,20 +154,74 @@ class ProjectSprintController(private val sprintService: SprintService) {
   @Authenticated
   @TenantScoped
   @ProjectScoped
-  @Authorize(action = "sprint.manage", resource = "sprint")
+  @AuthorizeAll(
+    actions = ["sprint.manage", "sprint.workitem.disposition"],
+    resource = "sprint",
+  )
+  @Idempotent
+  @ResponseStatus(HttpStatus.ACCEPTED)
   @Operation(summary = "Close a sprint")
   suspend fun close(
     @PathVariable @ResourceId sprintId: String,
+    @Valid @RequestBody request: CloseSprintRequest,
+    @RequestHeader(name = "Idempotency-Key") idempotencyKey: String,
     projectContext: ProjectRequestContext,
-  ): SprintResponse =
-    SprintResponse.from(
+  ): SprintCloseOperationResponse =
+    SprintCloseOperationResponse.from(
       sprintService.close(
         CloseSprintCommand(
           tenantId = projectContext.tenant.id,
           projectId = projectContext.project.id,
           sprintApiId = sprintId,
           actorUserId = actorUserId(projectContext),
+          disposition = request.disposition,
+          targetSprintApiId = request.targetSprintId,
+          idempotencyKey = idempotencyKey,
         )
+      )
+    )
+
+  @GetMapping("/{sprintId}/close-operations/{operationId}")
+  @Authenticated
+  @TenantScoped
+  @ProjectScoped
+  @Authorize(action = "sprint.read", resource = "sprint")
+  @Operation(summary = "Get a sprint close operation")
+  suspend fun closeOperation(
+    @PathVariable @ResourceId sprintId: String,
+    @PathVariable operationId: String,
+    projectContext: ProjectRequestContext,
+  ): SprintCloseOperationResponse =
+    SprintCloseOperationResponse.from(
+      sprintService.closeOperation(
+        projectContext.tenant.id,
+        projectContext.project.id,
+        sprintId,
+        operationId,
+      )
+    )
+
+  @PostMapping("/{sprintId}/close-operations/{operationId}/retry")
+  @Authenticated
+  @TenantScoped
+  @ProjectScoped
+  @AuthorizeAll(
+    actions = ["sprint.manage", "sprint.workitem.disposition"],
+    resource = "sprint",
+  )
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  @Operation(summary = "Retry a failed sprint close operation")
+  suspend fun retryCloseOperation(
+    @PathVariable @ResourceId sprintId: String,
+    @PathVariable operationId: String,
+    projectContext: ProjectRequestContext,
+  ): SprintCloseOperationResponse =
+    SprintCloseOperationResponse.from(
+      sprintService.retryCloseOperation(
+        projectContext.tenant.id,
+        projectContext.project.id,
+        sprintId,
+        operationId,
       )
     )
 

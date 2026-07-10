@@ -12,6 +12,7 @@ import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.springframework.stereotype.Component
 
@@ -31,22 +32,35 @@ class ExposedDomainEventOutbox(
     val encoded = encoder.encode(spec, payload, metadata)
     val envelope = json.decodeFromString<DomainEventEnvelope>(encoded)
     val now = OffsetDateTime.now(ZoneOffset.UTC)
-    transaction(db = database) {
-      DomainOutboxTable.insert {
-        it[DomainOutboxTable.id] = UUID.randomUUID().toKotlinUuid()
-        it[DomainOutboxTable.eventId] = envelope.eventId
-        it[DomainOutboxTable.eventType] = envelope.type
-        it[DomainOutboxTable.eventVersion] = envelope.version
-        it[DomainOutboxTable.topic] = spec.topic
-        it[DomainOutboxTable.partitionKey] = key
-        it[DomainOutboxTable.tenantId] = envelope.tenantId
-        it[DomainOutboxTable.payload] = json.parseToJsonElement(encoded)
-        it[DomainOutboxTable.status] = "PENDING"
-        it[DomainOutboxTable.createdAt] = now
-        it[DomainOutboxTable.updatedAt] = now
-        it[DomainOutboxTable.nextAttemptAt] = now
-        it[DomainOutboxTable.attempts] = 0
-      }
+    val current = TransactionManager.currentOrNull()
+    if (current == null) {
+      transaction(db = database) { insertOutbox(envelope, encoded, key, spec, now) }
+    } else {
+      insertOutbox(envelope, encoded, key, spec, now)
+    }
+  }
+
+  private fun <T : Any> insertOutbox(
+    envelope: DomainEventEnvelope,
+    encoded: String,
+    key: String,
+    spec: DomainEventSpec<T>,
+    now: OffsetDateTime,
+  ) {
+    DomainOutboxTable.insert {
+      it[DomainOutboxTable.id] = UUID.randomUUID().toKotlinUuid()
+      it[DomainOutboxTable.eventId] = envelope.eventId
+      it[DomainOutboxTable.eventType] = envelope.type
+      it[DomainOutboxTable.eventVersion] = envelope.version
+      it[DomainOutboxTable.topic] = spec.topic
+      it[DomainOutboxTable.partitionKey] = key
+      it[DomainOutboxTable.tenantId] = envelope.tenantId
+      it[DomainOutboxTable.payload] = json.parseToJsonElement(encoded)
+      it[DomainOutboxTable.status] = "PENDING"
+      it[DomainOutboxTable.createdAt] = now
+      it[DomainOutboxTable.updatedAt] = now
+      it[DomainOutboxTable.nextAttemptAt] = now
+      it[DomainOutboxTable.attempts] = 0
     }
   }
 }

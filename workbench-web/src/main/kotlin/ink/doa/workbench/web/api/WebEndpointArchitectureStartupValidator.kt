@@ -56,7 +56,9 @@ object WebEndpointArchitectureRules {
     val classInstanceScoped = clazz.isAnnotationPresent(InstanceScoped::class.java)
     val classPublicEndpoint = clazz.isAnnotationPresent(PublicEndpoint::class.java)
     val classAuthenticatedOnly = clazz.isAnnotationPresent(AuthenticatedOnly::class.java)
-    val classAuthorize = clazz.isAnnotationPresent(Authorize::class.java)
+    val classAuthorize =
+      clazz.isAnnotationPresent(Authorize::class.java) ||
+        clazz.isAnnotationPresent(AuthorizeAll::class.java)
 
     return clazz.declaredMethods.filter(::isHandlerMethod).flatMap { method ->
       buildList {
@@ -146,7 +148,9 @@ object WebEndpointArchitectureRules {
           },
         "Authorize"
           .takeIf {
-            method.isAnnotationPresent(Authorize::class.java) || classAuthorize
+            method.isAnnotationPresent(Authorize::class.java) ||
+              method.isAnnotationPresent(AuthorizeAll::class.java) ||
+              classAuthorize
           },
       )
 

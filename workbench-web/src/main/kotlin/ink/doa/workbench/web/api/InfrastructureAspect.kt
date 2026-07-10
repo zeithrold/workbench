@@ -68,6 +68,23 @@ class InfrastructureAspect(
 
   @Around("@annotation(authorize)")
   fun authorize(joinPoint: ProceedingJoinPoint, authorize: Authorize): Any? {
+    authorizeAction(joinPoint, authorize.action, authorize.resource)
+    return joinPoint.proceed()
+  }
+
+  @Around("@annotation(authorizeAll)")
+  fun authorizeAll(joinPoint: ProceedingJoinPoint, authorizeAll: AuthorizeAll): Any? {
+    authorizeAll.actions.forEach { action ->
+      authorizeAction(joinPoint, action, authorizeAll.resource)
+    }
+    return joinPoint.proceed()
+  }
+
+  private fun authorizeAction(
+    joinPoint: ProceedingJoinPoint,
+    action: String,
+    resource: String,
+  ) {
     val projectContext = joinPoint.args.filterIsInstance<ProjectRequestContext>().firstOrNull()
     val tenantContext = joinPoint.args.filterIsInstance<TenantRequestContext>().firstOrNull()
     val tenantId = tenantContext?.tenant?.id ?: projectContext?.tenant?.id
@@ -75,7 +92,7 @@ class InfrastructureAspect(
       runBlocking { tenantOperationalGuard.ensureOperational(id) }
     }
     val request = runBlocking {
-      enrichAuthorizationRequest(authorizationRequest(joinPoint, authorize))
+      enrichAuthorizationRequest(authorizationRequest(joinPoint, action, resource))
     }
     val decision = runBlocking { permissionService.decide(request) }
     if (decision is AuthorizationDecision.Deny) {
@@ -93,7 +110,6 @@ class InfrastructureAspect(
         decision.reason.message,
       )
     }
-    return joinPoint.proceed()
   }
 
   @Around("@annotation(ink.doa.workbench.web.api.RequirePermission)")
@@ -105,7 +121,8 @@ class InfrastructureAspect(
 
   private fun authorizationRequest(
     joinPoint: ProceedingJoinPoint,
-    authorize: Authorize,
+    action: String,
+    resource: String,
   ): AuthorizationRequest {
     val principal = currentPrincipal()
     val projectContext = joinPoint.args.filterIsInstance<ProjectRequestContext>().firstOrNull()
@@ -138,10 +155,10 @@ class InfrastructureAspect(
           credentialScopes = principal.credentialScopes,
         ),
       tenantId = tenantId,
-      action = AuthorizationAction(authorize.action),
+      action = AuthorizationAction(action),
       resource =
         AuthorizationResource(
-          type = authorize.resource,
+          type = resource,
           id = resourcePublicId,
           tenantId = tenantId,
           projectId = projectId,

@@ -56,6 +56,44 @@ data class CloseSprintCommand(
   val projectId: UUID,
   val sprintApiId: String,
   val actorUserId: UUID,
+  val disposition: SprintCloseDisposition = SprintCloseDisposition.KEEP,
+  val targetSprintApiId: String? = null,
+  val idempotencyKey: String? = null,
+)
+
+enum class SprintCloseDisposition {
+  BACKLOG,
+  NEXT_SPRINT,
+  KEEP,
+}
+
+enum class SprintCloseOperationStatus {
+  QUEUED,
+  RUNNING,
+  SUCCEEDED,
+  FAILED,
+}
+
+data class SprintCloseOperationRecord(
+  val id: UUID,
+  val apiId: PublicId,
+  val tenantId: UUID,
+  val projectId: UUID,
+  val sprintId: UUID,
+  val sprintApiId: PublicId,
+  val targetSprintId: UUID?,
+  val targetSprintApiId: PublicId?,
+  val disposition: SprintCloseDisposition,
+  val requestedBy: UUID,
+  val status: SprintCloseOperationStatus,
+  val totalItems: Int,
+  val processedItems: Int,
+  val failedItems: Int,
+  val lastError: String?,
+  val idempotencyKey: String?,
+  val createdAt: OffsetDateTime,
+  val startedAt: OffsetDateTime?,
+  val completedAt: OffsetDateTime?,
 )
 
 data class ArchiveSprintCommand(

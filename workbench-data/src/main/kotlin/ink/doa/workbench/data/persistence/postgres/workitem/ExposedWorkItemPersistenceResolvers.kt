@@ -2,6 +2,7 @@ package ink.doa.workbench.data.persistence.postgres.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.core.sprint.model.SprintStatus
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import java.util.UUID
@@ -10,6 +11,7 @@ import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.selectAll
 
@@ -36,6 +38,7 @@ internal fun resolveSprint(tenantId: UUID, projectId: UUID, apiId: String): UUID
       (SprintsTable.tenantId eq tenantId.toKotlinUuid()) and
         (SprintsTable.projectId eq projectId.toKotlinUuid()) and
         (SprintsTable.apiId eq apiId) and
+        (SprintsTable.status neq SprintStatus.CLOSING.dbValue) and
         SprintsTable.deletedAt.isNull() and
         SprintsTable.archivedAt.isNull()
     }

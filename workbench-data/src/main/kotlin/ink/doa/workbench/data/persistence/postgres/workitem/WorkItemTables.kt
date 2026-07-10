@@ -31,6 +31,27 @@ object SprintsTable : Table("sprints") {
   override val primaryKey = PrimaryKey(id)
 }
 
+object SprintCloseOperationsTable : Table("sprint_close_operations") {
+  val id = uuid("id")
+  val apiId = text("api_id").uniqueIndex()
+  val tenantId = uuid("tenant_id").references(TenantsTable.id)
+  val projectId = uuid("project_id").references(ProjectsTable.id)
+  val sprintId = uuid("sprint_id").references(SprintsTable.id)
+  val targetSprintId = uuid("target_sprint_id").references(SprintsTable.id).nullable()
+  val disposition = text("disposition")
+  val requestedBy = uuid("requested_by").references(UsersTable.id)
+  val status = text("status")
+  val totalItems = integer("total_items")
+  val processedItems = integer("processed_items")
+  val failedItems = integer("failed_items")
+  val lastError = text("last_error").nullable()
+  val idempotencyKey = text("idempotency_key").nullable()
+  val createdAt = timestampWithTimeZone("created_at")
+  val startedAt = timestampWithTimeZone("started_at").nullable()
+  val completedAt = timestampWithTimeZone("completed_at").nullable()
+  override val primaryKey = PrimaryKey(id)
+}
+
 object IssuesTable : Table("issues") {
   val id = uuid("id")
   val apiId = text("api_id").uniqueIndex()

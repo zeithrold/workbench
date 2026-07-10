@@ -36,6 +36,13 @@ annotation class Authorize(
   val resource: String,
 )
 
+@Target(AnnotationTarget.FUNCTION)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class AuthorizeAll(
+  val actions: Array<String>,
+  val resource: String,
+)
+
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class PublicEndpoint

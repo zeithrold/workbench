@@ -3,6 +3,7 @@ package ink.doa.workbench.core.workitem
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
 import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
+import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
@@ -26,6 +27,24 @@ data class CreateWorkItemPersistenceCommand(
   val parentIssueId: UUID? = null,
 )
 
+data class ReassignSprintBatchCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val sourceSprintId: UUID,
+  val targetSprintId: UUID?,
+  val disposition: SprintCloseDisposition,
+  val actorUserId: UUID,
+  val operationId: String,
+  val limit: Int = 100,
+)
+
+data class ReassignSprintBatchResult(
+  val processedItems: Int,
+  val remainingItems: Int,
+  val changedItems: List<WorkItemRecord> = emptyList(),
+)
+
+@Suppress("TooManyFunctions")
 interface WorkItemRepository {
   suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult
 
@@ -43,6 +62,8 @@ interface WorkItemRepository {
     limit: Int = 50,
     offset: Long = 0,
   ): List<WorkItemRecord>
+
+  suspend fun countUnfinishedBySprint(tenantId: UUID, projectId: UUID, sprintId: UUID): Long
 
   suspend fun listPropertyValues(
     tenantId: UUID,
@@ -63,6 +84,8 @@ interface WorkItemRepository {
   ): WorkItemMutationResult
 
   suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult
+
+  suspend fun reassignSprintBatch(command: ReassignSprintBatchCommand): ReassignSprintBatchResult
 
   suspend fun countChildrenNotInStatusGroups(
     tenantId: UUID,

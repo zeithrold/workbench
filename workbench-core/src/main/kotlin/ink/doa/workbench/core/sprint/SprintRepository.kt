@@ -42,6 +42,21 @@ interface SprintRepository {
     actorUserId: UUID,
   ): SprintRecord
 
+  suspend fun markClosing(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintApiId: String,
+    actorUserId: UUID,
+  ): SprintRecord
+
+  suspend fun markClosedFromClosing(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintApiId: String,
+    closedAt: OffsetDateTime,
+    actorUserId: UUID,
+  ): SprintRecord
+
   suspend fun markArchived(command: ArchiveSprintCommand): SprintRecord
 
   suspend fun softDelete(command: DeleteSprintCommand): Boolean

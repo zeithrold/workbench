@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.sprint
 
+import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
 import ink.doa.workbench.core.sprint.model.SprintStatus
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -20,6 +21,11 @@ data class PatchSprintRequest(
 )
 
 data class DeleteSprintRequest(val deleteReason: String? = null)
+
+data class CloseSprintRequest(
+  val disposition: SprintCloseDisposition,
+  val targetSprintId: String? = null,
+)
 
 fun parseSprintStatus(value: String): SprintStatus =
   SprintStatus.entries.single {

@@ -2,6 +2,8 @@ package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
+import ink.doa.workbench.core.workitem.ReassignSprintBatchResult
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
 import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
@@ -18,6 +20,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.IssueHierarchyTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuePropertyValuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintChange
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.StatusHistoryEntry
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemTransitionCompletion
 import ink.doa.workbench.data.persistence.postgres.workitem.appendWorkItemEvent
@@ -56,6 +59,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
+@Suppress("TooManyFunctions")
 @Repository
 class ExposedWorkItemRepository(
   private val database: Database,
@@ -189,6 +193,24 @@ class ExposedWorkItemRepository(
         .limit(limit)
         .offset(offset)
         .map { it.toWorkItemRecord() }
+    }
+
+  override suspend fun countUnfinishedBySprint(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintId: UUID,
+  ): Long =
+    suspendTransaction(db = database) {
+      IssuesTable.selectAll()
+        .where {
+          (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssuesTable.projectId eq projectId.toKotlinUuid()) and
+            (IssuesTable.sprintId eq sprintId.toKotlinUuid()) and
+            IssuesTable.archivedAt.isNull() and
+            IssuesTable.deletedAt.isNull()
+        }
+        .count { row -> requireStatus(row[IssuesTable.statusId].toJavaUuid()).group != "done" }
+        .toLong()
     }
 
   override suspend fun listPropertyValues(
@@ -368,6 +390,101 @@ class ExposedWorkItemRepository(
       WorkItemMutationResult(
         workItem = deleted,
         eventType = "work_item.updated",
+      )
+    }
+
+  @Suppress("LongMethod")
+  override suspend fun reassignSprintBatch(
+    command: ReassignSprintBatchCommand
+  ): ReassignSprintBatchResult =
+    suspendTransaction(db = database) {
+      val targetSprintApiId =
+        command.targetSprintId?.let { targetId ->
+          SprintsTable.selectAll()
+            .where { SprintsTable.id eq targetId.toKotlinUuid() }
+            .single()[SprintsTable.apiId]
+        }
+      val candidates =
+        IssuesTable.selectAll()
+          .where {
+            (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
+              (IssuesTable.projectId eq command.projectId.toKotlinUuid()) and
+              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid()) and
+              IssuesTable.archivedAt.isNull() and
+              IssuesTable.deletedAt.isNull()
+          }
+          .mapNotNull { row ->
+            row.takeUnless { requireStatus(it[IssuesTable.statusId].toJavaUuid()).group == "done" }
+          }
+          .take(command.limit)
+      val changed = candidates.mapNotNull { row ->
+        val issueId = row[IssuesTable.id].toJavaUuid()
+        val before = row.toWorkItemRecord()
+        val now = now()
+        val updated =
+          IssuesTable.update({
+            (IssuesTable.id eq row[IssuesTable.id]) and
+              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid())
+          }) {
+            it[IssuesTable.sprintId] = command.targetSprintId?.toKotlinUuid()
+            it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
+            it[IssuesTable.updatedAt] = now
+          }
+        if (updated == 0) return@mapNotNull null
+        recordIssueSprintChange(
+          IssueSprintChange(
+            tenantId = command.tenantId,
+            issueId = issueId,
+            previousSprintId = command.sourceSprintId,
+            nextSprintId = command.targetSprintId,
+            actorUserId = command.actorUserId,
+            changedAt = now,
+          )
+        )
+        val after = requireWorkItem(command.tenantId, command.projectId, before.apiId.value)
+        eventFactory
+          .updated(
+            WorkItemUpdateActivityInput(
+              context =
+                WorkItemActivityContext(
+                  tenantId = command.tenantId,
+                  projectId = command.projectId,
+                  workItemId = issueId,
+                  actorUserId = command.actorUserId,
+                  occurredAt = now,
+                ),
+              before = before,
+              after = after,
+              command =
+                UpdateWorkItemCommand(
+                  tenantId = command.tenantId,
+                  projectId = command.projectId,
+                  workItemApiId = before.apiId.value,
+                  sprintApiId = targetSprintApiId,
+                  clearSprint = command.targetSprintId == null,
+                  actorUserId = command.actorUserId,
+                ),
+              propertyValues = emptyList(),
+            )
+          )
+          ?.let { appendWorkItemEvent(eventCodec, it) }
+        after
+      }
+      val remaining =
+        IssuesTable.selectAll()
+          .where {
+            (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
+              (IssuesTable.projectId eq command.projectId.toKotlinUuid()) and
+              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid()) and
+              IssuesTable.archivedAt.isNull() and
+              IssuesTable.deletedAt.isNull()
+          }
+          .count { row -> requireStatus(row[IssuesTable.statusId].toJavaUuid()).group != "done" }
+          .toInt()
+      ReassignSprintBatchResult(
+        processedItems = changed.size,
+        remainingItems = remaining,
+        changedItems = changed,
       )
     }
 

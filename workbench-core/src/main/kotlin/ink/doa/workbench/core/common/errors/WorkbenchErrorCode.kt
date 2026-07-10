@@ -766,6 +766,23 @@ enum class WorkbenchErrorCode(
     "sprint.closed.immutable",
     "Closed sprint cannot be modified.",
   ),
+  SPRINT_CLOSING("sprint.closing", "Sprint is being closed asynchronously."),
+  SPRINT_CLOSE_OPERATION_CONFLICT(
+    "sprint.close_operation.conflict",
+    "Sprint already has a close operation in progress.",
+  ),
+  SPRINT_CLOSE_TARGET_REQUIRED(
+    "sprint.close.target_required",
+    "A target sprint is required for this disposition.",
+  ),
+  SPRINT_CLOSE_TARGET_INVALID(
+    "sprint.close.target_invalid",
+    "The target sprint is invalid for this close operation.",
+  ),
+  SPRINT_CLOSE_OPERATION_NOT_FOUND(
+    "sprint.close_operation.not_found",
+    "Sprint close operation not found.",
+  ),
   SPRINT_DATE_RANGE_INVALID(
     "sprint.date_range.invalid",
     "Sprint end date must be on or after the start date.",

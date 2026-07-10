@@ -141,6 +141,43 @@ class ExposedSprintRepository(private val database: Database) : SprintRepository
       requireSprintRow(tenantId, projectId, sprintApiId).toSprintRecord()
     }
 
+  override suspend fun markClosing(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintApiId: String,
+    actorUserId: UUID,
+  ): SprintRecord =
+    suspendTransaction(db = database) {
+      val row = requireSprintRow(tenantId, projectId, sprintApiId)
+      val timestamp = now()
+      SprintsTable.update({ SprintsTable.id eq row[SprintsTable.id] }) {
+        it[SprintsTable.status] = SprintStatus.CLOSING.dbValue
+        it[SprintsTable.updatedAt] = timestamp
+      }
+      requireSprintRow(tenantId, projectId, sprintApiId).toSprintRecord()
+    }
+
+  override suspend fun markClosedFromClosing(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintApiId: String,
+    closedAt: OffsetDateTime,
+    actorUserId: UUID,
+  ): SprintRecord =
+    suspendTransaction(db = database) {
+      val row = requireSprintRow(tenantId, projectId, sprintApiId)
+      val timestamp = now()
+      SprintsTable.update({
+        (SprintsTable.id eq row[SprintsTable.id]) and
+          (SprintsTable.status eq SprintStatus.CLOSING.dbValue)
+      }) {
+        it[SprintsTable.status] = SprintStatus.CLOSED.dbValue
+        it[SprintsTable.closedAt] = closedAt
+        it[SprintsTable.updatedAt] = timestamp
+      }
+      requireSprintRow(tenantId, projectId, sprintApiId).toSprintRecord()
+    }
+
   override suspend fun markArchived(command: ArchiveSprintCommand): SprintRecord =
     suspendTransaction(db = database) {
       val row = requireSprintRow(command.tenantId, command.projectId, command.sprintApiId)

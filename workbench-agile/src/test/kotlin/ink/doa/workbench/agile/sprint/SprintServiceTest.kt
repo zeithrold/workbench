@@ -7,17 +7,23 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.UserRepository
 import ink.doa.workbench.core.identity.model.UserRecord
+import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
 import ink.doa.workbench.core.sprint.SprintRepository
 import ink.doa.workbench.core.sprint.model.ArchiveSprintCommand
 import ink.doa.workbench.core.sprint.model.CloseSprintCommand
 import ink.doa.workbench.core.sprint.model.CreateSprintCommand
 import ink.doa.workbench.core.sprint.model.DeleteSprintCommand
+import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
+import ink.doa.workbench.core.sprint.model.SprintCloseOperationRecord
+import ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus
 import ink.doa.workbench.core.sprint.model.SprintRecord
 import ink.doa.workbench.core.sprint.model.SprintStatus
 import ink.doa.workbench.core.sprint.model.StartSprintCommand
 import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
+import ink.doa.workbench.core.workitem.WorkItemRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -34,14 +40,48 @@ class SprintServiceTest :
     val sprints = mockk<SprintRepository>()
     val users = mockk<UserRepository>()
     val projectOperationalGuard = mockk<ProjectOperationalGuard>()
+    val closeOperations = mockk<SprintCloseOperationRepository>(relaxed = true)
+    val workItems = mockk<WorkItemRepository>(relaxed = true)
+    val events = mockk<DomainEventPublisher>(relaxed = true)
     val clock = Clock.fixed(Instant.parse("2026-01-15T10:00:00Z"), ZoneOffset.UTC)
-    val service = SprintService(sprints, users, projectOperationalGuard, clock)
+    val service =
+      SprintService(
+        sprints,
+        users,
+        projectOperationalGuard,
+        closeOperations,
+        workItems,
+        events,
+        clock,
+      )
 
     val tenantId = UUID.randomUUID()
     val projectId = UUID.randomUUID()
     val actorId = UUID.randomUUID()
     val sprintId = UUID.randomUUID()
     val now = OffsetDateTime.parse("2026-01-01T00:00:00Z")
+    val operation =
+      SprintCloseOperationRecord(
+        id = UUID.randomUUID(),
+        apiId = PublicId("sop_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        tenantId = tenantId,
+        projectId = projectId,
+        sprintId = sprintId,
+        sprintApiId = PublicId("spr_01JABCDEFGHJKMNPQRSTVWXYZ0"),
+        targetSprintId = null,
+        targetSprintApiId = null,
+        disposition = SprintCloseDisposition.KEEP,
+        requestedBy = actorId,
+        status = SprintCloseOperationStatus.QUEUED,
+        totalItems = 0,
+        processedItems = 0,
+        failedItems = 0,
+        lastError = null,
+        idempotencyKey = null,
+        createdAt = now,
+        startedAt = null,
+        completedAt = null,
+      )
 
     val plannedSprint =
       SprintRecord(
@@ -188,18 +228,23 @@ class SprintServiceTest :
         .startAt shouldBe OffsetDateTime.parse("2026-01-10T00:00:00Z")
     }
 
-    test("close marks active sprint closed") {
+    test("close queues an operation for an active sprint") {
       val active = plannedSprint.copy(status = SprintStatus.ACTIVE)
       coEvery { sprints.findByApiId(tenantId, projectId, active.apiId.value) } returns active
       coEvery {
-        sprints.markClosed(
-          tenantId = tenantId,
-          projectId = projectId,
-          sprintApiId = active.apiId.value,
-          closedAt = OffsetDateTime.parse("2026-01-15T10:00:00Z"),
-          actorUserId = actorId,
+        closeOperations.createAndMarkClosing(
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
         )
-      } returns active.copy(status = SprintStatus.CLOSED)
+      } returns operation
 
       service
         .close(
@@ -210,7 +255,7 @@ class SprintServiceTest :
             actorUserId = actorId,
           )
         )
-        .status shouldBe SprintStatus.CLOSED
+        .status shouldBe SprintCloseOperationStatus.QUEUED.name
     }
 
     test("archive delegates to repository") {

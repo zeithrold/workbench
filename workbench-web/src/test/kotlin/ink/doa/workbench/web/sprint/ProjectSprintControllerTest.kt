@@ -1,6 +1,7 @@
 package ink.doa.workbench.web.sprint
 
 import ink.doa.workbench.agile.project.ProjectResolver
+import ink.doa.workbench.agile.sprint.SprintCloseOperationView
 import ink.doa.workbench.agile.sprint.SprintService
 import ink.doa.workbench.agile.sprint.SprintView
 import ink.doa.workbench.core.common.summary.UserSummary
@@ -132,20 +133,23 @@ class ProjectSprintControllerTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   @Test
-  fun `close sprint returns closed sprint`() {
+  fun `close sprint queues close operation`() {
     val result =
       mockMvc
         .perform(
           post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/sprints/spr_test/close")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .header("Idempotency-Key", "close-1")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"disposition":"KEEP"}""")
         )
         .andExpect(request().asyncStarted())
         .andReturn()
 
     mockMvc
       .perform(asyncDispatch(result))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$.status").value("closed"))
+      .andExpect(status().isAccepted())
+      .andExpect(jsonPath("$.status").value("QUEUED"))
   }
 
   @Test
@@ -272,7 +276,23 @@ class ProjectSprintControllerTest(@Autowired private val mockMvc: MockMvc) {
       } returns sampleView
       coEvery { service.update(any()) } returns sampleView.copy(name = "Renamed")
       coEvery { service.start(any()) } returns sampleView.copy(status = SprintStatus.ACTIVE)
-      coEvery { service.close(any()) } returns sampleView.copy(status = SprintStatus.CLOSED)
+      coEvery {
+        service.close(any())
+      } returns
+        SprintCloseOperationView(
+          id = "sop_test",
+          sprintId = "spr_test",
+          targetSprintId = null,
+          disposition = "KEEP",
+          status = "QUEUED",
+          totalItems = 0,
+          processedItems = 0,
+          failedItems = 0,
+          lastError = null,
+          createdAt = now,
+          startedAt = null,
+          completedAt = null,
+        )
       coEvery { service.archive(any()) } returns sampleView
       coEvery { service.delete(any()) } returns Unit
       return true
