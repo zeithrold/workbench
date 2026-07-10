@@ -56,6 +56,9 @@ node_modules/
 # CMake
 cmake-build-*/
 
+# Frontend library mappings
+.idea/jsLibraryMappings.xml
+
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml
 
