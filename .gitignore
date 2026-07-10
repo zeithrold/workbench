@@ -5,6 +5,7 @@ node_modules/
 .DS_Store
 .env
 .env.*
+!.env.example
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/jetbrains+iml

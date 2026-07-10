@@ -7,7 +7,7 @@ inputs:
     required: false
     default: ""
   install-playwright:
-    description: Install Playwright Chromium for frontend E2E jobs
+    description: Install Playwright Chromium for Storybook browser tests and E2E
     required: false
     default: "false"
 
@@ -49,6 +49,14 @@ runs:
       with:
         enable-cache: true
         cache-dependency-glob: scripts/ci/uv.lock
+
+    - name: Prepare frontend environment
+      shell: bash
+      working-directory: workbench-frontend
+      run: |
+        if [ ! -f .env ]; then
+          cp .env.example .env
+        fi
 
     - name: Install Playwright browsers
       if: inputs.install-playwright == 'true'

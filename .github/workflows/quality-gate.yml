@@ -60,6 +60,8 @@ jobs:
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
+        with:
+          install-playwright: "true"
 
       - name: Lint diff coverage Python wrapper
         working-directory: scripts/ci
