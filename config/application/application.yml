@@ -5,6 +5,7 @@ spring:
 workbench:
   outbox:
     relay-delay-ms: ${WORKBENCH_OUTBOX_RELAY_DELAY_MS:1000}
+    relay-enabled: true
   instance:
     setup-token: ${WORKBENCH_SETUP_TOKEN:}
     id: ${WORKBENCH_INSTANCE_ID:}

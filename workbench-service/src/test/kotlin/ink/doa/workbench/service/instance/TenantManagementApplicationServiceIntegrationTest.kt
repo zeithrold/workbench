@@ -9,7 +9,6 @@ import ink.doa.workbench.security.identity.TenantLoginMethodService
 import ink.doa.workbench.security.identity.UserLookupService
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.service.instance.support.UnusedPublicIdResolverDependencies
-import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.tenant.TenantService
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import io.kotest.assertions.throwables.shouldThrow
@@ -38,11 +37,18 @@ class TenantManagementApplicationServiceIntegrationTest :
 
     beforeSpec {
       database = postgresLease.database
-      tenants = ExposedTenantRepository(database)
+      val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
+      tenants =
+        ExposedTenantRepository(
+          database,
+          ink.doa.workbench.data.messaging.ExposedDomainEventOutbox(
+            database,
+            ink.doa.workbench.core.messaging.DomainEventEncoder(clock),
+          ),
+        )
       loginMethods = ExposedLoginMethodRepository(database)
       tenantLoginSettings = ExposedTenantLoginMethodSettingRepository(database)
       val deps = UnusedPublicIdResolverDependencies(loginMethods = loginMethods)
-      val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
       service =
         TenantManagementApplicationService(
           dependencies =
@@ -54,8 +60,7 @@ class TenantManagementApplicationServiceIntegrationTest :
               invitationService = mockk(relaxed = true),
               defaultWorkItemTemplate = mockk(relaxed = true),
               clock = clock,
-            ),
-          domainEventPublisher = RecordingDomainEventPublisher(),
+            )
         )
     }
 

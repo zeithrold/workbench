@@ -11,7 +11,6 @@ import ink.doa.workbench.core.identity.model.TenantAdminAssignment
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.security.identity.TenantLoginMethodService
 import ink.doa.workbench.security.identity.UserLookupService
 import ink.doa.workbench.security.invitation.InvitationService
@@ -59,7 +58,7 @@ class TenantManagementApplicationServiceTest :
         primaryEmail = "admin@example.test",
       )
 
-    fun service(publisher: DomainEventPublisher): TenantManagementApplicationService =
+    fun service(): TenantManagementApplicationService =
       TenantManagementApplicationService(
         dependencies =
           TenantManagementDependencies(
@@ -70,24 +69,19 @@ class TenantManagementApplicationServiceTest :
             invitationService = invitationService,
             defaultWorkItemTemplate = mockk(relaxed = true),
             clock = clock,
-          ),
-        domainEventPublisher = publisher,
+          )
       )
 
     beforeEach {
       coEvery { tenants.create(any()) } returns tenant
       coEvery { tenants.findByApiIdForAdmin("ten_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns tenant
       coEvery { users.findById(actorId) } returns actor
-      coEvery { tenants.markDestroying(tenantId) } returns
-        tenant.copy(status = TenantStatus.DESTROYING)
     }
 
     "createWithAdmin self assignment requires authenticated actor" {
-      val publisher = mockk<DomainEventPublisher>(relaxed = true)
-
       shouldThrow<InvalidRequestException> {
           runBlocking {
-            service(publisher)
+            service()
               .createWithAdmin(
                 command =
                   CreateTenantWithAdminCommand(
@@ -104,11 +98,9 @@ class TenantManagementApplicationServiceTest :
     }
 
     "createWithAdmin email invite requires authenticated actor" {
-      val publisher = mockk<DomainEventPublisher>(relaxed = true)
-
       shouldThrow<InvalidRequestException> {
           runBlocking {
-            service(publisher)
+            service()
               .createWithAdmin(
                 command =
                   CreateTenantWithAdminCommand(
@@ -128,33 +120,9 @@ class TenantManagementApplicationServiceTest :
         .errorCode shouldBe WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED
     }
 
-    "requestDestroy restores tenant status when event publish fails" {
-      val publisher = mockk<DomainEventPublisher>()
-      coEvery { publisher.publish(any(), any(), any(), any()) } throws
-        RuntimeException("broker down")
-      coEvery { tenants.update(any()) } returns tenant
-
-      shouldThrow<RuntimeException> {
-        runBlocking {
-          service(publisher)
-            .requestDestroy(
-              tenantPublicId = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
-              actorUserId = actorId,
-              deleteReason = "cleanup",
-            )
-        }
-      }
-
-      coVerify(exactly = 1) {
-        tenants.update(match { it.tenantId == tenantId && it.status == TenantStatus.ACTIVE })
-      }
-    }
-
     "create provisions password login and returns tenant" {
-      val publisher = mockk<DomainEventPublisher>(relaxed = true)
-
       val created = runBlocking {
-        service(publisher)
+        service()
           .create(
             CreateTenantCommand(name = "Acme", slug = "acme", timezone = "UTC", locale = "en-US")
           )

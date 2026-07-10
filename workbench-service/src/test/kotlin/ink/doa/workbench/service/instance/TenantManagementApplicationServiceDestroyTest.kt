@@ -7,10 +7,8 @@ import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
 import ink.doa.workbench.security.identity.TenantLoginMethodService
 import ink.doa.workbench.security.identity.UserLookupService
-import ink.doa.workbench.service.messaging.support.RecordingDomainEventPublisher
 import ink.doa.workbench.tenant.tenant.TenantService
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -28,7 +26,6 @@ class TenantManagementApplicationServiceDestroyTest :
     val clock = Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC)
     val tenants = mockk<TenantRepository>()
     val users = mockk<UserRepository>()
-    val publisher = RecordingDomainEventPublisher()
 
     val tenantId = UUID.randomUUID()
     val actorId = UUID.randomUUID()
@@ -62,18 +59,28 @@ class TenantManagementApplicationServiceDestroyTest :
             invitationService = mockk(relaxed = true),
             defaultWorkItemTemplate = mockk(relaxed = true),
             clock = clock,
-          ),
-        domainEventPublisher = publisher,
+          )
       )
 
     beforeEach {
-      publisher.clear()
       coEvery { tenants.findByApiIdForAdmin("ten_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns tenant
       coEvery { users.findById(actorId) } returns actor
-      coEvery { tenants.markDestroying(tenantId) } returns destroying
+      coEvery {
+        tenants.requestDestroy(
+          tenantId = tenantId,
+          tenantApiId = tenant.apiId.value,
+          payload =
+            TenantDestroyRequestedEvent(
+              tenantId = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              requestedBy = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
+              deleteReason = "cleanup",
+              requestedAt = "2026-07-03T00:00Z",
+            ),
+        )
+      } returns destroying
     }
 
-    "requestDestroy marks destroying and publishes event" {
+    "requestDestroy marks destroying and enqueues outbox event" {
       runBlocking {
         val result =
           service.requestDestroy(
@@ -83,16 +90,6 @@ class TenantManagementApplicationServiceDestroyTest :
           )
 
         result.status shouldBe TenantStatus.DESTROYING
-        publisher.published.size shouldBe 1
-        val published = publisher.published.single()
-        published.spec shouldBe TenantDomainEvents.DestroyRequested
-        published.payload shouldBe
-          TenantDestroyRequestedEvent(
-            tenantId = "ten_01JABCDEFGHJKMNPQRSTVWXYZ0",
-            requestedBy = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-            deleteReason = "cleanup",
-            requestedAt = "2026-07-03T00:00Z",
-          )
       }
     }
   })

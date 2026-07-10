@@ -12,30 +12,22 @@ import ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord
 import ink.doa.workbench.core.identity.model.UpsertLoginAccountParameterCommand
 import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.CreateAccessGrantCommand
 import ink.doa.workbench.core.permission.CreateAdminUserCommand
-import ink.doa.workbench.core.permission.GrantScope
-import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.security.identity.auth.normalizeSubject
+import ink.doa.workbench.security.permission.InstanceAdminGrantProvisioner
 import java.time.Clock
 import java.time.OffsetDateTime
 import org.springframework.stereotype.Service
 
 private const val INSTANCE_PASSWORD_METHOD_CODE = "instance_password"
 
-private val DEFAULT_INSTANCE_GRANTS =
-  listOf(
-    AuthorizationAction("tenant.create") to "tenant:*",
-    AuthorizationAction("tenant.read") to "tenant:*",
-    AuthorizationAction("tenant.update") to "tenant:*",
-    AuthorizationAction("tenant.delete") to "tenant:*",
-  )
-
 @Service
 class InstanceBootstrapService(
   private val accounts: BootstrapAccountSupport,
   private val admin: BootstrapAdminSupport,
   private val clock: Clock,
+  private val instanceAdminGrantProvisioner: InstanceAdminGrantProvisioner =
+    InstanceAdminGrantProvisioner(admin.accessGrants),
 ) {
   suspend fun isInitialized(): Boolean = admin.adminUserQueries.existsActiveInstanceAdmin()
 
@@ -92,18 +84,7 @@ class InstanceBootstrapService(
         validFrom = now,
       )
     )
-    DEFAULT_INSTANCE_GRANTS.forEach { (action, pattern) ->
-      admin.accessGrants.create(
-        CreateAccessGrantCommand(
-          scope = GrantScope.INSTANCE,
-          subjectUserId = user.id,
-          action = action,
-          resourcePattern = pattern,
-          validFrom = now,
-          grantedBy = user.id,
-        )
-      )
-    }
+    instanceAdminGrantProvisioner.provision(user.id, user.id, now)
 
     return InstanceBootstrapResult(user = user, loginMethod = instancePasswordMethod)
   }

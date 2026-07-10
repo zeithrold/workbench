@@ -8,9 +8,8 @@ import ink.doa.workbench.core.common.summary.ProjectSummary
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
 import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
-import ink.doa.workbench.core.messaging.EventMetadata
+import ink.doa.workbench.core.project.ProjectDestroyRequest
 import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
-import ink.doa.workbench.core.project.events.ProjectDomainEvents
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.ProjectRecord
 import ink.doa.workbench.core.project.model.ProjectStatus
@@ -25,7 +24,6 @@ class ProjectManagementApplicationService(private val dependencies: ProjectManag
   private val userLookupService = dependencies.userLookupService
   private val projectAccess = dependencies.projectAccess
   private val permissionBootstrap = dependencies.permissionBootstrap
-  private val domainEventPublisher = dependencies.infrastructure.domainEventPublisher
   private val warningCollector = dependencies.infrastructure.warningCollector
   private val clock = dependencies.infrastructure.clock
 
@@ -89,33 +87,26 @@ class ProjectManagementApplicationService(private val dependencies: ProjectManag
       throw ResourceConflictException(WorkbenchErrorCode.PROJECT_ALREADY_DESTROYING)
     }
     val actor = userLookupService.requireAuthenticatedUser(actorUserId)
-    val previousStatus = project.status
     val now = OffsetDateTime.now(clock)
     val destroying =
-      projects.markDestroying(
-        tenantId = tenantId,
-        projectId = project.id,
-        actorUserId = actorUserId,
-        deleteReason = deleteReason,
+      projects.requestDestroy(
+        ProjectDestroyRequest(
+          tenantId = tenantId,
+          projectId = project.id,
+          deletedBy = actorUserId,
+          deleteReason = deleteReason,
+          projectApiId = project.apiId.value,
+          tenantApiId = tenantPublicId.value,
+          payload =
+            ProjectDestroyRequestedEvent.from(
+              project = project,
+              tenantPublicId = tenantPublicId,
+              deleteReason = deleteReason,
+              requestedAt = now,
+              requestedByPublicId = actor.apiId,
+            ),
+        )
       )
-    try {
-      domainEventPublisher.publish(
-        spec = ProjectDomainEvents.DestroyRequested,
-        key = destroying.apiId.value,
-        payload =
-          ProjectDestroyRequestedEvent.from(
-            project = destroying,
-            tenantPublicId = tenantPublicId,
-            deleteReason = deleteReason,
-            requestedAt = now,
-            requestedByPublicId = actor.apiId,
-          ),
-        metadata = EventMetadata(tenantId = tenantPublicId.value),
-      )
-    } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
-      projects.restoreStatus(tenantId, project.id, previousStatus)
-      throw error
-    }
     warningCollector.warn(
       WorkbenchWarningCode.PROJECT_DESTROY_SCHEDULED,
       meta =

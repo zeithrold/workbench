@@ -998,6 +998,11 @@ enum class WorkbenchErrorCode(
     "request.project_id_required",
     "Project id path variable is required.",
   ),
+  OUTBOX_MESSAGE_NOT_FOUND("outbox.message.not_found", "Outbox message was not found."),
+  OUTBOX_REPLAY_NOT_ALLOWED(
+    "outbox.replay.not_allowed",
+    "Only dead-letter outbox messages can be replayed.",
+  ),
   INFRASTRUCTURE_DATABASE_UNAVAILABLE(
     "infrastructure.database_unavailable",
     "The database is temporarily unavailable.",

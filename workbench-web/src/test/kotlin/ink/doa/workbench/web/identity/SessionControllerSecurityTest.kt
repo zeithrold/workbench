@@ -197,6 +197,12 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
     override suspend fun markDestroying(tenantId: UUID) = error("unused")
 
+    override suspend fun requestDestroy(
+      tenantId: UUID,
+      tenantApiId: String,
+      payload: ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent,
+    ) = error("unused")
+
     override suspend fun finalizeDestroy(
       command: ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
     ) = false
@@ -353,6 +359,10 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       projectId: UUID,
       deletedBy: UUID,
       deleteReason: String?,
+    ) = error("unused")
+
+    override suspend fun requestDestroy(
+      request: ink.doa.workbench.core.project.ProjectDestroyRequest
     ) = error("unused")
 
     override suspend fun finalizeDestroy(

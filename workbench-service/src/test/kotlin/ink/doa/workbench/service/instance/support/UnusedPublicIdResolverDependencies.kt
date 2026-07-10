@@ -154,6 +154,10 @@ class UnusedPublicIdResolverDependencies(val loginMethods: LoginMethodRepository
         deleteReason: String?,
       ) = error("unused")
 
+      override suspend fun requestDestroy(
+        request: ink.doa.workbench.core.project.ProjectDestroyRequest
+      ) = error("unused")
+
       override suspend fun finalizeDestroy(
         tenantId: UUID,
         projectId: UUID,

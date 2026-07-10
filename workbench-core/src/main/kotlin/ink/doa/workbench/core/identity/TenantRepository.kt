@@ -4,6 +4,7 @@ import ink.doa.workbench.core.identity.model.CreateTenantCommand
 import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.UpdateTenantCommand
+import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
 import java.util.UUID
 
 @Suppress("TooManyFunctions")
@@ -13,6 +14,12 @@ interface TenantRepository {
   suspend fun update(command: UpdateTenantCommand): TenantRecord
 
   suspend fun markDestroying(tenantId: UUID): TenantRecord
+
+  suspend fun requestDestroy(
+    tenantId: UUID,
+    tenantApiId: String,
+    payload: TenantDestroyRequestedEvent,
+  ): TenantRecord
 
   suspend fun finalizeDestroy(command: FinalizeTenantDestroyCommand): Boolean
 

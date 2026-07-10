@@ -249,11 +249,10 @@ class WorkItemServiceTemplateDefaultsTest :
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_FIELD_NOT_EDITABLE
     }
 
-    "soft deletes work item through repository and publishes mutation event" {
+    "soft deletes work item through repository" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
-      val events = mockk<DomainEventPublisher>()
-      justRun { events.publish<Any>(any(), any(), any(), any()) }
+      val events = mockk<DomainEventPublisher>(relaxed = true)
 
       val tenantId = UUID.randomUUID()
       val projectId = UUID.randomUUID()
@@ -276,7 +275,6 @@ class WorkItemServiceTemplateDefaultsTest :
 
       result.workItem shouldBe issue
       coVerify(exactly = 1) { repository.softDelete(command) }
-      coVerify(exactly = 1) { events.publish<Any>(any(), issue.apiId.value, any(), any()) }
     }
   })
 

@@ -46,18 +46,16 @@ class WorkItemService(
         permissionContext = permissionContext,
         createFields = config.config.config.createFields,
       )
-    return repository
-      .create(
-        ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand(
-          command = plan.command,
-          issueTypeId = config.config.config.issueTypeId,
-          issueTypeConfigId = config.config.config.id,
-          initialStatusId = initial.statusId,
-          parentIssueId = parentIssue?.id,
-          propertyValues = plan.propertyValues,
-        )
+    return repository.create(
+      ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand(
+        command = plan.command,
+        issueTypeId = config.config.config.issueTypeId,
+        issueTypeConfigId = config.config.config.id,
+        initialStatusId = initial.statusId,
+        parentIssueId = parentIssue?.id,
+        propertyValues = plan.propertyValues,
       )
-      .also { mutationSupport.publish(it) }
+    )
   }
 
   suspend fun availableCreateForm(
@@ -156,11 +154,11 @@ class WorkItemService(
       issueId = issue.id,
       descriptionHtml = effectiveCommand.description,
     )
-    return repository.update(effectiveCommand, values).also { mutationSupport.publish(it) }
+    return repository.update(effectiveCommand, values)
   }
 
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =
-    repository.softDelete(command).also { mutationSupport.publish(it) }
+    repository.softDelete(command)
 
   private suspend fun createMutationContexts(
     command: CreateWorkItemCommand

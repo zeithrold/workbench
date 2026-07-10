@@ -33,6 +33,8 @@ class AdminUserService(
   private val publicIds: PublicIdResolver,
   private val clock: Clock,
   private val permissionBootstrapService: PermissionBootstrapService? = null,
+  private val instanceAdminGrantProvisioner: InstanceAdminGrantProvisioner =
+    InstanceAdminGrantProvisioner(persistence.accessGrants),
 ) {
   suspend fun listInstanceAdmins(): List<AdminUserView> =
     persistence.adminUserQueries.listInstanceAdmins().map {
@@ -56,6 +58,7 @@ class AdminUserService(
           validFrom = now,
         )
       )
+    instanceAdminGrantProvisioner.provision(user.id, actorUserId, now)
     return AdminUserView.from(record, user)
   }
 

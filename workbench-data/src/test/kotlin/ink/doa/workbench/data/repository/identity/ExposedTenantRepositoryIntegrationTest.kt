@@ -1,10 +1,16 @@
 package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.core.common.errors.ResourceConflictException
+import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.model.CreateTenantCommand
 import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
 import ink.doa.workbench.core.identity.model.TenantStatus
 import ink.doa.workbench.core.identity.model.UpdateTenantCommand
+import ink.doa.workbench.core.messaging.DomainEventEncoder
+import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
+import ink.doa.workbench.core.tenant.events.TenantDomainEvents
+import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
+import ink.doa.workbench.data.persistence.postgres.workitem.DomainOutboxTable
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.assertions.throwables.shouldThrow
@@ -14,6 +20,12 @@ import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import java.time.Clock
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 @Tags("integration")
 class ExposedTenantRepositoryIntegrationTest :
@@ -134,6 +146,46 @@ class ExposedTenantRepositoryIntegrationTest :
           )
         ) shouldBe true
         repository.findByIdForDestruction(created.id).shouldBeNull()
+      }
+    }
+
+    "requestDestroy marks destroying and enqueues tenant.destroy_requested" {
+      withPostgresDatabase { database ->
+        val outbox = ExposedDomainEventOutbox(database, DomainEventEncoder(Clock.systemUTC()))
+        val repository = ExposedTenantRepository(database, outbox)
+        val actorId = seedUser(database)
+        val created =
+          repository.create(
+            CreateTenantCommand(
+              name = "Destroy",
+              slug = "destroy-tenant",
+              timezone = "UTC",
+              locale = "en-US",
+              status = TenantStatus.ACTIVE,
+            )
+          )
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val payload =
+          TenantDestroyRequestedEvent.from(
+            tenant = created,
+            deleteReason = "cleanup",
+            requestedAt = now,
+            requestedByPublicId = PublicId.new("usr"),
+          )
+
+        val destroying =
+          repository.requestDestroy(
+            tenantId = created.id,
+            tenantApiId = created.apiId.value,
+            payload = payload,
+          )
+
+        destroying.status shouldBe TenantStatus.DESTROYING
+        transaction(database) {
+          DomainOutboxTable.selectAll()
+            .where { DomainOutboxTable.eventType eq TenantDomainEvents.DestroyRequested.type }
+            .count() shouldBe 1
+        }
       }
     }
   })

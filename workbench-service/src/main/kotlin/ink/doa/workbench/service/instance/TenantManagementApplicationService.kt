@@ -9,10 +9,7 @@ import ink.doa.workbench.core.identity.model.InvitationType
 import ink.doa.workbench.core.identity.model.TenantAdminAssignment
 import ink.doa.workbench.core.identity.model.TenantRecord
 import ink.doa.workbench.core.identity.model.TenantStatus
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
 import ink.doa.workbench.security.invitation.CreateManagedInvitationCommand
 import ink.doa.workbench.security.permission.AdminUserView
 import java.time.OffsetDateTime
@@ -20,10 +17,7 @@ import java.util.UUID
 import org.springframework.stereotype.Service
 
 @Service
-class TenantManagementApplicationService(
-  private val dependencies: TenantManagementDependencies,
-  private val domainEventPublisher: DomainEventPublisher,
-) {
+class TenantManagementApplicationService(private val dependencies: TenantManagementDependencies) {
   private val tenants = dependencies.tenants
   private val tenantLoginMethods = dependencies.tenantLoginMethods
   private val userLookupService = dependencies.userLookupService
@@ -156,27 +150,18 @@ class TenantManagementApplicationService(
   ): TenantRecord {
     val tenant = tenants.getForAdmin(tenantPublicId)
     val actor = userLookupService.requireAuthenticatedUser(actorUserId)
-    val previousStatus = tenant.status
     val now = OffsetDateTime.now(clock)
-    val destroying = tenants.markDestroying(tenant.id)
-    try {
-      domainEventPublisher.publish(
-        spec = TenantDomainEvents.DestroyRequested,
-        key = destroying.apiId.value,
-        payload =
-          TenantDestroyRequestedEvent.from(
-            tenant = destroying,
-            deleteReason = deleteReason,
-            requestedAt = now,
-            requestedByPublicId = actor.apiId,
-          ),
-        metadata = EventMetadata(tenantId = destroying.apiId.value),
-      )
-    } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
-      tenants.restoreStatus(destroying.id, previousStatus)
-      throw error
-    }
-    return destroying
+    return tenants.requestDestroy(
+      tenantId = tenant.id,
+      tenantApiId = tenant.apiId.value,
+      payload =
+        TenantDestroyRequestedEvent.from(
+          tenant = tenant,
+          deleteReason = deleteReason,
+          requestedAt = now,
+          requestedByPublicId = actor.apiId,
+        ),
+    )
   }
 }
 

@@ -1,26 +1,36 @@
 package ink.doa.workbench.data.repository.project
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.messaging.DomainEventEncoder
+import ink.doa.workbench.core.project.ProjectDestroyRequest
+import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
+import ink.doa.workbench.core.project.events.ProjectDomainEvents
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
 import ink.doa.workbench.core.project.model.ProjectStatus
 import ink.doa.workbench.core.project.model.UpdateProjectCommand
+import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.data.persistence.postgres.workitem.DomainOutboxTable
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.annotation.Tags
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 @Tags("integration")
@@ -152,6 +162,61 @@ class ExposedProjectRepositoryIntegrationTest :
           deleteReason = "final",
         ) shouldBe true
         repository.findById(tenantId, created.id).shouldBeNull()
+      }
+    }
+
+    "requestDestroy marks destroying and enqueues project.destroy_requested" {
+      withPostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val actorId = seedUser(database)
+        val outbox = ExposedDomainEventOutbox(database, DomainEventEncoder(Clock.systemUTC()))
+        val repository = ExposedProjectRepository(database, outbox)
+        val created =
+          repository.create(
+            CreateProjectCommand(
+              tenantId = tenantId,
+              identifier = "REQ",
+              name = "Request Destroy",
+              description = null,
+              createdBy = actorId,
+              leadUserId = actorId,
+            )
+          )
+        val tenantApiId =
+          transaction(database) {
+            TenantsTable.selectAll()
+              .where { TenantsTable.id eq tenantId.toKotlinUuid() }
+              .single()[TenantsTable.apiId]
+          }
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val payload =
+          ProjectDestroyRequestedEvent.from(
+            project = created,
+            tenantPublicId = PublicId(tenantApiId),
+            deleteReason = "cleanup",
+            requestedAt = now,
+            requestedByPublicId = PublicId.new("usr"),
+          )
+
+        val destroying =
+          repository.requestDestroy(
+            ProjectDestroyRequest(
+              tenantId = tenantId,
+              projectId = created.id,
+              deletedBy = actorId,
+              deleteReason = "cleanup",
+              projectApiId = created.apiId.value,
+              tenantApiId = tenantApiId,
+              payload = payload,
+            )
+          )
+
+        destroying.status shouldBe ProjectStatus.DESTROYING
+        transaction(database) {
+          DomainOutboxTable.selectAll()
+            .where { DomainOutboxTable.eventType eq ProjectDomainEvents.DestroyRequested.type }
+            .count() shouldBe 1
+        }
       }
     }
   })

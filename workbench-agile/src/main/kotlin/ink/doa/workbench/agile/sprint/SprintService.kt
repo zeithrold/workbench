@@ -6,12 +6,9 @@ import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
 import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
+import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
 import ink.doa.workbench.core.sprint.SprintRepository
-import ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent
-import ink.doa.workbench.core.sprint.events.SprintDomainEvents
 import ink.doa.workbench.core.sprint.model.ArchiveSprintCommand
 import ink.doa.workbench.core.sprint.model.CloseSprintCommand
 import ink.doa.workbench.core.sprint.model.CreateSprintCommand
@@ -47,7 +44,6 @@ class SprintService(
   private val projectOperationalGuard: ProjectOperationalGuard,
   private val closeOperations: SprintCloseOperationRepository,
   private val workItems: WorkItemRepository,
-  private val domainEventPublisher: DomainEventPublisher,
   private val clock: Clock,
 ) {
   suspend fun list(
@@ -206,27 +202,25 @@ class SprintService(
     if (operation.status != ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus.FAILED) {
       throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT)
     }
-    closeOperations.markQueued(operation.id, OffsetDateTime.now(clock))
-    domainEventPublisher.publish(
-      spec = SprintDomainEvents.CloseRequested,
-      key = sprintApiId,
-      payload =
-        SprintCloseRequestedEvent(
-          tenantId = tenantId.toString(),
-          projectId = projectId.toString(),
-          sprintId = sprintApiId,
-          operationId = operation.apiId.value,
-          requestedBy = operation.requestedBy.toString(),
-        ),
-      metadata = EventMetadata(tenantId = tenantId.toString()),
-    )
-    return SprintCloseOperationView.from(
-      operation.copy(
-        status = ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus.QUEUED,
-        lastError = null,
-        completedAt = null,
+    val retried =
+      closeOperations.retryAndEnqueue(
+        SprintCloseRetryRequest(
+          tenantId = tenantId,
+          projectId = projectId,
+          sprintApiId = sprintApiId,
+          operationApiId = operationApiId,
+          payload =
+            ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent(
+              tenantId = tenantId.toString(),
+              projectId = projectId.toString(),
+              sprintId = sprintApiId,
+              operationId = operation.apiId.value,
+              requestedBy = operation.requestedBy.toString(),
+            ),
+          metadataTenantId = tenantId.toString(),
+        )
       )
-    )
+    return SprintCloseOperationView.from(retried)
   }
 
   suspend fun archive(command: ArchiveSprintCommand): SprintView {

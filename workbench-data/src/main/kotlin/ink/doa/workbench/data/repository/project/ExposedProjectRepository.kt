@@ -3,7 +3,11 @@ package ink.doa.workbench.data.repository.project
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.messaging.EventMetadata
+import ink.doa.workbench.core.port.messaging.DomainEventOutbox
+import ink.doa.workbench.core.project.ProjectDestroyRequest
 import ink.doa.workbench.core.project.ProjectRepository
+import ink.doa.workbench.core.project.events.ProjectDomainEvents
 import ink.doa.workbench.core.project.model.CreateProjectCommand
 import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
 import ink.doa.workbench.core.project.model.NonMemberVisibility
@@ -29,7 +33,11 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-class ExposedProjectRepository(private val database: Database) : ProjectRepository {
+@Suppress("TooManyFunctions")
+class ExposedProjectRepository(
+  private val database: Database,
+  private val outbox: DomainEventOutbox? = null,
+) : ProjectRepository {
   override suspend fun create(command: CreateProjectCommand): ProjectRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
@@ -214,26 +222,54 @@ class ExposedProjectRepository(private val database: Database) : ProjectReposito
     deleteReason: String?,
   ): ProjectRecord =
     suspendTransaction(db = database) {
-      val now = OffsetDateTime.now(ZoneOffset.UTC)
-      val updated =
-        ProjectsTable.update({
-          (ProjectsTable.id eq projectId.toKotlinUuid()) and
-            (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
-            ProjectsTable.deletedAt.isNull()
-        }) {
-          it[ProjectsTable.status] = ProjectStatus.DESTROYING.dbValue
-          it[ProjectsTable.deletedBy] = deletedBy.toKotlinUuid()
-          it[ProjectsTable.deleteReason] = deleteReason
-          it[ProjectsTable.updatedAt] = now
-        }
-      if (updated == 0) {
-        throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
-      }
-      ProjectsTable.selectAll()
-        .where { ProjectsTable.id eq projectId.toKotlinUuid() }
-        .single()
-        .toProjectRecord()
+      markDestroyingWithinTransaction(tenantId, projectId, deletedBy, deleteReason)
     }
+
+  override suspend fun requestDestroy(request: ProjectDestroyRequest): ProjectRecord =
+    suspendTransaction(db = database) {
+      val destroying =
+        markDestroyingWithinTransaction(
+          request.tenantId,
+          request.projectId,
+          request.deletedBy,
+          request.deleteReason,
+        )
+      val outboxWriter = outbox ?: error("DomainEventOutbox is required for requestDestroy")
+      outboxWriter.append(
+        spec = ProjectDomainEvents.DestroyRequested,
+        key = request.projectApiId,
+        payload = request.payload,
+        metadata = EventMetadata(tenantId = request.tenantApiId),
+      )
+      destroying
+    }
+
+  private fun markDestroyingWithinTransaction(
+    tenantId: UUID,
+    projectId: UUID,
+    deletedBy: UUID,
+    deleteReason: String?,
+  ): ProjectRecord {
+    val now = OffsetDateTime.now(ZoneOffset.UTC)
+    val updated =
+      ProjectsTable.update({
+        (ProjectsTable.id eq projectId.toKotlinUuid()) and
+          (ProjectsTable.tenantId eq tenantId.toKotlinUuid()) and
+          ProjectsTable.deletedAt.isNull()
+      }) {
+        it[ProjectsTable.status] = ProjectStatus.DESTROYING.dbValue
+        it[ProjectsTable.deletedBy] = deletedBy.toKotlinUuid()
+        it[ProjectsTable.deleteReason] = deleteReason
+        it[ProjectsTable.updatedAt] = now
+      }
+    if (updated == 0) {
+      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+    }
+    return ProjectsTable.selectAll()
+      .where { ProjectsTable.id eq projectId.toKotlinUuid() }
+      .single()
+      .toProjectRecord()
+  }
 
   override suspend fun finalizeDestroy(
     tenantId: UUID,

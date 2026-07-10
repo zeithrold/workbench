@@ -2,7 +2,6 @@ package ink.doa.workbench.worker.notification
 
 import ink.doa.workbench.core.workitem.WorkItemRepository
 import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
-import ink.doa.workbench.data.messaging.ProcessedDomainEventRepository
 import ink.doa.workbench.service.notification.NotificationApplicationService
 import java.util.UUID
 import kotlinx.serialization.json.buildJsonObject
@@ -14,19 +13,17 @@ import org.springframework.stereotype.Component
 class WorkItemNotificationHandler(
   private val workItems: WorkItemRepository,
   private val notifications: NotificationApplicationService,
-  private val processed: ProcessedDomainEventRepository,
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
 
   suspend fun handle(eventId: String, type: String, payload: WorkItemMutationEvent) {
-    if (!processed.tryClaim(CONSUMER_NAME, eventId)) return
     val tenantId = payload.tenantId.toUuidOrNull() ?: return
     val projectId = payload.projectId.toUuidOrNull() ?: return
     val workItem = workItems.findByApiId(tenantId, projectId, payload.workItemId) ?: return
-    val assignee = workItem.assigneeId ?: return
-    notifications.create(
+    val assignee = workItem.assigneeId
+    val command = assignee?.let {
       ink.doa.workbench.core.notification.CreateNotificationCommand(
-        recipientUserId = assignee,
+        recipientUserId = it,
         tenantId = tenantId,
         projectId = projectId,
         workItemId = workItem.id,
@@ -41,7 +38,9 @@ class WorkItemNotificationHandler(
             put("key", payload.key)
           },
       )
-    )
+    }
+    val created = notifications.processWorkItemEvent(CONSUMER_NAME, eventId, command)
+    if (created == null) return
     logger.info(
       "work_item_notification_created eventId={} workItemId={} recipient={}",
       eventId,
