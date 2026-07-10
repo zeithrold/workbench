@@ -37,7 +37,7 @@ Unit vs integration responsibilities and thresholds: [`.agents/skills/workbench-
 ### Lint / test caveats
 - Run `./gradlew workbenchQuickCheck` during local iteration; `./gradlew workbenchCiCheck` before push; `./gradlew workbenchExtendedCheck` matches Nightly.
 - **Diff coverage:** after `./gradlew workbenchCiCheck`, run `./gradlew workbenchCiFrontendFullCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this in the `quality-gate-finalize` job (not nightly) after parallel `frontend-e2e` completes. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
-- **Frontend coverage tiers:** Unit (`coverage/unit/lcov.info`), Full (`coverage/full/lcov.info` = unit + storybook), E2E (`coverage/e2e/lcov.info`). Commands: `./gradlew workbenchCiFrontendUnitCoverage`, `workbenchCiFrontendFullCoverage`, `:workbench-frontend:workbenchE2eCheck`.
+- **Frontend coverage tiers:** Unit (`coverage/unit/lcov.info`), Full (`coverage/full/lcov.info` = unit + storybook), E2E (`coverage/e2e/lcov.info`). Commands: `./gradlew workbenchCiFrontendUnitCoverage`, `workbenchCiFrontendFullCoverage`, `:workbench-frontend:workbenchE2eCheck`. LCOV measures `src/**/*.{ts,js}` only (`.svelte` components are tested but not counted).
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
 - Mutation testing: `./gradlew workbenchMutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
 

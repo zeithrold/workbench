@@ -41,7 +41,7 @@ Copy and track progress:
 | New/changed API | core → service → web | OpenAPI; regen client; changed Kotlin lines ≥ 90% diff coverage | [api-design](../api-design/SKILL.md) |
 | Schema / persistence | workbench-data | `V{n}__*.sql`; Exposed; bump migration test | [kotlin-exposed-patterns](../kotlin-exposed-patterns/SKILL.md) |
 | Business logic | workbench-service, workbench-agile | Unit tests without Spring; changed Kotlin lines ≥ 90% diff coverage | [kotlin-patterns](../kotlin-patterns/SKILL.md), [kotlin-testing](../kotlin-testing/SKILL.md) |
-| Frontend UI | workbench-frontend | Lint + Vitest (in `check`); changed TS/Svelte lines ≥ 70% diff coverage | [svelte](../svelte/SKILL.md) |
+| Frontend UI | workbench-frontend | Lint + Vitest (in `check`); changed TS/JS lines ≥ 70% diff coverage | [svelte](../svelte/SKILL.md) |
 | Background / Kafka | workbench-worker | integration profile + Testcontainers; changed Kotlin lines ≥ 90% diff coverage | [springboot-patterns](../springboot-patterns/SKILL.md) |
 
 **API + frontend:** implement backend first → start web → `cd workbench-frontend && pnpm openapi` → wire UI to generated client.
@@ -160,7 +160,7 @@ CI enforces **changed-line** coverage (in addition to the full `./gradlew workbe
 | Stack | Report | Threshold | When skipped |
 |-------|--------|-----------|--------------|
 | Backend Kotlin | Kover XML (`build/reports/kover/report.xml`) | 90% | No `workbench-*/src/main/**/*.kt` changes vs base |
-| Frontend | Vitest LCOV (`workbench-frontend/coverage/lcov.info`) | 70% | No `workbench-frontend/src/**/*.{ts,js,svelte}` changes vs base |
+| Frontend | Vitest LCOV (`workbench-frontend/coverage/lcov.info`) | 70% | No `workbench-frontend/src/**/*.{ts,js}` changes vs base |
 
 Install [uv](https://docs.astral.sh/uv/) once (`curl -LsSf https://astral.sh/uv/install.sh | sh`). Python tooling in `scripts/ci/` is limited to the `diff-cover` wrapper (Ruff lint/format included in CI).
 

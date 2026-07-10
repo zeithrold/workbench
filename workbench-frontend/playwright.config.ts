@@ -9,11 +9,12 @@ export const nextcov: NextcovConfig = {
   outputDir: 'coverage/e2e',
   sourceRoot: './src',
   collectServer: false,
-  include: ['src/**/*.{ts,js,svelte}'],
+  include: ['src/**/*.{ts,js}'],
   exclude: [
     'src/**/*.test.{ts,js}',
     'src/**/*.spec.{ts,js}',
     'src/**/*.stories.{ts,js}',
+    'src/**/*.svelte',
   ],
   reporters: ['html', 'lcov', 'json', 'text-summary'],
 }

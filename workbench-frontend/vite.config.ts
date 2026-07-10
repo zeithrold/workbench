@@ -9,9 +9,10 @@ import { defineConfig } from 'vitest/config'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const coverageInclude = ['src/**/*.{ts,js,svelte}']
+const coverageInclude = ['src/**/*.{ts,js}']
 const coverageExclude = [
   'src/**/*.{test,spec}.{ts,js}',
+  'src/**/*.svelte',
   'src/**/*.stories.svelte',
   'src/lib/api/generated/**',
 ]

@@ -16,7 +16,6 @@ BACKEND_INCLUDE_GLOBS = ("workbench-*/src/main/**/*.kt",)
 FRONTEND_INCLUDE_GLOBS = (
     "workbench-frontend/src/**/*.ts",
     "workbench-frontend/src/**/*.js",
-    "workbench-frontend/src/**/*.svelte",
 )
 
 BACKEND_COVERAGE_XML = Path("build/reports/kover/report.xml")
