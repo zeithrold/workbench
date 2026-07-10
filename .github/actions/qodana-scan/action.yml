@@ -1,0 +1,35 @@
+name: Qodana scan
+description: Run the repository Qodana scan with optional Qodana Cloud publishing
+
+inputs:
+  qodana-token:
+    description: Optional Qodana Cloud project token; omit for local-only scans
+    required: false
+    default: ""
+  artifact-name:
+    description: Name of the uploaded Qodana results artifact
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Qodana scan (Qodana Cloud)
+      if: inputs.qodana-token != ''
+      uses: JetBrains/qodana-action@v2026.1
+      with:
+        args: --within-docker false
+        pr-mode: false
+        upload-result: true
+        artifact-name: ${{ inputs.artifact-name }}
+      env:
+        QODANA_TOKEN: ${{ inputs.qodana-token }}
+        QODANA_ENDPOINT: https://qodana.cloud
+
+    - name: Qodana scan (local)
+      if: inputs.qodana-token == ''
+      uses: JetBrains/qodana-action@v2026.1
+      with:
+        args: --within-docker false
+        pr-mode: false
+        upload-result: true
+        artifact-name: ${{ inputs.artifact-name }}

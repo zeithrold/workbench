@@ -10,7 +10,29 @@ concurrency:
   group: nightly-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
+  qodana:
+    name: Nightly (Qodana)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Qodana scan
+        uses: ./.github/actions/qodana-scan
+        with:
+          qodana-token: ${{ secrets.QODANA_TOKEN_1857082304 }}
+          artifact-name: nightly-qodana-${{ github.run_id }}
+
   backend-module:
     name: Nightly (${{ matrix.module }})
     runs-on: ubuntu-latest
@@ -205,7 +227,7 @@ jobs:
 
   gate:
     name: Nightly (gate)
-    needs: [backend-module, test-support, frontend, unit-coverage, aggregate-report]
+    needs: [qodana, backend-module, test-support, frontend, unit-coverage, aggregate-report]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -213,6 +235,7 @@ jobs:
     steps:
       - name: Require all nightly jobs to succeed
         env:
+          QODANA_RESULT: ${{ needs.qodana.result }}
           BACKEND_RESULT: ${{ needs.backend-module.result }}
           TEST_SUPPORT_RESULT: ${{ needs.test-support.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
@@ -221,7 +244,7 @@ jobs:
         run: |
           set -euo pipefail
           failed=0
-          for name in BACKEND TEST_SUPPORT FRONTEND UNIT_COVERAGE AGGREGATE; do
+          for name in QODANA BACKEND TEST_SUPPORT FRONTEND UNIT_COVERAGE AGGREGATE; do
             result_var="${name}_RESULT"
             result="${!result_var}"
             if [ "${result}" != "success" ]; then

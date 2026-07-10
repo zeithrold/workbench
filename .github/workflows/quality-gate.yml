@@ -2,10 +2,15 @@ name: Quality Gate
 
 on:
   workflow_call:
+    secrets:
+      QODANA_TOKEN:
+        required: false
 
 permissions:
   contents: read
   packages: write
+  checks: write
+  pull-requests: write
 
 concurrency:
   group: quality-gate-${{ github.workflow }}-${{ github.ref }}
@@ -17,6 +22,24 @@ env:
   WORKER_IMAGE: ghcr.io/${{ github.repository }}/workbench-worker
 
 jobs:
+  qodana:
+    name: Qodana
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Qodana scan
+        uses: ./.github/actions/qodana-scan
+        with:
+          qodana-token: ${{ secrets.QODANA_TOKEN }}
+          artifact-name: qodana-${{ github.run_id }}
+
   quality-gate:
     name: Quality Gate
     runs-on: ubuntu-latest
@@ -107,7 +130,7 @@ jobs:
 
   docker:
     name: Docker (${{ matrix.arch }})
-    needs: quality-gate
+    needs: [quality-gate, qodana]
     if: >-
       github.event_name != 'pull_request'
       && (github.event_name != 'push'
