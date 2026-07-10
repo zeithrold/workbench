@@ -273,6 +273,38 @@ class WorkItemQueryParserTest :
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_QUERY_INVALID_JSON
     }
 
+    "rejects property fields without an identity as a domain error" {
+      shouldThrow<InvalidRequestException> {
+          parser.parse(
+            """
+            {
+              "version": 1,
+              "resource": "work_item",
+              "where": { "field": { "kind": "property" }, "op": "eq", "value": "bug" }
+            }
+            """
+              .trimIndent()
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_IDENTITY_REQUIRED
+    }
+
+    "rejects non-array logical arguments as a domain error" {
+      shouldThrow<InvalidRequestException> {
+          parser.parse(
+            """
+            {
+              "version": 1,
+              "resource": "work_item",
+              "where": { "op": "and", "args": "not-an-array" }
+            }
+            """
+              .trimIndent()
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_QUERY_ARRAY_REQUIRED
+    }
+
     "rejects unknown logical operators and sort metadata" {
       shouldThrow<InvalidRequestException> {
           parser.parse(

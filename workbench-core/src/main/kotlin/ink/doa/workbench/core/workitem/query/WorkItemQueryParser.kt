@@ -13,8 +13,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 
 class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = false }) {
   fun parse(payload: String): WorkItemQuery =
@@ -135,9 +133,16 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
             "Unknown work item query field kind: $kind",
           )
         }
+        val apiId = element["apiId"]?.asString("property apiId")
+        val code = element["code"]?.asString("property code")
+        if (apiId.isNullOrBlank() && code.isNullOrBlank()) {
+          throw InvalidRequestException(
+            WorkbenchErrorCode.WORK_ITEM_QUERY_PROPERTY_IDENTITY_REQUIRED
+          )
+        }
         QueryField.Property(
-          apiId = element["apiId"]?.asString("property apiId"),
-          code = element["code"]?.asString("property code"),
+          apiId = apiId,
+          code = code,
         )
       }
       else -> throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_QUERY_FIELD_SHAPE_INVALID)
@@ -240,10 +245,10 @@ private fun JsonObject.required(key: String): JsonElement =
 private fun JsonObject.requiredString(key: String): String = required(key).asString(key)
 
 private fun JsonObject.requiredInt(key: String): Int =
-  required(key).jsonPrimitive.intOrNull
+  (required(key) as? JsonPrimitive)?.intOrNull
     ?: throw InvalidRequestException(
       WorkbenchErrorCode.WORK_ITEM_QUERY_INTEGER_REQUIRED,
       "Work item query $key must be an integer.",
     )
 
-private fun JsonObject.requiredArray(key: String): JsonArray = required(key).jsonArray
+private fun JsonObject.requiredArray(key: String): JsonArray = required(key).asArray(key)
