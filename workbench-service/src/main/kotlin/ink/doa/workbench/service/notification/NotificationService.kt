@@ -5,6 +5,7 @@ import ink.doa.workbench.core.notification.NotificationChannel
 import ink.doa.workbench.core.notification.NotificationPreferenceRecord
 import ink.doa.workbench.core.notification.NotificationRecord
 import ink.doa.workbench.core.notification.NotificationStore
+import ink.doa.workbench.core.notification.WorkItemNotificationEventStore
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service
 @Service
 class NotificationApplicationService(
   private val repository: NotificationStore,
+  private val workItemEvents: WorkItemNotificationEventStore,
   private val clock: Clock,
 ) {
   suspend fun list(userId: UUID, tenantId: UUID, limit: Int, offset: Long): List<NotificationView> =
@@ -30,16 +32,16 @@ class NotificationApplicationService(
     repository.markAllRead(userId, tenantId, now())
 
   suspend fun create(command: CreateNotificationCommand): NotificationRecord {
-    val preference = repository.getPreference(command.recipientUserId, command.notificationType)
-    val channels = buildSet {
-      if (preference?.inAppEnabled != false && NotificationChannel.IN_APP in command.channels) {
-        add(NotificationChannel.IN_APP)
-      }
-      if (preference?.emailEnabled != false && NotificationChannel.EMAIL in command.channels) {
-        add(NotificationChannel.EMAIL)
-      }
-    }
-    return repository.create(command.copy(channels = channels))
+    return repository.create(command.copy(channels = enabledChannels(command)))
+  }
+
+  suspend fun processWorkItemEvent(
+    consumerName: String,
+    eventId: String,
+    command: CreateNotificationCommand?,
+  ): NotificationRecord? {
+    val effectiveCommand = command?.copy(channels = enabledChannels(command))
+    return workItemEvents.processIfUnprocessed(consumerName, eventId, effectiveCommand)
   }
 
   suspend fun listPreferences(userId: UUID): List<NotificationPreferenceRecord> =
@@ -61,6 +63,20 @@ class NotificationApplicationService(
     )
 
   private fun now(): OffsetDateTime = OffsetDateTime.now(clock.withZone(ZoneOffset.UTC))
+
+  private suspend fun enabledChannels(
+    command: CreateNotificationCommand
+  ): Set<NotificationChannel> {
+    val preference = repository.getPreference(command.recipientUserId, command.notificationType)
+    return buildSet {
+      if (preference?.inAppEnabled != false && NotificationChannel.IN_APP in command.channels) {
+        add(NotificationChannel.IN_APP)
+      }
+      if (preference?.emailEnabled != false && NotificationChannel.EMAIL in command.channels) {
+        add(NotificationChannel.EMAIL)
+      }
+    }
+  }
 }
 
 data class NotificationView(

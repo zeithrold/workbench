@@ -13,6 +13,7 @@ import ink.doa.workbench.core.permission.AdminUserStatus
 import ink.doa.workbench.security.common.PublicIdResolver
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -111,6 +112,7 @@ class AdminUserServiceTest :
     }
 
     "provisionTenantAdmin creates membership, admin record, and grants" {
+      clearMocks(accessGrants, recordedCalls = true)
       val user = sampleUser()
       val tenantId = UUID.randomUUID()
       val record = sampleAdminRecord(user.id, AdminScope.TENANT, tenantId)

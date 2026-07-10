@@ -1,7 +1,9 @@
 package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.sprint.model.CreateSprintCommand
 import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
 import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
@@ -12,6 +14,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintHistoryTa
 import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
+import ink.doa.workbench.data.repository.sprint.ExposedSprintRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
@@ -846,6 +849,102 @@ class ExposedWorkItemRepositoryIntegrationTest :
           rows.shouldHaveSize(1)
           rows.single()[IssueSprintHistoryTable.removedAt].shouldNotBeNull()
         }
+      }
+    }
+
+    "reassignSprintBatch moves unfinished items and leaves completed items" {
+      withPostgresDatabase { database ->
+        val stack = seedWorkItemStack(database)
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val sprints = ExposedSprintRepository(database)
+        val source =
+          sprints.create(
+            CreateSprintCommand(
+              stack.tenantId,
+              stack.projectId,
+              "Source",
+              null,
+              now,
+              now.plusDays(7),
+              stack.actorId,
+            )
+          )
+        val target =
+          sprints.create(
+            CreateSprintCommand(
+              stack.tenantId,
+              stack.projectId,
+              "Target",
+              null,
+              now,
+              now.plusDays(7),
+              stack.actorId,
+            )
+          )
+        val repository = workItemRepository(database)
+        fun command(title: String) =
+          CreateWorkItemPersistenceCommand(
+            command =
+              CreateWorkItemCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                issueTypeApiId = stack.issueType.apiId.value,
+                title = title,
+                description = null,
+                reporterId = stack.actorId,
+                actorUserId = stack.actorId,
+                sprintApiId = source.apiId.value,
+              ),
+            issueTypeId = stack.issueType.id,
+            issueTypeConfigId = stack.config.config.id,
+            initialStatusId = stack.todoStatus.id,
+            propertyValues = emptyList(),
+          )
+        val first = repository.create(command("Move me"))
+        repository.create(command("Leave me"))
+        val transition =
+          ExposedWorkflowConfigurationRepository(
+              database,
+              ExposedWorkItemCatalogRepository(database),
+            )
+            .createTransition(
+              CreateWorkflowTransitionCommand(
+                tenantId = stack.tenantId,
+                workflowApiId = stack.workflow.apiId.value,
+                name = "Complete",
+                fromStatusApiId = stack.todoStatus.apiId.value,
+                toStatusApiId = stack.doneStatus.apiId.value,
+              )
+            )
+        repository.transition(
+          TransitionPersistenceCommand(
+            stack.tenantId,
+            stack.projectId,
+            first.workItem.apiId.value,
+            stack.actorId,
+          ),
+          stack.todoStatus.id,
+          stack.doneStatus.id,
+          transition.id,
+          emptyList(),
+        )
+        val result =
+          repository.reassignSprintBatch(
+            ReassignSprintBatchCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sourceSprintId = source.id,
+              targetSprintId = target.id,
+              disposition = ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT,
+              actorUserId = stack.actorId,
+              operationId = "op_batch",
+              limit = 100,
+            )
+          )
+        result.processedItems shouldBe 1
+        result.remainingItems shouldBe 0
+        result.changedItems.single().title shouldBe "Leave me"
+        repository.countUnfinishedBySprint(stack.tenantId, stack.projectId, source.id) shouldBe 0
       }
     }
   })

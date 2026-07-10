@@ -6,28 +6,36 @@ import ink.doa.workbench.core.notification.NotificationChannel
 import ink.doa.workbench.core.notification.NotificationPreferenceRecord
 import ink.doa.workbench.core.notification.NotificationRecord
 import ink.doa.workbench.core.notification.NotificationStore
+import ink.doa.workbench.core.notification.WorkItemNotificationEventStore
 import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
 class NotificationApplicationServiceTest :
   StringSpec({
-    val repository = mockk<NotificationStore>()
-    val clock = Clock.fixed(Instant.parse("2026-07-10T12:00:00Z"), ZoneOffset.UTC)
-    val service = NotificationApplicationService(repository, clock)
     val userId = UUID.randomUUID()
     val tenantId = UUID.randomUUID()
-    val now = OffsetDateTime.now(clock)
-    val notification =
+    val command =
+      CreateNotificationCommand(
+        recipientUserId = userId,
+        tenantId = tenantId,
+        projectId = null,
+        workItemId = null,
+        sourceEventId = "evt-1",
+        notificationType = "work_item.updated",
+        title = "Updated",
+        body = "Body",
+        payload = JsonObject(emptyMap()),
+      )
+    val record =
       NotificationRecord(
         id = UUID.randomUUID(),
         apiId = PublicId.new("ntf"),
@@ -35,111 +43,80 @@ class NotificationApplicationServiceTest :
         tenantId = tenantId,
         projectId = null,
         workItemId = null,
-        sourceEventId = "evt_1",
-        notificationType = "work_item.assigned",
-        title = "Assigned",
-        body = "You were assigned",
-        payload = JsonObject(emptyMap()),
+        sourceEventId = command.sourceEventId,
+        notificationType = command.notificationType,
+        title = command.title,
+        body = command.body,
+        payload = command.payload,
         readAt = null,
-        createdAt = now,
+        createdAt = Instant.parse("2026-01-01T00:00:00Z").atOffset(ZoneOffset.UTC),
       )
 
-    "list maps repository records to views" {
-      coEvery { repository.list(userId, tenantId, 20, 0) } returns listOf(notification)
+    fun service(
+      repository: NotificationStore = mockk(),
+      workItemEvents: WorkItemNotificationEventStore = mockk(),
+    ) =
+      NotificationApplicationService(
+        repository,
+        workItemEvents,
+        Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC),
+      )
 
-      runBlocking {
-        val views = service.list(userId, tenantId, 20, 0)
-        views.single().id shouldBe notification.apiId.value
-        views.single().notificationType shouldBe "work_item.assigned"
-      }
-    }
-
-    "unreadCount delegates to repository" {
+    "delegates notification queries and maps records to views" {
+      val repository = mockk<NotificationStore>()
+      coEvery { repository.list(userId, tenantId, 10, 2) } returns listOf(record)
       coEvery { repository.unreadCount(userId, tenantId) } returns 3
+      val service = service(repository)
 
-      runBlocking { service.unreadCount(userId, tenantId) shouldBe 3 }
+      service.list(userId, tenantId, 10, 2).single().id shouldBe record.apiId.value
+      service.unreadCount(userId, tenantId) shouldBe 3
     }
 
-    "markRead passes fixed clock time to repository" {
-      coEvery { repository.markRead(userId, tenantId, notification.apiId.value, now) } returns true
+    "applies preferences before create and event processing" {
+      val repository = mockk<NotificationStore>()
+      val events = mockk<WorkItemNotificationEventStore>()
+      coEvery { repository.getPreference(userId, command.notificationType) } returns
+        NotificationPreferenceRecord(userId, command.notificationType, false, true)
+      coEvery { repository.create(any()) } returns record
+      coEvery { events.processIfUnprocessed(any(), any(), any()) } returns record
+      val service = service(repository, events)
 
-      runBlocking {
-        service.markRead(userId, tenantId, notification.apiId.value) shouldBe true
+      service.create(command)
+      service.processWorkItemEvent("consumer", command.sourceEventId, command)
+      coVerify(exactly = 2) {
+        repository.getPreference(userId, command.notificationType)
       }
-      coVerify { repository.markRead(userId, tenantId, notification.apiId.value, now) }
+      coVerify {
+        repository.create(match { it.channels == setOf(NotificationChannel.EMAIL) })
+        events.processIfUnprocessed(
+          "consumer",
+          command.sourceEventId,
+          match { it.channels == setOf(NotificationChannel.EMAIL) },
+        )
+      }
     }
 
-    "markAllRead passes fixed clock time to repository" {
-      coEvery { repository.markAllRead(userId, tenantId, now) } returns 2
+    "claims an event without creating a notification when command is absent" {
+      val events = mockk<WorkItemNotificationEventStore>()
+      coEvery { events.processIfUnprocessed("consumer", "evt-empty", null) } returns null
 
-      runBlocking { service.markAllRead(userId, tenantId) shouldBe 2 }
+      service(workItemEvents = events).processWorkItemEvent("consumer", "evt-empty", null) shouldBe
+        null
+      coVerify(exactly = 1) { events.processIfUnprocessed("consumer", "evt-empty", null) }
     }
 
-    "create filters channels using user preferences" {
-      val command =
-        CreateNotificationCommand(
-          recipientUserId = userId,
-          tenantId = tenantId,
-          projectId = null,
-          workItemId = null,
-          sourceEventId = "evt_1",
-          notificationType = "work_item.assigned",
-          title = "Assigned",
-          body = "Body",
-          payload = JsonObject(emptyMap()),
-          channels = setOf(NotificationChannel.IN_APP, NotificationChannel.EMAIL),
-        )
-      coEvery { repository.getPreference(userId, "work_item.assigned") } returns
-        NotificationPreferenceRecord(
-          userId = userId,
-          notificationType = "work_item.assigned",
-          inAppEnabled = true,
-          emailEnabled = false,
-        )
-      coEvery {
-        repository.create(command.copy(channels = setOf(NotificationChannel.IN_APP)))
-      } returns notification
-
-      runBlocking { service.create(command) shouldBe notification }
-    }
-
-    "create keeps default channels when preference is missing" {
-      val command =
-        CreateNotificationCommand(
-          recipientUserId = userId,
-          tenantId = tenantId,
-          projectId = null,
-          workItemId = null,
-          sourceEventId = "evt_2",
-          notificationType = "work_item.updated",
-          title = "Updated",
-          body = "Body",
-          payload = JsonObject(emptyMap()),
-        )
-      coEvery { repository.getPreference(userId, "work_item.updated") } returns null
-      coEvery {
-        repository.create(
-          command.copy(channels = setOf(NotificationChannel.IN_APP, NotificationChannel.EMAIL))
-        )
-      } returns notification
-
-      runBlocking { service.create(command) shouldBe notification }
-    }
-
-    "listPreferences and updatePreference delegate to repository" {
-      val preference =
-        NotificationPreferenceRecord(
-          userId = userId,
-          notificationType = "work_item.assigned",
-          inAppEnabled = false,
-          emailEnabled = true,
-        )
-      coEvery { repository.listPreferences(userId) } returns listOf(preference)
+    "updates read state and preferences" {
+      val repository = mockk<NotificationStore>()
+      val preference = NotificationPreferenceRecord(userId, command.notificationType, true, false)
+      coEvery { repository.markRead(userId, tenantId, record.apiId.value, any()) } returns true
+      coEvery { repository.markAllRead(userId, tenantId, any()) } returns 2
       coEvery { repository.upsertPreference(preference) } returns preference
+      coEvery { repository.listPreferences(userId) } returns listOf(preference)
+      val service = service(repository)
 
-      runBlocking {
-        service.listPreferences(userId) shouldBe listOf(preference)
-        service.updatePreference(userId, "work_item.assigned", false, true) shouldBe preference
-      }
+      service.markRead(userId, tenantId, record.apiId.value) shouldBe true
+      service.markAllRead(userId, tenantId) shouldBe 2
+      service.updatePreference(userId, command.notificationType, true, false) shouldBe preference
+      service.listPreferences(userId) shouldContainExactly listOf(preference)
     }
   })

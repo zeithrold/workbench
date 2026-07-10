@@ -27,6 +27,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -255,6 +256,83 @@ class SprintServiceTest :
         .status shouldBe SprintCloseOperationStatus.QUEUED.name
     }
 
+    test("closeOperation returns the stored operation") {
+      coEvery {
+        closeOperations.findByApiId(
+          tenantId,
+          projectId,
+          plannedSprint.apiId.value,
+          operation.apiId.value,
+        )
+      } returns operation
+
+      service
+        .closeOperation(tenantId, projectId, plannedSprint.apiId.value, operation.apiId.value)
+        .id shouldBe operation.apiId.value
+    }
+
+    test("retryCloseOperation requeues a failed operation and publishes an event") {
+      val failed =
+        operation.copy(status = SprintCloseOperationStatus.FAILED, lastError = "batch failed")
+      coEvery {
+        closeOperations.findByApiId(
+          tenantId,
+          projectId,
+          plannedSprint.apiId.value,
+          operation.apiId.value,
+        )
+      } returns failed
+      coEvery { closeOperations.markQueued(failed.id, any()) } returns true
+
+      service
+        .retryCloseOperation(
+          tenantId,
+          projectId,
+          plannedSprint.apiId.value,
+          operation.apiId.value,
+        )
+        .status shouldBe SprintCloseOperationStatus.QUEUED.name
+
+      coVerify { closeOperations.markQueued(failed.id, any()) }
+    }
+
+    test("retryCloseOperation rejects a non-failed operation") {
+      coEvery {
+        closeOperations.findByApiId(
+          tenantId,
+          projectId,
+          plannedSprint.apiId.value,
+          operation.apiId.value,
+        )
+      } returns operation
+
+      shouldThrow<InvalidRequestException> {
+          service.retryCloseOperation(
+            tenantId,
+            projectId,
+            plannedSprint.apiId.value,
+            operation.apiId.value,
+          )
+        }
+        .errorCode shouldBe WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT
+    }
+
+    test("retryCloseOperation rejects a missing operation") {
+      coEvery {
+        closeOperations.findByApiId(
+          tenantId,
+          projectId,
+          plannedSprint.apiId.value,
+          "sop_missing",
+        )
+      } returns null
+
+      shouldThrow<ResourceNotFoundException> {
+          service.retryCloseOperation(tenantId, projectId, plannedSprint.apiId.value, "sop_missing")
+        }
+        .errorCode shouldBe WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_NOT_FOUND
+    }
+
     test("archive delegates to repository") {
       val command =
         ArchiveSprintCommand(
@@ -267,6 +345,21 @@ class SprintServiceTest :
         plannedSprint.copy(archivedAt = OffsetDateTime.now(clock), archivedBy = actorId)
 
       service.archive(command).id shouldBe plannedSprint.apiId.value
+    }
+
+    test("archive rejects a sprint that is already closing") {
+      val command =
+        ArchiveSprintCommand(
+          tenantId = tenantId,
+          projectId = projectId,
+          sprintApiId = plannedSprint.apiId.value,
+          actorUserId = actorId,
+        )
+      coEvery { sprints.findByApiId(tenantId, projectId, plannedSprint.apiId.value) } returns
+        plannedSprint.copy(status = SprintStatus.CLOSING)
+
+      shouldThrow<InvalidRequestException> { service.archive(command) }.errorCode shouldBe
+        WorkbenchErrorCode.SPRINT_CLOSING
     }
 
     test("delete soft-deletes sprint") {

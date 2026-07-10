@@ -1,6 +1,5 @@
 package ink.doa.workbench.worker.notification
 
-import ink.doa.workbench.core.notification.EmailMessage
 import ink.doa.workbench.core.notification.EmailSender
 import ink.doa.workbench.data.notification.NotificationDeliveryRepository
 import ink.doa.workbench.data.notification.PendingEmailDelivery
@@ -12,39 +11,45 @@ import java.util.UUID
 
 class EmailNotificationRelayTest :
   StringSpec({
-    val repository = mockk<NotificationDeliveryRepository>()
-    val sender = mockk<EmailSender>()
-    val relay = EmailNotificationRelay(repository, sender)
-    val deliveryId = UUID.randomUUID()
-    val delivery =
-      PendingEmailDelivery(
-        deliveryId = deliveryId,
-        notificationId = UUID.randomUUID(),
-        recipient = "ada@example.test",
-        subject = "Assigned",
-        body = "You were assigned",
-        attempts = 0,
-      )
+    "successful email delivery is marked sent" {
+      val repository = mockk<NotificationDeliveryRepository>()
+      val sender = mockk<ink.doa.workbench.core.notification.EmailSender>(relaxed = true)
+      val delivery =
+        PendingEmailDelivery(
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          "a@example.test",
+          "Subject",
+          "Body",
+          0,
+        )
+      every { repository.claimEmails(any(), any(), any()) } returns listOf(delivery)
+      every { repository.markSent(any(), any()) } returns Unit
 
-    "relay sends claimed emails and marks them sent" {
-      every { repository.claimEmails(25, any(), any()) } returns listOf(delivery)
-      every {
-        sender.send(EmailMessage(delivery.recipient, delivery.subject, delivery.body))
-      } returns Unit
-      every { repository.markSent(deliveryId, any()) } returns Unit
+      EmailNotificationRelay(repository, sender).relay()
 
-      relay.relay()
-
-      verify { repository.markSent(deliveryId, any()) }
+      verify { sender.send(match { it.recipient == "a@example.test" && it.subject == "Subject" }) }
+      verify { repository.markSent(delivery.deliveryId, any()) }
     }
 
-    "relay marks failed when sender throws" {
-      every { repository.claimEmails(25, any(), any()) } returns listOf(delivery)
-      every { sender.send(any()) } throws IllegalStateException("smtp down")
-      every { repository.markFailed(deliveryId, 1, any(), "smtp down") } returns Unit
+    "failed email delivery is scheduled for retry with error message" {
+      val repository = mockk<NotificationDeliveryRepository>()
+      val sender = mockk<EmailSender>()
+      val delivery =
+        PendingEmailDelivery(
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          "a@example.test",
+          "Subject",
+          "Body",
+          2,
+        )
+      every { repository.claimEmails(any(), any(), any()) } returns listOf(delivery)
+      every { sender.send(any()) } throws IllegalStateException("smtp unavailable")
+      every { repository.markFailed(any(), any(), any(), any()) } returns Unit
 
-      relay.relay()
+      EmailNotificationRelay(repository, sender).relay()
 
-      verify { repository.markFailed(deliveryId, 1, any(), "smtp down") }
+      verify { repository.markFailed(delivery.deliveryId, 3, any(), "smtp unavailable") }
     }
   })

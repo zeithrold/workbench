@@ -6,6 +6,7 @@ import ink.doa.workbench.core.notification.NotificationDeliveryStatus
 import ink.doa.workbench.core.notification.NotificationPreferenceRecord
 import ink.doa.workbench.core.notification.NotificationRecord
 import ink.doa.workbench.core.notification.NotificationStore
+import ink.doa.workbench.core.notification.WorkItemNotificationEventStore
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationDeliveriesTable
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationPreferencesTable
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationsTable
@@ -16,9 +17,11 @@ import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.TextColumnType
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.statements.StatementType
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -27,7 +30,36 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-class ExposedNotificationRepository(private val database: Database) : NotificationStore {
+@Suppress("TooManyFunctions")
+class ExposedNotificationRepository(private val database: Database) :
+  NotificationStore, WorkItemNotificationEventStore {
+  override suspend fun processIfUnprocessed(
+    consumerName: String,
+    eventId: String,
+    command: CreateNotificationCommand?,
+  ): NotificationRecord? =
+    suspendTransaction(db = database) {
+      val claimed =
+        exec(
+          """
+          WITH inserted AS (
+            INSERT INTO processed_domain_events (consumer_name, event_id)
+            VALUES (?, ?)
+            ON CONFLICT (consumer_name, event_id) DO NOTHING
+            RETURNING event_id
+          )
+          SELECT EXISTS (SELECT 1 FROM inserted)
+          """
+            .trimIndent(),
+          listOf(TextColumnType() to consumerName, TextColumnType() to eventId),
+          StatementType.SELECT,
+        ) { resultSet ->
+          resultSet.next() && resultSet.getBoolean(1)
+        } ?: false
+      if (!claimed || command == null) return@suspendTransaction null
+      createInCurrentTransaction(command)
+    }
+
   override suspend fun list(
     userId: UUID,
     tenantId: UUID,
@@ -87,59 +119,63 @@ class ExposedNotificationRepository(private val database: Database) : Notificati
 
   override suspend fun create(command: CreateNotificationCommand): NotificationRecord =
     suspendTransaction(db = database) {
-      val existing =
-        NotificationsTable.selectAll()
-          .where {
-            (NotificationsTable.sourceEventId eq command.sourceEventId) and
-              (NotificationsTable.recipientUserId eq command.recipientUserId.toKotlinUuid()) and
-              (NotificationsTable.notificationType eq command.notificationType)
-          }
-          .singleOrNull()
-      if (existing != null) return@suspendTransaction existing.toRecord()
-
-      val id = UUID.randomUUID()
-      val apiId = PublicId.new("ntf")
-      val now = OffsetDateTime.now(ZoneOffset.UTC)
-      NotificationsTable.insert {
-        it[NotificationsTable.id] = id.toKotlinUuid()
-        it[NotificationsTable.apiId] = apiId.value
-        it[NotificationsTable.recipientUserId] = command.recipientUserId.toKotlinUuid()
-        it[NotificationsTable.tenantId] = command.tenantId.toKotlinUuid()
-        it[NotificationsTable.projectId] = command.projectId?.toKotlinUuid()
-        it[NotificationsTable.workItemId] = command.workItemId?.toKotlinUuid()
-        it[NotificationsTable.sourceEventId] = command.sourceEventId
-        it[NotificationsTable.notificationType] = command.notificationType
-        it[NotificationsTable.title] = command.title
-        it[NotificationsTable.body] = command.body
-        it[NotificationsTable.payload] = command.payload
-        it[NotificationsTable.createdAt] = now
-      }
-      command.channels.forEach { channel ->
-        NotificationDeliveriesTable.insert {
-          it[NotificationDeliveriesTable.id] = UUID.randomUUID().toKotlinUuid()
-          it[NotificationDeliveriesTable.notificationId] = id.toKotlinUuid()
-          it[NotificationDeliveriesTable.channel] = channel.name
-          it[NotificationDeliveriesTable.status] = NotificationDeliveryStatus.PENDING.name
-          it[NotificationDeliveriesTable.attempts] = 0
-          it[NotificationDeliveriesTable.nextAttemptAt] = now
-        }
-      }
-      NotificationRecord(
-        id = id,
-        apiId = apiId,
-        recipientUserId = command.recipientUserId,
-        tenantId = command.tenantId,
-        projectId = command.projectId,
-        workItemId = command.workItemId,
-        sourceEventId = command.sourceEventId,
-        notificationType = command.notificationType,
-        title = command.title,
-        body = command.body,
-        payload = command.payload,
-        readAt = null,
-        createdAt = now,
-      )
+      createInCurrentTransaction(command)
     }
+
+  private fun createInCurrentTransaction(command: CreateNotificationCommand): NotificationRecord {
+    val existing =
+      NotificationsTable.selectAll()
+        .where {
+          (NotificationsTable.sourceEventId eq command.sourceEventId) and
+            (NotificationsTable.recipientUserId eq command.recipientUserId.toKotlinUuid()) and
+            (NotificationsTable.notificationType eq command.notificationType)
+        }
+        .singleOrNull()
+    if (existing != null) return existing.toRecord()
+
+    val id = UUID.randomUUID()
+    val apiId = PublicId.new("ntf")
+    val now = OffsetDateTime.now(ZoneOffset.UTC)
+    NotificationsTable.insert {
+      it[NotificationsTable.id] = id.toKotlinUuid()
+      it[NotificationsTable.apiId] = apiId.value
+      it[NotificationsTable.recipientUserId] = command.recipientUserId.toKotlinUuid()
+      it[NotificationsTable.tenantId] = command.tenantId.toKotlinUuid()
+      it[NotificationsTable.projectId] = command.projectId?.toKotlinUuid()
+      it[NotificationsTable.workItemId] = command.workItemId?.toKotlinUuid()
+      it[NotificationsTable.sourceEventId] = command.sourceEventId
+      it[NotificationsTable.notificationType] = command.notificationType
+      it[NotificationsTable.title] = command.title
+      it[NotificationsTable.body] = command.body
+      it[NotificationsTable.payload] = command.payload
+      it[NotificationsTable.createdAt] = now
+    }
+    command.channels.forEach { channel ->
+      NotificationDeliveriesTable.insert {
+        it[NotificationDeliveriesTable.id] = UUID.randomUUID().toKotlinUuid()
+        it[NotificationDeliveriesTable.notificationId] = id.toKotlinUuid()
+        it[NotificationDeliveriesTable.channel] = channel.name
+        it[NotificationDeliveriesTable.status] = NotificationDeliveryStatus.PENDING.name
+        it[NotificationDeliveriesTable.attempts] = 0
+        it[NotificationDeliveriesTable.nextAttemptAt] = now
+      }
+    }
+    return NotificationRecord(
+      id = id,
+      apiId = apiId,
+      recipientUserId = command.recipientUserId,
+      tenantId = command.tenantId,
+      projectId = command.projectId,
+      workItemId = command.workItemId,
+      sourceEventId = command.sourceEventId,
+      notificationType = command.notificationType,
+      title = command.title,
+      body = command.body,
+      payload = command.payload,
+      readAt = null,
+      createdAt = now,
+    )
+  }
 
   override suspend fun getPreference(
     userId: UUID,
