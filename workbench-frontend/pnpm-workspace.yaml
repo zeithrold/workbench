@@ -1,4 +1,7 @@
 allowBuilds:
+  cpu-features: true
   esbuild: true
+  protobufjs: true
+  ssh2: true
 shellEmulator: true
 trustPolicy: no-downgrade
