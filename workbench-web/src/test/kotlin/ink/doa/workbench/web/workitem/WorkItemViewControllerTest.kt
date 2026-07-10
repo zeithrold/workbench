@@ -160,6 +160,84 @@ class WorkItemViewControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
   }
 
+  @Test
+  fun `create tenant view returns created view`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/work-item-views")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "name": "Tenant board",
+                "visibility": "tenant"
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isCreated())
+      .andExpect(jsonPath("$.id").value("wiv_test"))
+      .andExpect(jsonPath("$.name").value("My backlog"))
+  }
+
+  @Test
+  fun `get tenant view returns view for authenticated user`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/work-item-views/wiv_tenant")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.id").value("wiv_tenant"))
+  }
+
+  @Test
+  fun `update tenant view returns updated view`() {
+    val result =
+      mockMvc
+        .perform(
+          patch("/api/work-item-views/wiv_tenant")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"name":"Tenant renamed"}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.name").value("Renamed"))
+  }
+
+  @Test
+  fun `delete tenant view returns no content`() {
+    val result =
+      mockMvc
+        .perform(
+          delete("/api/work-item-views/wiv_tenant")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc.perform(asyncDispatch(result)).andExpect(status().isNoContent())
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -240,6 +318,14 @@ class WorkItemViewControllerTest(@Autowired private val mockMvc: MockMvc) {
           any(),
         )
       } returns sampleView
+      coEvery {
+        service.get(TenantWebMvcFixtures.TENANT_ID, null, "wiv_tenant", any())
+      } returns
+        sampleView.copy(
+          id = "wiv_tenant",
+          project = null,
+          visibility = WorkItemViewVisibility.TENANT,
+        )
       coEvery { service.update(any()) } returns sampleView.copy(name = "Renamed")
       coEvery { service.delete(any()) } returns Unit
       return true

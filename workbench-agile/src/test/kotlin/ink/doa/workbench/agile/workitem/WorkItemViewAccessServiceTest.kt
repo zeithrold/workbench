@@ -1,6 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.agile.project.ProjectAccessService
+import ink.doa.workbench.core.common.errors.PermissionDeniedException
+import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.identity.TenantMemberRepository
 import ink.doa.workbench.core.identity.model.TenantMemberRecord
@@ -11,6 +13,7 @@ import ink.doa.workbench.core.permission.model.PermissionEffect
 import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
 import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
 import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -153,6 +156,27 @@ class WorkItemViewAccessServiceTest :
         )
 
       service.requireCreate(tenantId, projectId, otherUserId)
+    }
+
+    test("requireCreate throws when access denied") {
+      shouldThrow<PermissionDeniedException> {
+          service.requireCreate(tenantId, projectId, otherUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_VIEW_CREATE_DENIED
+    }
+
+    test("requireRead throws when access denied") {
+      shouldThrow<PermissionDeniedException> {
+          service.requireRead(view(WorkItemViewVisibility.PRIVATE), otherUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_VIEW_READ_DENIED
+    }
+
+    test("requireManage throws when access denied") {
+      shouldThrow<PermissionDeniedException> {
+          service.requireManage(view(WorkItemViewVisibility.PRIVATE), otherUserId)
+        }
+        .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_VIEW_MANAGE_DENIED
     }
 
     test("project visibility allows non-member read only visibility") {
