@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import java.util.UUID
 
 @Tags("integration")
-class MessagingIntegrationFixturesTest :
+class MessagingFixturesIntegrationTest :
   StringSpec({
     "createTopics is idempotent when topic already exists" {
       val topic = "events-${UUID.randomUUID().toString().take(8)}"

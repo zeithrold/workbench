@@ -6,7 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.core.annotation.Tags
 
 @Tags("integration")
-class SharedKeycloakContainerTest :
+class SharedKeycloakContainerIntegrationTest :
   StringSpec({
     "sharedContainer returns a stable instance for the JVM" {
       val first = WorkbenchKeycloakTestSupport.sharedContainer()

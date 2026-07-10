@@ -30,7 +30,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-class ProjectWorkItemControllerDirectTest :
+class ProjectWorkItemControllerUnitTest :
   StringSpec({
     val mapper = ObjectMapper()
     val service = mockk<WorkItemService>(relaxed = true)

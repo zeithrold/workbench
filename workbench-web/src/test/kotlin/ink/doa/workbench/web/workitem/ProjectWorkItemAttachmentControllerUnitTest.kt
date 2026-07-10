@@ -25,7 +25,7 @@ import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.springframework.http.HttpStatus
 
-class ProjectWorkItemAttachmentControllerDirectTest :
+class ProjectWorkItemAttachmentControllerUnitTest :
   StringSpec({
     val service = mockk<WorkItemAttachmentService>()
     val controller = ProjectWorkItemAttachmentController(service)

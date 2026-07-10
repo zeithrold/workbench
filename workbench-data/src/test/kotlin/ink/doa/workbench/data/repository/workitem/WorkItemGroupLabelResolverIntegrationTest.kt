@@ -17,7 +17,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.jdbc.core.JdbcTemplate
 
 @Tags("integration")
-class WorkItemGroupLabelResolverTest :
+class WorkItemGroupLabelResolverIntegrationTest :
   StringSpec({
     "resolve returns text label for system statusGroup bucket" {
       withPostgresJdbc { jdbc ->

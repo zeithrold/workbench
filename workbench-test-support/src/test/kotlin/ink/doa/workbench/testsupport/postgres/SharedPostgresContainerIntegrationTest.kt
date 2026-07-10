@@ -7,7 +7,7 @@ import java.sql.DriverManager
 import io.kotest.core.annotation.Tags
 
 @Tags("integration")
-class SharedPostgresContainerTest :
+class SharedPostgresContainerIntegrationTest :
   StringSpec({
     "openDatabase clones schema from template and drops lease on close" {
       WorkbenchPostgresTestSupport.openDatabase(MigrationSpec.Core).use { lease ->

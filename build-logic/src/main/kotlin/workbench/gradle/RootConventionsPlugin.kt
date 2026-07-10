@@ -68,16 +68,29 @@ class RootConventionsPlugin : Plugin<Project> {
         val backendFuzzTasks = backendProjects.map { "${it.path}:workbenchFuzzVerification" }
         val pitestProperties = PitestProperties(rootProject)
         val pitestTaskPaths = pitestEnabledProjects(backendProjects, pitestProperties).map { "${it.path}:pitest" }
+        val testArchitectureCheck =
+            tasks.register("workbenchTestArchitectureCheck", TestArchitectureCheckTask::class.java) {
+                rootDirectory.set(layout.projectDirectory)
+                (backendProjects + project(":workbench-test-support")).forEach { module ->
+                    testSources.from(
+                        module.fileTree("src/test/kotlin") {
+                            include("**/*.kt")
+                        }
+                    )
+                }
+            }
 
         tasks.register("workbenchQuickCheck") {
             group = "verification"
             description = "Fast local verification: Spotless, Detekt, and unit tests."
+            dependsOn(testArchitectureCheck)
             dependsOn(backendQuickTasks)
             dependsOn(":workbench-test-support:workbenchQuickCheck")
             dependsOn(":workbench-frontend:workbenchQuickCheck")
         }
 
         tasks.named("check") {
+            dependsOn(testArchitectureCheck)
             dependsOn(subprojects.map { subproject -> subproject.tasks.named("check") })
             dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
         }

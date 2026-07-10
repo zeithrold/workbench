@@ -25,7 +25,7 @@ import java.time.OffsetDateTime
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 
-class WorkItemTypeConfigControllerDirectTest :
+class WorkItemTypeConfigControllerUnitTest :
   StringSpec({
     val mapper = ObjectMapper()
     val configs = mockk<IssueTypeConfigService>()
