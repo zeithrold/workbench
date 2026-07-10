@@ -716,10 +716,10 @@ kover {
 
 | Metric | Gradle | Gate |
 |--------|--------|------|
-| **Full** (unit + integration) | `./gradlew workbenchCiCheck` → `build/reports/kover/report.xml` | 90% line |
-| **Unit** (unit tests only) | `./gradlew workbenchCiUnitCoverage` → `build/reports/kover/unit/report.xml` | Soft warnings at 70% and full-unit delta >15pp |
+| **Full** (unit + integration) | `./gradlew check` → `build/reports/kover/report.xml` | 90% line |
+| **Unit** (unit tests only) | `./gradlew koverUnitXmlReport` → `build/reports/kover/unit/report.xml` | Soft warnings at 70% and full-unit delta >15pp |
 
-Unit tests: `workbenchUnitTest` task — no integration tag; prefer Fake/Recording port implementations over verify-only MockK. Integration tests: `@Tags("integration")` on Kotest specs or `@Tag("integration")` on JUnit classes; Testcontainers. See [workbench-development](../workbench-development/SKILL.md).
+Unit tests live under `src/test` and run with `test`; prefer Fake/Recording port implementations over verify-only MockK. Integration tests live under `src/integrationTest`, use the `*IntegrationTest` suffix, and run with `integrationTest`; Testcontainers are allowed there. See [workbench-development](../workbench-development/SKILL.md).
 
 ### Ktor testApplication Testing
 

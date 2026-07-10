@@ -7,7 +7,6 @@ import info.solidsoft.gradle.pitest.PitestPluginExtension
 import kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
@@ -27,7 +26,6 @@ class BackendConventionsPlugin : Plugin<Project> {
             configureDetekt()
             configureKover()
             configureSharedDependencies()
-            configureDefaultTests()
             configurePitest()
         }
     }
@@ -82,9 +80,9 @@ class BackendConventionsPlugin : Plugin<Project> {
         extensions.configure<KoverProjectExtension> {
             currentProject {
                 instrumentation {
-                    disabledForTestTasks.add("workbenchFuzzVerification")
+                    disabledForTestTasks.add("fuzzTest")
                     if (unitOnly) {
-                        disabledForTestTasks.addAll("test", "workbenchIntegrationTest")
+                        disabledForTestTasks.add("integrationTest")
                     }
                 }
             }
@@ -131,17 +129,6 @@ class BackendConventionsPlugin : Plugin<Project> {
         dependencies.add("testImplementation", libs.findLibrary("kotlinx-coroutines-test").get())
     }
 
-    private fun Project.configureDefaultTests() {
-        tasks.withType(Test::class.java)
-            .matching { it.name == "test" }
-            .configureEach {
-                useJUnitPlatform {
-                    excludeTags("fuzz")
-                }
-                systemProperty("kotest.tags", "!fuzz")
-            }
-    }
-
     private fun Project.configurePitest() {
         val pitestProperties = PitestProperties(rootProject)
         afterEvaluate {
@@ -177,7 +164,7 @@ class BackendConventionsPlugin : Plugin<Project> {
                     }
                 }
             }
-            tasks.named("workbenchCiNightlyModule") {
+            tasks.named("ciNightlyCheck") {
                 dependsOn("pitest")
             }
         }

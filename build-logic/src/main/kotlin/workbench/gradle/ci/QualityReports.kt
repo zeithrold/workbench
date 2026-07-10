@@ -306,7 +306,7 @@ object QualityReports {
         appendLine("### Backend E2E Coverage (Kover runtime)")
         appendLine()
         if (backendDelta.full == null && backendDelta.unit == null && backendDelta.e2e == null) {
-            appendLine("_No backend Kover reports found. Run `./gradlew workbenchE2eCheck` first._")
+            appendLine("_No backend Kover reports found. Run `./gradlew e2eCheck` first._")
             appendLine()
             return
         }
@@ -345,7 +345,7 @@ object QualityReports {
         appendLine("### Coverage (Kover)")
         appendLine()
         if (modules.isEmpty() && fullTotal == null) {
-            appendLine("_No Kover report found. Run `./gradlew workbenchCiCheck` first._")
+            appendLine("_No Kover report found. Run `./gradlew check` first._")
             appendLine()
             return
         }
@@ -374,7 +374,7 @@ object QualityReports {
         appendLine("#### Unit coverage and delta")
         appendLine()
         if (deltas.none { it.unit != null } && unitTotal == null) {
-            appendLine("_Unit-only coverage not generated. Run `./gradlew workbenchCiUnitCoverage`._")
+            appendLine("_Unit-only coverage not generated. Run `./gradlew koverUnitXmlReport`._")
             appendLine()
             return
         }
@@ -457,7 +457,7 @@ object QualityReports {
                 ?: aggregateMutationMetrics(moduleMetrics.values.toList())
 
         if (moduleMetrics.isEmpty() && aggregate == null) {
-            appendLine("_No PIT report found. Run `./gradlew workbenchMutationTest` first._")
+            appendLine("_No PIT report found. Run `./gradlew mutationTest` first._")
             appendLine()
             return MutationSectionResult(emptyMap(), null)
         }

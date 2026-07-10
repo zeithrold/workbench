@@ -2,8 +2,12 @@ package workbench.gradle
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
+import org.gradle.api.plugins.jvm.JvmTestSuite
+import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.testing.Test
+import org.gradle.kotlin.dsl.configure
+import org.gradle.testing.base.TestingExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 class TestingConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -18,40 +22,54 @@ class TestingConventionsPlugin : Plugin<Project> {
         }
 
         val testTaskProvider = tasks.named("test", Test::class.java)
-        val workbenchUnitTest =
-            tasks.register("workbenchUnitTest", Test::class.java) {
-                group = "verification"
-                description = "Runs unit tests (excludes integration and fuzz tags)."
-                testClassesDirs = testTaskProvider.get().testClassesDirs
-                classpath = testTaskProvider.get().classpath
-                failOnNoDiscoveredTests.set(false)
-                useJUnitPlatform {
-                    excludeTags("fuzz", "integration")
-                }
-                systemProperty("kotest.tags", "!integration & !fuzz")
-            }
-
-        tasks.register("workbenchIntegrationTest", Test::class.java) {
-            group = "verification"
-            description = "Runs integration-tagged tests."
-            testClassesDirs = testTaskProvider.get().testClassesDirs
-            classpath = testTaskProvider.get().classpath
-            failOnNoDiscoveredTests.set(false)
-            mustRunAfter(workbenchUnitTest)
+        testTaskProvider.configure {
             useJUnitPlatform {
-                includeTags("integration")
+                excludeTags("fuzz")
             }
-            systemProperty("kotest.tags", "integration")
+            systemProperty("kotest.tags", "!fuzz")
+        }
+
+        pluginManager.apply("jvm-test-suite")
+        extensions.configure<TestingExtension> {
+            suites.register("integrationTest", JvmTestSuite::class.java) {
+                dependencies {
+                    implementation.add(project.dependencies.create(project))
+                }
+                targets.configureEach {
+                    testTask.configure {
+                        failOnNoDiscoveredTests.set(false)
+                        maxParallelForks = 1
+                        mustRunAfter(testTaskProvider)
+                    }
+                }
+            }
+        }
+        configurations.named("integrationTestImplementation") {
+            extendsFrom(configurations.getByName("testImplementation"))
+        }
+        configurations.named("integrationTestRuntimeOnly") {
+            extendsFrom(configurations.getByName("testRuntimeOnly"))
+        }
+        val integrationTest = tasks.named("integrationTest", Test::class.java)
+        tasks.named("check") {
+            dependsOn(integrationTest)
         }
 
         afterEvaluate {
-            registerFuzzVerification()
-            registerWorkbenchQuickCheck(workbenchUnitTest.get())
-            registerWorkbenchNightlyModule()
+            if (pluginManager.hasPlugin("org.jetbrains.kotlin.jvm")) {
+                extensions.configure<KotlinJvmProjectExtension> {
+                    target.compilations.named("integrationTest") {
+                        associateWith(target.compilations.getByName("main"))
+                    }
+                }
+            }
+            registerFuzzTest()
+            registerQuickCheck(testTaskProvider)
+            registerCiNightlyCheck()
         }
     }
 
-    private fun Project.registerFuzzVerification() {
+    private fun Project.registerFuzzTest() {
         val hasFuzzTests =
             fileTree("src/test/kotlin") {
                 include("**/*.kt")
@@ -62,7 +80,7 @@ class TestingConventionsPlugin : Plugin<Project> {
 
         if (hasFuzzTests) {
             val testTask = tasks.named("test", Test::class.java)
-            tasks.register("workbenchFuzzVerification", Test::class.java) {
+            tasks.register("fuzzTest", Test::class.java) {
                 group = "verification"
                 description = "Runs property-based (fuzz) tests in this module."
                 testClassesDirs = testTask.get().testClassesDirs
@@ -74,15 +92,15 @@ class TestingConventionsPlugin : Plugin<Project> {
                 systemProperty("kotest.tags", "fuzz")
             }
         } else {
-            tasks.register("workbenchFuzzVerification") {
+            tasks.register("fuzzTest") {
                 group = "verification"
                 description = "No fuzz tests configured for this module."
             }
         }
     }
 
-    private fun Project.registerWorkbenchQuickCheck(unitTest: Task) {
-        tasks.register("workbenchQuickCheck") {
+    private fun Project.registerQuickCheck(unitTest: TaskProvider<Test>) {
+        tasks.register("quickCheck") {
             group = "verification"
             description = "Fast Workbench checks for this module."
             listOf("spotlessCheck", "detektMain", "detektTest")
@@ -92,11 +110,11 @@ class TestingConventionsPlugin : Plugin<Project> {
         }
     }
 
-    private fun Project.registerWorkbenchNightlyModule() {
-        tasks.register("workbenchCiNightlyModule") {
-            group = "verification"
+    private fun Project.registerCiNightlyCheck() {
+        tasks.register("ciNightlyCheck") {
+            group = "ci"
             description = "Nightly per-module verification: check, fuzz, and configured mutation tests."
-            dependsOn("check", "workbenchFuzzVerification")
+            dependsOn("check", "fuzzTest")
             tasks.findByName("koverXmlReport")?.let { koverXml -> dependsOn(koverXml) }
         }
     }

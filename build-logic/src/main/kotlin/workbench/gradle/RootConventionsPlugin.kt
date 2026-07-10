@@ -64,29 +64,31 @@ class RootConventionsPlugin : Plugin<Project> {
     }
 
     private fun Project.registerRootVerificationTasks(backendProjects: List<Project>) {
-        val backendQuickTasks = backendProjects.map { "${it.path}:workbenchQuickCheck" }
-        val backendFuzzTasks = backendProjects.map { "${it.path}:workbenchFuzzVerification" }
+        val backendQuickTasks = backendProjects.map { "${it.path}:quickCheck" }
+        val backendFuzzTasks = backendProjects.map { "${it.path}:fuzzTest" }
         val pitestProperties = PitestProperties(rootProject)
         val pitestTaskPaths = pitestEnabledProjects(backendProjects, pitestProperties).map { "${it.path}:pitest" }
         val testArchitectureCheck =
-            tasks.register("workbenchTestArchitectureCheck", TestArchitectureCheckTask::class.java) {
+            tasks.register("testArchitectureCheck", TestArchitectureCheckTask::class.java) {
                 rootDirectory.set(layout.projectDirectory)
                 (backendProjects + project(":workbench-test-support")).forEach { module ->
-                    testSources.from(
-                        module.fileTree("src/test/kotlin") {
-                            include("**/*.kt")
-                        }
-                    )
+                    listOf("src/test/kotlin", "src/integrationTest/kotlin").forEach { sourceRoot ->
+                        testSources.from(
+                            module.fileTree(sourceRoot) {
+                                include("**/*.kt")
+                            }
+                        )
+                    }
                 }
             }
 
-        tasks.register("workbenchQuickCheck") {
+        tasks.register("quickCheck") {
             group = "verification"
             description = "Fast local verification: Spotless, Detekt, and unit tests."
             dependsOn(testArchitectureCheck)
             dependsOn(backendQuickTasks)
-            dependsOn(":workbench-test-support:workbenchQuickCheck")
-            dependsOn(":workbench-frontend:workbenchQuickCheck")
+            dependsOn(":workbench-test-support:quickCheck")
+            dependsOn(":workbench-frontend:quickCheck")
         }
 
         tasks.named("check") {
@@ -95,27 +97,15 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
         }
 
-        tasks.register("workbenchCiCheck") {
-            group = "verification"
-            description = "CI verification: static analysis, tests, and full coverage gates."
-            dependsOn(tasks.named("check"))
-        }
-
-        tasks.register("workbenchCiFullCoverage") {
-            group = "verification"
-            description = "Generates full backend Kover reports."
-            dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
-        }
-
-        tasks.register("workbenchCiUnitCoverage", Exec::class.java) {
-            group = "verification"
+        tasks.register("koverUnitXmlReport", Exec::class.java) {
+            group = "coverage"
             description = "Generates unit-only backend Kover reports."
             workingDir = rootProject.projectDir
             commandLine(
                 rootProject.layout.projectDirectory.file("gradlew").asFile.absolutePath,
                 *backendProjects
                     .flatMap { module ->
-                        listOf("${module.path}:workbenchUnitTest", "${module.path}:koverXmlReport")
+                        listOf("${module.path}:test", "${module.path}:koverXmlReport")
                     }
                     .toTypedArray(),
                 "koverXmlReport",
@@ -125,7 +115,7 @@ class RootConventionsPlugin : Plugin<Project> {
             )
         }
 
-        tasks.register("workbenchFuzzTest") {
+        tasks.register("fuzzTest") {
             group = "verification"
             description = "Runs property-based (fuzz) tests."
             dependsOn(backendFuzzTasks)
@@ -135,39 +125,39 @@ class RootConventionsPlugin : Plugin<Project> {
             mustRunAfter(pitestTaskPaths)
         }
 
-        tasks.register("workbenchMutationTest") {
+        tasks.register("mutationTest") {
             group = "verification"
             description = "Runs PIT mutation testing across backend modules."
             dependsOn(pitestTaskPaths)
             dependsOn("pitestReportAggregate")
         }
 
-        tasks.register("workbenchExtendedCheck") {
+        tasks.register("extendedCheck") {
             group = "verification"
-            description = "Extended verification: CI check plus fuzz and mutation tests."
-            dependsOn("workbenchCiCheck", "workbenchFuzzTest", "workbenchMutationTest")
+            description = "Extended verification: standard check plus fuzz and mutation tests."
+            dependsOn("check", "fuzzTest", "mutationTest")
         }
 
-        tasks.register("workbenchE2eCheck") {
+        tasks.register("e2eCheck") {
             group = "verification"
             description = "Full-stack frontend E2E via Testcontainers and Playwright."
-            dependsOn(":workbench-frontend:workbenchE2eCheck")
+            dependsOn(":workbench-frontend:e2eCheck")
         }
 
-        tasks.register("workbenchCiFrontendUnitCoverage") {
-            group = "verification"
+        tasks.register("frontendUnitCoverage") {
+            group = "coverage"
             description = "Generates unit-only frontend Vitest coverage."
             dependsOn(":workbench-frontend:pnpmCoverageUnit")
         }
 
-        tasks.register("workbenchCiFrontendFullCoverage") {
-            group = "verification"
+        tasks.register("frontendFullCoverage") {
+            group = "coverage"
             description = "Generates full frontend Vitest coverage (unit + storybook)."
             dependsOn(":workbench-frontend:pnpmCoverageFull")
         }
 
-        tasks.register("workbenchCiFrontendE2eCoverage") {
-            group = "verification"
+        tasks.register("frontendE2eCoverage") {
+            group = "coverage"
             description = "Generates E2E frontend Playwright coverage."
             dependsOn(":workbench-frontend:pnpmCoverageE2e")
         }

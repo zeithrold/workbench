@@ -13,22 +13,22 @@ import workbench.gradle.ci.RenderQualitySummaryTask
 class CiConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
-            tasks.register("workbenchCiMergeKoverReports", MergeKoverReportsTask::class.java) {
-                group = "verification"
+            tasks.register("ciMergeKoverReports", MergeKoverReportsTask::class.java) {
+                group = "ci"
                 description = "Merges per-module Kover XML reports into the root report path."
                 repoRoot.set(layout.projectDirectory)
                 outputFile.set(layout.buildDirectory.file("reports/kover/report.xml"))
             }
 
-            tasks.register("workbenchCiMergePitReports", MergePitReportsTask::class.java) {
-                group = "verification"
+            tasks.register("ciMergePitReports", MergePitReportsTask::class.java) {
+                group = "ci"
                 description = "Merges per-module PIT mutation XML reports into the root report path."
                 repoRoot.set(layout.projectDirectory)
                 outputFile.set(layout.buildDirectory.file("reports/pitest/mutations.xml"))
             }
 
-            tasks.register("workbenchCiRenderQualitySummary", RenderQualitySummaryTask::class.java) {
-                group = "verification"
+            tasks.register("ciRenderQualitySummary", RenderQualitySummaryTask::class.java) {
+                group = "ci"
                 description = "Renders Workbench coverage and mutation quality summary markdown."
                 repoRoot.set(layout.projectDirectory)
                 summaryJson.set(layout.buildDirectory.file("reports/workbench-ci/coverage-summary.json"))
@@ -65,15 +65,15 @@ class CiConventionsPlugin : Plugin<Project> {
         }
 
         val prepareKoverE2eAgent: TaskProvider<PrepareKoverE2eAgentTask> =
-            tasks.register("workbenchPrepareKoverE2eAgent", PrepareKoverE2eAgentTask::class.java) {
-                group = "verification"
+            tasks.register("ciPrepareKoverE2eAgent", PrepareKoverE2eAgentTask::class.java) {
+                group = "ci"
                 description = "Resolves the Kover JVM agent and writes E2E runtime args files."
                 agentJar.from(koverJvmAgent)
                 outputDir.set(layout.buildDirectory.dir("kover-e2e"))
             }
 
-        tasks.register("workbenchKoverE2eReport", KoverE2eReportTask::class.java) {
-            group = "verification"
+        tasks.register("ciGenerateKoverE2eReport", KoverE2eReportTask::class.java) {
+            group = "ci"
             description = "Generates backend Kover XML from E2E runtime .ic reports."
             dependsOn(prepareKoverE2eAgent)
             dependsOn(":workbench-web:bootJar", ":workbench-worker:bootJar")

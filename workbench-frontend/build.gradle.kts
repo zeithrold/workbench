@@ -48,11 +48,6 @@ tasks.register<PnpmTask>("pnpmBuild") {
     args.set(listOf("build"))
 }
 
-tasks.register<PnpmTask>("pnpmCoverage") {
-    dependsOn("prepareFrontendEnv", "pnpmInstall")
-    args.set(listOf("coverage:unit"))
-}
-
 tasks.register<PnpmTask>("pnpmCoverageUnit") {
     dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("coverage:unit"))
@@ -95,24 +90,26 @@ tasks.register<PnpmTask>("pnpmE2eStack") {
         "pnpmBuild",
         ":workbench-web:bootJar",
         ":workbench-worker:bootJar",
-        ":workbenchPrepareKoverE2eAgent",
+        ":ciPrepareKoverE2eAgent",
     )
     args.set(listOf("test:e2e:stack"))
 }
 
-tasks.register("workbenchE2eCheck") {
+tasks.register("e2eCheck") {
     group = "verification"
     description = "Full-stack E2E via Testcontainers Compose, Spring Boot API, and Playwright."
-    dependsOn("pnpmE2eStack", ":workbenchKoverE2eReport")
+    dependsOn("pnpmE2eStack", ":ciGenerateKoverE2eReport")
 }
 
 gradle.projectsEvaluated {
-    rootProject.tasks.named("workbenchKoverE2eReport").configure {
+    rootProject.tasks.named("ciGenerateKoverE2eReport").configure {
         mustRunAfter(tasks.named("pnpmE2eStack"))
     }
 }
 
-tasks.register("workbenchQuickCheck") {
+tasks.register("quickCheck") {
+    group = "verification"
+    description = "Fast frontend verification: lint and unit tests."
     dependsOn("pnpmLint", "pnpmTest")
 }
 

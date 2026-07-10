@@ -68,7 +68,7 @@ jobs:
 
       - name: Module nightly verification
         run: |
-          ./gradlew :workbench-${{ matrix.module }}:workbenchCiNightlyModule \
+          ./gradlew :workbench-${{ matrix.module }}:ciNightlyCheck \
             --no-daemon --no-parallel --no-configuration-cache
 
       - name: Upload module reports
@@ -113,7 +113,7 @@ jobs:
 
       - name: Frontend coverage report
         if: success()
-        run: ./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+        run: ./gradlew frontendUnitCoverage --no-daemon
 
       - name: Upload frontend reports
         if: always()
@@ -137,7 +137,7 @@ jobs:
 
       - name: Generate unit-only Kover XML
         run: |
-          ./gradlew workbenchCiUnitCoverage \
+          ./gradlew koverUnitXmlReport \
             --no-daemon --no-configuration-cache
 
       - name: Upload unit coverage report
@@ -199,19 +199,19 @@ jobs:
       - name: Merge PIT reports
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: ./gradlew workbenchCiMergePitReports --no-daemon
+        run: ./gradlew ciMergePitReports --no-daemon
 
       - name: Merge Kover reports
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: ./gradlew workbenchCiMergeKoverReports --no-daemon
+        run: ./gradlew ciMergeKoverReports --no-daemon
 
       - name: Publish nightly report
         if: always()
         env:
           EXTENDED_TESTS: "true"
           REPO_ROOT: ${{ github.workspace }}
-        run: ./gradlew -q workbenchCiRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
+        run: ./gradlew -q ciRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload aggregated reports
         if: always()

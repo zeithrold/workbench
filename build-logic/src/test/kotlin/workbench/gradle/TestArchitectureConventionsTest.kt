@@ -24,11 +24,8 @@ class TestArchitectureConventionsTest {
             """.trimIndent(),
         )
         root.writeTest(
-            "workbench-data/src/test/kotlin/example/ProjectRepositoryIntegrationTest.kt",
+            "workbench-data/src/integrationTest/kotlin/example/ProjectRepositoryIntegrationTest.kt",
             """
-            import io.kotest.core.annotation.Tags
-
-            @Tags("integration")
             class ProjectRepositoryIntegrationTest
             """.trimIndent(),
         )
@@ -38,7 +35,7 @@ class TestArchitectureConventionsTest {
     }
 
     @Test
-    fun `reports naming tag framework and MockMvc port violations`() {
+    fun `reports source set naming framework and MockMvc port violations`() {
         val root = Files.createTempDirectory("test-architecture")
         root.writeTest(
             "workbench-web/src/test/kotlin/example/ProjectControllerDirectTest.kt",
@@ -58,16 +55,34 @@ class TestArchitectureConventionsTest {
             "workbench-data/src/test/kotlin/example/ProjectRepositoryIntegrationTest.kt",
             "class ProjectRepositoryIntegrationTest",
         )
+        root.writeTest(
+            "workbench-data/src/integrationTest/kotlin/example/ProjectRepositoryTest.kt",
+            "class ProjectRepositoryTest",
+        )
+        root.writeTest(
+            "workbench-web/src/integrationTest/kotlin/example/ProjectControllerTest.kt",
+            """
+            import org.junit.jupiter.api.Test
+            import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+
+            @WebMvcTest(ProjectController::class)
+            class ProjectControllerTest {
+              @Test fun works() = Unit
+            }
+            """.trimIndent(),
+        )
 
         val violations = TestArchitectureConventions.inspect(root.toFile()).joinToString("\n")
 
-        assertContains(violations, "*IntegrationTest suffix")
+        assertContains(violations, "integration tags are retired")
         assertContains(violations, "*DirectTest is retired")
         assertContains(violations, "must use JUnit 5")
         assertContains(violations, "must import org.junit.jupiter.api.Test")
-        assertContains(violations, "must declare @Tag(\"integration\")")
+        assertContains(violations, "*IntegrationTest must be placed under src/integrationTest")
+        assertContains(violations, "tests under src/integrationTest must use the *IntegrationTest suffix")
+        assertContains(violations, "@SpringBootTest must be placed under src/integrationTest")
+        assertContains(violations, "@WebMvcTest is a unit HTTP slice")
         assertContains(violations, "MockMvc tests must use WebEnvironment.MOCK")
-        assertContains(violations, "*IntegrationTest must declare an integration tag")
     }
 
     private fun java.nio.file.Path.writeTest(relativePath: String, source: String) {

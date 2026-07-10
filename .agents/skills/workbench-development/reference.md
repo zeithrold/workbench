@@ -6,20 +6,20 @@ Detailed paths and commands. Read when implementing a specific change type.
 
 | Purpose | Command |
 |---------|---------|
-| Quick verify (local loop) | `./gradlew workbenchQuickCheck --no-daemon` |
-| Full verify (CI gate) | `./gradlew workbenchCiCheck --no-daemon` |
-| Extended verify (Nightly) | `./gradlew workbenchExtendedCheck --no-parallel --no-configuration-cache` |
-| Per-module nightly (CI) | `./gradlew :workbench-<module>:workbenchCiNightlyModule --no-parallel --no-configuration-cache` |
-| Unit-only coverage report | `./gradlew workbenchCiUnitCoverage` |
-| Module unit tests | `./gradlew :workbench-<module>:workbenchUnitTest` |
-| Module integration tests | `./gradlew :workbench-<module>:workbenchIntegrationTest` |
+| Quick verify (local loop) | `./gradlew quickCheck --no-daemon` |
+| Full verify (CI gate) | `./gradlew check --no-daemon` |
+| Extended verify | `./gradlew extendedCheck --no-parallel --no-configuration-cache` |
+| Per-module nightly (CI) | `./gradlew :workbench-<module>:ciNightlyCheck --no-parallel --no-configuration-cache` |
+| Unit-only coverage report | `./gradlew koverUnitXmlReport` |
+| Module unit tests | `./gradlew :workbench-<module>:test` |
+| Module integration tests | `./gradlew :workbench-<module>:integrationTest` |
 | Full stack infra | `docker compose up -d` |
 | Print dev commands | `./gradlew dev` |
 | Format fix | `./gradlew spotlessApply` |
 | Boot jars | `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon` |
-| Fuzz tests | `./gradlew workbenchFuzzTest` |
-| Mutation tests | `./gradlew workbenchMutationTest --no-parallel --no-configuration-cache` |
-| Frontend coverage | `./gradlew :workbench-frontend:pnpmCoverage` |
+| Fuzz tests | `./gradlew fuzzTest` |
+| Mutation tests | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
+| Frontend unit coverage | `./gradlew frontendUnitCoverage` |
 | Diff coverage (all stacks) | `uv run --directory scripts/ci check-diff-coverage` |
 | Diff coverage (backend) | `uv run --directory scripts/ci check-diff-coverage --target backend` |
 | Diff coverage (frontend) | `uv run --directory scripts/ci check-diff-coverage --target frontend` |
@@ -93,7 +93,7 @@ Field renames in OpenAPI are breaking — coordinate backend and frontend in one
 | `@Tags("fuzz")` (Kotest) or `@Tag("fuzz")` (JUnit `@Test`) | Property-based tests; excluded from `check` |
 | Docker required | Integration tests and `check` on JVM modules |
 
-Gradle maps tags to tasks: JUnit via `includeTags` / `excludeTags`; Kotest via `kotest.tags` (`!integration & !fuzz` on `workbenchUnitTest`, `integration` on `workbenchIntegrationTest`, `fuzz` on `workbenchFuzzVerification`).
+Integration tests are separated by the `src/integrationTest` source set. Fuzz remains tag-based: JUnit uses `@Tag("fuzz")`, Kotest uses `@Tags("fuzz")`, and the module `fuzzTest` task selects those tags.
 
 **Stacks:** Kotest + MockK + JUnit 5. Integration fixtures in `workbench-service` testFixtures and `config/integration-test/`.
 
@@ -126,12 +126,12 @@ Triggered by [ci.yml](../../../.github/workflows/ci.yml) on push and PR.
 
 1. Checkout (`fetch-depth: 0`), fetch PR base branch, toolchain setup (JDK 25, pnpm, Node, Gradle, uv)
 2. `uv run ruff check` + `uv run ruff format --check` in `scripts/ci/`
-3. `./gradlew workbenchCiCheck --no-daemon`
+3. `./gradlew check --no-daemon`
 4. `./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon`
 5. Upload boot jars artifact
-6. `workbenchCiFullCoverage` + `workbenchCiUnitCoverage`
-7. (after successful `workbenchCiCheck`) `:workbench-frontend:pnpmCoverage`, `uv run check-diff-coverage`
-8. `./gradlew workbenchCiRenderQualitySummary` → Step Summary (Kover + unit/full delta + diff)
+6. `koverXmlReport` + `koverUnitXmlReport`
+7. (after successful `check`) `frontendFullCoverage`, `uv run check-diff-coverage`
+8. `./gradlew ciRenderQualitySummary` → Step Summary (Kover + unit/full delta + diff)
 9. Upload artifacts: Kover, Workbench CI JSON, diff-cover HTML, `diff-coverage-results.json`, frontend `coverage/` (14-day retention)
 
 **Job: docker** (after quality-gate, non-PR only)
@@ -150,11 +150,11 @@ Independent workflow; does **not** reuse quality-gate. No diff coverage or Docke
 
 | Job | Parallelism | What runs |
 |-----|-------------|-----------|
-| `backend-module` | Matrix (8 modules, `max-parallel: 4`) | `:workbench-<module>:workbenchCiNightlyModule` (check + fuzz + pitest) |
+| `backend-module` | Matrix (8 modules, `max-parallel: 4`) | `:workbench-<module>:ciNightlyCheck` (check + fuzz + pitest) |
 | `test-support` | Single | `:workbench-test-support:check` |
-| `frontend` | Single | `:workbench-frontend:check`, `pnpmCoverage` |
-| `unit-coverage` | Single (parallel with above) | `workbenchCiUnitCoverage` |
-| `aggregate-report` | After report jobs | Download per-artifact → restore `workbench-*/build/...` → `workbenchCiMergePitReports` + `workbenchCiMergeKoverReports` → Step Summary |
+| `frontend` | Single | `:workbench-frontend:check`, `frontendUnitCoverage` |
+| `unit-coverage` | Single (parallel with above) | `koverUnitXmlReport` |
+| `aggregate-report` | After report jobs | Download per-artifact → restore `workbench-*/build/...` → `ciMergePitReports` + `ciMergeKoverReports` → Step Summary |
 | `gate` | Final | Fail if any upstream job failed |
 
 Reports retained 30 days (`nightly-reports-*` artifact).

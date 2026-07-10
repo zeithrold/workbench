@@ -29,7 +29,7 @@ Copy and track progress:
 - [ ] Code in correct modules with tests
 - [ ] API changes: OpenAPI annotated + `pnpm openapi` (backend running)
 - [ ] Schema changes: Flyway migration + Exposed tables + migration test count
-- [ ] `./gradlew workbenchQuickCheck` during iteration; `./gradlew workbenchCiCheck` before push
+- [ ] `./gradlew quickCheck` during iteration; `./gradlew check` before push
 - [ ] Diff coverage passes (Kotlin → unit/integration tests; frontend → Vitest; see Verification)
 - [ ] PR opened; CI quality gate green
 ```
@@ -97,21 +97,21 @@ Run in separate terminals:
 
 | Tier | Command | When | Includes |
 |------|---------|------|----------|
-| **Quick** | `./gradlew workbenchQuickCheck` | Local edit loop | Spotless, Detekt, backend `workbenchUnitTest`, frontend `pnpmLint` |
-| **Full** | `./gradlew workbenchCiCheck` | Pre-PR, CI push/PR | Quick + integration-tagged tests, full Kover gate (90%), frontend Vitest |
-| **Extended** | `./gradlew workbenchExtendedCheck` | Nightly CI (local serial equivalent) | Full + `workbenchFuzzTest` + `workbenchMutationTest` + unit Kover XML |
+| **Quick** | `./gradlew quickCheck` | Local edit loop | Spotless, Detekt, backend `test`, frontend lint + unit tests |
+| **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
+| **Extended** | `./gradlew extendedCheck` | Large local verification | Full + `fuzzTest` + `mutationTest` |
 
-Module tasks: `workbenchUnitTest` (no integration/fuzz tags), `workbenchIntegrationTest` (integration-tagged only), `test` (standard Gradle lifecycle test task, excluding fuzz by convention). Integration tests require Docker.
+Module tasks: `test` runs unit tests from `src/test`; `integrationTest` runs integration tests from `src/integrationTest`; `check` runs both. Integration tests require Docker.
 
-**Tags:** Kotest specs (`StringSpec`, etc.) — `@Tags("integration")` / `@Tags("fuzz")` from `io.kotest.core.annotation.Tags` (filtered via Gradle `kotest.tags`). JUnit `@Test` classes — `@Tag("integration")` / `@Tag("fuzz")` from `org.junit.jupiter.api.Tag` (filtered via JUnit Platform `includeTags` / `excludeTags`). Both are required where applicable; JUnit `@Tag` on Kotest specs is not honored.
+**Classification:** Integration tests use the `src/integrationTest` source set and `*IntegrationTest` suffix; integration tags are retired. Fuzz tests remain under `src/test` and use `@Tags("fuzz")` for Kotest or `@Tag("fuzz")` for JUnit.
 
 ### Unit vs integration responsibilities
 
-| | Unit (`workbenchUnitTest`) | Integration (tagged) |
+| | Unit (`test`) | Integration (`integrationTest`) |
 |--|-------------------|----------------------|
 | **Purpose** | Business rules, pure logic, HTTP slice (`@WebMvcTest`) | SQL/Exposed semantics, Testcontainers, Kafka/S3/auth wiring |
 | **Dependencies** | Fake/Recording ports or MockK; **no Spring full context** | Real Postgres/Valkey/Kafka/Keycloak via Testcontainers |
-| **Naming** | `*Test.kt` | `*IntegrationTest.kt` + integration tag (see Tags above) |
+| **Naming** | `src/test/**/*Test.kt` | `src/integrationTest/**/*IntegrationTest.kt` |
 | **PIT** | Included | Excluded (`config/pitest/pitest.properties`) |
 | **Prefer** | State/result assertions over `coVerify`-only | Scenarios Fake cannot model (transactions, JSONB, migrations) |
 
@@ -125,9 +125,9 @@ Module tasks: `workbenchUnitTest` (no integration/fuzz tags), `workbenchIntegrat
 
 | Metric | Report | Gate | Target |
 |--------|--------|------|--------|
-| **Full** (unit + integration) | `build/reports/kover/report.xml` | `./gradlew workbenchCiCheck` / `check` | **90%** line (aggregate + per backend module) |
+| **Full** (unit + integration) | `build/reports/kover/report.xml` | `./gradlew check` | **90%** line (aggregate + per backend module) |
 | **Unit** (unit tests only) | `build/reports/kover/unit/report.xml` | Soft warning | **70%+** line; warns when full-unit line delta > **15pp** |
-| **Diff** (full Kover / Vitest LCOV) | `scripts/ci/diff-cover-*.html` | CI after `workbenchCiCheck` | Backend changed lines **90%**, frontend **70%** |
+| **Diff** (full Kover / Vitest LCOV) | `scripts/ci/diff-cover-*.html` | CI after `check` | Backend changed lines **90%**, frontend **70%** |
 | **Mutation / Strength** | `build/reports/pitest/` | Nightly report | Track via Quality Report; no hard gate yet |
 
 If full line coverage exceeds unit by **> 15%** for a module, add unit tests or contract tests — do not compensate with more integration tests alone.
@@ -135,27 +135,27 @@ If full line coverage exceeds unit by **> 15%** for a module, add unit tests or 
 Generate unit-only coverage:
 
 ```bash
-./gradlew workbenchCiUnitCoverage
+./gradlew koverUnitXmlReport
 ```
 
 ### Standard gate (matches CI)
 
 ```bash
-./gradlew workbenchCiCheck --no-daemon
+./gradlew check --no-daemon
 ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
 ```
 
-`workbenchCiCheck` includes Spotless, Detekt, unit + integration tests, Kover full verify, and frontend ESLint + Vitest. Standard `check` remains available as the Gradle lifecycle task.
+`check` is the shared local/CI gate: Spotless, Detekt, unit + integration tests, Kover full verify, and frontend ESLint + Vitest.
 
 ### Quick local loop
 
 ```bash
-./gradlew workbenchQuickCheck --no-daemon
+./gradlew quickCheck --no-daemon
 ```
 
 **Pre-PR diff coverage (matches CI quality gate):**
 
-CI enforces **changed-line** coverage (in addition to the full `./gradlew workbenchCiCheck` gate) on push and PR when `workbenchCiCheck` succeeds. Nightly skips diff coverage (fuzz/mutation only).
+CI enforces **changed-line** coverage after the full `./gradlew check` gate succeeds. Nightly skips diff coverage (fuzz/mutation only).
 
 | Stack | Report | Threshold | When skipped |
 |-------|--------|-----------|--------------|
@@ -165,8 +165,8 @@ CI enforces **changed-line** coverage (in addition to the full `./gradlew workbe
 Install [uv](https://docs.astral.sh/uv/) once (`curl -LsSf https://astral.sh/uv/install.sh | sh`). Python tooling in `scripts/ci/` is limited to the `diff-cover` wrapper (Ruff lint/format included in CI).
 
 ```bash
-./gradlew workbenchCiCheck --no-daemon
-./gradlew :workbench-frontend:pnpmCoverage --no-daemon
+./gradlew check --no-daemon
+./gradlew frontendFullCoverage --no-daemon
 git fetch origin main
 uv run --directory scripts/ci check-diff-coverage              # both stacks
 uv run --directory scripts/ci check-diff-coverage --target backend
@@ -193,18 +193,18 @@ HTML reports: `scripts/ci/diff-cover-backend.html`, `scripts/ci/diff-cover-front
 **Extended (nightly CI / large changes):**
 
 ```bash
-./gradlew workbenchExtendedCheck --no-parallel --no-configuration-cache
-./gradlew :workbench-frontend:pnpmCoverage
+./gradlew extendedCheck --no-parallel --no-configuration-cache
+./gradlew frontendUnitCoverage
 ./gradlew :workbench-frontend:pnpmE2e
 ```
 
 | Test kind | Rule | Command |
 |-----------|------|---------|
-| Unit | Must **not** start Spring; no integration tag | `./gradlew :workbench-*:workbenchUnitTest` |
-| Integration | Integration tag (`@Tags` on Kotest, `@Tag` on JUnit); needs Docker | `./gradlew :workbench-*:workbenchIntegrationTest` |
-| All backend tests | Unit + integration | `./gradlew :workbench-*:test` |
-| Fuzz | Fuzz tag (`@Tags("fuzz")` / `@Tag("fuzz")`) | `./gradlew workbenchFuzzTest` |
-| Mutation | nightly (`workbenchExtendedCheck`) | `./gradlew workbenchMutationTest --no-parallel --no-configuration-cache` |
+| Unit | `src/test`; must **not** start a full Spring context | `./gradlew :workbench-*:test` |
+| Integration | `src/integrationTest`; `*IntegrationTest`; needs Docker | `./gradlew :workbench-*:integrationTest` |
+| All backend tests | Unit + integration | `./gradlew :workbench-*:check` |
+| Fuzz | Fuzz tag (`@Tags("fuzz")` / `@Tag("fuzz")`) | `./gradlew fuzzTest` |
+| Mutation | Extended/Nightly | `./gradlew mutationTest --no-parallel --no-configuration-cache` |
 
 Generic verification patterns: [springboot-verification](../springboot-verification/SKILL.md) (use Gradle commands above for this repo).
 
@@ -212,14 +212,14 @@ Generic verification patterns: [springboot-verification](../springboot-verificat
 
 | Trigger | Workflow | What runs |
 |---------|----------|-----------|
-| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → [quality-gate.yml](../../../.github/workflows/quality-gate.yml) | `workbenchCiCheck` (full), unit coverage, bootJar, diff coverage, Docker build (no push on PR) |
-| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | Per-module `workbenchCiNightlyModule` (parallel) + `test-support:check` + frontend `check` + unit Kover → aggregate PIT/Kover report (no diff coverage, no Docker) |
+| Push / PR | [ci.yml](../../../.github/workflows/ci.yml) → [quality-gate.yml](../../../.github/workflows/quality-gate.yml) | `check` (full), unit coverage, bootJar, diff coverage, Docker build (no push on PR) |
+| Nightly 02:00 Asia/Shanghai | [nightly.yml](../../../.github/workflows/nightly.yml) | Per-module `ciNightlyCheck` (parallel) + `test-support:check` + frontend `check` + unit Kover → aggregate PIT/Kover report (no diff coverage, no Docker) |
 
-Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary (Quality Gate only); `./gradlew workbenchCiRenderQualitySummary` writes Kover/PIT and unit/full delta summaries.
+Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summary (Quality Gate only); `./gradlew ciRenderQualitySummary` writes Kover/PIT and unit/full delta summaries.
 
 ## PR Checklist
 
-- [ ] `./gradlew workbenchQuickCheck` during iteration; `./gradlew workbenchCiCheck` before push locally
+- [ ] `./gradlew quickCheck` during iteration; `./gradlew check` before push locally
 - [ ] Diff coverage passes locally when Kotlin or frontend source changed (`uv run --directory scripts/ci check-diff-coverage`)
 - [ ] Kotlin changes: unit/integration tests added; backend diff ≥ 90%
 - [ ] Frontend changes: Vitest tests added; frontend diff ≥ 70%
@@ -235,7 +235,7 @@ Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summar
 - Unit tests starting Spring context
 - OpenAPI field changes without regen frontend client
 - New migration without updating integration test count
-- PR with only module `workbenchUnitTest` — skips Spotless, Detekt, integration tests, frontend lint
+- PR with only a module `test` — skips Spotless, Detekt, integration tests, and frontend verification
 - Opening a PR after only `./gradlew check` when source changed but diff coverage was not run locally
 - Changing Kotlin or frontend business logic without tests for the new/changed lines
 - Writing contorted or shallow tests to work around bad design instead of flagging the design issue

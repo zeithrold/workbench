@@ -44,28 +44,28 @@ OpenAPI is available at `http://localhost:8080/api/openapi`. Scalar is available
 Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 
 ```bash
-./gradlew workbenchQuickCheck                     # local: unit tests + static analysis
-./gradlew workbenchCiCheck                        # pre-PR / CI: + integration tests + full Kover (90%)
-./gradlew workbenchExtendedCheck                  # local serial equivalent of Nightly CI
-./gradlew :workbench-core:workbenchCiNightlyModule # per-module nightly (matches CI matrix)
-./gradlew workbenchCiUnitCoverage                  # unit-only coverage report (soft warnings)
+./gradlew quickCheck                      # local: unit tests + static analysis
+./gradlew check                           # pre-PR / CI: + integration tests + full Kover (90%)
+./gradlew extendedCheck                   # full + fuzz + mutation verification
+./gradlew :workbench-core:ciNightlyCheck  # internal per-module Nightly task
+./gradlew koverUnitXmlReport              # unit-only coverage report (soft warnings)
 ```
 
-Legacy per-module debug:
+Focused verification and reporting:
 
 ```bash
-./gradlew workbenchMutationTest
+./gradlew mutationTest
 ./gradlew :workbench-core:pitest
-./gradlew workbenchCiFrontendUnitCoverage
-./gradlew workbenchCiFrontendFullCoverage
-./gradlew :workbench-frontend:workbenchE2eCheck
+./gradlew frontendUnitCoverage
+./gradlew frontendFullCoverage
+./gradlew :workbench-frontend:e2eCheck
 ```
 
 **Diff coverage** (same gate as CI; requires [uv](https://docs.astral.sh/uv/)):
 
 ```bash
-./gradlew workbenchCiCheck
-./gradlew workbenchCiFrontendFullCoverage
+./gradlew check
+./gradlew frontendFullCoverage
 git fetch origin main
 uv run --directory scripts/ci check-diff-coverage
 ```
@@ -80,7 +80,7 @@ qodana scan --within-docker false
 
 The CI workflow uses the same non-Docker mode for both token-authenticated Cloud scans and Fork PR local scans.
 
-Unit tests must not start Spring. Integration tests may use Testcontainers. Tag Kotest specs with `@Tags("integration")`; tag JUnit `@Test` classes with `@Tag("integration")`. See [test governance](docs/testing-governance.md) for principles, naming, layering, and framework rules.
+Unit tests live under `src/test` and must not start a full Spring context. Integration tests live under `src/integrationTest`, use the `*IntegrationTest` suffix, and may use Testcontainers. Run them with `integrationTest`; standard `check` runs both suites. See [test governance](docs/testing-governance.md) for principles, naming, layering, and framework rules.
 
 ## Architecture Notes
 
