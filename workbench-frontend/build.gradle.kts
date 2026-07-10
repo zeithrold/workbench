@@ -1,9 +1,9 @@
+import com.github.gradle.node.pnpm.task.PnpmTask
+
 plugins {
     base
     alias(libs.plugins.node)
 }
-
-import com.github.gradle.node.pnpm.task.PnpmTask
 
 node {
     version.set("24.15.0")
