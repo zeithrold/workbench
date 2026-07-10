@@ -10,8 +10,8 @@ Workbench uses four complementary test types. Each test should cover one boundar
 |---|---|---|---|
 | Domain/service unit | Business rules and pure transformations, with Fakes, Recording ports, or MockK | Kotest + MockK | `*Test` without a tag |
 | Web MVC slice | Routes, JSON, authorization, filters, and exception mapping | JUnit 5 + MockMvc + `@WebMvcTest` | `*ControllerTest` without a tag |
-| Non-Spring integration | Real adapters, database semantics, migrations, Kafka/S3/Keycloak interactions | Kotest + Testcontainers | `*IntegrationTest` + `@Tags("integration")` |
-| Spring Boot integration | Spring wiring and configuration with real infrastructure | JUnit 5 + `@SpringBootTest` | `*IntegrationTest` + `@Tag("integration")` |
+| Non-Spring integration | Real adapters, database semantics, migrations, Kafka/S3/Keycloak interactions | Kotest + Testcontainers | `src/integrationTest` + `*IntegrationTest` |
+| Spring Boot integration | Spring wiring and configuration with real infrastructure | JUnit 5 + `@SpringBootTest` | `src/integrationTest` + `*IntegrationTest` |
 
 ## Boundaries
 
@@ -23,6 +23,6 @@ Workbench uses four complementary test types. Each test should cover one boundar
 
 ## Enforcement
 
-`./gradlew workbenchTestArchitectureCheck` validates test source conventions across all backend modules and `workbench-test-support`. It is included in both `workbenchQuickCheck` and `workbenchCiCheck`.
+`./gradlew testArchitectureCheck` validates both `src/test` and `src/integrationTest` across all backend modules and `workbench-test-support`. It is included in both `quickCheck` and `check`.
 
-The check rejects integration tags without an `*IntegrationTest` suffix, untagged `*IntegrationTest` files, retired `*DirectTest` names, Spring tests using Kotest Specs, untagged `@SpringBootTest` classes, tagged `@WebMvcTest` slices, and MockMvc tests configured with `RANDOM_PORT`.
+The check rejects retired integration tags, `*IntegrationTest` files outside `src/integrationTest`, ordinary test classes inside the integration source set without the required suffix, `@SpringBootTest` outside the integration source set, `@WebMvcTest` inside it, retired `*DirectTest` names, Spring tests using Kotest Specs, and MockMvc tests configured with `RANDOM_PORT`.
