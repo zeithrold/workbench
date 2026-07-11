@@ -1,6 +1,7 @@
 package ink.doa.workbench.security
 
 import jakarta.servlet.DispatcherType
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.context.annotation.Bean
@@ -8,6 +9,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
 @ConditionalOnWebApplication
@@ -15,7 +17,7 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
   @Bean
   fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
     http
-      .csrf { it.disable() }
+      .csrf { it.requireCsrfProtectionMatcher(CrossSiteSessionRequestMatcher) }
       .httpBasic { it.disable() }
       .formLogin { it.disable() }
       .logout { it.disable() }
@@ -52,4 +54,16 @@ class SecurityConfiguration(private val authenticationFilter: WorkbenchAuthentic
       }
       .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
       .build()
+}
+
+internal object CrossSiteSessionRequestMatcher : RequestMatcher {
+  private val safeMethods = setOf("GET", "HEAD", "OPTIONS", "TRACE")
+
+  override fun matches(request: HttpServletRequest): Boolean =
+    request.method !in safeMethods &&
+      request.hasSessionCookie() &&
+      request.getHeader("Sec-Fetch-Site").equals("cross-site", ignoreCase = true)
+
+  private fun HttpServletRequest.hasSessionCookie(): Boolean =
+    cookies?.any { it.name == WORKBENCH_SESSION_COOKIE_NAME } == true
 }
