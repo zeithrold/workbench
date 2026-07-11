@@ -1,5 +1,9 @@
 # Workbench
 
+> Database migration history was reset to a single V1 baseline before production. Existing
+> development databases are incompatible with the new baseline; recreate local volumes with
+> `docker compose down -v` before starting the application after this change.
+
 Workbench is a multi-module Spring Boot 4 and SvelteKit monolith for `ink.doa.workbench`.
 
 ## Baseline

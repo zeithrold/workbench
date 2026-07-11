@@ -20,11 +20,7 @@ sealed class MigrationSpec {
   }
 
   data object Full : MigrationSpec() {
-    override fun locations(): Array<String> =
-      arrayOf(
-        "classpath:db/migration",
-        "classpath:ink/doa/workbench/data/migration",
-      )
+    override fun locations(): Array<String> = arrayOf("classpath:db/migration")
 
     override fun supportsTemplate(): Boolean = true
 
