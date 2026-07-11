@@ -8,6 +8,7 @@ import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.Database
@@ -20,7 +21,7 @@ class NotificationDeliveryRepositoryIntegrationTest :
         val stack = runBlocking { seedWorkItemStack(Database.connect(jdbc.dataSource!!)) }
         val notificationId = UUID.randomUUID()
         val deliveryId = UUID.randomUUID()
-        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val now = OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MICROS)
         val lockedUntil = now.plusMinutes(2)
 
         jdbc.update(

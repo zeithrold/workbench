@@ -30,6 +30,10 @@
   const submittingCommentSubmit = fn()
   const readOnlyCommentSubmit = fn()
 
+  const selectAllShortcut = navigator.userAgent.includes('Mac OS')
+    ? '{Meta>}a{/Meta}'
+    : '{Control>}a{/Control}'
+
   const { Story } = defineMeta({
     title: 'Shared/RichTextEditor',
     component: RichTextEditorStoryHost,
@@ -41,7 +45,7 @@
     const editor = await canvas.findByRole('textbox', { name: 'Rich text editor' })
     await userEvent.click(editor)
     await userEvent.type(editor, 'Controlled content')
-    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard(selectAllShortcut)
     await userEvent.click(canvas.getByRole('button', { name: 'Bold' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('bold')
     await userEvent.click(canvas.getByRole('button', { name: 'Heading 1' }))
@@ -60,7 +64,7 @@
     await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
     await userEvent.click(canvas.getByRole('button', { name: 'Redo' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('List item')
-    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard(selectAllShortcut)
     await userEvent.click(canvas.getByRole('button', { name: 'Edit link' }))
     const body = within(document.body)
     const input = await body.findByRole('textbox', { name: 'Link URL' })
@@ -117,10 +121,10 @@
     await userEvent.click(editor)
     await userEvent.type(editor, '/heading')
     await expect(within(document.body).queryByRole('listbox', { name: 'Editor commands' })).not.toBeInTheDocument()
-    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard(selectAllShortcut)
     await userEvent.type(editor, 'First line{Enter}Second line')
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('Second line')
-    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard(selectAllShortcut)
     await userEvent.click(within(toolbar).getByRole('button', { name: 'Bold' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('bold')
     await userEvent.click(within(toolbar).getByRole('button', { name: 'Edit link' }))
