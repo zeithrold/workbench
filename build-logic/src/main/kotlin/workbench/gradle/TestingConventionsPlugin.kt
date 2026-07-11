@@ -1,5 +1,8 @@
 package workbench.gradle
 
+import com.diffplug.gradle.spotless.SpotlessExtension
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.DetektExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.plugins.jvm.JvmTestSuite
@@ -11,8 +14,44 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 class TestingConventionsPlugin : Plugin<Project> {
     override fun apply(project: Project) {
+        project.configureCodeQuality()
         project.pluginManager.withPlugin("java") {
             project.configureWorkbenchTests()
+        }
+    }
+
+    private fun Project.configureCodeQuality() {
+        pluginManager.apply("com.diffplug.spotless")
+        pluginManager.apply("dev.detekt")
+
+        extensions.configure<SpotlessExtension> {
+            kotlin {
+                target("src/**/*.kt")
+                ktfmt("0.63").googleStyle()
+            }
+            kotlinGradle {
+                target("*.gradle.kts")
+                ktfmt("0.63").googleStyle()
+            }
+        }
+        extensions.configure<DetektExtension> {
+            toolVersion.set(libs().findVersion("detekt").get().requiredVersion)
+            config.setFrom(rootProject.files("config/detekt/detekt.yml"))
+            buildUponDefaultConfig.set(true)
+            parallel.set(true)
+        }
+        tasks.withType(Detekt::class.java).configureEach {
+            if (
+                name == "detektTest" ||
+                    name == "detektTestSourceSet" ||
+                    name == "detektTestFixtures" ||
+                    name == "detektTestFixturesSourceSet"
+            ) {
+                config.setFrom(
+                    rootProject.files("config/detekt/detekt.yml", "config/detekt/detekt-test.yml"),
+                )
+                buildUponDefaultConfig.set(true)
+            }
         }
     }
 

@@ -25,8 +25,6 @@ import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.template.CreateFieldsLegacyMigrator
-import ink.doa.workbench.core.workitem.template.CreateFieldsPropertyMigrationRow
 import ink.doa.workbench.core.workitem.template.TemplateField
 import ink.doa.workbench.core.workitem.template.TransitionFieldsLegacyMigrator
 import io.kotest.assertions.throwables.shouldThrow
@@ -338,25 +336,14 @@ private fun templateDefaultsIssueTypeConfig(
     createdAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z"),
     createFields =
-      CreateFieldsLegacyMigrator.migrate(
-        listOf(
-          CreateFieldsPropertyMigrationRow(
-            code = "dueDate",
-            isRequired = false,
-            defaultValue = if (defaultDueDate) dueDateDefault else null,
-          ),
-          CreateFieldsPropertyMigrationRow(
-            code = "resolvedAt",
-            isRequired = false,
-            defaultValue = null,
-          ),
-          CreateFieldsPropertyMigrationRow(
-            code = "resolution",
-            isRequired = false,
-            defaultValue = null,
-          ),
+      Json.parseToJsonElement(
+          if (defaultDueDate) {
+            """{"version":1,"resource":"work_item","target":"create","fields":{"title":{"participation":"required"},"description":{"participation":"optional","writeGrant":"inherit"},"property.dueDate":{"participation":"automatic","value":$dueDateDefault},"property.resolvedAt":{"participation":"optional"},"property.resolution":{"participation":"optional"}}}"""
+          } else {
+            """{"version":1,"resource":"work_item","target":"create","fields":{"title":{"participation":"required"},"description":{"participation":"optional","writeGrant":"inherit"},"property.dueDate":{"participation":"optional"},"property.resolvedAt":{"participation":"optional"},"property.resolution":{"participation":"optional"}}}"""
+          }
         )
-      ),
+        .jsonObject,
   )
 }
 

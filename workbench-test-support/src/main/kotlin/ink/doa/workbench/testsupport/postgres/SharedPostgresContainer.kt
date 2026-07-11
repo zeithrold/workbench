@@ -3,8 +3,7 @@ package ink.doa.workbench.testsupport.postgres
 import org.testcontainers.containers.PostgreSQLContainer
 
 internal object SharedPostgresContainer {
-  private val container: PostgreSQLContainer<*> =
-    PostgreSQLContainer("postgres:18-alpine")
+  private val container: PostgreSQLContainer<*> = PostgreSQLContainer("postgres:18-alpine")
 
   @Volatile private var started = false
 

@@ -8,8 +8,12 @@ kotlin {
 
 dependencies {
   implementation(project(":workbench-core"))
-  implementation(platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}"))
-  testImplementation(platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}"))
+  implementation(
+    platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
+  )
+  testImplementation(
+    platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
+  )
   implementation(libs.exposed.jdbc)
   implementation(libs.postgresql)
   implementation(libs.flyway.postgresql)

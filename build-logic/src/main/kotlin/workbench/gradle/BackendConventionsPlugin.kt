@@ -1,8 +1,5 @@
 package workbench.gradle
 
-import com.diffplug.gradle.spotless.SpotlessExtension
-import dev.detekt.gradle.Detekt
-import dev.detekt.gradle.extensions.DetektExtension
 import info.solidsoft.gradle.pitest.PitestPluginExtension
 import kotlinx.kover.gradle.plugin.dsl.KoverProjectExtension
 import org.gradle.api.Plugin
@@ -15,15 +12,11 @@ class BackendConventionsPlugin : Plugin<Project> {
         with(project) {
             pluginManager.apply("org.jetbrains.kotlin.jvm")
             pluginManager.apply("org.jetbrains.kotlin.plugin.serialization")
-            pluginManager.apply("com.diffplug.spotless")
-            pluginManager.apply("dev.detekt")
             pluginManager.apply("org.jetbrains.kotlinx.kover")
             pluginManager.apply("info.solidsoft.pitest")
             pluginManager.apply("workbench.testing-conventions")
 
             configureKotlin()
-            configureSpotless()
-            configureDetekt()
             configureKover()
             configureSharedDependencies()
             configurePitest()
@@ -35,41 +28,6 @@ class BackendConventionsPlugin : Plugin<Project> {
             jvmToolchain(25)
             compilerOptions {
                 freeCompilerArgs.addAll("-Xjsr305=strict")
-            }
-        }
-    }
-
-    private fun Project.configureSpotless() {
-        extensions.configure<SpotlessExtension> {
-            kotlin {
-                target("src/**/*.kt")
-                ktfmt("0.63").googleStyle()
-            }
-            kotlinGradle {
-                target("*.gradle.kts")
-                ktfmt("0.63").googleStyle()
-            }
-        }
-    }
-
-    private fun Project.configureDetekt() {
-        extensions.configure<DetektExtension> {
-            toolVersion.set(libs().findVersion("detekt").get().requiredVersion)
-            config.setFrom(rootProject.files("config/detekt/detekt.yml"))
-            buildUponDefaultConfig.set(true)
-            parallel.set(true)
-        }
-        tasks.withType(Detekt::class.java).configureEach {
-            if (
-                name == "detektTest" ||
-                    name == "detektTestSourceSet" ||
-                    name == "detektTestFixtures" ||
-                    name == "detektTestFixturesSourceSet"
-            ) {
-                config.setFrom(
-                    rootProject.files("config/detekt/detekt.yml", "config/detekt/detekt-test.yml"),
-                )
-                buildUponDefaultConfig.set(true)
             }
         }
     }
