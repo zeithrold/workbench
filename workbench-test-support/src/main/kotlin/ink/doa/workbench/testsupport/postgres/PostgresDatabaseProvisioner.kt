@@ -48,9 +48,7 @@ internal object PostgresDatabaseProvisioner {
   private fun cloneFromTemplate(spec: MigrationSpec): String {
     val templateName = ensureTemplate(spec)
     val databaseName = uniqueDatabaseName("test")
-    executeStatement(
-      "CREATE DATABASE \"$databaseName\" TEMPLATE \"$templateName\"",
-    )
+    executeStatement("CREATE DATABASE \"$databaseName\" TEMPLATE \"$templateName\"")
     return databaseName
   }
 
@@ -66,7 +64,9 @@ internal object PostgresDatabaseProvisioner {
 
   private fun ensureTemplate(spec: MigrationSpec): String {
     val key = spec.templateKey()
-    templateDatabaseNames[key]?.let { return it }
+    templateDatabaseNames[key]?.let {
+      return it
+    }
 
     val templateName = uniqueDatabaseName("workbench_tpl_${spec.templateKey()}")
     executeStatement("CREATE DATABASE \"$templateName\"")
@@ -75,6 +75,7 @@ internal object PostgresDatabaseProvisioner {
     return templateName
   }
 
+  @Suppress("SpreadOperator")
   private fun migrate(spec: MigrationSpec, databaseName: String) {
     val flyway =
       spec
@@ -85,7 +86,7 @@ internal object PostgresDatabaseProvisioner {
               SharedPostgresContainer.username,
               SharedPostgresContainer.password,
             )
-            .locations(*spec.locations()),
+            .locations(*spec.locations())
         )
         .load()
     flyway.migrate()

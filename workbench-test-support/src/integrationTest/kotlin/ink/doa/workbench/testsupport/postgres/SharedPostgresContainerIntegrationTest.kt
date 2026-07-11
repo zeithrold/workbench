@@ -34,7 +34,11 @@ class SharedPostgresContainerIntegrationTest :
   })
 
 private fun queryGreetingCount(jdbcUrl: String): Int =
-  DriverManager.getConnection(jdbcUrl, SharedPostgresContainer.username, SharedPostgresContainer.password)
+  DriverManager.getConnection(
+      jdbcUrl,
+      SharedPostgresContainer.username,
+      SharedPostgresContainer.password,
+    )
     .use { connection ->
       connection.createStatement().use { statement ->
         statement.executeQuery("SELECT COUNT(*) FROM greeting").use { result ->
@@ -45,7 +49,11 @@ private fun queryGreetingCount(jdbcUrl: String): Int =
     }
 
 private fun queryGreetingMessage(jdbcUrl: String): String =
-  DriverManager.getConnection(jdbcUrl, SharedPostgresContainer.username, SharedPostgresContainer.password)
+  DriverManager.getConnection(
+      jdbcUrl,
+      SharedPostgresContainer.username,
+      SharedPostgresContainer.password,
+    )
     .use { connection ->
       connection.createStatement().use { statement ->
         statement.executeQuery("SELECT message FROM greeting LIMIT 1").use { result ->
@@ -56,7 +64,11 @@ private fun queryGreetingMessage(jdbcUrl: String): String =
     }
 
 private fun executeUpdate(jdbcUrl: String, sql: String) {
-  DriverManager.getConnection(jdbcUrl, SharedPostgresContainer.username, SharedPostgresContainer.password)
+  DriverManager.getConnection(
+      jdbcUrl,
+      SharedPostgresContainer.username,
+      SharedPostgresContainer.password,
+    )
     .use { connection ->
       connection.createStatement().use { statement ->
         statement.executeUpdate(sql)

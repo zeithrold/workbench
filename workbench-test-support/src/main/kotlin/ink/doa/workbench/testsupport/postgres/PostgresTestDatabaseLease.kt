@@ -2,7 +2,8 @@ package ink.doa.workbench.testsupport.postgres
 
 import org.jetbrains.exposed.v1.jdbc.Database
 
-class PostgresTestDatabaseLease internal constructor(
+class PostgresTestDatabaseLease
+internal constructor(
   val database: Database,
   val jdbcUrl: String,
   val username: String,

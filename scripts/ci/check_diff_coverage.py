@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 BACKEND_INCLUDE_GLOBS = ("workbench-*/src/main/**/*.kt",)
+BACKEND_EXCLUDE_GLOBS = ("workbench-test-support/src/main/**/*.kt",)
 FRONTEND_INCLUDE_GLOBS = (
     "workbench-frontend/src/**/*.ts",
     "workbench-frontend/src/**/*.js",
@@ -33,6 +34,7 @@ class StackConfig:
     html_report: Path
     json_report: Path
     include_globs: tuple[str, ...]
+    exclude_globs: tuple[str, ...]
     fail_under: float
 
 
@@ -170,6 +172,7 @@ def write_diff_cover_config(
     path: Path,
     *,
     include_globs: tuple[str, ...],
+    exclude_globs: tuple[str, ...],
     src_roots: tuple[str, ...],
     fail_under: float,
 ) -> None:
@@ -181,6 +184,10 @@ def write_diff_cover_config(
     ]
     lines.extend(f'  "{pattern}",' for pattern in include_globs)
     lines.append("]")
+    if exclude_globs:
+        lines.append("exclude = [")
+        lines.extend(f'  "{pattern}",' for pattern in exclude_globs)
+        lines.append("]")
     if src_roots:
         lines.append("src_roots = [")
         lines.extend(f'  "{src_root}",' for src_root in src_roots)
@@ -189,10 +196,12 @@ def write_diff_cover_config(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def relevant_backend_src_roots(root: Path, changed_files: list[str]) -> tuple[str, ...]:
+def relevant_backend_src_roots(
+    root: Path, changed_files: list[str], config: StackConfig
+) -> tuple[str, ...]:
     modules: set[str] = set()
     for path in changed_files:
-        if not path.startswith("workbench-") or "/src/main/" not in path:
+        if not is_included_source(path, config):
             continue
         module = path.split("/", 1)[0]
         kotlin_root = root / module / "src/main/kotlin"
@@ -206,8 +215,29 @@ def matches_any(path: str, globs: tuple[str, ...]) -> bool:
     return any(fnmatch.fnmatch(normalized, pattern) for pattern in globs)
 
 
-def has_stack_changes(changed_files: list[str], globs: tuple[str, ...]) -> bool:
-    return any(matches_any(path, globs) for path in changed_files)
+def filter_excluded_diff(diff_text: str, exclude_globs: tuple[str, ...]) -> str:
+    """Remove complete file sections excluded from a unified Git diff."""
+    if not exclude_globs:
+        return diff_text
+
+    sections = re.split(r"(?=^diff --git )", diff_text, flags=re.MULTILINE)
+    included: list[str] = []
+    for section in sections:
+        header = section.splitlines()[0] if section else ""
+        match = re.match(r"diff --git a/(.+?) b/(.+)$", header)
+        path = match.group(2) if match else ""
+        if path and matches_any(path, exclude_globs):
+            continue
+        included.append(section)
+    return "".join(included)
+
+
+def is_included_source(path: str, config: StackConfig) -> bool:
+    return matches_any(path, config.include_globs) and not matches_any(path, config.exclude_globs)
+
+
+def has_stack_changes(changed_files: list[str], config: StackConfig) -> bool:
+    return any(is_included_source(path, config) for path in changed_files)
 
 
 def ensure_compare_branch(root: Path, branch: str) -> None:
@@ -260,11 +290,12 @@ def unmeasured_changed_source_files(
     payload: dict,
     changed_files: list[str],
     include_globs: tuple[str, ...],
+    exclude_globs: tuple[str, ...],
 ) -> list[str]:
     src_stats = payload.get("src_stats", {})
     unmeasured: list[str] = []
     for path in changed_files:
-        if not matches_any(path, include_globs):
+        if not matches_any(path, include_globs) or matches_any(path, exclude_globs):
             continue
         if path in src_stats:
             continue
@@ -308,10 +339,11 @@ def run_diff_cover(
 
     diff_path = root / DIFF_COVER_PATCH
     config_path = root / DIFF_COVER_CONFIG
-    diff_path.write_text(diff_text, encoding="utf-8")
+    diff_path.write_text(filter_excluded_diff(diff_text, config.exclude_globs), encoding="utf-8")
     write_diff_cover_config(
         config_path,
         include_globs=config.include_globs,
+        exclude_globs=config.exclude_globs,
         src_roots=src_roots,
         fail_under=config.fail_under,
     )
@@ -348,7 +380,7 @@ def evaluate_stack(
     diff_text: str,
     src_roots: tuple[str, ...],
 ) -> StackResult:
-    if not has_stack_changes(changed_files, config.include_globs):
+    if not has_stack_changes(changed_files, config):
         return StackResult(
             name=config.name,
             status="skipped",
@@ -370,7 +402,13 @@ def evaluate_stack(
         root, config, branch, diff_text, src_roots
     )
     unmeasured_files = (
-        unmeasured_changed_source_files(root, payload, changed_files, config.include_globs)
+        unmeasured_changed_source_files(
+            root,
+            payload,
+            changed_files,
+            config.include_globs,
+            config.exclude_globs,
+        )
         if payload
         else []
     )
@@ -423,6 +461,7 @@ def backend_config(root: Path) -> StackConfig:
         html_report=Path("scripts/ci/diff-cover-backend.html"),
         json_report=Path("scripts/ci/diff-cover-backend.json"),
         include_globs=BACKEND_INCLUDE_GLOBS,
+        exclude_globs=BACKEND_EXCLUDE_GLOBS,
         fail_under=env_float("FAIL_UNDER_BACKEND", 90.0),
     )
 
@@ -434,6 +473,7 @@ def frontend_config(root: Path) -> StackConfig:
         html_report=Path("scripts/ci/diff-cover-frontend.html"),
         json_report=Path("scripts/ci/diff-cover-frontend.json"),
         include_globs=FRONTEND_INCLUDE_GLOBS,
+        exclude_globs=(),
         fail_under=env_float("FAIL_UNDER_FRONTEND", 70.0),
     )
 
@@ -498,12 +538,13 @@ def main(argv: list[str] | None = None) -> int:
     ensure_compare_branch(root, branch)
     changed_files = git_diff_names(root, branch)
     diff_text = generate_git_diff(root, branch)
-    backend_src_roots = relevant_backend_src_roots(root, changed_files)
+    backend = backend_config(root)
+    backend_src_roots = relevant_backend_src_roots(root, changed_files, backend)
     frontend_src_roots = (str(Path("workbench-frontend/src")),)
 
     configs: list[StackConfig] = []
     if args.target in ("backend", "all"):
-        configs.append(backend_config(root))
+        configs.append(backend)
     if args.target in ("frontend", "all"):
         configs.append(frontend_config(root))
 

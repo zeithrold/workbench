@@ -2,16 +2,16 @@ package ink.doa.workbench.testsupport.postgres
 
 import org.flywaydb.core.api.configuration.FluentConfiguration
 
-sealed class MigrationSpec {
-  abstract fun locations(): Array<String>
+sealed interface MigrationSpec {
+  fun locations(): Array<String>
 
-  abstract fun supportsTemplate(): Boolean
+  fun supportsTemplate(): Boolean
 
-  abstract fun templateKey(): String
+  fun templateKey(): String
 
   open fun configureFlyway(flyway: FluentConfiguration): FluentConfiguration = flyway
 
-  data object Core : MigrationSpec() {
+  data object Core : MigrationSpec {
     override fun locations(): Array<String> = arrayOf("classpath:db/migration")
 
     override fun supportsTemplate(): Boolean = true
@@ -19,7 +19,7 @@ sealed class MigrationSpec {
     override fun templateKey(): String = "core"
   }
 
-  data object Full : MigrationSpec() {
+  data object Full : MigrationSpec {
     override fun locations(): Array<String> = arrayOf("classpath:db/migration")
 
     override fun supportsTemplate(): Boolean = true
@@ -33,14 +33,15 @@ sealed class MigrationSpec {
     private val configure: FluentConfiguration.() -> FluentConfiguration,
     internal val cacheKey: String,
     internal val migrateOnOpen: Boolean,
-  ) : MigrationSpec() {
+  ) : MigrationSpec {
     override fun locations(): Array<String> = migrationLocations
 
     override fun supportsTemplate(): Boolean = false
 
     override fun templateKey(): String = error("Custom migration specs do not use templates")
 
-    override fun configureFlyway(flyway: FluentConfiguration): FluentConfiguration = flyway.configure()
+    override fun configureFlyway(flyway: FluentConfiguration): FluentConfiguration =
+      flyway.configure()
 
     companion object {
       fun create(
