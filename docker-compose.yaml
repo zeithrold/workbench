@@ -11,10 +11,14 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     ports:
       - "6379:6379"
+    volumes:
+      - valkey-data:/data
 
   redpanda:
+    profiles: ["distributed"]
     image: redpandadata/redpanda:v25.1.7
     command:
       - redpanda
@@ -56,6 +60,7 @@ services:
       - "9001:9001"
 
   debezium:
+    profiles: ["distributed"]
     image: quay.io/debezium/connect:3.1.2.Final
     depends_on:
       postgres:
@@ -70,3 +75,6 @@ services:
       STATUS_STORAGE_TOPIC: workbench.connect.status
     ports:
       - "8083:8083"
+
+volumes:
+  valkey-data:

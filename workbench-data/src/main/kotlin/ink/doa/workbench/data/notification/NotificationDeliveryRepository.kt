@@ -1,21 +1,14 @@
 package ink.doa.workbench.data.notification
 
+import ink.doa.workbench.core.port.notification.EmailDeliveryStore
+import ink.doa.workbench.core.port.notification.PendingEmailDelivery
 import java.time.OffsetDateTime
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
 
-data class PendingEmailDelivery(
-  val deliveryId: java.util.UUID,
-  val notificationId: java.util.UUID,
-  val recipient: String,
-  val subject: String,
-  val body: String,
-  val attempts: Int,
-)
-
 @Repository
-class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) {
-  fun claimEmails(
+class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) : EmailDeliveryStore {
+  override fun claimEmails(
     limit: Int,
     now: OffsetDateTime,
     lockedUntil: OffsetDateTime,
@@ -56,7 +49,7 @@ class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) {
       lockedUntil,
     )
 
-  fun markSent(id: java.util.UUID, now: OffsetDateTime) {
+  override fun markSent(id: java.util.UUID, now: OffsetDateTime) {
     jdbc.update(
       "UPDATE notification_deliveries SET status = 'SENT', sent_at = ?, last_error = NULL WHERE id = ?",
       now,
@@ -64,7 +57,12 @@ class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) {
     )
   }
 
-  fun markFailed(id: java.util.UUID, attempts: Int, nextAttemptAt: OffsetDateTime, error: String) {
+  override fun markFailed(
+    id: java.util.UUID,
+    attempts: Int,
+    nextAttemptAt: OffsetDateTime,
+    error: String,
+  ) {
     val status = if (attempts >= 8) "DEAD" else "RETRY"
     jdbc.update(
       "UPDATE notification_deliveries SET status = ?, attempts = ?, next_attempt_at = ?, last_error = ? WHERE id = ?",

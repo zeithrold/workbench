@@ -49,6 +49,8 @@ scalar:
   path: /api/scalar
   url: /api/openapi
 workbench:
+  messaging:
+    transport: ${WORKBENCH_MESSAGING_TRANSPORT:postgres}
   tracing:
     echo-traceparent:
       enabled: true

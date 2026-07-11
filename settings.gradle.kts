@@ -51,6 +51,7 @@ include(
     ":workbench-tenant",
     ":workbench-data",
     ":workbench-security",
+    ":workbench-jobs",
     ":workbench-web",
     ":workbench-worker",
     ":workbench-frontend",

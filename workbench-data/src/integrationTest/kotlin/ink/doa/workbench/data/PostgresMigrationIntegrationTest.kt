@@ -12,7 +12,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "flattened baseline creates the complete PostgreSQL schema" {
       withMigratedPostgres { jdbc, result, _ ->
-        result.migrationsExecuted shouldBe 1
+        result.migrationsExecuted shouldBe 3
 
         jdbc.queryForObject(
           """
@@ -20,12 +20,13 @@ class PostgresMigrationIntegrationTest :
           FROM information_schema.tables
           WHERE table_schema = 'public'
             AND table_name IN (
-              'tenants', 'projects', 'issues', 'work_item_events', 'domain_outbox', 'notifications'
+              'tenants', 'projects', 'issues', 'work_item_events', 'domain_outbox',
+              'domain_event_deliveries', 'outbox_transport_publications', 'notifications'
             )
           """
             .trimIndent(),
           Int::class.java,
-        ) shouldBe 6
+        ) shouldBe 8
         jdbc.queryForObject(
           "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'issue_type_configs' AND column_name = 'create_fields'",
           Int::class.java,
@@ -62,7 +63,7 @@ class PostgresMigrationIntegrationTest :
     "flattened baseline is idempotent through Flyway history" {
       withMigratedPostgres { _, _, flyway ->
         flyway.migrate().migrationsExecuted shouldBe 0
-        flyway.info().applied().size shouldBe 1
+        flyway.info().applied().size shouldBe 3
       }
     }
   })

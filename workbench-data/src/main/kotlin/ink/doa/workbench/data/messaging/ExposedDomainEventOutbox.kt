@@ -62,5 +62,6 @@ class ExposedDomainEventOutbox(
       it[DomainOutboxTable.nextAttemptAt] = now
       it[DomainOutboxTable.attempts] = 0
     }
+    TransactionManager.current().exec("SELECT pg_notify('workbench_outbox', '')")
   }
 }

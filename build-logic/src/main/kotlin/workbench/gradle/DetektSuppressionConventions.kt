@@ -16,12 +16,18 @@ internal object DetektSuppressionConventions {
 
     private val allowances =
         mapOf(
-            "workbench-worker/src/main/kotlin/ink/doa/workbench/worker/sprint/SprintCloseRequestedEventHandler.kt" to
+            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/sprint/SprintCloseRequestedEventHandler.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "consumer failure boundary")),
+            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/messaging/DomainEventExecutionService.kt" to
+                listOf(Allowance("TooGenericExceptionCaught", 1, "shared handler execution boundary")),
             "workbench-worker/src/main/kotlin/ink/doa/workbench/worker/messaging/OutboxRelay.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
-            "workbench-worker/src/main/kotlin/ink/doa/workbench/worker/notification/EmailNotificationRelay.kt" to
+            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/notification/EmailNotificationRelay.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
+            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/PostgresEmbeddedJobs.kt" to
+                listOf(Allowance("TooGenericExceptionCaught", 2, "listener and delivery failure boundaries")),
+            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/RedisStreamsEmbeddedJobs.kt" to
+                listOf(Allowance("TooGenericExceptionCaught", 2, "relay and delivery failure boundaries")),
             "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/InfrastructureAspect.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "audit failure boundary")),
             "workbench-web/src/main/kotlin/ink/doa/workbench/web/admin/AdminUserController.kt" to
@@ -32,6 +38,11 @@ internal object DetektSuppressionConventions {
                 listOf(
                     Allowance("UnusedParameter", 3, "AOP request context binding"),
                     Allowance("RedundantSuspendModifier", 3, "security aspect endpoint signature"),
+                ),
+            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/OutboxDeliveryAdminController.kt" to
+                listOf(
+                    Allowance("UnusedParameter", 2, "AOP request context binding"),
+                    Allowance("RedundantSuspendModifier", 2, "security aspect endpoint signature"),
                 ),
             "workbench-data/src/main/kotlin/ink/doa/workbench/data/persistence/postgres/ExposedColumnLookup.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 2, "Exposed dynamic column lookup")),

@@ -11,6 +11,7 @@ dependencies {
   implementation(project(":workbench-tenant"))
   implementation(project(":workbench-data"))
   implementation(project(":workbench-security"))
+  implementation(project(":workbench-jobs"))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-opentelemetry")

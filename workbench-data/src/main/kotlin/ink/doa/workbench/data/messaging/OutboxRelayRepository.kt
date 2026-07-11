@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository
 data class OutboxMessage(
   val id: java.util.UUID,
   val topic: String,
+  val eventType: String,
   val partitionKey: String,
   val payload: String,
   val attempts: Int,
@@ -32,13 +33,14 @@ class OutboxRelayRepository(private val jdbc: JdbcTemplate) {
         SET locked_until = ?, updated_at = ?
         FROM candidates c
         WHERE o.id = c.id
-        RETURNING o.id, o.topic, o.partition_key, o.payload::text, o.attempts
+        RETURNING o.id, o.topic, o.event_type, o.partition_key, o.payload::text, o.attempts
         """
           .trimIndent(),
         { rs, _ ->
           OutboxMessage(
             id = rs.getObject("id", java.util.UUID::class.java),
             topic = rs.getString("topic"),
+            eventType = rs.getString("event_type"),
             partitionKey = rs.getString("partition_key"),
             payload = rs.getString("payload"),
             attempts = rs.getInt("attempts"),

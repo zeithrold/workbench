@@ -12,12 +12,12 @@ Workbench is a multi-module Spring Boot 4 and SvelteKit monolith for `ink.doa.wo
 - Kotlin 2.4
 - Spring Boot 4
 - Gradle 9
-- PostgreSQL, Valkey, Redpanda, Debezium, Elasticsearch
+- PostgreSQL; optional Valkey Streams or Redpanda/Kafka messaging; Elasticsearch and MinIO
 - SvelteKit, shadcn-svelte foundation, Antfu ESLint, Orval
 
 ## Local Development
 
-Start infrastructure:
+Start the compact PostgreSQL topology (the default transport embeds background jobs in Web):
 
 ```bash
 docker compose up -d
@@ -29,11 +29,16 @@ Start the backend:
 ./gradlew :workbench-web:bootRun --args='--spring.profiles.active=local'
 ```
 
-Start the worker:
+The standalone worker is only used by the distributed Kafka topology:
 
 ```bash
+docker compose --profile distributed up -d
+WORKBENCH_MESSAGING_TRANSPORT=kafka \
 ./gradlew :workbench-worker:bootRun --args='--spring.profiles.active=local,worker'
 ```
+
+Select embedded Redis Streams explicitly with
+`WORKBENCH_MESSAGING_TRANSPORT=redis-streams`; it does not require the standalone worker.
 
 Start the frontend:
 
@@ -88,4 +93,4 @@ Unit tests live under `src/test` and must not start a full Spring context. Integ
 
 ## Architecture Notes
 
-The monolith is split by responsibility-oriented Gradle modules: `workbench-core`, `workbench-service`, `workbench-data`, `workbench-security`, `workbench-web`, `workbench-worker`, and `workbench-frontend`. Controllers stay thin and call services, services call repository ports, and Exposed persistence remains behind repository interfaces. Public API names avoid ambiguous suffixes such as BO, PO, VO, or DTO; use Request, Response, Command, Query, Event, Record, Snapshot, View, or Projection instead.
+The monolith is split by responsibility-oriented Gradle modules: `workbench-core`, `workbench-service`, `workbench-data`, `workbench-security`, `workbench-jobs`, `workbench-web`, `workbench-worker`, and `workbench-frontend`. `workbench-jobs` contains transport-neutral background handlers: PostgreSQL and Redis Streams embed them in Web, while Kafka loads them in the standalone Worker. Controllers stay thin and call services, services call repository ports, and Exposed persistence remains behind repository interfaces. Public API names avoid ambiguous suffixes such as BO, PO, VO, or DTO; use Request, Response, Command, Query, Event, Record, Snapshot, View, or Projection instead.

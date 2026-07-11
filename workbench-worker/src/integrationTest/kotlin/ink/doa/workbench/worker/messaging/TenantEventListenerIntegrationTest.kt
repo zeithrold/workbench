@@ -6,6 +6,10 @@ import ink.doa.workbench.core.messaging.DomainTopics
 import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.tenant.events.TenantCreatedEvent
 import ink.doa.workbench.core.tenant.events.TenantDomainEvents
+import ink.doa.workbench.jobs.messaging.DomainEventDispatcher
+import ink.doa.workbench.jobs.messaging.DomainEventHandler
+import ink.doa.workbench.jobs.messaging.TenantEventRouter
+import ink.doa.workbench.jobs.messaging.TenantJobRegistration
 import ink.doa.workbench.service.messaging.support.KafkaTestSupport
 import ink.doa.workbench.service.messaging.support.MessagingIntegrationFixtures
 import io.kotest.core.spec.style.StringSpec
@@ -35,9 +39,9 @@ class TenantEventListenerIntegrationTest :
     val destroyHandler =
       DomainEventHandler<ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent> {}
     val pipeline =
-      ConsumerPipeline(
-        decoder = decoder,
-        router = TenantEventRouter(decoder, createdHandler, destroyHandler),
+      DomainEventDispatcher(
+        decoder,
+        listOf(TenantJobRegistration(TenantEventRouter(decoder, createdHandler, destroyHandler))),
       )
 
     lateinit var container: ConcurrentMessageListenerContainer<String, String>
@@ -55,7 +59,9 @@ class TenantEventListenerIntegrationTest :
       val factory = DefaultKafkaConsumerFactory<String, String>(consumerProps)
       val containerProps = ContainerProperties(DomainTopics.TENANT)
       containerProps.setMessageListener(
-        MessageListener<String, String> { record -> pipeline.run(record) }
+        MessageListener<String, String> { record ->
+          runBlocking { pipeline.dispatch(record.value()) }
+        }
       )
       container = ConcurrentMessageListenerContainer(factory, containerProps)
       container.start()

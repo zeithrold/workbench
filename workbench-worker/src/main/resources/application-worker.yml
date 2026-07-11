@@ -35,5 +35,5 @@ logging:
     format:
       console: ecs
 workbench:
-  outbox:
-    relay-enabled: true
+  messaging:
+    transport: ${WORKBENCH_MESSAGING_TRANSPORT:kafka}
