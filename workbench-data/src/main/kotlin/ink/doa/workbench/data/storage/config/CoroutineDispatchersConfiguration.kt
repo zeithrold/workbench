@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class CoroutineDispatchersConfiguration {
-  @Bean
+  @Bean(destroyMethod = "")
   @Suppress("InjectDispatcher") // Composition root that provides the injectable IO dispatcher.
   fun ioDispatcher(): CoroutineDispatcher = Dispatchers.IO
 }
