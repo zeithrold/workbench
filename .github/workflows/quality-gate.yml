@@ -70,10 +70,10 @@ jobs:
           uv run ruff format --check .
 
       - name: Static checks, tests, and coverage gate
-        run: ./gradlew check --no-daemon
+        run: ./gradlew check --no-daemon --scan --profile
 
       - name: Build web and worker boot jars
-        run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon
+        run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon --scan --profile
 
       - name: Upload boot jars
         uses: actions/upload-artifact@v4
@@ -85,19 +85,19 @@ jobs:
 
       - name: Generate full Kover XML report
         if: success() || failure()
-        run: ./gradlew koverXmlReport --no-daemon
+        run: ./gradlew koverXmlReport --no-daemon --scan --profile
 
       - name: Generate unit Kover XML report
         if: success() || failure()
-        run: ./gradlew koverUnitXmlReport --no-daemon
+        run: ./gradlew koverUnitXmlReport --no-daemon --scan --profile
 
       - name: Frontend unit coverage report
         if: success()
-        run: ./gradlew frontendUnitCoverage --no-daemon
+        run: ./gradlew frontendUnitCoverage --no-daemon --scan --profile
 
       - name: Frontend full coverage report
         if: success()
-        run: ./gradlew frontendFullCoverage --no-daemon
+        run: ./gradlew frontendFullCoverage --no-daemon --scan --profile
 
       - name: Upload quality gate artifacts
         if: always()
@@ -106,6 +106,7 @@ jobs:
           name: quality-gate-${{ github.run_id }}
           path: |
             build/reports/kover/
+            build/reports/profile/
             build/reports/kover/e2e/
             workbench-frontend/coverage/unit/
             workbench-frontend/coverage/full/
@@ -129,7 +130,7 @@ jobs:
           install-playwright: "true"
 
       - name: Run frontend E2E stack
-        run: ./gradlew :workbench-frontend:e2eCheck --no-daemon
+        run: ./gradlew :workbench-frontend:e2eCheck --no-daemon --scan --profile
 
       - name: Upload frontend E2E artifacts
         if: always()
@@ -141,6 +142,7 @@ jobs:
             workbench-frontend/playwright-report/
             build/reports/kover/
             build/reports/kover/e2e/
+            build/reports/profile/
           retention-days: 14
 
   quality-gate-finalize:
@@ -198,7 +200,7 @@ jobs:
         if: always()
         env:
           REPO_ROOT: ${{ github.workspace }}
-        run: ./gradlew -q ciRenderQualitySummary --no-daemon >> "$GITHUB_STEP_SUMMARY"
+        run: ./gradlew -q ciRenderQualitySummary --no-daemon --scan --profile >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload finalized quality reports
         if: always()
@@ -212,6 +214,7 @@ jobs:
             scripts/ci/diff-cover-frontend.html
             scripts/ci/diff-coverage-results.json
             build/reports/workbench-ci/
+            build/reports/profile/
             workbench-frontend/coverage/
             workbench-frontend/storybook-static/
           retention-days: 14

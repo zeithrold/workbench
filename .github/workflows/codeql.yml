@@ -42,7 +42,16 @@ jobs:
           build-mode: manual
 
       - name: Build Java and Kotlin
-        run: ./gradlew classes testClasses --no-daemon
+        run: ./gradlew classes testClasses --no-daemon --scan --profile
+
+      - name: Upload Gradle profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-gradle-profile-${{ github.run_id }}
+          path: build/reports/profile/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4

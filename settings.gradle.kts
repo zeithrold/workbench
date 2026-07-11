@@ -6,6 +6,21 @@ pluginManagement {
     }
 }
 
+plugins {
+    id("com.gradle.develocity") version "4.5.0"
+}
+
+develocity {
+    server.set("https://scans.gradle.com")
+
+    buildScan {
+        termsOfUseUrl.set("https://gradle.com/help/legal-terms-of-use")
+        termsOfUseAgree.set("yes")
+        uploadInBackground.set(System.getenv("CI") == null)
+        tag(if (System.getenv("CI") == null) "LOCAL" else "CI")
+    }
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
