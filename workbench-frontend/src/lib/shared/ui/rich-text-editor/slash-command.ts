@@ -48,11 +48,17 @@ export const SlashCommand = Extension.create({
               return (component as { onKeyDown?: (event: KeyboardEvent) => boolean })?.onKeyDown?.(event) ?? false
             },
             onExit() {
-              detach?.()
-              if (component)
-                void unmount(component)
+              const currentComponent = component
+              const detachTarget = detach
               component = undefined
               detach = undefined
+              if (currentComponent) {
+                // Keep the host attached until Svelte finishes tearing down every derived menu effect.
+                void unmount(currentComponent).finally(() => detachTarget?.())
+              }
+              else {
+                detachTarget?.()
+              }
             },
           }
         },
