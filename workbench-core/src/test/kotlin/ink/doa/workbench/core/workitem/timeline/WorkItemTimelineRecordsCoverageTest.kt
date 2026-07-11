@@ -71,9 +71,11 @@ class WorkItemTimelineRecordsCoverageTest :
           issueId = workItemId,
           authorId = authorId,
           authorApiId = PublicId.new("usr"),
-          body = "<p>Looks good</p>",
+          body =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+              "Looks good"
+            )!!,
           bodyPlainText = "Looks good",
-          bodyFormat = "html",
           transitionId = null,
           statusHistoryId = null,
           editedAt = null,

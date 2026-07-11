@@ -3,7 +3,6 @@ package ink.doa.workbench.agile.testfixtures
 import ink.doa.workbench.agile.workitem.WorkItemAccessPolicyEngine
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
-import ink.doa.workbench.agile.workitem.WorkItemDescriptionAttachmentValidator
 import ink.doa.workbench.agile.workitem.WorkItemFieldMutationEngine
 import ink.doa.workbench.agile.workitem.WorkItemFieldMutationPipeline
 import ink.doa.workbench.agile.workitem.WorkItemFieldPermissionService
@@ -65,12 +64,9 @@ object AgileServiceFactory {
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
-    descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
-      mockDescriptionAttachmentValidator(),
   ): WorkItemFieldMutationPipeline =
     WorkItemFieldMutationPipeline(
       engine = fieldMutationEngine(clock, fieldPermissions),
-      descriptionAttachments = descriptionAttachmentValidator,
       transitionFieldsParser = transitionFieldsParser,
     )
 
@@ -80,8 +76,6 @@ object AgileServiceFactory {
     events: DomainEventPublisher,
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
-    descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
-      mockDescriptionAttachmentValidator(),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemService {
     val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
@@ -104,7 +98,6 @@ object AgileServiceFactory {
         clock,
         fieldPermissions,
         transitionFieldsParser,
-        descriptionAttachmentValidator,
       ),
     )
   }
@@ -117,8 +110,6 @@ object AgileServiceFactory {
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
     accessPolicy: WorkItemAccessPolicyEngine = mockAccessPolicy(),
-    descriptionAttachmentValidator: WorkItemDescriptionAttachmentValidator =
-      mockDescriptionAttachmentValidator(),
     commentService: WorkItemCommentService = mockk(relaxed = true),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemTransitionService {
@@ -129,7 +120,6 @@ object AgileServiceFactory {
         clock,
         fieldPermissions,
         transitionFieldsParser,
-        descriptionAttachmentValidator,
       )
     return WorkItemTransitionService(
       workflows = workflows,
@@ -153,12 +143,5 @@ object AgileServiceFactory {
           commentService,
         ),
     )
-  }
-
-  fun mockDescriptionAttachmentValidator(): WorkItemDescriptionAttachmentValidator {
-    val validator = mockk<WorkItemDescriptionAttachmentValidator>()
-    coEvery { validator.rejectCreateDescriptionReferences(any()) } returns Unit
-    coEvery { validator.validateReferences(any(), any(), any(), any(), any()) } returns Unit
-    return validator
   }
 }

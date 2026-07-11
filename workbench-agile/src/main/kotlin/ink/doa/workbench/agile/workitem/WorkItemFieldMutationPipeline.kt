@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
 data class TransitionMutationPlan(
   val persistence: TransitionPersistenceCommand,
   val propertyValues: List<WorkItemPropertyValue>,
-  val commentBody: String?,
+  val commentBody: ink.doa.workbench.core.workitem.richtext.RichTextDocument?,
 )
 
 data class CreateMutationPlan(
@@ -28,7 +28,6 @@ data class CreateMutationPlan(
 @Component
 class WorkItemFieldMutationPipeline(
   val engine: WorkItemFieldMutationEngine,
-  val descriptionAttachments: WorkItemDescriptionAttachmentValidator,
   private val transitionFieldsParser: TransitionFieldsParser,
 ) {
   suspend fun applyCreate(
@@ -52,7 +51,6 @@ class WorkItemFieldMutationPipeline(
         )
       )
     val effectiveCommand = applyCreateSystemFields(command, reconciled.systemFields)
-    descriptionAttachments.rejectCreateDescriptionReferences(effectiveCommand.description)
     val propertyValues = normalizeProperties(config, reconciled.propertyValues)
     return CreateMutationPlan(effectiveCommand, propertyValues)
   }
@@ -75,13 +73,6 @@ class WorkItemFieldMutationPipeline(
         )
       )
     val persistence = applyTransitionSystemFields(request, reconciled.systemFields)
-    descriptionAttachments.validateReferences(
-      tenantId = request.tenantId,
-      projectId = request.projectId,
-      workItemApiId = request.workItemApiId,
-      issueId = context.issue.id,
-      descriptionHtml = persistence.description,
-    )
     val commentBody =
       engine.reconcileTransitionComment(
         spec = fieldsTemplate.comment,
@@ -113,7 +104,7 @@ class WorkItemFieldMutationPipeline(
 
   private fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {
     val inputs = mutableMapOf<String, JsonElement>("title" to JsonPrimitive(command.title))
-    command.description?.let { inputs["description"] = JsonPrimitive(it) }
+    command.description?.let { inputs["description"] = it.content }
     command.assigneeApiId?.let { inputs["assignee"] = JsonPrimitive(it) }
     command.priorityApiId?.let { inputs["priority"] = JsonPrimitive(it) }
     command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
@@ -124,7 +115,7 @@ class WorkItemFieldMutationPipeline(
   private fun transitionFieldInputs(request: TransitionRequest): Map<String, JsonElement> {
     val inputs = linkedMapOf<String, JsonElement>()
     request.title?.let { inputs["title"] = JsonPrimitive(it) }
-    request.description?.let { inputs["description"] = JsonPrimitive(it) }
+    request.description?.let { inputs["description"] = it.content }
     inputs.putAll(request.properties)
     return inputs
   }
@@ -133,11 +124,12 @@ class WorkItemFieldMutationPipeline(
     command: CreateWorkItemCommand,
     systemFields: Map<String, String?>,
   ): CreateWorkItemCommand {
-    val description = systemFields["description"] ?: command.description
-    val processed = RichTextProcessor.processDescriptionInput(description)
+    val description =
+      command.description ?: RichTextProcessor.fromPlainText(systemFields["description"])
+    val processed = RichTextProcessor.process(description)
     return command.copy(
       title = systemFields["title"] ?: command.title,
-      description = processed?.html,
+      description = processed?.document,
       descriptionPlainText = processed?.plainText,
       assigneeApiId = systemFields["assignee"] ?: command.assigneeApiId,
       priorityApiId = systemFields["priority"] ?: command.priorityApiId,
@@ -149,15 +141,16 @@ class WorkItemFieldMutationPipeline(
     request: TransitionRequest,
     systemFields: Map<String, String?>,
   ): TransitionPersistenceCommand {
-    val description = request.description ?: systemFields["description"]
-    val processed = RichTextProcessor.processDescriptionInput(description)
+    val description =
+      request.description ?: RichTextProcessor.fromPlainText(systemFields["description"])
+    val processed = RichTextProcessor.process(description)
     return TransitionPersistenceCommand(
       tenantId = request.tenantId,
       projectId = request.projectId,
       workItemApiId = request.workItemApiId,
       actorUserId = request.actorUserId,
       title = request.title ?: systemFields["title"],
-      description = processed?.html,
+      description = processed?.document,
       descriptionPlainText = processed?.plainText,
       assigneeApiId = systemFields["assignee"],
       priorityApiId = systemFields["priority"],

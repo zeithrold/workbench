@@ -12,6 +12,7 @@ import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
 import ink.doa.workbench.core.workitem.richtext.ProcessedRichText
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
 import java.util.UUID
 import org.springframework.stereotype.Service
@@ -105,13 +106,12 @@ class WorkItemCommentService(
       else -> WorkbenchErrorCode.WORK_ITEM_COMMENT_DELETE_DENIED
     }
 
-  private fun processBody(raw: String): ProcessedRichText {
-    val processed = RichTextProcessor.processCommentInput(raw)
-    val bodyRequired = raw.isBlank() || processed == null || processed.html.isNullOrBlank()
-    if (bodyRequired) {
+  private fun processBody(raw: RichTextDocument): ProcessedRichText {
+    val processed = RichTextProcessor.process(raw)
+    if (processed == null) {
       throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_COMMENT_BODY_REQUIRED)
     }
-    if ((processed.plainText?.length ?: 0) > MAX_BODY_LENGTH) {
+    if (processed.plainText.length > MAX_BODY_LENGTH) {
       throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_COMMENT_BODY_TOO_LONG)
     }
     return processed
@@ -120,26 +120,17 @@ class WorkItemCommentService(
   private fun CreateWorkItemCommentCommand.withProcessedBody(
     processed: ProcessedRichText
   ): CreateWorkItemCommentCommand {
-    val html =
-      requireNotNull(processed.html) {
-        "Processed comment body must include HTML content"
-      }
     return copy(
-      body = html,
+      body = processed.document,
       bodyPlainText = processed.plainText,
-      bodyFormat = HTML_FORMAT,
     )
   }
 
   private fun UpdateWorkItemCommentCommand.withProcessedBody(
     processed: ProcessedRichText
   ): UpdateWorkItemCommentCommand {
-    val html =
-      requireNotNull(processed.html) {
-        "Processed comment body must include HTML content"
-      }
     return copy(
-      body = html,
+      body = processed.document,
       bodyPlainText = processed.plainText,
     )
   }
@@ -149,6 +140,5 @@ class WorkItemCommentService(
     val CREATE_ACTION = AuthorizationAction("issue.comment.create")
     val UPDATE_ACTION = AuthorizationAction("issue.comment.update")
     val DELETE_ACTION = AuthorizationAction("issue.comment.delete")
-    const val HTML_FORMAT = CreateWorkItemCommentCommand.HTML_FORMAT
   }
 }

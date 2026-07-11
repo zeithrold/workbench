@@ -151,7 +151,7 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
   private fun resolveSystemField(name: String, context: WorkItemValueTemplateContext): JsonElement =
     when (name) {
       "title" -> context.workItem?.title?.let(::JsonPrimitive) ?: JsonNull
-      "description" -> context.workItem?.description?.let(::JsonPrimitive) ?: JsonNull
+      "description" -> context.workItem?.description?.content ?: JsonNull
       "assignee" -> context.workItem?.assigneeApiId?.value?.let(::JsonPrimitive) ?: JsonNull
       "priority" -> context.workItem?.priorityApiId?.value?.let(::JsonPrimitive) ?: JsonNull
       "sprint" -> context.workItem?.sprintApiId?.value?.let(::JsonPrimitive) ?: JsonNull

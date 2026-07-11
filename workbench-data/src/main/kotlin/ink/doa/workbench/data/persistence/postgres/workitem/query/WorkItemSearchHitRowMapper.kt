@@ -1,6 +1,7 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
 import ink.doa.workbench.core.workitem.model.WorkItemSearchHit
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.OffsetDateTime
@@ -17,7 +18,7 @@ object WorkItemSearchHitRowMapper : RowMapper<WorkItemSearchHit> {
       apiId = rs.getString("api_id"),
       key = rs.getString("issue_key"),
       title = rs.getString("title"),
-      description = rs.getString("description"),
+      description = parseDescription(rs.getString("description_document")),
       projectApiId = rs.getString("project_api_id"),
       issueTypeApiId = rs.getString("issue_type_api_id"),
       issueTypeConfigApiId = rs.getString("issue_type_config_api_id"),
@@ -38,6 +39,10 @@ object WorkItemSearchHitRowMapper : RowMapper<WorkItemSearchHit> {
 
   private fun parseProperties(value: String?): JsonObject =
     value?.let { json.parseToJsonElement(it).jsonObject } ?: JsonObject(emptyMap())
+
+  private fun parseDescription(value: String?): RichTextDocument? = value?.let {
+    json.decodeFromString(RichTextDocument.serializer(), it)
+  }
 
   private fun Timestamp.toOffsetDateTime(): OffsetDateTime =
     toInstant().atOffset(java.time.ZoneOffset.UTC)

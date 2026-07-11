@@ -56,7 +56,7 @@ value class ApiVersion(val value: String) {
   }
 
   companion object {
-    val Default = ApiVersion("2026-07-03")
+    val Default = ApiVersion("2026-07-11")
     const val HeaderName = "X-Workbench-API-Version"
   }
 }

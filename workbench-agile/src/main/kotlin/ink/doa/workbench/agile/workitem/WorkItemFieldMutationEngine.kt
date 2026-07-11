@@ -6,6 +6,8 @@ import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
 import ink.doa.workbench.core.workitem.model.WorkItemCommentFormMeta
 import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
 import ink.doa.workbench.core.workitem.template.CommentFieldSpec
 import ink.doa.workbench.core.workitem.template.FieldParticipation
 import ink.doa.workbench.core.workitem.template.FieldWriteGrant
@@ -49,7 +51,7 @@ data class PatchMutationContext(
   val config: IssueTypeConfigDetails,
   val permissionContext: WorkItemFieldPermissionContext,
   val propertyInputs: Map<String, JsonElement>,
-  val systemFieldInputs: Map<String, String?>,
+  val systemFieldInputs: Map<String, Any?>,
 )
 
 @Service
@@ -246,8 +248,8 @@ class WorkItemFieldMutationEngine(
   fun reconcileTransitionComment(
     spec: CommentFieldSpec?,
     templateContext: WorkItemValueTemplateContext,
-    userComment: String?,
-  ): String? {
+    userComment: RichTextDocument?,
+  ): RichTextDocument? {
     validateTransitionCommentSpec(spec, userComment)
     if (spec == null) return null
     val templateComment =
@@ -256,17 +258,22 @@ class WorkItemFieldMutationEngine(
           .evaluateExpression(expression, targetProperty = null, context = templateContext)
           .stringOrNull()
       }
-    val effective =
-      userComment?.takeIf { it.isNotBlank() } ?: templateComment?.takeIf { it.isNotBlank() }
-    if (spec.participation == FieldParticipation.REQUIRED && effective.isNullOrBlank()) {
+    val effective = userComment ?: RichTextProcessor.fromPlainText(templateComment)
+    if (
+      spec.participation == FieldParticipation.REQUIRED &&
+        RichTextProcessor.process(effective) == null
+    ) {
       throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_REQUIRED)
     }
-    return effective?.takeIf { it.isNotBlank() }
+    return effective
   }
 
-  private fun validateTransitionCommentSpec(spec: CommentFieldSpec?, userComment: String?) {
+  private fun validateTransitionCommentSpec(
+    spec: CommentFieldSpec?,
+    userComment: RichTextDocument?,
+  ) {
     when {
-      spec == null && !userComment.isNullOrBlank() ->
+      spec == null && userComment != null ->
         throw InvalidRequestException(
           WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD,
           "Unexpected transition comment.",
@@ -377,7 +384,7 @@ private fun propertyField(key: String, config: IssueTypeConfigDetails): Template
 private fun resolveSystemCurrent(name: String, context: WorkItemValueTemplateContext): String? =
   when (name) {
     "title" -> context.workItem?.title
-    "description" -> context.workItem?.description
+    "description" -> context.workItem?.description?.let { RichTextProcessor.process(it)?.plainText }
     "assignee" -> context.workItem?.assigneeApiId?.value
     "priority" -> context.workItem?.priorityApiId?.value
     "sprint" -> context.workItem?.sprintApiId?.value

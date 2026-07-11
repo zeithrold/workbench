@@ -181,7 +181,7 @@ class JdbcWorkItemQueryRepository(
         i.api_id,
         COALESCE(keya.issue_key, p.identifier || '-' || i.sequence_no) AS issue_key,
         i.title,
-        i.description,
+        i.description_document,
         p.api_id AS project_api_id,
         itype.api_id AS issue_type_api_id,
         itc.api_id AS issue_type_config_api_id,

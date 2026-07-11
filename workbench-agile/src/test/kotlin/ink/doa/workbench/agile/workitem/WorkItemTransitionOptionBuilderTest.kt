@@ -21,7 +21,6 @@ class WorkItemTransitionOptionBuilderTest :
     val fieldPipeline =
       WorkItemFieldMutationPipeline(
         engine = WorkItemFieldMutationEngine(fieldPermissions, clock),
-        descriptionAttachments = mockk(relaxed = true),
         transitionFieldsParser = TransitionFieldsParser(),
       )
     val accessPolicy = AgileServiceFactory.mockAccessPolicy()

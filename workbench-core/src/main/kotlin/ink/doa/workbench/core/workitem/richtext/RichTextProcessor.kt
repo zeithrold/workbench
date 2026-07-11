@@ -1,136 +1,234 @@
 package ink.doa.workbench.core.workitem.richtext
 
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import org.jsoup.safety.Safelist
-import org.owasp.html.HtmlPolicyBuilder
-import org.owasp.html.PolicyFactory
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+
+@Serializable
+data class RichTextDocument(
+  val format: String = FORMAT,
+  val schemaVersion: Int = SCHEMA_VERSION,
+  val content: JsonObject,
+) {
+  companion object {
+    const val FORMAT = "tiptap"
+    const val SCHEMA_VERSION = 1
+  }
+}
 
 data class ProcessedRichText(
-  val html: String?,
-  val plainText: String?,
+  val document: RichTextDocument,
+  val plainText: String,
 )
 
 object RichTextProcessor {
-  private val htmlPolicy: PolicyFactory =
-    HtmlPolicyBuilder()
-      .allowElements(
-        "p",
-        "br",
-        "strong",
-        "b",
-        "em",
-        "i",
-        "u",
-        "ul",
-        "ol",
-        "li",
-        "a",
-        "code",
-        "pre",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "blockquote",
-      )
-      .allowAttributes("href")
-      .onElements("a")
-      .allowStandardUrlProtocols()
-      .toFactory()
+  val supportedCodeLanguages =
+    setOf(
+      "plaintext",
+      "kotlin",
+      "java",
+      "typescript",
+      "javascript",
+      "json",
+      "sql",
+      "bash",
+      "yaml",
+      "xml",
+      "html",
+      "css",
+      "markdown",
+    )
 
-  private val descriptionHtmlPolicy: PolicyFactory =
-    HtmlPolicyBuilder()
-      .allowElements(
-        "p",
-        "br",
-        "strong",
-        "b",
-        "em",
-        "i",
-        "u",
-        "ul",
-        "ol",
-        "li",
-        "a",
-        "code",
-        "pre",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "blockquote",
-        "img",
-      )
-      .allowAttributes("href")
-      .onElements("a")
-      .allowAttributes("src", "alt")
-      .onElements("img")
-      .allowStandardUrlProtocols()
-      .toFactory()
+  private val containerNodes =
+    setOf(
+      "doc",
+      "paragraph",
+      "heading",
+      "bulletList",
+      "orderedList",
+      "listItem",
+      "blockquote",
+      "codeBlock",
+    )
+  private val leafNodes = setOf("text", "horizontalRule", "hardBreak")
+  private val marks = setOf("bold", "italic", "strike", "code", "link")
+  private const val MAX_DEPTH = 32
+  private const val MAX_NODES = 10_000
+  private const val MAX_TEXT_LENGTH = 200_000
 
-  private val plainTextTagPattern = Regex("<[^>]+>")
-
-  fun processDescriptionInput(input: String?): ProcessedRichText? {
-    if (input == null) return null
-    val htmlInput = if (isPlainText(input)) plainTextToHtml(input) else input
-    return processDescription(htmlInput)
+  fun process(document: RichTextDocument?): ProcessedRichText? {
+    if (document == null) return null
+    require(document.format == RichTextDocument.FORMAT) {
+      "Unsupported rich-text format: ${document.format}"
+    }
+    require(document.schemaVersion == RichTextDocument.SCHEMA_VERSION) {
+      "Unsupported rich-text schema version: ${document.schemaVersion}"
+    }
+    val state = ValidationState()
+    validateNode(document.content, parent = null, depth = 0, state)
+    val plainText = state.text.joinToString(" ").replace(Regex("\\s+"), " ").trim()
+    return if (plainText.isEmpty() && !state.hasNonTextContent) null
+    else ProcessedRichText(document, plainText)
   }
 
-  fun processCommentInput(input: String?): ProcessedRichText? {
-    if (input == null) return null
-    val htmlInput = if (isPlainText(input)) plainTextToHtml(input) else input
-    return processCommentBody(htmlInput)
+  fun fromPlainText(value: String?): RichTextDocument? {
+    if (value.isNullOrBlank()) return null
+    return RichTextDocument(
+      content =
+        buildJsonObject {
+          put("type", JsonPrimitive("doc"))
+          put(
+            "content",
+            buildJsonArray {
+              add(
+                buildJsonObject {
+                  put("type", JsonPrimitive("paragraph"))
+                  put(
+                    "content",
+                    buildJsonArray {
+                      add(
+                        buildJsonObject {
+                          put("type", JsonPrimitive("text"))
+                          put("text", JsonPrimitive(value))
+                        }
+                      )
+                    },
+                  )
+                }
+              )
+            },
+          )
+        }
+    )
   }
 
-  fun processDescription(input: String?): ProcessedRichText? {
-    if (input == null) return null
-    val sanitized = sanitizeDescriptionHtml(input)
-    return if (sanitized.isBlank()) {
-      ProcessedRichText(html = null, plainText = null)
+  fun isPlainText(value: String): Boolean = !Regex("<[^>]+>").containsMatchIn(value)
+
+  private fun validateNode(node: JsonObject, parent: String?, depth: Int, state: ValidationState) {
+    require(depth <= MAX_DEPTH) { "Rich-text document exceeds maximum depth" }
+    require(++state.nodeCount <= MAX_NODES) { "Rich-text document exceeds maximum node count" }
+    val type = node.string("type")
+    require(type in containerNodes || type in leafNodes) { "Unsupported rich-text node: $type" }
+    require(node.keys.all { it in setOf("type", "attrs", "content", "text", "marks") }) {
+      "Unsupported attribute on rich-text node: $type"
+    }
+    validateParent(type, parent)
+    validateAttributes(type, node["attrs"])
+    validateMarks(type, node["marks"])
+
+    if (type == "text") {
+      val text = node.string("text")
+      state.textLength += text.length
+      require(state.textLength <= MAX_TEXT_LENGTH) {
+        "Rich-text document exceeds maximum text length"
+      }
+      if (text.isNotBlank()) state.text += text
+      require(node["content"] == null) { "Text nodes cannot contain child nodes" }
     } else {
-      ProcessedRichText(html = sanitized, plainText = toPlainText(sanitized))
+      require(node["text"] == null) { "$type nodes cannot contain a text property" }
+      val children = node["content"]
+      if (children != null) {
+        require(children is JsonArray) { "Rich-text node content must be an array" }
+        children.forEach { child ->
+          require(child is JsonObject) { "Rich-text child must be an object" }
+          validateNode(child, type, depth + 1, state)
+        }
+      }
+      if (type in setOf("horizontalRule", "hardBreak")) state.hasNonTextContent = true
     }
   }
 
-  fun processCommentBody(input: String?): ProcessedRichText? {
-    if (input == null) return null
-    val sanitized = sanitizeHtml(input)
-    return if (sanitized.isBlank()) {
-      ProcessedRichText(html = null, plainText = null)
-    } else {
-      ProcessedRichText(html = sanitized, plainText = toPlainText(sanitized))
+  private fun validateParent(type: String, parent: String?) {
+    val allowed =
+      when (parent) {
+        null -> setOf("doc")
+        "doc",
+        "blockquote" ->
+          setOf(
+            "paragraph",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "blockquote",
+            "codeBlock",
+            "horizontalRule",
+          )
+        "paragraph",
+        "heading" -> setOf("text", "hardBreak")
+        "codeBlock" -> setOf("text")
+        "bulletList",
+        "orderedList" -> setOf("listItem")
+        "listItem" -> setOf("paragraph", "bulletList", "orderedList", "blockquote", "codeBlock")
+        else -> emptySet()
+      }
+    require(type in allowed) { "$type has an invalid parent" }
+  }
+
+  private fun validateAttributes(type: String, element: JsonElement?) {
+    val attrs = element as? JsonObject
+    when (type) {
+      "heading" -> {
+        require(attrs?.keys == setOf("level") && attrs["level"]?.primitive()?.intOrNull in 1..3) {
+          "heading requires level 1, 2, or 3"
+        }
+      }
+      "codeBlock" -> {
+        val language = attrs?.get("language")?.primitive()?.contentOrNull ?: "plaintext"
+        require(attrs == null || attrs.keys == setOf("language")) {
+          "codeBlock has unsupported attributes"
+        }
+        require(language in supportedCodeLanguages) { "Unsupported code language: $language" }
+      }
+      else -> require(attrs == null || attrs.isEmpty()) { "$type does not support attributes" }
     }
   }
 
-  fun sanitizeHtml(input: String): String = htmlPolicy.sanitize(input).trim()
-
-  fun sanitizeDescriptionHtml(input: String): String {
-    val sanitized = descriptionHtmlPolicy.sanitize(input).trim()
-    return stripInvalidDescriptionImages(sanitized)
-  }
-
-  fun toPlainText(html: String): String {
-    val text = Jsoup.parse(html).text().replace(Regex("\\s+"), " ").trim()
-    return text
-  }
-
-  fun plainTextToHtml(plain: String): String {
-    val escaped = Document.OutputSettings().escapeMode(org.jsoup.nodes.Entities.EscapeMode.xhtml)
-    val safePlain = Jsoup.clean(plain, "", Safelist.none(), escaped)
-    return sanitizeHtml("<p>$safePlain</p>")
-  }
-
-  fun isPlainText(value: String): Boolean = !plainTextTagPattern.containsMatchIn(value)
-
-  private fun stripInvalidDescriptionImages(html: String): String {
-    val document = Jsoup.parseBodyFragment(html)
-    document.select("img").forEach { element ->
-      val src = element.attr("src").trim()
-      if (!AttachmentReferenceParser.isAllowedAttachmentContentUrl(src)) {
-        element.remove()
+  private fun validateMarks(type: String, element: JsonElement?) {
+    if (element == null) return
+    require(type == "text" && element is JsonArray) { "Only text nodes support marks" }
+    element.forEach { value ->
+      val mark = value as? JsonObject ?: error("Rich-text mark must be an object")
+      val markType = mark.string("type")
+      require(markType in marks) { "Unsupported rich-text mark: $markType" }
+      require(mark.keys.all { it in setOf("type", "attrs") }) {
+        "Unsupported mark attribute: $markType"
+      }
+      val attrs = mark["attrs"] as? JsonObject
+      if (markType == "link") {
+        require(attrs?.keys == setOf("href")) { "link requires an href" }
+        val href = attrs.string("href")
+        require(isSafeLink(href)) { "Unsupported link protocol" }
+      } else {
+        require(attrs == null || attrs.isEmpty()) { "$markType does not support attributes" }
       }
     }
-    return document.body().html().trim()
   }
+
+  private fun isSafeLink(href: String): Boolean =
+    href.startsWith("https://") ||
+      href.startsWith("http://") ||
+      href.startsWith("mailto:") ||
+      href.startsWith("/") ||
+      href.startsWith("#")
+
+  private fun JsonObject.string(key: String): String =
+    this[key]?.primitive()?.contentOrNull
+      ?: throw IllegalArgumentException("Missing rich-text property: $key")
+
+  private fun JsonElement.primitive(): JsonPrimitive =
+    this as? JsonPrimitive
+      ?: throw IllegalArgumentException("Rich-text property must be a primitive")
+
+  private data class ValidationState(
+    var nodeCount: Int = 0,
+    var textLength: Int = 0,
+    var hasNonTextContent: Boolean = false,
+    val text: MutableList<String> = mutableListOf(),
+  )
 }

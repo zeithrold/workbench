@@ -31,7 +31,8 @@ class WorkItemMutationEventTest :
         issueTypeConfigApiId = PublicId.new("itc"),
         key = "PROJ-42",
         title = "Fix login",
-        description = "Details",
+        description =
+          ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
         statusId = UUID.randomUUID(),
         statusApiId = PublicId.new("sts"),
         statusGroup = WorkItemStatusGroup.IN_PROGRESS,

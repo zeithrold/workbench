@@ -1,6 +1,7 @@
 package ink.doa.workbench.core.workitem.model
 
 import ink.doa.workbench.core.common.ids.PublicId
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -17,9 +18,8 @@ data class WorkItemCommentRecord(
   val issueId: UUID,
   val authorId: UUID,
   val authorApiId: PublicId,
-  val body: String,
+  val body: RichTextDocument,
   val bodyPlainText: String?,
-  val bodyFormat: String,
   val transitionId: UUID?,
   val statusHistoryId: UUID?,
   val editedAt: OffsetDateTime?,
@@ -32,16 +32,11 @@ data class CreateWorkItemCommentCommand(
   val projectId: UUID,
   val workItemApiId: String,
   val authorId: UUID,
-  val body: String,
+  val body: RichTextDocument,
   val bodyPlainText: String? = null,
-  val bodyFormat: String = HTML_FORMAT,
   val transitionId: UUID? = null,
   val statusHistoryId: UUID? = null,
-) {
-  companion object {
-    const val HTML_FORMAT = "html"
-  }
-}
+)
 
 data class UpdateWorkItemCommentCommand(
   val tenantId: UUID,
@@ -49,7 +44,7 @@ data class UpdateWorkItemCommentCommand(
   val workItemApiId: String,
   val commentApiId: String,
   val actorUserId: UUID,
-  val body: String,
+  val body: RichTextDocument,
   val bodyPlainText: String? = null,
 )
 

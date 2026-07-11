@@ -74,7 +74,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
                   projectId = stack.projectId,
                   issueTypeApiId = stack.issueType.apiId.value,
                   title = "First issue",
-                  description = "Details",
+                  description = richText("Details"),
                   reporterId = stack.actorId,
                   actorUserId = stack.actorId,
                 ),
@@ -430,7 +430,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
                   projectId = stack.projectId,
                   issueTypeApiId = stack.issueType.apiId.value,
                   title = "Assigned issue",
-                  description = "Body",
+                  description = richText("Body"),
                   reporterId = stack.actorId,
                   actorUserId = stack.actorId,
                   assigneeApiId = assignee.apiId.value,
@@ -451,7 +451,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
         loaded.assigneeApiId shouldBe assignee.apiId
         loaded.priorityApiId?.value shouldBe priorityApiId
         loaded.sprintApiId?.value shouldBe sprintApiId
-        loaded.description shouldBe "Body"
+        loaded.description shouldBe richText("Body")
       }
     }
 
@@ -508,7 +508,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
                   projectId = stack.projectId,
                   issueTypeApiId = stack.issueType.apiId.value,
                   title = "Before",
-                  description = "Old",
+                  description = richText("Old"),
                   reporterId = stack.actorId,
                   actorUserId = stack.actorId,
                 ),
@@ -543,7 +543,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
               projectId = stack.projectId,
               workItemApiId = created.workItem.apiId.value,
               title = "After",
-              description = "New body",
+              description = richText("New body"),
               descriptionPlainText = "New body",
               assigneeApiId = assignee.apiId.value,
               priorityApiId = priorityApiId,
@@ -554,7 +554,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
           )
 
         updated.workItem.title shouldBe "After"
-        updated.workItem.description shouldBe "New body"
+        updated.workItem.description shouldBe richText("New body")
         updated.workItem.assigneeApiId shouldBe assignee.apiId
         updated.workItem.priorityApiId?.value shouldBe priorityApiId
         updated.workItem.sprintApiId?.value shouldBe sprintApiId

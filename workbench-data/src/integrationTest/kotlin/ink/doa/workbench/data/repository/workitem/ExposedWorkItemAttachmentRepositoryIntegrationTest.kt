@@ -63,7 +63,7 @@ class ExposedWorkItemAttachmentRepositoryIntegrationTest :
                 projectId = stack.projectId,
                 workItemApiId = workItemApiId,
                 authorId = stack.actorId,
-                body = "<p>With attachment</p>",
+                body = richText("With attachment"),
                 bodyPlainText = "With attachment",
               ),
               issueId = issueId,

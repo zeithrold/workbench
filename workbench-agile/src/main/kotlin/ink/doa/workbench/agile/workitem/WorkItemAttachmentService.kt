@@ -18,7 +18,7 @@ import ink.doa.workbench.core.workitem.model.DeleteWorkItemAttachmentCommand
 import ink.doa.workbench.core.workitem.model.InitiateWorkItemAttachmentUploadCommand
 import ink.doa.workbench.core.workitem.model.ListWorkItemAttachmentsQuery
 import ink.doa.workbench.core.workitem.model.WorkItemAttachmentRecord
-import ink.doa.workbench.core.workitem.richtext.AttachmentReferenceParser
+import ink.doa.workbench.core.workitem.richtext.AttachmentContentUrl
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -173,8 +173,7 @@ class WorkItemAttachmentService(
     projectApiId: String,
     workItemApiId: String,
     attachmentApiId: String,
-  ): String =
-    AttachmentReferenceParser.buildContentUrl(projectApiId, workItemApiId, attachmentApiId)
+  ): String = AttachmentContentUrl.build(projectApiId, workItemApiId, attachmentApiId)
 
   private suspend fun resolveCommentId(
     command: InitiateWorkItemAttachmentUploadCommand,

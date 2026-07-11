@@ -14,7 +14,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.slot
@@ -268,7 +267,7 @@ class WorkItemTransitionServiceTest :
               transitionApiId = transition.apiId.value,
               actorUserId = actorId,
               actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
-              comment = "Looks good",
+              comment = richText("Looks good"),
             )
           )
 
@@ -295,64 +294,6 @@ class WorkItemTransitionServiceTest :
               )
           }
           .errorCode shouldBe WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
-      }
-    }
-
-    "transition validates description attachment references" {
-      runTest {
-        val tenantId = UUID.randomUUID()
-        val projectId = UUID.randomUUID()
-        val actorId = UUID.randomUUID()
-        val config = AgileWorkItemFixtures.sampleConfig(tenantId)
-        val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
-        val transition = AgileWorkItemFixtures.sampleTransition(config)
-        val mutationResult =
-          ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
-            issue,
-            "work_item.transitioned",
-          )
-        val descriptionAttachmentValidator =
-          AgileServiceFactory.mockDescriptionAttachmentValidator()
-
-        coEvery { harness.repository.findByApiId(tenantId, projectId, issue.apiId.value) } returns
-          issue
-        stubTransitionContext(tenantId, projectId, actorId, issue, config)
-        coEvery { harness.workflows.findTransition(tenantId, transition.apiId.value) } returns
-          transition
-        coEvery {
-          harness.repository.transition(any(), any(), any(), any(), any())
-        } returns mutationResult
-        justRun { harness.events.publish<Any>(any(), any(), any(), any()) }
-
-        AgileServiceFactory.workItemTransitionService(
-            repository = harness.repository,
-            configs = harness.configs,
-            workflows = harness.workflows,
-            events = harness.events,
-            clock = harness.clock,
-            transitionFieldsParser = harness.transitionFieldsParser,
-            descriptionAttachmentValidator = descriptionAttachmentValidator,
-          )
-          .transition(
-            TransitionRequest(
-              tenantId = tenantId,
-              projectId = projectId,
-              workItemApiId = issue.apiId.value,
-              transitionApiId = transition.apiId.value,
-              actorUserId = actorId,
-              actorUserApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
-            )
-          )
-
-        coVerify {
-          descriptionAttachmentValidator.validateReferences(
-            tenantId,
-            projectId,
-            issue.apiId.value,
-            issue.id,
-            null,
-          )
-        }
       }
     }
   })

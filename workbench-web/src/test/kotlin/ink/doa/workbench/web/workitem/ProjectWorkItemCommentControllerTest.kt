@@ -63,7 +63,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
             )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""{"body":"New comment"}""")
+            .content(commentRequest("New comment"))
         )
         .andExpect(request().asyncStarted())
         .andReturn()
@@ -78,7 +78,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
             "/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/iss_test/comments/${SAMPLE_COMMENT.apiId.value}",
           )
       )
-      .andExpect(jsonPath("$.body").value("New comment"))
+      .andExpect(jsonPath("$.body.content.content[0].content[0].text").value("New comment"))
   }
 
   @Test
@@ -91,7 +91,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
             )
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("""{"body":"Updated comment"}""")
+            .content(commentRequest("Updated comment"))
         )
         .andExpect(request().asyncStarted())
         .andReturn()
@@ -99,7 +99,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.body").value("Updated comment"))
+      .andExpect(jsonPath("$.body.content.content[0].content[0].text").value("Updated comment"))
   }
 
   @Test
@@ -160,10 +160,10 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
             projectId = TenantWebMvcFixtures.PROJECT_ID,
             workItemApiId = "iss_test",
             authorId = TenantWebMvcFixtures.USER_ID,
-            body = "New comment",
+            body = richText("New comment"),
           )
         )
-      } returns SAMPLE_COMMENT.copy(body = "New comment", bodyPlainText = "New comment")
+      } returns SAMPLE_COMMENT.copy(body = richText("New comment"), bodyPlainText = "New comment")
       coEvery {
         service.update(
           ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand(
@@ -172,10 +172,11 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
             workItemApiId = "iss_test",
             commentApiId = SAMPLE_COMMENT.apiId.value,
             actorUserId = TenantWebMvcFixtures.USER_ID,
-            body = "Updated comment",
+            body = richText("Updated comment"),
           )
         )
-      } returns SAMPLE_COMMENT.copy(body = "Updated comment", bodyPlainText = "Updated comment")
+      } returns
+        SAMPLE_COMMENT.copy(body = richText("Updated comment"), bodyPlainText = "Updated comment")
       coEvery {
         service.delete(
           ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand(
@@ -200,9 +201,8 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
         issueId = java.util.UUID.randomUUID(),
         authorId = TenantWebMvcFixtures.USER_ID,
         authorApiId = PublicId("usr_01JABCDEFGHJKMNPQRSTVWXYZ1"),
-        body = "Looks good",
+        body = richText("Looks good"),
         bodyPlainText = "Looks good",
-        bodyFormat = "plain",
         transitionId = null,
         statusHistoryId = null,
         editedAt = null,
@@ -211,3 +211,9 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
       )
   }
 }
+
+private fun richText(value: String) =
+  ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(value)!!
+
+private fun commentRequest(value: String) =
+  """{"body":{"format":"tiptap","schemaVersion":1,"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"$value"}]}]}}}"""

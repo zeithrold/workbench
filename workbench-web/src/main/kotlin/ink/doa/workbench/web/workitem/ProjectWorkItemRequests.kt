@@ -12,7 +12,7 @@ import java.util.UUID
 data class CreateWorkItemRequest(
   @field:NotBlank val issueTypeId: String,
   @field:NotBlank @field:Size(max = 500) val title: String,
-  val description: String? = null,
+  val description: RichTextDocumentPayload? = null,
   val assigneeId: String? = null,
   val priorityId: String? = null,
   val sprintId: String? = null,
@@ -25,7 +25,7 @@ data class CreateWorkItemRequest(
       projectId = context.project.id,
       issueTypeApiId = issueTypeId,
       title = title,
-      description = description,
+      description = description?.toDomain(),
       reporterId = actorUserId,
       actorUserId = actorUserId,
       assigneeApiId = assigneeId,
@@ -38,7 +38,7 @@ data class CreateWorkItemRequest(
 
 data class UpdateWorkItemRequest(
   @field:Size(max = 500) val title: String? = null,
-  val description: String? = null,
+  val description: RichTextDocumentPayload? = null,
   val assigneeId: String? = null,
   val priorityId: String? = null,
   val sprintId: String? = null,
@@ -55,7 +55,7 @@ data class UpdateWorkItemRequest(
       projectId = context.project.id,
       workItemApiId = workItemId,
       title = title,
-      description = description,
+      description = description?.toDomain(),
       assigneeApiId = assigneeId,
       priorityApiId = priorityId,
       sprintApiId = sprintId,
@@ -68,8 +68,8 @@ data class UpdateWorkItemRequest(
 data class TransitionWorkItemRequest(
   @field:NotBlank val transitionId: String,
   val title: String? = null,
-  val description: String? = null,
-  val comment: String? = null,
+  val description: RichTextDocumentPayload? = null,
+  val comment: RichTextDocumentPayload? = null,
   val properties: JsonNode? = null,
 ) {
   fun toCommand(
@@ -86,8 +86,8 @@ data class TransitionWorkItemRequest(
       actorUserId = actorUserId,
       actorUserApiId = actorUserApiId,
       title = title,
-      description = description,
-      comment = comment,
+      description = description?.toDomain(),
+      comment = comment?.toDomain(),
       properties = properties.toJsonObject().toMap(),
     )
 }

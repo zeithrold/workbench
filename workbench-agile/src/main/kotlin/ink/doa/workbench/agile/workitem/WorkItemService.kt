@@ -147,13 +147,6 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
-    fieldPipeline.descriptionAttachments.validateReferences(
-      tenantId = command.tenantId,
-      projectId = command.projectId,
-      workItemApiId = command.workItemApiId,
-      issueId = issue.id,
-      descriptionHtml = effectiveCommand.description,
-    )
     return repository.update(effectiveCommand, values)
   }
 

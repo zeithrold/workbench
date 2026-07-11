@@ -53,14 +53,14 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
                 projectId = stack.projectId,
                 workItemApiId = workItemApiId,
                 authorId = stack.actorId,
-                body = "<p>First comment</p>",
+                body = richText("First comment"),
                 bodyPlainText = "First comment",
               ),
               issueId = issueId,
             )
             .record
 
-        comment.body shouldBe "<p>First comment</p>"
+        comment.body shouldBe richText("First comment")
         comments.findByApiId(stack.tenantId, issueId, comment.apiId.value).shouldNotBeNull()
 
         val updated =
@@ -71,13 +71,13 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
               workItemApiId = workItemApiId,
               commentApiId = comment.apiId.value,
               actorUserId = stack.actorId,
-              body = "<p>Edited comment</p>",
+              body = richText("Edited comment"),
               bodyPlainText = "Edited comment",
             ),
             issueId = issueId,
           )
 
-        updated.body shouldBe "<p>Edited comment</p>"
+        updated.body shouldBe richText("Edited comment")
         updated.editedAt.shouldNotBeNull()
 
         comments.softDelete(
@@ -143,7 +143,7 @@ class ExposedWorkItemCommentRepositoryIntegrationTest :
               workItemApiId = "iss_missing",
               commentApiId = "icm_missing",
               actorUserId = stack.actorId,
-              body = "missing",
+              body = richText("missing"),
             ),
             issueId = java.util.UUID.randomUUID(),
           )

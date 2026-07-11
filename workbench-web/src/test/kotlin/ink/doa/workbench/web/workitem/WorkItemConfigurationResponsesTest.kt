@@ -248,9 +248,11 @@ class WorkItemConfigurationResponsesTest :
           issueId = UUID.randomUUID(),
           authorId = UUID.randomUUID(),
           authorApiId = PublicId.new("usr"),
-          body = "Looks good",
+          body =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+              "Looks good"
+            )!!,
           bodyPlainText = "Looks good",
-          bodyFormat = "html",
           transitionId = null,
           statusHistoryId = null,
           editedAt = null,
@@ -258,7 +260,8 @@ class WorkItemConfigurationResponsesTest :
           updatedAt = now,
         )
 
-      WorkItemCommentResponse.from(record).body shouldBe "Looks good"
+      WorkItemCommentResponse.from(record).body.toDomain() shouldBe
+        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Looks good")
     }
 
     "json node helpers convert objects and maps" {
@@ -321,7 +324,15 @@ class WorkItemConfigurationResponsesTest :
     }
 
     "comment request types store body text" {
-      CreateWorkItemCommentRequest(body = "Created").body shouldBe "Created"
-      UpdateWorkItemCommentRequest(body = "Updated").body shouldBe "Updated"
+      val created =
+        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Created")!!
+      val updated =
+        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Updated")!!
+      CreateWorkItemCommentRequest(body = RichTextDocumentPayload.from(created))
+        .body
+        .toDomain() shouldBe created
+      UpdateWorkItemCommentRequest(body = RichTextDocumentPayload.from(updated))
+        .body
+        .toDomain() shouldBe updated
     }
   })

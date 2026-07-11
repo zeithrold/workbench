@@ -54,7 +54,6 @@ class ExposedWorkItemCommentRepository(
         it[IssueCommentsTable.authorId] = command.authorId.toKotlinUuid()
         it[IssueCommentsTable.body] = command.body
         it[IssueCommentsTable.bodyPlainText] = command.bodyPlainText
-        it[IssueCommentsTable.bodyFormat] = command.bodyFormat
         it[IssueCommentsTable.transitionId] = command.transitionId?.toKotlinUuid()
         it[IssueCommentsTable.statusHistoryId] = command.statusHistoryId?.toKotlinUuid()
         it[IssueCommentsTable.createdAt] = now
@@ -89,7 +88,6 @@ class ExposedWorkItemCommentRepository(
             authorApiId = requireUserApiId(command.authorId),
             body = command.body,
             bodyPlainText = command.bodyPlainText,
-            bodyFormat = command.bodyFormat,
             transitionId = command.transitionId,
             statusHistoryId = command.statusHistoryId,
             editedAt = null,
@@ -139,7 +137,6 @@ class ExposedWorkItemCommentRepository(
       IssueCommentsTable.update({ IssueCommentsTable.id eq row[IssueCommentsTable.id] }) {
         it[IssueCommentsTable.body] = command.body
         it[IssueCommentsTable.bodyPlainText] = command.bodyPlainText
-        it[IssueCommentsTable.bodyFormat] = CreateWorkItemCommentCommand.HTML_FORMAT
         it[IssueCommentsTable.editedAt] = now
         it[IssueCommentsTable.updatedAt] = now
       }
@@ -165,7 +162,6 @@ class ExposedWorkItemCommentRepository(
         .copy(
           body = command.body,
           bodyPlainText = command.bodyPlainText,
-          bodyFormat = CreateWorkItemCommentCommand.HTML_FORMAT,
           editedAt = now,
           updatedAt = now,
         )
@@ -273,7 +269,6 @@ class ExposedWorkItemCommentRepository(
       authorApiId = requireUserApiId(authorId),
       body = this[IssueCommentsTable.body],
       bodyPlainText = this[IssueCommentsTable.bodyPlainText],
-      bodyFormat = this[IssueCommentsTable.bodyFormat],
       transitionId = this[IssueCommentsTable.transitionId]?.toJavaUuid(),
       statusHistoryId = this[IssueCommentsTable.statusHistoryId]?.toJavaUuid(),
       editedAt = this[IssueCommentsTable.editedAt],

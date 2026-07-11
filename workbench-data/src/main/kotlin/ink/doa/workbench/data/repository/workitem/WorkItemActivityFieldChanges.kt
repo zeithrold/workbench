@@ -4,10 +4,12 @@ import ink.doa.workbench.core.workitem.activity.WorkItemActivityFieldChange
 import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.loadUserEntityRef
 import java.util.UUID
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -46,8 +48,8 @@ private fun coreFieldChanges(
       WorkItemActivityFieldChange(
         path = "description",
         label = "Description",
-        from = jsonNullableString(before.description),
-        to = jsonNullableString(command.description),
+        from = richTextJson(before.description),
+        to = richTextJson(command.description),
       )
   }
   command.assigneeApiId?.let { assigneeApiId ->
@@ -136,5 +138,5 @@ private fun priorityDisplay(apiId: String): String? =
 
 private fun jsonString(value: String): JsonElement = JsonPrimitive(value)
 
-private fun jsonNullableString(value: String?): JsonElement =
-  if (value == null) JsonNull else JsonPrimitive(value)
+private fun richTextJson(value: RichTextDocument?): JsonElement =
+  value?.let { Json.encodeToJsonElement(RichTextDocument.serializer(), it) } ?: JsonNull

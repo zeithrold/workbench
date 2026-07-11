@@ -5,14 +5,16 @@
   import Placeholder from '@tiptap/extension-placeholder'
   import StarterKit from '@tiptap/starter-kit'
   import { onMount } from 'svelte'
+  import { WorkbenchCodeBlock } from './code-block.js'
   import RichTextToolbar from './rich-text-toolbar.svelte'
+  import { SlashCommand } from './slash-command.js'
 
   const {
     value,
     onChange,
     editable = true,
-    placeholder = '开始输入内容…',
-    ariaLabel = '富文本编辑器',
+    placeholder = 'Start writing…',
+    ariaLabel = 'Rich text editor',
     contentWidth = 'full',
     class: className,
   }: RichTextEditorProps = $props()
@@ -24,14 +26,17 @@
   onMount(() => {
     editor = new Editor({
       element,
-      content: value,
+      content: value.content,
       editable,
       enableContentCheck: true,
       extensions: [
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
           link: { openOnClick: false, defaultProtocol: 'https' },
+          codeBlock: false,
         }),
+        WorkbenchCodeBlock,
+        SlashCommand,
         Placeholder.configure({ placeholder }),
       ],
       editorProps: {
@@ -43,7 +48,11 @@
         },
       },
       onTransaction: () => revision += 1,
-      onUpdate: ({ editor: currentEditor }) => onChange(currentEditor.getJSON()),
+      onUpdate: ({ editor: currentEditor }) => onChange({
+        format: 'tiptap',
+        schemaVersion: 1,
+        content: currentEditor.getJSON(),
+      }),
     })
 
     return () => editor?.destroy()
@@ -59,9 +68,8 @@
   $effect(() => {
     if (!editor)
       return
-    const incoming = JSON.stringify(value)
-    if (incoming !== JSON.stringify(editor.getJSON())) {
-      editor.commands.setContent(value, { emitUpdate: false, errorOnInvalidContent: true })
+    if (JSON.stringify(value.content) !== JSON.stringify(editor.getJSON())) {
+      editor.commands.setContent(value.content, { emitUpdate: false, errorOnInvalidContent: true })
     }
   })
 </script>
@@ -138,6 +146,14 @@
     line-height: 1.65;
   }
   :global(.tiptap pre code) { border: 0; background: transparent; padding: 0; color: inherit; }
+  :global(.code-block-shell) { position: relative; margin: 1rem 0; }
+  :global(.code-block-shell pre) { margin: 0; padding-top: 2.5rem; }
+  :global(.code-block-header) { position: absolute; z-index: 1; top: 0.45rem; right: 0.55rem; }
+  :global(.code-block-language) { border: 0; border-radius: 0.35rem; background: color-mix(in oklab, var(--background) 82%, transparent); padding: 0.2rem 1.4rem 0.2rem 0.45rem; color: var(--muted-foreground); font-size: 0.7rem; outline: none; }
+  :global(.slash-menu) { max-height: min(22rem, 60vh); width: 19rem; overflow-y: auto; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.15); background: var(--popover); padding: 0.35rem; color: var(--popover-foreground); box-shadow: 0 12px 32px color-mix(in oklab, black 18%, transparent); }
+  :global(.slash-menu button) { display: flex; width: 100%; align-items: center; gap: 0.65rem; border-radius: var(--radius); padding: 0.5rem 0.6rem; }
+  :global(.slash-menu button.active) { background: var(--accent); color: var(--accent-foreground); }
+  :global(.slash-menu-icon) { display: grid; width: 1.75rem; height: 1.75rem; flex: none; place-items: center; border: 1px solid var(--border); border-radius: 0.4rem; background: var(--background); }
   :global(.tiptap a) { color: color-mix(in oklab, var(--foreground) 82%, var(--ring)); cursor: text; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); text-underline-offset: 3px; }
   :global(.tiptap p.is-editor-empty:first-child::before) { color: color-mix(in oklab, var(--muted-foreground) 78%, transparent); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
   :global(.read-only .tiptap) { min-height: auto; padding-top: 1.5rem; padding-bottom: 1.5rem; }

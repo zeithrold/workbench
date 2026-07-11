@@ -1,6 +1,10 @@
 import type { JSONContent } from '@tiptap/core'
 
-export type RichTextDocument = JSONContent
+export interface RichTextDocument {
+  format: 'tiptap'
+  schemaVersion: 1
+  content: JSONContent
+}
 
 export interface RichTextEditorProps {
   value: RichTextDocument
@@ -13,6 +17,10 @@ export interface RichTextEditorProps {
 }
 
 export const EMPTY_RICH_TEXT_DOCUMENT: RichTextDocument = {
-  type: 'doc',
-  content: [{ type: 'paragraph' }],
+  format: 'tiptap',
+  schemaVersion: 1,
+  content: {
+    type: 'doc',
+    content: [{ type: 'paragraph' }],
+  },
 }

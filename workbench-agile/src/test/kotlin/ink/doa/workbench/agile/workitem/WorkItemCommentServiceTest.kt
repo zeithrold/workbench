@@ -95,7 +95,6 @@ class WorkItemCommentServiceTest :
                 authorApiId = PublicId.new("usr"),
                 body = command.body,
                 bodyPlainText = command.bodyPlainText,
-                bodyFormat = command.bodyFormat,
                 transitionId = null,
                 statusHistoryId = null,
                 editedAt = null,
@@ -112,13 +111,12 @@ class WorkItemCommentServiceTest :
             projectId = projectId,
             workItemApiId = workItemApiId,
             authorId = authorId,
-            body = "Looks good",
+            body = richText("Looks good"),
           )
         )
 
-      created.body shouldBe "<p>Looks good</p>"
+      created.body shouldBe richText("Looks good")
       created.bodyPlainText shouldBe "Looks good"
-      created.bodyFormat shouldBe CreateWorkItemCommentCommand.HTML_FORMAT
     }
 
     "create rejects when comment permission is missing" {
@@ -135,7 +133,7 @@ class WorkItemCommentServiceTest :
               projectId = projectId,
               workItemApiId = workItemApiId,
               authorId = UUID.randomUUID(),
-              body = "Denied",
+              body = richText("Denied"),
             )
           )
         }
@@ -156,7 +154,7 @@ class WorkItemCommentServiceTest :
               projectId = projectId,
               workItemApiId = missingWorkItemApiId,
               authorId = UUID.randomUUID(),
-              body = "Hello",
+              body = richText("Hello"),
             )
           )
         }
@@ -178,7 +176,7 @@ class WorkItemCommentServiceTest :
               projectId = projectId,
               workItemApiId = workItemApiId,
               authorId = UUID.randomUUID(),
-              body = "a".repeat(33_000),
+              body = richText("a".repeat(33_000)),
             )
           )
         }

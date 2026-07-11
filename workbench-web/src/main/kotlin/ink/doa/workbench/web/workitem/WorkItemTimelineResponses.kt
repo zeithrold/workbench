@@ -22,7 +22,7 @@ sealed interface WorkItemTimelineEntryResponse {
     override val type: String,
     override val occurredAt: OffsetDateTime,
     val author: WorkItemTimelineActorResponse,
-    val body: String,
+    val body: RichTextDocumentPayload,
     val editedAt: OffsetDateTime?,
     val commentId: String,
   ) : WorkItemTimelineEntryResponse
@@ -65,7 +65,7 @@ private fun commentFrom(
         id = comment.authorApiId.value,
         displayName = event.actorDisplayName ?: comment.authorApiId.value,
       ),
-    body = comment.body,
+    body = RichTextDocumentPayload.from(comment.body),
     editedAt = comment.editedAt,
     commentId = comment.apiId.value,
   )

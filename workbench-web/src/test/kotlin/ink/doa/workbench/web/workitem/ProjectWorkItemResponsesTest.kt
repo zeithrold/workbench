@@ -28,7 +28,8 @@ class ProjectWorkItemResponsesTest :
           issueTypeConfigApiId = PublicId.new("itc"),
           key = "WB-1",
           title = "First issue",
-          description = "Details",
+          description =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
           statusId = UUID.randomUUID(),
           statusApiId = PublicId.new("sts"),
           statusGroup = WorkItemStatusGroup.TODO,

@@ -31,7 +31,7 @@
   <RichTextEditor {value} onChange={update} {editable} {placeholder} {contentWidth} />
   {#if showJson}
     <details open class='max-h-64 overflow-auto rounded-lg border bg-muted p-4'>
-      <summary class='sr-only'>文档 JSON</summary>
+      <summary class='sr-only'>Document JSON</summary>
       <pre data-testid='document-json' class='text-xs'>{JSON.stringify(value, null, 2)}</pre>
     </details>
   {/if}

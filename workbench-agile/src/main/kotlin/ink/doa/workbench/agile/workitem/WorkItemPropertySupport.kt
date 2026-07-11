@@ -48,7 +48,7 @@ internal object WorkItemPropertySupport {
 
   fun createFieldInputs(command: CreateWorkItemCommand): Map<String, JsonElement> {
     val inputs = mutableMapOf<String, JsonElement>("title" to JsonPrimitive(command.title))
-    command.description?.let { inputs["description"] = JsonPrimitive(it) }
+    command.description?.let { inputs["description"] = it.content }
     command.assigneeApiId?.let { inputs["assignee"] = JsonPrimitive(it) }
     command.priorityApiId?.let { inputs["priority"] = JsonPrimitive(it) }
     command.sprintApiId?.let { inputs["sprint"] = JsonPrimitive(it) }
@@ -58,9 +58,9 @@ internal object WorkItemPropertySupport {
 
   fun applyDescriptionProcessing(command: UpdateWorkItemCommand): UpdateWorkItemCommand {
     if (command.description == null) return command
-    val processed = RichTextProcessor.processDescriptionInput(command.description)
+    val processed = RichTextProcessor.process(command.description)
     return command.copy(
-      description = processed?.html,
+      description = processed?.document,
       descriptionPlainText = processed?.plainText,
     )
   }

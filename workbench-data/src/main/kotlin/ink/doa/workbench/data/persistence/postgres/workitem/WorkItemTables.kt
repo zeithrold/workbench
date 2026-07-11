@@ -1,5 +1,6 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
@@ -61,7 +62,8 @@ object IssuesTable : Table("issues") {
   val issueTypeConfigId = uuid("issue_type_config_id").references(IssueTypeConfigsTable.id)
   val sequenceNo = long("sequence_no")
   val title = text("title")
-  val description = text("description").nullable()
+  val description =
+    jsonb("description_document", Json.Default, RichTextDocument.serializer()).nullable()
   val descriptionPlainText = text("description_plain_text").nullable()
   val statusId = uuid("status_id").references(IssueStatusesTable.id)
   val priorityId = uuid("priority_id").references(PrioritiesTable.id).nullable()
@@ -162,9 +164,8 @@ object IssueCommentsTable : Table("issue_comments") {
   val tenantId = uuid("tenant_id").references(TenantsTable.id)
   val issueId = uuid("issue_id").references(IssuesTable.id)
   val authorId = uuid("author_id").references(UsersTable.id)
-  val body = text("body")
+  val body = jsonb("body_document", Json.Default, RichTextDocument.serializer())
   val bodyPlainText = text("body_plain_text").nullable()
-  val bodyFormat = text("body_format")
   val transitionId = uuid("transition_id").references(WorkflowTransitionsTable.id).nullable()
   val statusHistoryId = uuid("status_history_id").references(IssueStatusHistoryTable.id).nullable()
   val editedAt = timestampWithTimeZone("edited_at").nullable()

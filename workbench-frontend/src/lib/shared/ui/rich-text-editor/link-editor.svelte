@@ -55,31 +55,31 @@
         {...props}
         variant='ghost'
         size='icon-sm'
-        aria-label='编辑链接'
+        aria-label='Edit link'
         aria-pressed={isLinkActive()}
-        title='编辑链接'
+        title='Edit link'
         {disabled}
         onmousedown={event => event.preventDefault()}
         onclick={openEditor}
       >
-        <Link />
+        <Link class='size-3.5' />
       </Button>
     {/snippet}
   </Popover.Trigger>
   <Popover.Content align='start' class='w-80 gap-3'>
     <form class='space-y-3' onsubmit={saveLink}>
       <label class='space-y-1.5 text-sm font-medium'>
-        链接地址
-        <Input bind:value={href} type='url' placeholder='https://example.com' aria-label='链接地址' />
+        Link URL
+        <Input bind:value={href} type='url' placeholder='https://example.com' aria-label='Link URL' />
       </label>
       <div class='flex justify-end gap-2'>
         {#if isLinkActive() || hasManagedLink}
           <Button type='button' variant='ghost' size='sm' onclick={removeLink}>
-            <Link2Off />
-            移除
+            <Link2Off class='size-3.5' />
+            Remove
           </Button>
         {/if}
-        <Button type='submit' size='sm' disabled={!href.trim()}>应用</Button>
+        <Button type='submit' size='sm' disabled={!href.trim()}>Apply</Button>
       </div>
     </form>
   </Popover.Content>

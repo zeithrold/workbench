@@ -26,7 +26,8 @@ class WorkItemRecordsTest :
           issueTypeConfigApiId = PublicId.new("itc"),
           key = "WB-1",
           title = "First issue",
-          description = "Details",
+          description =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
           statusId = UUID.randomUUID(),
           statusApiId = PublicId.new("sts"),
           statusGroup = WorkItemStatusGroup.TODO,
@@ -159,8 +160,12 @@ class WorkItemRecordsTest :
           projectId = projectId,
           workItemApiId = "wki_abc",
           authorId = userId,
-          body = "Looks good",
+          body =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+              "Looks good"
+            )!!,
         )
-        .body shouldBe "Looks good"
+        .body shouldBe
+        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Looks good")
     }
   })

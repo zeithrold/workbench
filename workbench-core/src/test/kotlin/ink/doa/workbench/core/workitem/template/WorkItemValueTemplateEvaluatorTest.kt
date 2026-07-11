@@ -325,7 +325,7 @@ class WorkItemValueTemplateEvaluatorTest :
 
       evaluator.evaluate(template, config, workItemContext) shouldBe
         mapOf(
-          "description" to JsonPrimitive("Steps to reproduce"),
+          "description" to checkNotNull(workItem.description).content,
           "assignee" to JsonPrimitive(checkNotNull(workItem.assigneeApiId).value),
           "priority" to JsonPrimitive(checkNotNull(workItem.priorityApiId).value),
           "sprint" to JsonPrimitive(checkNotNull(workItem.sprintApiId).value),
@@ -449,7 +449,10 @@ private fun workItemRecord(fixtures: WorkItemRecordFixtures): WorkItemRecord {
     issueTypeConfigApiId = PublicId.new("itc"),
     key = "PROJ-1",
     title = fixtures.title,
-    description = fixtures.description,
+    description =
+      ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+        fixtures.description
+      ),
     statusId = UUID.randomUUID(),
     statusApiId = PublicId.new("sts"),
     statusGroup = WorkItemStatusGroup.TODO,

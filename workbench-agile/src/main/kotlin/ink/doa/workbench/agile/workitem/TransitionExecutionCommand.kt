@@ -4,6 +4,7 @@ import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
 import ink.doa.workbench.core.workitem.model.TransitionRequest
 import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import java.util.UUID
 
 data class TransitionExecutionCommand(
@@ -12,5 +13,5 @@ data class TransitionExecutionCommand(
   val transition: WorkflowTransitionRecord,
   val persistence: TransitionPersistenceCommand,
   val propertyValues: List<WorkItemPropertyValue>,
-  val commentBody: String?,
+  val commentBody: RichTextDocument?,
 )

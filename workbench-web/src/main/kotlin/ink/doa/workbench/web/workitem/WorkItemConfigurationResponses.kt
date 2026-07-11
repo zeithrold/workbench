@@ -344,13 +344,13 @@ internal fun JsonNode?.toJsonObject(objectMapper: ObjectMapper = ObjectMapper())
 
 internal fun JsonObject.toMap(): Map<String, JsonElement> = entries.associate { it.key to it.value }
 
-data class CreateWorkItemCommentRequest(@field:NotBlank val body: String)
+data class CreateWorkItemCommentRequest(val body: RichTextDocumentPayload)
 
-data class UpdateWorkItemCommentRequest(@field:NotBlank val body: String)
+data class UpdateWorkItemCommentRequest(val body: RichTextDocumentPayload)
 
 data class WorkItemCommentResponse(
   val id: String,
-  val body: String,
+  val body: RichTextDocumentPayload,
   val authorId: String,
   val createdAt: String,
   val updatedAt: String,
@@ -360,7 +360,7 @@ data class WorkItemCommentResponse(
     fun from(record: WorkItemCommentRecord): WorkItemCommentResponse =
       WorkItemCommentResponse(
         id = record.apiId.value,
-        body = record.body,
+        body = RichTextDocumentPayload.from(record.body),
         authorId = record.authorApiId.value,
         createdAt = record.createdAt.toString(),
         updatedAt = record.updatedAt.toString(),

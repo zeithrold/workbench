@@ -47,7 +47,8 @@ class WorkItemMutationModelCoverageTest :
           projectId = projectId,
           issueTypeApiId = "typ_abc",
           title = "New issue",
-          description = "Details",
+          description =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
           reporterId = userId,
           actorUserId = userId,
           assigneeApiId = "usr_assignee",
@@ -79,9 +80,11 @@ class WorkItemMutationModelCoverageTest :
           workItemApiId = "iss_abc",
           commentApiId = "cmt_abc",
           actorUserId = userId,
-          body = "Edited",
+          body =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Edited")!!,
         )
-        .body shouldBe "Edited"
+        .body shouldBe
+        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Edited")
 
       DeleteWorkItemCommentCommand(
           tenantId = tenantId,
@@ -101,16 +104,18 @@ class WorkItemMutationModelCoverageTest :
           issueId = UUID.randomUUID(),
           authorId = userId,
           authorApiId = PublicId.new("usr"),
-          body = "Looks good",
+          body =
+            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+              "Looks good"
+            )!!,
           bodyPlainText = "Looks good",
-          bodyFormat = "html",
           transitionId = UUID.randomUUID(),
           statusHistoryId = UUID.randomUUID(),
           editedAt = now,
           createdAt = now,
           updatedAt = now,
         )
-        .bodyFormat shouldBe "html"
+        .bodyPlainText shouldBe "Looks good"
     }
 
     "work item mutation result stores stream event references" {

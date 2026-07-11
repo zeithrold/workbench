@@ -55,7 +55,7 @@ class ProjectWorkItemCommentController(private val commentService: WorkItemComme
           projectId = projectContext.project.id,
           workItemApiId = workItemId,
           authorId = actorUserId,
-          body = request.body,
+          body = request.body.toDomain(),
         )
       )
     val response = WorkItemCommentResponse.from(comment)
@@ -87,7 +87,7 @@ class ProjectWorkItemCommentController(private val commentService: WorkItemComme
           workItemApiId = workItemId,
           commentApiId = commentId,
           actorUserId = actorUserId(projectContext),
-          body = request.body,
+          body = request.body.toDomain(),
         )
       )
     )

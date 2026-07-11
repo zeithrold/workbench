@@ -349,11 +349,7 @@ private fun workItemService(
       users = mockk(relaxed = true),
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
       mutationSupport = WorkItemMutationSupport(repository, configs, events),
-      fieldPipeline =
-        AgileServiceFactory.fieldMutationPipeline(
-          clock,
-          descriptionAttachmentValidator = AgileServiceFactory.mockDescriptionAttachmentValidator(),
-        ),
+      fieldPipeline = AgileServiceFactory.fieldMutationPipeline(clock),
     )
   }
   return service

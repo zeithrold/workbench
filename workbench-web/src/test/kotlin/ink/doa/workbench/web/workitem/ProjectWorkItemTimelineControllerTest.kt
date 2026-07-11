@@ -96,7 +96,7 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
       .andExpect(jsonPath("$[0].actor.displayName").value("Ada"))
       .andExpect(jsonPath("$[0].summary").value("Created with status To Do"))
       .andExpect(jsonPath("$[1].type").value("comment.added"))
-      .andExpect(jsonPath("$[1].body").value("<p>Ship it</p>"))
+      .andExpect(jsonPath("$[1].body.content.content[0].content[0].text").value("Ship it"))
       .andExpect(header().exists(WORKBENCH_NEXT_CURSOR_HEADER))
   }
 
@@ -212,9 +212,11 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
                   issueId = workItemId,
                   authorId = TenantWebMvcFixtures.USER_ID,
                   authorApiId = PublicId.new("usr"),
-                  body = "<p>Ship it</p>",
+                  body =
+                    ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+                      "Ship it"
+                    )!!,
                   bodyPlainText = "Ship it",
-                  bodyFormat = "html",
                   transitionId = null,
                   statusHistoryId = null,
                   editedAt = null,

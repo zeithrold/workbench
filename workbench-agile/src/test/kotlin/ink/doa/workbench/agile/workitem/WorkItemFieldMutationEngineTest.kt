@@ -856,10 +856,10 @@ class WorkItemFieldMutationEngineTest :
           userComment = null,
         )
 
-      body shouldBe "Resolved via transition"
+      body shouldBe richText("Resolved via transition")
     }
 
-    "reconcileTransitionComment accepts html user comment" {
+    "reconcileTransitionComment accepts structured user comment" {
       val body =
         engine.reconcileTransitionComment(
           spec =
@@ -868,10 +868,10 @@ class WorkItemFieldMutationEngineTest :
               template = null,
             ),
           templateContext = templateContext(),
-          userComment = "<p>Ship it</p>",
+          userComment = richText("Ship it"),
         )
 
-      body shouldBe "<p>Ship it</p>"
+      body shouldBe richText("Ship it")
     }
 
     "reconcileTransitionComment rejects unexpected comment when disabled" {
@@ -879,7 +879,7 @@ class WorkItemFieldMutationEngineTest :
           engine.reconcileTransitionComment(
             spec = null,
             templateContext = templateContext(),
-            userComment = "unexpected",
+            userComment = richText("unexpected"),
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD
@@ -999,7 +999,7 @@ class WorkItemFieldMutationEngineTest :
                 template = null,
               ),
             templateContext = templateContext(),
-            userComment = "   ",
+            userComment = emptyRichText(),
           )
         }
         .errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_TRANSITION_COMMENT_REQUIRED
@@ -1257,7 +1257,7 @@ private fun workItemRecord(): WorkItemRecord =
     issueTypeConfigApiId = PublicId.new("itc"),
     key = "CORE-1",
     title = "Existing title",
-    description = "<p>Body</p>",
+    description = richText("Body"),
     statusId = UUID.randomUUID(),
     statusApiId = PublicId.new("sts"),
     statusGroup = WorkItemStatusGroup.TODO,

@@ -109,7 +109,7 @@ class WorkItemPropertySupportTest :
             projectId = UUID.randomUUID(),
             issueTypeApiId = "ity_bug",
             title = "Bug",
-            description = "Details",
+            description = richText("Details"),
             assigneeApiId = "usr_assignee",
             reporterId = UUID.randomUUID(),
             actorUserId = UUID.randomUUID(),
@@ -118,12 +118,12 @@ class WorkItemPropertySupportTest :
         )
 
       inputs["title"] shouldBe JsonPrimitive("Bug")
-      inputs["description"] shouldBe JsonPrimitive("Details")
+      inputs["description"] shouldBe richText("Details").content
       inputs["assignee"] shouldBe JsonPrimitive("usr_assignee")
       inputs["points"] shouldBe JsonPrimitive(1)
     }
 
-    "applyDescriptionProcessing converts html to sanitized html and plain text" {
+    "applyDescriptionProcessing validates a document and derives plain text" {
       val updated =
         WorkItemPropertySupport.applyDescriptionProcessing(
           UpdateWorkItemCommand(
@@ -131,11 +131,11 @@ class WorkItemPropertySupportTest :
             projectId = UUID.randomUUID(),
             workItemApiId = "iss_bug",
             actorUserId = UUID.randomUUID(),
-            description = "<p>Hello <strong>world</strong></p>",
+            description = richText("Hello world"),
           )
         )
 
       updated.descriptionPlainText shouldBe "Hello world"
-      updated.description?.contains("<strong>world</strong>") shouldBe true
+      updated.description shouldBe richText("Hello world")
     }
   })

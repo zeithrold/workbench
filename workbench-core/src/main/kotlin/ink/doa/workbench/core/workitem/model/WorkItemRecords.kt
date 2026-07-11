@@ -5,6 +5,7 @@ import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
 import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
 import ink.doa.workbench.core.workitem.query.WorkItemGroupKey
 import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
+import ink.doa.workbench.core.workitem.richtext.RichTextDocument
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
@@ -26,7 +27,7 @@ data class WorkItemRecord(
   val issueTypeConfigApiId: PublicId,
   val key: String,
   val title: String,
-  val description: String?,
+  val description: RichTextDocument?,
   val statusId: UUID,
   val statusApiId: PublicId,
   val statusGroup: WorkItemStatusGroup,
@@ -46,7 +47,7 @@ data class CreateWorkItemCommand(
   val projectId: UUID,
   val issueTypeApiId: String,
   val title: String,
-  val description: String?,
+  val description: RichTextDocument?,
   val descriptionPlainText: String? = null,
   val reporterId: UUID,
   val actorUserId: UUID,
@@ -62,7 +63,7 @@ data class UpdateWorkItemCommand(
   val projectId: UUID,
   val workItemApiId: String,
   val title: String? = null,
-  val description: String? = null,
+  val description: RichTextDocument? = null,
   val descriptionPlainText: String? = null,
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
@@ -90,8 +91,8 @@ data class TransitionRequest(
   val actorUserApiId: String,
   val properties: Map<String, JsonElement> = emptyMap(),
   val title: String? = null,
-  val description: String? = null,
-  val comment: String? = null,
+  val description: RichTextDocument? = null,
+  val comment: RichTextDocument? = null,
 )
 
 /** Persistence payload after field reconciliation. */
@@ -101,7 +102,7 @@ data class TransitionPersistenceCommand(
   val workItemApiId: String,
   val actorUserId: UUID,
   val title: String? = null,
-  val description: String? = null,
+  val description: RichTextDocument? = null,
   val descriptionPlainText: String? = null,
   val assigneeApiId: String? = null,
   val priorityApiId: String? = null,
@@ -162,7 +163,7 @@ data class WorkItemResponse(
   val apiId: String,
   val key: String,
   val title: String,
-  val description: String?,
+  val description: RichTextDocument?,
   val statusGroup: String,
 ) {
   companion object {
@@ -186,7 +187,7 @@ data class WorkItemSearchHit(
   val apiId: String,
   val key: String,
   val title: String,
-  val description: String?,
+  val description: RichTextDocument?,
   val projectApiId: String,
   val issueTypeApiId: String,
   val issueTypeConfigApiId: String,
