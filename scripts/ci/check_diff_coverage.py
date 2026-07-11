@@ -9,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,12 @@ BACKEND_EXCLUDE_GLOBS = ("workbench-test-support/src/main/**/*.kt",)
 FRONTEND_INCLUDE_GLOBS = (
     "workbench-frontend/src/**/*.ts",
     "workbench-frontend/src/**/*.js",
+)
+FRONTEND_EXCLUDE_GLOBS = (
+    "workbench-frontend/src/**/*.test.ts",
+    "workbench-frontend/src/**/*.spec.ts",
+    "workbench-frontend/src/**/*.test.js",
+    "workbench-frontend/src/**/*.spec.js",
 )
 
 BACKEND_COVERAGE_XML = Path("build/reports/kover/report.xml")
@@ -333,6 +340,11 @@ def run_diff_cover(
     if not coverage_path.is_file():
         return 1, f"Coverage report not found: {coverage_path}", None, None
 
+    normalized_coverage_path: Path | None = None
+    if config.name == "frontend":
+        normalized_coverage_path = normalize_frontend_lcov_paths(coverage_path)
+        coverage_path = normalized_coverage_path
+
     html_path = root / config.html_report
     json_path = root / config.json_report
     html_path.parent.mkdir(parents=True, exist_ok=True)
@@ -357,19 +369,39 @@ def run_diff_cover(
         "--total-percent-float",
     ]
 
-    result = subprocess.run(
-        command,
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            command,
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    finally:
+        if normalized_coverage_path is not None:
+            normalized_coverage_path.unlink(missing_ok=True)
     output = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
     payload = load_diff_cover_json(json_path)
     percent = effective_diff_coverage_percent(payload) if payload else None
     if percent is None:
         percent = parse_stdout_percent(output)
     return result.returncode, output, percent, payload
+
+
+def normalize_frontend_lcov_paths(coverage_path: Path) -> Path:
+    """Make Vite-root-relative LCOV paths match repository-relative Git paths."""
+    lines = coverage_path.read_text(encoding="utf-8").splitlines()
+    normalized = [
+        f"SF:workbench-frontend/{line.removeprefix('SF:')}"
+        if line.startswith("SF:")
+        and not line.startswith("SF:workbench-frontend/")
+        and not Path(line.removeprefix("SF:")).is_absolute()
+        else line
+        for line in lines
+    ]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".lcov", delete=False) as output:
+        output.write("\n".join(normalized) + "\n")
+        return Path(output.name)
 
 
 def evaluate_stack(
@@ -473,7 +505,7 @@ def frontend_config(root: Path) -> StackConfig:
         html_report=Path("scripts/ci/diff-cover-frontend.html"),
         json_report=Path("scripts/ci/diff-cover-frontend.json"),
         include_globs=FRONTEND_INCLUDE_GLOBS,
-        exclude_globs=(),
+        exclude_globs=FRONTEND_EXCLUDE_GLOBS,
         fail_under=env_float("FAIL_UNDER_FRONTEND", 70.0),
     )
 
@@ -540,7 +572,7 @@ def main(argv: list[str] | None = None) -> int:
     diff_text = generate_git_diff(root, branch)
     backend = backend_config(root)
     backend_src_roots = relevant_backend_src_roots(root, changed_files, backend)
-    frontend_src_roots = (str(Path("workbench-frontend/src")),)
+    frontend_src_roots = (str(Path("workbench-frontend")),)
 
     configs: list[StackConfig] = []
     if args.target in ("backend", "all"):
