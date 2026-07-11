@@ -14,15 +14,19 @@ import ink.doa.workbench.security.permission.AdminUserService
 import org.springframework.stereotype.Component
 
 @Component
-@Suppress("LongParameterList")
-class InvitationIdentitySupport(
-  val tenants: TenantRepository,
-  val tenantMembers: TenantMemberRepository,
-  val users: UserRepository,
+class InvitationLoginSupport(
   val loginMethods: LoginMethodRepository,
   val loginAccounts: LoginAccountStore,
   val userLoginAccounts: UserLoginAccountRepository,
   val passwordHasher: PasswordHasher,
+)
+
+@Component
+class InvitationIdentitySupport(
+  val tenants: TenantRepository,
+  val tenantMembers: TenantMemberRepository,
+  val users: UserRepository,
+  val login: InvitationLoginSupport,
 )
 
 @Component

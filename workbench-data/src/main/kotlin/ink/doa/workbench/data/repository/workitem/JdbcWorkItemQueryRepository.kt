@@ -15,6 +15,7 @@ import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
 import ink.doa.workbench.core.workitem.query.WorkItemQuery
 import ink.doa.workbench.core.workitem.query.WorkItemQueryValidator
 import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import ink.doa.workbench.data.persistence.postgres.workitem.query.JdbcPostgresWorkItemFieldResolver
 import ink.doa.workbench.data.persistence.postgres.workitem.query.PostgresWorkItemFilter
 import ink.doa.workbench.data.persistence.postgres.workitem.query.PostgresWorkItemGroupsPlan
@@ -157,12 +158,11 @@ class JdbcWorkItemQueryRepository(
       .trimIndent()
   }
 
-  @Suppress("SpreadOperator")
   private fun <T> queryRows(
     sql: String,
     params: List<Any?>,
     rowMapper: RowMapper<T>,
-  ): List<T> = jdbcTemplate.query(sql, rowMapper, *params.toTypedArray())
+  ): List<T> = jdbcTemplate.query(sql, params.toPreparedStatementSetter(), rowMapper)
 
   private data class GroupBucketRow(val groupValue: Any?, val count: Long)
 

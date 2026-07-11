@@ -3,6 +3,7 @@ package ink.doa.workbench.data.repository.sprint
 import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.core.messaging.EventMetadata
 import ink.doa.workbench.core.port.messaging.DomainEventOutbox
+import ink.doa.workbench.core.sprint.CreateSprintCloseOperationCommand
 import ink.doa.workbench.core.sprint.SprintCloseFailureRequest
 import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
 import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
@@ -29,24 +30,20 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-@Suppress("TooManyFunctions")
 class ExposedSprintCloseOperationRepository(
   private val database: org.jetbrains.exposed.v1.jdbc.Database,
   private val outbox: DomainEventOutbox,
 ) : SprintCloseOperationRepository {
   override suspend fun createAndMarkClosing(
-    tenantId: UUID,
-    projectId: UUID,
-    sprintId: UUID,
-    sprintApiId: String,
-    targetSprintId: UUID?,
-    targetSprintApiId: String?,
-    disposition: SprintCloseDisposition,
-    requestedBy: UUID,
-    idempotencyKey: String?,
-    createdAt: OffsetDateTime,
+    command: CreateSprintCloseOperationCommand
   ): SprintCloseOperationRecord =
     suspendTransaction(db = database) {
+      val tenantId = command.tenantId
+      val projectId = command.projectId
+      val sprintId = command.sprintId
+      val sprintApiId = command.sprintApiId
+      val requestedBy = command.requestedBy
+      val createdAt = command.createdAt
       val id = UUID.randomUUID()
       val apiId = PublicId.new("sop")
       SprintCloseOperationsTable.insert {
@@ -55,11 +52,11 @@ class ExposedSprintCloseOperationRepository(
         it[SprintCloseOperationsTable.tenantId] = tenantId.toKotlinUuid()
         it[SprintCloseOperationsTable.projectId] = projectId.toKotlinUuid()
         it[SprintCloseOperationsTable.sprintId] = sprintId.toKotlinUuid()
-        it[SprintCloseOperationsTable.targetSprintId] = targetSprintId?.toKotlinUuid()
-        it[SprintCloseOperationsTable.disposition] = disposition.name
+        it[SprintCloseOperationsTable.targetSprintId] = command.targetSprintId?.toKotlinUuid()
+        it[SprintCloseOperationsTable.disposition] = command.disposition.name
         it[SprintCloseOperationsTable.requestedBy] = requestedBy.toKotlinUuid()
         it[SprintCloseOperationsTable.status] = SprintCloseOperationStatus.QUEUED.name
-        it[SprintCloseOperationsTable.idempotencyKey] = idempotencyKey
+        it[SprintCloseOperationsTable.idempotencyKey] = command.idempotencyKey
         it[SprintCloseOperationsTable.createdAt] = createdAt
         it[SprintCloseOperationsTable.totalItems] = 0
         it[SprintCloseOperationsTable.processedItems] = 0

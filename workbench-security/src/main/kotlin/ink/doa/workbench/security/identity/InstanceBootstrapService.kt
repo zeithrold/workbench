@@ -31,7 +31,6 @@ class InstanceBootstrapService(
 ) {
   suspend fun isInitialized(): Boolean = admin.adminUserQueries.existsActiveInstanceAdmin()
 
-  @Suppress("LongMethod")
   suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapResult {
     if (isInitialized()) {
       throw InstanceAlreadyInitializedException()

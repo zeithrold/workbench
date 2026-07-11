@@ -3,6 +3,7 @@ package ink.doa.workbench.data.repository.sprint
 import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.messaging.DomainEventEncoder
+import ink.doa.workbench.core.sprint.CreateSprintCloseOperationCommand
 import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
 import ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent
 import ink.doa.workbench.core.sprint.events.SprintDomainEvents
@@ -66,16 +67,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
 
         val operation = runBlocking {
           repo.createAndMarkClosing(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            sprintId = active.id,
-            sprintApiId = active.apiId.value,
-            targetSprintId = null,
-            targetSprintApiId = null,
-            disposition = SprintCloseDisposition.KEEP,
-            requestedBy = stack.actorId,
-            idempotencyKey = "close-idem-1",
-            createdAt = now,
+            CreateSprintCloseOperationCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sprintId = active.id,
+              sprintApiId = active.apiId.value,
+              targetSprintId = null,
+              targetSprintApiId = null,
+              disposition = SprintCloseDisposition.KEEP,
+              requestedBy = stack.actorId,
+              idempotencyKey = "close-idem-1",
+              createdAt = now,
+            )
           )
         }
 
@@ -122,16 +125,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
         val repo = repository(database)
         val created = runBlocking {
           repo.createAndMarkClosing(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            sprintId = sprint.id,
-            sprintApiId = sprint.apiId.value,
-            targetSprintId = null,
-            targetSprintApiId = null,
-            disposition = SprintCloseDisposition.NEXT_SPRINT,
-            requestedBy = stack.actorId,
-            idempotencyKey = "lookup-key",
-            createdAt = now,
+            CreateSprintCloseOperationCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sprintId = sprint.id,
+              sprintApiId = sprint.apiId.value,
+              targetSprintId = null,
+              targetSprintApiId = null,
+              disposition = SprintCloseDisposition.NEXT_SPRINT,
+              requestedBy = stack.actorId,
+              idempotencyKey = "lookup-key",
+              createdAt = now,
+            )
           )
         }
 
@@ -190,16 +195,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
         val repo = repository(database)
         val operation = runBlocking {
           repo.createAndMarkClosing(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            sprintId = sprint.id,
-            sprintApiId = sprint.apiId.value,
-            targetSprintId = null,
-            targetSprintApiId = null,
-            disposition = SprintCloseDisposition.KEEP,
-            requestedBy = stack.actorId,
-            idempotencyKey = null,
-            createdAt = now,
+            CreateSprintCloseOperationCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sprintId = sprint.id,
+              sprintApiId = sprint.apiId.value,
+              targetSprintId = null,
+              targetSprintApiId = null,
+              disposition = SprintCloseDisposition.KEEP,
+              requestedBy = stack.actorId,
+              idempotencyKey = null,
+              createdAt = now,
+            )
           )
         }
 
@@ -270,16 +277,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
         val repo = repository(database)
         val operation = runBlocking {
           repo.createAndMarkClosing(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            sprintId = sprint.id,
-            sprintApiId = sprint.apiId.value,
-            targetSprintId = null,
-            targetSprintApiId = null,
-            disposition = SprintCloseDisposition.KEEP,
-            requestedBy = stack.actorId,
-            idempotencyKey = "retry-key",
-            createdAt = now,
+            CreateSprintCloseOperationCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sprintId = sprint.id,
+              sprintApiId = sprint.apiId.value,
+              targetSprintId = null,
+              targetSprintApiId = null,
+              disposition = SprintCloseDisposition.KEEP,
+              requestedBy = stack.actorId,
+              idempotencyKey = "retry-key",
+              createdAt = now,
+            )
           )
         }
         runBlocking {
@@ -376,16 +385,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
           )
         val operation = runBlocking {
           repo.createAndMarkClosing(
-            tenantId = stack.tenantId,
-            projectId = stack.projectId,
-            sprintId = sprint.id,
-            sprintApiId = sprint.apiId.value,
-            targetSprintId = null,
-            targetSprintApiId = null,
-            disposition = SprintCloseDisposition.KEEP,
-            requestedBy = stack.actorId,
-            idempotencyKey = null,
-            createdAt = now,
+            CreateSprintCloseOperationCommand(
+              tenantId = stack.tenantId,
+              projectId = stack.projectId,
+              sprintId = sprint.id,
+              sprintApiId = sprint.apiId.value,
+              targetSprintId = null,
+              targetSprintApiId = null,
+              disposition = SprintCloseDisposition.KEEP,
+              requestedBy = stack.actorId,
+              idempotencyKey = null,
+              createdAt = now,
+            )
           )
         }
 
@@ -428,16 +439,18 @@ class ExposedSprintCloseOperationRepositoryIntegrationTest :
         shouldThrow<IllegalArgumentException> {
           runBlocking {
             repo.createAndMarkClosing(
-              tenantId = stack.tenantId,
-              projectId = stack.projectId,
-              sprintId = sprint.id,
-              sprintApiId = sprint.apiId.value,
-              targetSprintId = null,
-              targetSprintApiId = null,
-              disposition = SprintCloseDisposition.KEEP,
-              requestedBy = stack.actorId,
-              idempotencyKey = null,
-              createdAt = now,
+              CreateSprintCloseOperationCommand(
+                tenantId = stack.tenantId,
+                projectId = stack.projectId,
+                sprintId = sprint.id,
+                sprintApiId = sprint.apiId.value,
+                targetSprintId = null,
+                targetSprintApiId = null,
+                disposition = SprintCloseDisposition.KEEP,
+                requestedBy = stack.actorId,
+                idempotencyKey = null,
+                createdAt = now,
+              )
             )
           }
         }

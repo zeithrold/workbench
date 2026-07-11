@@ -110,10 +110,13 @@ class TenantCreateWithAdminIntegrationTest :
               tenants = tenants,
               tenantMembers = tenantMembers,
               users = users,
-              loginMethods = loginMethods,
-              loginAccounts = loginAccounts,
-              userLoginAccounts = userLoginAccounts,
-              passwordHasher = passwordHasher,
+              login =
+                ink.doa.workbench.security.invitation.InvitationLoginSupport(
+                  loginMethods,
+                  loginAccounts,
+                  userLoginAccounts,
+                  passwordHasher,
+                ),
             ),
           collaborators =
             InvitationCollaborators(
@@ -133,10 +136,13 @@ class TenantCreateWithAdminIntegrationTest :
           dependencies =
             TenantManagementDependencies(
               tenants = TenantService(tenants),
-              tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
-              userLookupService = UserLookupService(users),
-              adminUserService = adminUserService,
-              invitationService = invitationService,
+              identity =
+                TenantIdentityDependencies(
+                  tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+                  userLookupService = UserLookupService(users),
+                  adminUserService = adminUserService,
+                  invitationService = invitationService,
+                ),
               defaultWorkItemTemplate = io.mockk.mockk(relaxed = true),
               clock = clock,
             )

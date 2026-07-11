@@ -1,5 +1,3 @@
-@file:Suppress("TooManyFunctions")
-
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -36,6 +34,10 @@ data class ListWorkItemAttachmentsRequest(
   val offset: Long = 0,
 )
 
+private val allowedContentTypePrefixes = listOf("image/", "text/")
+private val allowedContentTypes =
+  setOf("application/pdf", "application/json", "application/zip", "application/octet-stream")
+
 @Service
 class WorkItemAttachmentService(
   private val attachments: WorkItemAttachmentRepository,
@@ -70,7 +72,7 @@ class WorkItemAttachmentService(
   suspend fun initiateUpload(
     command: InitiateWorkItemAttachmentUploadCommand
   ): WorkItemAttachmentUploadSession {
-    uploadValidationError(command)?.let { throw InvalidRequestException(it) }
+    uploadValidationError(command, storageLimits)?.let { throw InvalidRequestException(it) }
     val issueId = requireIssueId(command.tenantId, command.projectId, command.workItemApiId)
     val commentId = resolveCommentId(command, issueId)
     val attachmentId = UUID.randomUUID()
@@ -114,7 +116,7 @@ class WorkItemAttachmentService(
           WorkbenchErrorCode.RESOURCE_WORK_ITEM_ATTACHMENT_NOT_FOUND
         )
     val headResult = resolveUploadHead(pending)
-    val validationError = completeUploadValidationError(pending, headResult)
+    val validationError = completeUploadValidationError(pending, headResult, storageLimits)
     if (validationError != null) {
       if (validationError == WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_SIZE_MISMATCH) {
         runCatching { blobStorage.delete(pending.storageKey) }
@@ -137,18 +139,6 @@ class WorkItemAttachmentService(
   private suspend fun resolveUploadHead(pending: WorkItemAttachmentRecord): Result<BlobObjectHead> =
     runCatching {
       blobStorage.head(pending.storageKey)
-    }
-
-  private fun completeUploadValidationError(
-    pending: WorkItemAttachmentRecord,
-    headResult: Result<BlobObjectHead>,
-  ): WorkbenchErrorCode? =
-    when {
-      isUploadExpired(pending.createdAt) -> WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_EXPIRED
-      headResult.isFailure -> WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_INCOMPLETE
-      headResult.getOrThrow().contentLength != pending.byteSize ->
-        WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_SIZE_MISMATCH
-      else -> null
     }
 
   suspend fun presignedDownloadUrl(
@@ -205,56 +195,57 @@ class WorkItemAttachmentService(
   ): UUID =
     attachments.resolveIssueId(tenantId, projectId, workItemApiId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
-
-  private fun uploadValidationError(
-    command: InitiateWorkItemAttachmentUploadCommand
-  ): WorkbenchErrorCode? =
-    when {
-      command.declaredByteSize <= 0L -> WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_FILE_REQUIRED
-      command.declaredByteSize > storageLimits.maxFileSizeBytes ->
-        WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_TOO_LARGE
-      command.purpose == AttachmentPurpose.COMMENT && command.commentApiId.isNullOrBlank() ->
-        WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_COMMENT_REQUIRED
-      !isAllowedContentType(command.contentType) ->
-        WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_CONTENT_TYPE_UNSUPPORTED
-      else -> null
-    }
-
-  private fun isUploadExpired(createdAt: OffsetDateTime): Boolean {
-    val expiresAt = createdAt.plus(storageLimits.presignUploadTtl)
-    return OffsetDateTime.now(ZoneOffset.UTC).isAfter(expiresAt)
-  }
-
-  private fun isAllowedContentType(contentType: String?): Boolean {
-    if (contentType == null) return true
-    val normalized = contentType.substringBefore(';').trim().lowercase()
-    return ALLOWED_CONTENT_TYPE_PREFIXES.any { prefix -> normalized.startsWith(prefix) } ||
-      normalized in ALLOWED_CONTENT_TYPES
-  }
-
-  private fun buildStorageKey(
-    tenantId: UUID,
-    issueId: UUID,
-    attachmentId: UUID,
-    filename: String,
-  ): String = "${tenantId}/${issueId}/${attachmentId}/${sanitizeFilename(filename)}"
-
-  private fun sanitizeFilename(filename: String): String =
-    filename.replace(Regex("[^a-zA-Z0-9._-]"), "_").take(200).ifBlank { "attachment" }
-
-  private fun normalizeChecksum(etag: String?): String = etag?.trim('"')?.lowercase() ?: "unknown"
-
-  private companion object {
-    val ALLOWED_CONTENT_TYPE_PREFIXES = listOf("image/", "text/")
-    val ALLOWED_CONTENT_TYPES =
-      setOf(
-        "application/pdf",
-        "application/json",
-        "application/zip",
-        "application/octet-stream",
-      )
-  }
 }
+
+private fun completeUploadValidationError(
+  pending: WorkItemAttachmentRecord,
+  headResult: Result<BlobObjectHead>,
+  limits: StorageLimits,
+): WorkbenchErrorCode? =
+  when {
+    isUploadExpired(pending.createdAt, limits) ->
+      WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_EXPIRED
+    headResult.isFailure -> WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_INCOMPLETE
+    headResult.getOrThrow().contentLength != pending.byteSize ->
+      WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_UPLOAD_SIZE_MISMATCH
+    else -> null
+  }
+
+private fun uploadValidationError(
+  command: InitiateWorkItemAttachmentUploadCommand,
+  limits: StorageLimits,
+): WorkbenchErrorCode? =
+  when {
+    command.declaredByteSize <= 0L -> WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_FILE_REQUIRED
+    command.declaredByteSize > limits.maxFileSizeBytes ->
+      WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_TOO_LARGE
+    command.purpose == AttachmentPurpose.COMMENT && command.commentApiId.isNullOrBlank() ->
+      WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_COMMENT_REQUIRED
+    !isAllowedContentType(command.contentType) ->
+      WorkbenchErrorCode.WORK_ITEM_ATTACHMENT_CONTENT_TYPE_UNSUPPORTED
+    else -> null
+  }
+
+private fun isUploadExpired(createdAt: OffsetDateTime, limits: StorageLimits): Boolean =
+  OffsetDateTime.now(ZoneOffset.UTC).isAfter(createdAt.plus(limits.presignUploadTtl))
+
+private fun isAllowedContentType(contentType: String?): Boolean {
+  if (contentType == null) return true
+  val normalized = contentType.substringBefore(';').trim().lowercase()
+  return allowedContentTypePrefixes.any(normalized::startsWith) || normalized in allowedContentTypes
+}
+
+private fun buildStorageKey(
+  tenantId: UUID,
+  issueId: UUID,
+  attachmentId: UUID,
+  filename: String,
+): String = "${tenantId}/${issueId}/${attachmentId}/${sanitizeFilename(filename)}"
+
+private fun sanitizeFilename(filename: String): String =
+  filename.replace(Regex("[^a-zA-Z0-9._-]"), "_").take(200).ifBlank { "attachment" }
+
+private fun normalizeChecksum(etag: String?): String = etag?.trim('"')?.lowercase() ?: "unknown"
 
 data class WorkItemAttachmentUploadSession(
   val attachmentApiId: String,

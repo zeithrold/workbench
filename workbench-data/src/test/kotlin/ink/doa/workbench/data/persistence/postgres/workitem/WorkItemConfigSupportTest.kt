@@ -10,7 +10,7 @@ class WorkItemConfigSupportTest :
   StringSpec({
     "rejectIfInUse throws when resource is referenced" {
       shouldThrow<InvalidRequestException> {
-          rejectIfInUse(
+          ExposedWorkItemConfigUsageChecks.rejectIfInUse(
             inUse = true,
             message = "Status is still used by an active issue type config.",
           )
@@ -19,6 +19,6 @@ class WorkItemConfigSupportTest :
     }
 
     "rejectIfInUse allows unused resources" {
-      rejectIfInUse(inUse = false, message = "unused")
+      ExposedWorkItemConfigUsageChecks.rejectIfInUse(inUse = false, message = "unused")
     }
   })

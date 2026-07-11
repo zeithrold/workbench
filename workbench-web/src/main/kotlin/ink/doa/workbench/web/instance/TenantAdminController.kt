@@ -42,7 +42,6 @@ import org.springframework.web.bind.annotation.RestController
 )
 @SessionSecured
 @StandardErrorResponses
-@Suppress("UnusedParameter")
 class TenantAdminController(
   private val service: TenantManagementApplicationService,
   private val publicIds: PublicIdResolver,
@@ -73,7 +72,7 @@ class TenantAdminController(
     @Parameter(description = "Filter by exact tenant slug.", example = "acme")
     @RequestParam(required = false)
     slug: String?,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): List<TenantResponse> = service.list(slug).map { TenantResponse.from(it) }
 
   @PostMapping
@@ -149,7 +148,7 @@ class TenantAdminController(
   )
   suspend fun get(
     @PathVariable id: String,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): TenantResponse = TenantResponse.from(service.get(id))
 
   @PatchMapping("/{id}")
@@ -176,7 +175,7 @@ class TenantAdminController(
   suspend fun patch(
     @PathVariable id: String,
     @Valid @RequestBody request: PatchTenantRequest,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): TenantResponse =
     TenantResponse.from(
       service.update(

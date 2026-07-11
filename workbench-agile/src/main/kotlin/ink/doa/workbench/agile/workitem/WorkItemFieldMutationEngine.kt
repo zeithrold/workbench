@@ -53,7 +53,6 @@ data class PatchMutationContext(
 )
 
 @Service
-@Suppress("TooManyFunctions")
 class WorkItemFieldMutationEngine(
   private val permissions: WorkItemFieldPermissionService,
   clock: Clock,
@@ -203,39 +202,6 @@ class WorkItemFieldMutationEngine(
     }
   }
 
-  private fun throwUnexpectedField(key: String): Nothing =
-    throw InvalidRequestException(
-      WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD,
-      "Unexpected field in mutation request: $key",
-    )
-
-  private fun resolveRequestField(
-    key: String,
-    template: WorkItemTransitionFieldsTemplate,
-    config: IssueTypeConfigDetails,
-  ): TemplateField? =
-    template.fields.keys.firstOrNull { field -> requestKeyMatchesField(key, field, config) }
-
-  private fun requestKeyMatchesField(
-    key: String,
-    field: TemplateField,
-    config: IssueTypeConfigDetails,
-  ): Boolean =
-    when (field) {
-      is TemplateField.System -> key == field.canonicalName
-      is TemplateField.Property -> {
-        val outputKey = fieldOutputKey(field, config)
-        key == outputKey ||
-          key == field.code ||
-          key == field.apiId ||
-          key == field.toWirePath() ||
-          key == "property.$outputKey" ||
-          (field.apiId != null && key == "property.${field.apiId}")
-      }
-    }
-
-  private fun isSubmitted(value: JsonElement): Boolean = value !is JsonNull
-
   private fun handleUnauthorized(
     spec: TransitionFieldSpec,
     currentValue: JsonElement?,
@@ -276,62 +242,6 @@ class WorkItemFieldMutationEngine(
       }
     return templates.evaluateExpression(expression, property, context)
   }
-
-  private fun currentValue(
-    field: TemplateField,
-    outputKey: String,
-    currentProperties: Map<String, JsonElement>,
-    context: WorkItemValueTemplateContext,
-  ): JsonElement? =
-    when (field) {
-      is TemplateField.System ->
-        resolveSystemCurrent(field.canonicalName, context)?.let(::JsonPrimitive)
-      is TemplateField.Property -> currentProperties[outputKey]
-    }
-
-  private fun userValueForField(
-    field: TemplateField,
-    outputKey: String,
-    userProperties: Map<String, JsonElement>,
-  ): JsonElement? =
-    when (field) {
-      is TemplateField.System -> userProperties[field.canonicalName]
-      is TemplateField.Property ->
-        userProperties[outputKey] ?: userProperties[field.apiId ?: field.code ?: outputKey]
-    }
-
-  private fun fieldOutputKey(field: TemplateField, config: IssueTypeConfigDetails): String =
-    when (field) {
-      is TemplateField.System -> field.canonicalName
-      is TemplateField.Property ->
-        config.properties
-          .singleOrNull { it.code == field.code || it.propertyApiId.value == field.apiId }
-          ?.code
-          ?: field.code
-          ?: checkNotNull(field.apiId) { "Property field must have code or apiId" }
-    }
-
-  private fun propertyField(key: String, config: IssueTypeConfigDetails): TemplateField {
-    val property =
-      config.properties.find { it.code == key || it.propertyApiId.value == key }
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.WORK_ITEM_PROPERTY_UNAVAILABLE,
-          "Property is not available in this config: $key",
-        )
-    return TemplateField.Property(apiId = property.propertyApiId.value, code = property.code)
-  }
-
-  private fun resolveSystemCurrent(name: String, context: WorkItemValueTemplateContext): String? =
-    when (name) {
-      "title" -> context.workItem?.title
-      "description" -> context.workItem?.description
-      "assignee" -> context.workItem?.assigneeApiId?.value
-      "priority" -> context.workItem?.priorityApiId?.value
-      "sprint" -> context.workItem?.sprintApiId?.value
-      else -> null
-    }
-
-  private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.content
 
   fun reconcileTransitionComment(
     spec: CommentFieldSpec?,
@@ -386,3 +296,92 @@ class WorkItemFieldMutationEngine(
     )
   }
 }
+
+private fun throwUnexpectedField(key: String): Nothing =
+  throw InvalidRequestException(
+    WorkbenchErrorCode.WORK_ITEM_MUTATION_UNEXPECTED_FIELD,
+    "Unexpected field in mutation request: $key",
+  )
+
+private fun resolveRequestField(
+  key: String,
+  template: WorkItemTransitionFieldsTemplate,
+  config: IssueTypeConfigDetails,
+): TemplateField? =
+  template.fields.keys.firstOrNull { field -> requestKeyMatchesField(key, field, config) }
+
+private fun requestKeyMatchesField(
+  key: String,
+  field: TemplateField,
+  config: IssueTypeConfigDetails,
+): Boolean =
+  when (field) {
+    is TemplateField.System -> key == field.canonicalName
+    is TemplateField.Property -> {
+      val outputKey = fieldOutputKey(field, config)
+      key == outputKey ||
+        key == field.code ||
+        key == field.apiId ||
+        key == field.toWirePath() ||
+        key == "property.$outputKey" ||
+        (field.apiId != null && key == "property.${field.apiId}")
+    }
+  }
+
+private fun isSubmitted(value: JsonElement): Boolean = value !is JsonNull
+
+private fun currentValue(
+  field: TemplateField,
+  outputKey: String,
+  currentProperties: Map<String, JsonElement>,
+  context: WorkItemValueTemplateContext,
+): JsonElement? =
+  when (field) {
+    is TemplateField.System ->
+      resolveSystemCurrent(field.canonicalName, context)?.let(::JsonPrimitive)
+    is TemplateField.Property -> currentProperties[outputKey]
+  }
+
+private fun userValueForField(
+  field: TemplateField,
+  outputKey: String,
+  userProperties: Map<String, JsonElement>,
+): JsonElement? =
+  when (field) {
+    is TemplateField.System -> userProperties[field.canonicalName]
+    is TemplateField.Property ->
+      userProperties[outputKey] ?: userProperties[field.apiId ?: field.code ?: outputKey]
+  }
+
+private fun fieldOutputKey(field: TemplateField, config: IssueTypeConfigDetails): String =
+  when (field) {
+    is TemplateField.System -> field.canonicalName
+    is TemplateField.Property ->
+      config.properties
+        .singleOrNull { it.code == field.code || it.propertyApiId.value == field.apiId }
+        ?.code
+        ?: field.code
+        ?: checkNotNull(field.apiId) { "Property field must have code or apiId" }
+  }
+
+private fun propertyField(key: String, config: IssueTypeConfigDetails): TemplateField {
+  val property =
+    config.properties.find { it.code == key || it.propertyApiId.value == key }
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_PROPERTY_UNAVAILABLE,
+        "Property is not available in this config: $key",
+      )
+  return TemplateField.Property(apiId = property.propertyApiId.value, code = property.code)
+}
+
+private fun resolveSystemCurrent(name: String, context: WorkItemValueTemplateContext): String? =
+  when (name) {
+    "title" -> context.workItem?.title
+    "description" -> context.workItem?.description
+    "assignee" -> context.workItem?.assigneeApiId?.value
+    "priority" -> context.workItem?.priorityApiId?.value
+    "sprint" -> context.workItem?.sprintApiId?.value
+    else -> null
+  }
+
+private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.content

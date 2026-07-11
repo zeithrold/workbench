@@ -26,16 +26,16 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Outbox Administration", description = "Instance-scoped domain outbox operations.")
 @SessionSecured
 @StandardErrorResponses
-@Suppress("UnusedParameter", "RedundantSuspendModifier")
 class OutboxAdminController(private val service: OutboxAdminApplicationService) {
   @GetMapping
   @Authenticated
   @InstanceScoped
   @Authorize(action = "outbox.read", resource = "outbox")
   @Operation(summary = "List outbox messages")
+  @Suppress("RedundantSuspendModifier") // Security aspects require a suspend endpoint signature.
   suspend fun list(
     @ModelAttribute query: OutboxMessageQuery,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): List<OutboxMessageResponse> = service.list(query).map(OutboxMessageResponse::from)
 
   @GetMapping("/{id}")
@@ -43,9 +43,10 @@ class OutboxAdminController(private val service: OutboxAdminApplicationService) 
   @InstanceScoped
   @Authorize(action = "outbox.read", resource = "outbox")
   @Operation(summary = "Get an outbox message")
+  @Suppress("RedundantSuspendModifier") // Security aspects require a suspend endpoint signature.
   suspend fun get(
     @PathVariable id: UUID,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): OutboxMessageResponse = OutboxMessageResponse.from(service.get(id))
 
   @PostMapping("/{id}/replay")
@@ -54,9 +55,10 @@ class OutboxAdminController(private val service: OutboxAdminApplicationService) 
   @Authorize(action = "outbox.manage", resource = "outbox")
   @Audit("outbox.replay")
   @Operation(summary = "Replay a dead-letter outbox message")
+  @Suppress("RedundantSuspendModifier") // Security aspects require a suspend endpoint signature.
   suspend fun replay(
     @PathVariable id: UUID,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ): OutboxMessageResponse = OutboxMessageResponse.from(service.replay(id))
 }
 

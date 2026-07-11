@@ -64,10 +64,7 @@ class InvitationServiceTest :
           tenants,
           tenantMembers,
           users,
-          loginMethods,
-          loginAccounts,
-          userLoginAccounts,
-          passwordHasher,
+          InvitationLoginSupport(loginMethods, loginAccounts, userLoginAccounts, passwordHasher),
         ),
         InvitationCollaborators(
           invitations,

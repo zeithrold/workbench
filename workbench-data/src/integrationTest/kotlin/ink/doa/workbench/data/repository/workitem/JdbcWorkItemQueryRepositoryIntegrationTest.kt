@@ -622,6 +622,5 @@ private fun seedWorkItem(
   )
 }
 
-@Suppress("InjectDispatcher")
 private fun jdbcWorkItemQueryRepository(jdbc: JdbcTemplate) =
   JdbcWorkItemQueryRepository(jdbc, Dispatchers.IO, WorkItemGroupLabelResolver(jdbc))

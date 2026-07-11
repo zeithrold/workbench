@@ -230,18 +230,7 @@ class SprintServiceTest :
       val active = plannedSprint.copy(status = SprintStatus.ACTIVE)
       coEvery { sprints.findByApiId(tenantId, projectId, active.apiId.value) } returns active
       coEvery {
-        closeOperations.createAndMarkClosing(
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-          any(),
-        )
+        closeOperations.createAndMarkClosing(any())
       } returns operation
 
       service

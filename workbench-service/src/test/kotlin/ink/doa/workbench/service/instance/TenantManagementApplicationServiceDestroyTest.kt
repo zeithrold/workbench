@@ -53,10 +53,13 @@ class TenantManagementApplicationServiceDestroyTest :
         dependencies =
           TenantManagementDependencies(
             tenants = TenantService(tenants),
-            tenantLoginMethods = mockk<TenantLoginMethodService>(relaxed = true),
-            userLookupService = UserLookupService(users),
-            adminUserService = mockk(relaxed = true),
-            invitationService = mockk(relaxed = true),
+            identity =
+              TenantIdentityDependencies(
+                tenantLoginMethods = mockk<TenantLoginMethodService>(relaxed = true),
+                userLookupService = UserLookupService(users),
+                adminUserService = mockk(relaxed = true),
+                invitationService = mockk(relaxed = true),
+              ),
             defaultWorkItemTemplate = mockk(relaxed = true),
             clock = clock,
           )

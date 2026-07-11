@@ -40,7 +40,6 @@ class InfrastructureAspect(
   private val logger = LoggerFactory.getLogger(javaClass)
 
   @Around("@annotation(ink.doa.workbench.web.api.Audit)")
-  @Suppress("TooGenericExceptionCaught")
   fun audit(joinPoint: ProceedingJoinPoint): Any? {
     val started = System.nanoTime()
     return try {
@@ -51,7 +50,9 @@ class InfrastructureAspect(
           elapsedMillis(started),
         )
       }
-    } catch (error: RuntimeException) {
+    } catch (
+      // AOP boundary: audit every application failure before rethrowing the original exception.
+      @Suppress("TooGenericExceptionCaught") error: RuntimeException) {
       logger.warn(
         "audit_result method={} result=failure durationMs={}",
         joinPoint.signature.toShortString(),

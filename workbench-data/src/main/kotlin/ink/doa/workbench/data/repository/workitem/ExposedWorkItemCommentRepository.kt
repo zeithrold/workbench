@@ -1,5 +1,3 @@
-@file:Suppress("TooManyFunctions")
-
 package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
@@ -40,7 +38,6 @@ class ExposedWorkItemCommentRepository(
   private val eventFactory: WorkItemEventFactory,
   private val eventCodec: WorkItemEventCodec,
 ) : WorkItemCommentRepository {
-  @Suppress("LongMethod")
   override suspend fun create(
     command: CreateWorkItemCommentCommand,
     issueId: UUID,

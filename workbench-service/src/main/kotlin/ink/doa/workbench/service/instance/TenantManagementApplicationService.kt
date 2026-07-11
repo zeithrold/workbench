@@ -19,10 +19,10 @@ import org.springframework.stereotype.Service
 @Service
 class TenantManagementApplicationService(private val dependencies: TenantManagementDependencies) {
   private val tenants = dependencies.tenants
-  private val tenantLoginMethods = dependencies.tenantLoginMethods
-  private val userLookupService = dependencies.userLookupService
-  private val adminUserService = dependencies.adminUserService
-  private val invitationService = dependencies.invitationService
+  private val tenantLoginMethods = dependencies.identity.tenantLoginMethods
+  private val userLookupService = dependencies.identity.userLookupService
+  private val adminUserService = dependencies.identity.adminUserService
+  private val invitationService = dependencies.identity.invitationService
   private val clock = dependencies.clock
   private val defaultWorkItemTemplate = dependencies.defaultWorkItemTemplate
 

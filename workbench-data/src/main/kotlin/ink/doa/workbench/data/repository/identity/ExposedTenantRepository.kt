@@ -32,7 +32,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-@Suppress("TooManyFunctions")
 class ExposedTenantRepository(
   private val database: Database,
   private val outbox: DomainEventOutbox? = null,

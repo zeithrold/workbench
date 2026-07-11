@@ -1,5 +1,3 @@
-@file:Suppress("TooManyFunctions")
-
 package ink.doa.workbench.core.workitem.query
 
 import ink.doa.workbench.core.common.errors.InvalidRequestException
@@ -164,54 +162,54 @@ class WorkItemQueryParser(private val json: Json = Json { ignoreUnknownKeys = fa
     } else {
       QueryField.System(path)
     }
+}
 
-  private fun parseOperator(value: String): QueryOperator =
-    QueryOperator.fromWireName(value)
-      ?: throw InvalidRequestException(
-        WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_UNKNOWN,
-        "Unknown work item query operator: $value",
-      )
-
-  private fun parseValue(element: JsonElement): QueryValue =
-    when (element) {
-      is JsonObject -> {
-        element["var"]?.let {
-          return QueryValue.Variable(it.asString("variable"))
-        }
-        element["relativeDate"]?.let {
-          return parseRelativeDate(it)
-        }
-        if ("from" in element || "to" in element) {
-          val from = element["from"]?.takeUnless { it is JsonNull }
-          val to = element["to"]?.takeUnless { it is JsonNull }
-          return QueryValue.Between(from = from, to = to)
-        }
-        QueryValue.Literal(element)
-      }
-      else -> QueryValue.Literal(element)
-    }
-
-  private fun parseRelativeDate(element: JsonElement): QueryValue.RelativeDate {
-    val obj = element.asObject("relativeDate")
-    val unit =
-      RelativeDateUnit.fromWireName(obj.requiredString("unit"))
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_UNIT_UNKNOWN,
-          "Unknown relative date unit: ${obj.requiredString("unit")}",
-        )
-    val direction =
-      DateDirection.fromWireName(obj.requiredString("direction"))
-        ?: throw InvalidRequestException(
-          WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_DIRECTION_UNKNOWN,
-          "Unknown relative date direction: ${obj.requiredString("direction")}",
-        )
-    return QueryValue.RelativeDate(
-      amount = obj.requiredInt("amount"),
-      unit = unit,
-      direction = direction,
-      anchor = obj.requiredString("anchor"),
+private fun parseOperator(value: String): QueryOperator =
+  QueryOperator.fromWireName(value)
+    ?: throw InvalidRequestException(
+      WorkbenchErrorCode.WORK_ITEM_QUERY_OPERATOR_UNKNOWN,
+      "Unknown work item query operator: $value",
     )
+
+private fun parseValue(element: JsonElement): QueryValue =
+  when (element) {
+    is JsonObject -> {
+      element["var"]?.let {
+        return QueryValue.Variable(it.asString("variable"))
+      }
+      element["relativeDate"]?.let {
+        return parseRelativeDate(it)
+      }
+      if ("from" in element || "to" in element) {
+        val from = element["from"]?.takeUnless { it is JsonNull }
+        val to = element["to"]?.takeUnless { it is JsonNull }
+        return QueryValue.Between(from = from, to = to)
+      }
+      QueryValue.Literal(element)
+    }
+    else -> QueryValue.Literal(element)
   }
+
+private fun parseRelativeDate(element: JsonElement): QueryValue.RelativeDate {
+  val obj = element.asObject("relativeDate")
+  val unit =
+    RelativeDateUnit.fromWireName(obj.requiredString("unit"))
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_UNIT_UNKNOWN,
+        "Unknown relative date unit: ${obj.requiredString("unit")}",
+      )
+  val direction =
+    DateDirection.fromWireName(obj.requiredString("direction"))
+      ?: throw InvalidRequestException(
+        WorkbenchErrorCode.WORK_ITEM_QUERY_RELATIVE_DATE_DIRECTION_UNKNOWN,
+        "Unknown relative date direction: ${obj.requiredString("direction")}",
+      )
+  return QueryValue.RelativeDate(
+    amount = obj.requiredInt("amount"),
+    unit = unit,
+    direction = direction,
+    anchor = obj.requiredString("anchor"),
+  )
 }
 
 private fun JsonElement.asObject(name: String): JsonObject =

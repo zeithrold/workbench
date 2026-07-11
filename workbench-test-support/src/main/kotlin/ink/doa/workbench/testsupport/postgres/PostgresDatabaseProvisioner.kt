@@ -75,7 +75,7 @@ internal object PostgresDatabaseProvisioner {
     return templateName
   }
 
-  @Suppress("SpreadOperator")
+  @Suppress("SpreadOperator") // Flyway exposes locations only as a Java vararg API.
   private fun migrate(spec: MigrationSpec, databaseName: String) {
     val flyway =
       spec

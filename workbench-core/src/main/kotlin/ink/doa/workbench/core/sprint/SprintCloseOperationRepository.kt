@@ -6,35 +6,25 @@ import ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus
 import java.time.OffsetDateTime
 import java.util.UUID
 
-@Suppress("TooManyFunctions")
-interface SprintCloseOperationRepository {
-  @Suppress("LongParameterList")
+data class CreateSprintCloseOperationCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val sprintId: UUID,
+  val sprintApiId: String,
+  val targetSprintId: UUID?,
+  val targetSprintApiId: String?,
+  val disposition: SprintCloseDisposition,
+  val requestedBy: UUID,
+  val idempotencyKey: String?,
+  val createdAt: OffsetDateTime,
+)
+
+interface SprintCloseOperationRepository : SprintCloseOperationWriter, SprintCloseOperationReader
+
+interface SprintCloseOperationWriter {
   suspend fun createAndMarkClosing(
-    tenantId: UUID,
-    projectId: UUID,
-    sprintId: UUID,
-    sprintApiId: String,
-    targetSprintId: UUID?,
-    targetSprintApiId: String?,
-    disposition: SprintCloseDisposition,
-    requestedBy: UUID,
-    idempotencyKey: String?,
-    createdAt: OffsetDateTime,
+    command: CreateSprintCloseOperationCommand
   ): SprintCloseOperationRecord
-
-  suspend fun findByApiId(
-    tenantId: UUID,
-    projectId: UUID,
-    sprintApiId: String,
-    operationApiId: String,
-  ): SprintCloseOperationRecord?
-
-  suspend fun findByIdempotencyKey(
-    tenantId: UUID,
-    projectId: UUID,
-    sprintId: UUID,
-    idempotencyKey: String,
-  ): SprintCloseOperationRecord?
 
   suspend fun markRunning(id: UUID, startedAt: OffsetDateTime): Boolean
 
@@ -61,4 +51,20 @@ interface SprintCloseOperationRepository {
   suspend fun completeSucceeded(request: SprintCloseSuccessRequest): SprintCloseOperationRecord
 
   suspend fun completeFailed(request: SprintCloseFailureRequest): SprintCloseOperationRecord
+}
+
+interface SprintCloseOperationReader {
+  suspend fun findByApiId(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintApiId: String,
+    operationApiId: String,
+  ): SprintCloseOperationRecord?
+
+  suspend fun findByIdempotencyKey(
+    tenantId: UUID,
+    projectId: UUID,
+    sprintId: UUID,
+    idempotencyKey: String,
+  ): SprintCloseOperationRecord?
 }

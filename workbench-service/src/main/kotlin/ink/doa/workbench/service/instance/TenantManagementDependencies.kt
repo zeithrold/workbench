@@ -10,13 +10,17 @@ import java.time.Clock
 import org.springframework.stereotype.Component
 
 @Component
-@Suppress("LongParameterList")
-class TenantManagementDependencies(
-  val tenants: TenantService,
+class TenantIdentityDependencies(
   val tenantLoginMethods: TenantLoginMethodService,
   val userLookupService: UserLookupService,
   val adminUserService: AdminUserService,
   val invitationService: InvitationService,
+)
+
+@Component
+class TenantManagementDependencies(
+  val tenants: TenantService,
+  val identity: TenantIdentityDependencies,
   val defaultWorkItemTemplate: TenantDefaultWorkItemTemplateService,
   val clock: Clock,
 )

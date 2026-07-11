@@ -46,6 +46,19 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
+private data class SoftDeleteContext(
+  val tenantUuid: kotlin.uuid.Uuid,
+  val deletedAt: OffsetDateTime,
+  val deletedByUuid: kotlin.uuid.Uuid,
+  val deleteReason: String?,
+)
+
+private data class SoftDeleteAuditColumns(
+  val updatedAt: org.jetbrains.exposed.v1.core.Column<OffsetDateTime>? = null,
+  val deletedBy: org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid?>? = null,
+  val deleteReason: org.jetbrains.exposed.v1.core.Column<String?>? = null,
+)
+
 @Repository
 class ExposedTenantDestructionRepository(private val database: Database) :
   TenantDestructionRepository {
@@ -131,92 +144,134 @@ class ExposedTenantDestructionRepository(private val database: Database) :
       hardDeleteRowsWithoutDeletedAt(tenantUuid)
     }
 
-  @Suppress("LongMethod")
   private fun softDeleteRowsWithDeletedAt(
     tenantUuid: kotlin.uuid.Uuid,
     deletedAt: OffsetDateTime,
     deletedByUuid: kotlin.uuid.Uuid,
     deleteReason: String?,
   ) {
-    fun softDelete(
-      table: org.jetbrains.exposed.v1.core.Table,
-      tenantColumn: org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid>,
-      deletedAtColumn: org.jetbrains.exposed.v1.core.Column<OffsetDateTime?>,
-      updatedAtColumn: org.jetbrains.exposed.v1.core.Column<OffsetDateTime>? = null,
-      deletedByColumn: org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid?>? = null,
-      deleteReasonColumn: org.jetbrains.exposed.v1.core.Column<String?>? = null,
-    ) {
-      table.update({ (tenantColumn eq tenantUuid) and deletedAtColumn.isNull() }) { row ->
-        row[deletedAtColumn] = deletedAt
-        deletedByColumn?.let { row[it] = deletedByUuid }
-        deleteReasonColumn?.let { row[it] = deleteReason }
-        updatedAtColumn?.let { row[it] = deletedAt }
-      }
-    }
+    softDeleteWorkItemRows(tenantUuid, deletedAt, deletedByUuid, deleteReason)
+    softDeleteTenantResourceRows(tenantUuid, deletedAt, deletedByUuid, deleteReason)
+  }
 
+  private fun softDeleteWorkItemRows(
+    tenantUuid: kotlin.uuid.Uuid,
+    deletedAt: OffsetDateTime,
+    deletedByUuid: kotlin.uuid.Uuid,
+    deleteReason: String?,
+  ) {
+    val context = SoftDeleteContext(tenantUuid, deletedAt, deletedByUuid, deleteReason)
     softDelete(
       AttachmentsTable,
       AttachmentsTable.tenantId,
       AttachmentsTable.deletedAt,
-      deletedByColumn = AttachmentsTable.deletedBy,
-      deleteReasonColumn = AttachmentsTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        deletedBy = AttachmentsTable.deletedBy,
+        deleteReason = AttachmentsTable.deleteReason,
+      ),
     )
     softDelete(
       IssueCommentsTable,
       IssueCommentsTable.tenantId,
       IssueCommentsTable.deletedAt,
-      IssueCommentsTable.updatedAt,
-      IssueCommentsTable.deletedBy,
-      IssueCommentsTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        IssueCommentsTable.updatedAt,
+        IssueCommentsTable.deletedBy,
+        IssueCommentsTable.deleteReason,
+      ),
     )
     softDelete(
       IssuesTable,
       IssuesTable.tenantId,
       IssuesTable.deletedAt,
-      IssuesTable.updatedAt,
-      IssuesTable.deletedBy,
-      IssuesTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        IssuesTable.updatedAt,
+        IssuesTable.deletedBy,
+        IssuesTable.deleteReason,
+      ),
     )
     softDelete(
       SprintsTable,
       SprintsTable.tenantId,
       SprintsTable.deletedAt,
-      SprintsTable.updatedAt,
-      SprintsTable.deletedBy,
-      SprintsTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        SprintsTable.updatedAt,
+        SprintsTable.deletedBy,
+        SprintsTable.deleteReason,
+      ),
     )
+  }
+
+  private fun softDeleteTenantResourceRows(
+    tenantUuid: kotlin.uuid.Uuid,
+    deletedAt: OffsetDateTime,
+    deletedByUuid: kotlin.uuid.Uuid,
+    deleteReason: String?,
+  ) {
+    val context = SoftDeleteContext(tenantUuid, deletedAt, deletedByUuid, deleteReason)
     softDelete(
       IssueTypesTable,
       IssueTypesTable.tenantId,
       IssueTypesTable.deletedAt,
-      IssueTypesTable.updatedAt,
-      IssueTypesTable.deletedBy,
-      IssueTypesTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        IssueTypesTable.updatedAt,
+        IssueTypesTable.deletedBy,
+        IssueTypesTable.deleteReason,
+      ),
     )
     softDelete(
       WorkflowsTable,
       WorkflowsTable.tenantId,
       WorkflowsTable.deletedAt,
-      WorkflowsTable.updatedAt,
-      WorkflowsTable.deletedBy,
-      WorkflowsTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        WorkflowsTable.updatedAt,
+        WorkflowsTable.deletedBy,
+        WorkflowsTable.deleteReason,
+      ),
     )
     softDelete(
       ProjectsTable,
       ProjectsTable.tenantId,
       ProjectsTable.deletedAt,
-      ProjectsTable.updatedAt,
-      ProjectsTable.deletedBy,
-      ProjectsTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        ProjectsTable.updatedAt,
+        ProjectsTable.deletedBy,
+        ProjectsTable.deleteReason,
+      ),
     )
     softDelete(
       TenantMembersTable,
       TenantMembersTable.tenantId,
       TenantMembersTable.deletedAt,
-      TenantMembersTable.updatedAt,
-      TenantMembersTable.deletedBy,
-      TenantMembersTable.deleteReason,
+      context,
+      SoftDeleteAuditColumns(
+        TenantMembersTable.updatedAt,
+        TenantMembersTable.deletedBy,
+        TenantMembersTable.deleteReason,
+      ),
     )
+  }
+
+  private fun softDelete(
+    table: org.jetbrains.exposed.v1.core.Table,
+    tenantColumn: org.jetbrains.exposed.v1.core.Column<kotlin.uuid.Uuid>,
+    deletedAtColumn: org.jetbrains.exposed.v1.core.Column<OffsetDateTime?>,
+    context: SoftDeleteContext,
+    auditColumns: SoftDeleteAuditColumns,
+  ) {
+    table.update({ (tenantColumn eq context.tenantUuid) and deletedAtColumn.isNull() }) { row ->
+      row[deletedAtColumn] = context.deletedAt
+      auditColumns.deletedBy?.let { row[it] = context.deletedByUuid }
+      auditColumns.deleteReason?.let { row[it] = context.deleteReason }
+      auditColumns.updatedAt?.let { row[it] = context.deletedAt }
+    }
   }
 
   private fun hardDeleteRowsWithoutDeletedAt(tenantUuid: kotlin.uuid.Uuid) {

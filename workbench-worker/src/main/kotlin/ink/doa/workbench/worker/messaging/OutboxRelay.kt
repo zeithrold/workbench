@@ -20,7 +20,6 @@ class OutboxRelay(
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
 
-  @Suppress("TooGenericExceptionCaught")
   @Scheduled(fixedDelayString = "\${workbench.outbox.relay-delay-ms:1000}")
   fun relay() {
     val now = OffsetDateTime.now(ZoneOffset.UTC)
@@ -35,7 +34,9 @@ class OutboxRelay(
           message.topic,
           message.attempts,
         )
-      } catch (error: Exception) {
+      } catch (
+        // Relay boundary: every publisher failure must be persisted for retry or dead-lettering.
+        @Suppress("TooGenericExceptionCaught") error: Exception) {
         val attempts = message.attempts + 1
         val delaySeconds = (1L shl attempts.coerceAtMost(6)).coerceAtMost(300)
         repository.markFailed(

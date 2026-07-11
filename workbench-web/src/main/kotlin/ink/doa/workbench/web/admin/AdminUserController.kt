@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.RestController
 @SessionSecured
 @StandardErrorResponses
 @Tag(name = "Admin Users", description = "Administrator and access grant management.")
-@Suppress("UnusedParameter")
 class AdminUserController(
   private val adminUserService: AdminUserService,
   private val accessGrantService: AccessGrantManagementService,
@@ -47,7 +46,9 @@ class AdminUserController(
   @InstanceScoped
   @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List instance administrators")
-  suspend fun listInstanceAdmins(instanceContext: InstanceRequestContext): List<AdminUserResponse> =
+  suspend fun listInstanceAdmins(
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext
+  ): List<AdminUserResponse> =
     adminUserService.listInstanceAdmins().map { AdminUserResponse.from(it) }
 
   @PostMapping("/instance-admins")
@@ -94,7 +95,7 @@ class AdminUserController(
   @Operation(summary = "Revoke administrator")
   suspend fun revokeAdmin(
     @Parameter(example = OpenApiExamples.USER_ID) @PathVariable id: String,
-    instanceContext: InstanceRequestContext,
+    @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ) {
     adminUserService.revokeAdmin(id)
   }
@@ -139,7 +140,7 @@ class AdminUserController(
   @Operation(summary = "Expire access grant")
   suspend fun expireGrant(
     @PathVariable id: String,
-    tenantContext: TenantRequestContext,
+    @Suppress("UnusedParameter") tenantContext: TenantRequestContext,
   ) {
     accessGrantService.expireGrant(id)
   }
@@ -148,8 +149,9 @@ class AdminUserController(
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List permission actions")
-  suspend fun listActions(tenantContext: TenantRequestContext): List<ActionResponse> =
-    permissionActionService.listActions().map { ActionResponse.from(it) }
+  suspend fun listActions(
+    @Suppress("UnusedParameter") tenantContext: TenantRequestContext
+  ): List<ActionResponse> = permissionActionService.listActions().map { ActionResponse.from(it) }
 
   @PostMapping("/actions")
   @TenantScoped
@@ -158,7 +160,7 @@ class AdminUserController(
   @Operation(summary = "Ensure permission action")
   suspend fun ensureAction(
     @Valid @RequestBody request: EnsureActionRequest,
-    tenantContext: TenantRequestContext,
+    @Suppress("UnusedParameter") tenantContext: TenantRequestContext,
   ): ActionResponse =
     ActionResponse.from(permissionActionService.ensureAction(request.code, request.description))
 }

@@ -6,6 +6,7 @@ import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.common.summary.UserSummary
 import ink.doa.workbench.core.identity.UserRepository
+import ink.doa.workbench.core.sprint.CreateSprintCloseOperationCommand
 import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
 import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
 import ink.doa.workbench.core.sprint.SprintRepository
@@ -36,7 +37,6 @@ data class SprintView(
   val updatedAt: OffsetDateTime,
 )
 
-@Suppress("LongParameterList", "TooManyFunctions")
 @Service
 class SprintService(
   private val sprints: SprintRepository,
@@ -53,7 +53,7 @@ class SprintService(
   ): List<SprintView> = sprints.list(tenantId, projectId, status).map { assemble(it) }
 
   suspend fun get(tenantId: UUID, projectId: UUID, sprintApiId: String): SprintView =
-    assemble(requireSprint(tenantId, projectId, sprintApiId))
+    assemble(sprints.requireSprint(tenantId, projectId, sprintApiId))
 
   suspend fun create(command: CreateSprintCommand): SprintView {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
@@ -61,27 +61,10 @@ class SprintService(
     return assemble(sprints.create(command))
   }
 
-  @Suppress("ThrowsCount")
   suspend fun update(command: UpdateSprintCommand): SprintView {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
-    val existing = requireSprint(command.tenantId, command.projectId, command.sprintApiId)
-    if (existing.status == SprintStatus.CLOSING) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSING)
-    }
-    when (existing.status) {
-      SprintStatus.CLOSED -> {
-        if (command.name != null || command.startAt != null || command.endAt != null) {
-          throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSED_IMMUTABLE)
-        }
-      }
-      SprintStatus.ACTIVE -> {
-        if (command.startAt != null) {
-          throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSED_IMMUTABLE)
-        }
-      }
-      SprintStatus.CLOSING -> throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSING)
-      SprintStatus.PLANNED -> Unit
-    }
+    val existing = sprints.requireSprint(command.tenantId, command.projectId, command.sprintApiId)
+    validateUpdate(existing, command)
     val nextStartAt = command.startAt ?: existing.startAt
     val nextEndAt = command.endAt ?: existing.endAt
     validateDateRange(nextStartAt, nextEndAt)
@@ -90,7 +73,7 @@ class SprintService(
 
   suspend fun start(command: StartSprintCommand): SprintView {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
-    val existing = requireSprint(command.tenantId, command.projectId, command.sprintApiId)
+    val existing = sprints.requireSprint(command.tenantId, command.projectId, command.sprintApiId)
     if (existing.status != SprintStatus.PLANNED) {
       throw InvalidRequestException(WorkbenchErrorCode.SPRINT_STATUS_INVALID_TRANSITION)
     }
@@ -116,10 +99,9 @@ class SprintService(
     )
   }
 
-  @Suppress("ThrowsCount")
   suspend fun close(command: CloseSprintCommand): SprintCloseOperationView {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
-    val existing = requireSprint(command.tenantId, command.projectId, command.sprintApiId)
+    val existing = sprints.requireSprint(command.tenantId, command.projectId, command.sprintApiId)
     command.idempotencyKey?.let { key ->
       closeOperations
         .findByIdempotencyKey(command.tenantId, command.projectId, existing.id, key)
@@ -127,47 +109,23 @@ class SprintService(
           return SprintCloseOperationView.from(it)
         }
     }
-    if (existing.status == SprintStatus.CLOSING) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT)
-    }
-    if (existing.status != SprintStatus.ACTIVE) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_STATUS_INVALID_TRANSITION)
-    }
-    val target =
-      command.targetSprintApiId?.let { targetApiId ->
-        sprints.findByApiId(command.tenantId, command.projectId, targetApiId)
-          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_SPRINT_NOT_FOUND)
-      }
-    if (
-      command.disposition ==
-        ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT && target == null
-    ) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_REQUIRED)
-    }
-    if (
-      command.disposition !=
-        ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT && target != null
-    ) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_INVALID)
-    }
-    if (target?.status == SprintStatus.CLOSED || target?.status == SprintStatus.CLOSING) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_INVALID)
-    }
-    if (target?.id == existing.id) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_INVALID)
-    }
+    validateCloseable(existing)
+    val target = sprints.resolveCloseTarget(command)
+    validateCloseTarget(command, existing, target)
     val operation =
       closeOperations.createAndMarkClosing(
-        tenantId = command.tenantId,
-        projectId = command.projectId,
-        sprintId = existing.id,
-        sprintApiId = existing.apiId.value,
-        targetSprintId = target?.id,
-        targetSprintApiId = target?.apiId?.value,
-        disposition = command.disposition,
-        requestedBy = command.actorUserId,
-        idempotencyKey = command.idempotencyKey,
-        createdAt = OffsetDateTime.now(clock),
+        CreateSprintCloseOperationCommand(
+          tenantId = command.tenantId,
+          projectId = command.projectId,
+          sprintId = existing.id,
+          sprintApiId = existing.apiId.value,
+          targetSprintId = target?.id,
+          targetSprintApiId = target?.apiId?.value,
+          disposition = command.disposition,
+          requestedBy = command.actorUserId,
+          idempotencyKey = command.idempotencyKey,
+          createdAt = OffsetDateTime.now(clock),
+        )
       )
     val totalItems =
       workItems.countUnfinishedBySprint(command.tenantId, command.projectId, existing.id).toInt()
@@ -225,7 +183,7 @@ class SprintService(
 
   suspend fun archive(command: ArchiveSprintCommand): SprintView {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
-    val sprint = requireSprint(command.tenantId, command.projectId, command.sprintApiId)
+    val sprint = sprints.requireSprint(command.tenantId, command.projectId, command.sprintApiId)
     if (sprint.status == SprintStatus.CLOSING) {
       throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSING)
     }
@@ -234,20 +192,12 @@ class SprintService(
 
   suspend fun delete(command: DeleteSprintCommand) {
     projectOperationalGuard.ensureWritable(command.tenantId, command.projectId)
-    val sprint = requireSprint(command.tenantId, command.projectId, command.sprintApiId)
+    val sprint = sprints.requireSprint(command.tenantId, command.projectId, command.sprintApiId)
     if (sprint.status == SprintStatus.CLOSING) {
       throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSING)
     }
     sprints.softDelete(command)
   }
-
-  private suspend fun requireSprint(
-    tenantId: UUID,
-    projectId: UUID,
-    sprintApiId: String,
-  ): SprintRecord =
-    sprints.findByApiId(tenantId, projectId, sprintApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_SPRINT_NOT_FOUND)
 
   private suspend fun assemble(record: SprintRecord): SprintView {
     val creator =
@@ -267,11 +217,67 @@ class SprintService(
       updatedAt = record.updatedAt,
     )
   }
+}
 
-  private fun validateDateRange(startAt: OffsetDateTime?, endAt: OffsetDateTime?) {
-    if (startAt != null && endAt != null && endAt.isBefore(startAt)) {
-      throw InvalidRequestException(WorkbenchErrorCode.SPRINT_DATE_RANGE_INVALID)
-    }
+private suspend fun SprintRepository.requireSprint(
+  tenantId: UUID,
+  projectId: UUID,
+  sprintApiId: String,
+): SprintRecord =
+  findByApiId(tenantId, projectId, sprintApiId)
+    ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_SPRINT_NOT_FOUND)
+
+private fun validateDateRange(startAt: OffsetDateTime?, endAt: OffsetDateTime?) {
+  if (startAt != null && endAt != null && endAt.isBefore(startAt)) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_DATE_RANGE_INVALID)
+  }
+}
+
+private fun validateUpdate(existing: SprintRecord, command: UpdateSprintCommand) {
+  if (existing.status == SprintStatus.CLOSING) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSING)
+  }
+  val changesClosedFields = command.name != null || command.startAt != null || command.endAt != null
+  val changesLockedStart = existing.status == SprintStatus.ACTIVE && command.startAt != null
+  if ((existing.status == SprintStatus.CLOSED && changesClosedFields) || changesLockedStart) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSED_IMMUTABLE)
+  }
+}
+
+private fun validateCloseable(existing: SprintRecord) {
+  if (existing.status == SprintStatus.CLOSING) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT)
+  }
+  if (existing.status != SprintStatus.ACTIVE) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_STATUS_INVALID_TRANSITION)
+  }
+}
+
+private suspend fun SprintRepository.resolveCloseTarget(
+  command: CloseSprintCommand
+): SprintRecord? =
+  command.targetSprintApiId?.let { targetApiId ->
+    findByApiId(command.tenantId, command.projectId, targetApiId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_SPRINT_NOT_FOUND)
+  }
+
+private fun validateCloseTarget(
+  command: CloseSprintCommand,
+  existing: SprintRecord,
+  target: SprintRecord?,
+) {
+  val expectsTarget =
+    command.disposition == ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT
+  if (expectsTarget && target == null) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_REQUIRED)
+  }
+  val targetInvalid =
+    (!expectsTarget && target != null) ||
+      target?.status == SprintStatus.CLOSED ||
+      target?.status == SprintStatus.CLOSING ||
+      target?.id == existing.id
+  if (targetInvalid) {
+    throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_INVALID)
   }
 }
 

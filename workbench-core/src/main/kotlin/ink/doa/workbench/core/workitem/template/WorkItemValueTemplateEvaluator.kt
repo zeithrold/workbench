@@ -25,7 +25,6 @@ data class WorkItemValueTemplateContext(
   val currentProperties: Map<String, JsonElement> = emptyMap(),
 )
 
-@Suppress("TooManyFunctions")
 class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC()) {
   fun evaluate(
     template: WorkItemValueTemplate,
@@ -188,15 +187,15 @@ class WorkItemValueTemplateEvaluator(private val clock: Clock = Clock.systemUTC(
     }
   }
 
-  private fun TemplateValueExpression.RelativeDate.signedAmount(): Long =
-    when (direction) {
-      TemplateDateDirection.PAST -> -amount.toLong()
-      TemplateDateDirection.FUTURE -> amount.toLong()
-    }
-
   private fun today(): LocalDate = LocalDate.now(clock)
-
-  private fun LocalDate.startOfWeek(): LocalDate = minusDays((dayOfWeek.value - 1).toLong())
-
-  private fun LocalDate.endOfWeek(): LocalDate = plusDays((7 - dayOfWeek.value).toLong())
 }
+
+private fun TemplateValueExpression.RelativeDate.signedAmount(): Long =
+  when (direction) {
+    TemplateDateDirection.PAST -> -amount.toLong()
+    TemplateDateDirection.FUTURE -> amount.toLong()
+  }
+
+private fun LocalDate.startOfWeek(): LocalDate = minusDays((dayOfWeek.value - 1).toLong())
+
+private fun LocalDate.endOfWeek(): LocalDate = plusDays((7 - dayOfWeek.value).toLong())

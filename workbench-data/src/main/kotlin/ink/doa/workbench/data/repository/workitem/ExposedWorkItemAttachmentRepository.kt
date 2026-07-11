@@ -1,5 +1,3 @@
-@file:Suppress("TooManyFunctions")
-
 package ink.doa.workbench.data.repository.workitem
 
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException

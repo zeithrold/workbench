@@ -46,7 +46,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-@Suppress("TooManyFunctions")
 class ExposedPermissionGroupRepository(private val database: Database) : PermissionGroupRepository {
   override suspend fun create(command: CreatePermissionGroupCommand): PermissionGroupRecord =
     suspendTransaction(db = database) {

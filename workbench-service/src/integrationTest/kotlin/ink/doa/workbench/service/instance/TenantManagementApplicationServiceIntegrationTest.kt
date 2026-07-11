@@ -52,10 +52,13 @@ class TenantManagementApplicationServiceIntegrationTest :
           dependencies =
             TenantManagementDependencies(
               tenants = TenantService(tenants),
-              tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
-              userLookupService = UserLookupService(deps.users),
-              adminUserService = mockk(relaxed = true),
-              invitationService = mockk(relaxed = true),
+              identity =
+                TenantIdentityDependencies(
+                  tenantLoginMethods = TenantLoginMethodService(loginMethods, tenantLoginSettings),
+                  userLookupService = UserLookupService(deps.users),
+                  adminUserService = mockk(relaxed = true),
+                  invitationService = mockk(relaxed = true),
+                ),
               defaultWorkItemTemplate = mockk(relaxed = true),
               clock = clock,
             )

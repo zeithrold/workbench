@@ -18,8 +18,10 @@ import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
 import java.time.OffsetDateTime
 import java.util.UUID
 
-@Suppress("TooManyFunctions")
-interface WorkItemCatalogRepository {
+interface WorkItemCatalogRepository :
+  IssueStatusRepository, PropertyDefinitionRepository, IssueTypeRepository
+
+interface IssueStatusRepository {
   suspend fun createStatus(command: CreateIssueStatusCommand): IssueStatusRecord
 
   suspend fun listStatuses(tenantId: UUID): List<IssueStatusRecord>
@@ -31,7 +33,9 @@ interface WorkItemCatalogRepository {
     apiIdOrCode: String,
     actorUserId: UUID,
   ): IssueStatusRecord
+}
 
+interface PropertyDefinitionRepository {
   suspend fun createProperty(command: CreatePropertyDefinitionCommand): PropertyDefinitionRecord
 
   suspend fun listProperties(tenantId: UUID): List<PropertyDefinitionRecord>
@@ -43,7 +47,9 @@ interface WorkItemCatalogRepository {
     apiIdOrCode: String,
     actorUserId: UUID,
   ): PropertyDefinitionRecord
+}
 
+interface IssueTypeRepository {
   suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord
 
   suspend fun listIssueTypes(tenantId: UUID, projectId: UUID? = null): List<IssueTypeRecord>

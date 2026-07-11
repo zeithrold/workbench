@@ -30,7 +30,6 @@ import org.springframework.stereotype.Service
 private const val PASSWORD_METHOD_CODE = "password"
 
 @Service
-@Suppress("TooManyFunctions")
 class InvitationService(
   private val identity: InvitationIdentitySupport,
   private val collaborators: InvitationCollaborators,
@@ -41,7 +40,7 @@ class InvitationService(
   suspend fun create(command: CreateManagedInvitationCommand): CreateInvitationResult {
     val normalizedEmail = normalizeSubject(command.email)
     val secret = collaborators.secretGenerator.generate()
-    val now = now()
+    val now = clock.now()
     val invitation =
       collaborators.invitations.create(
         CreateInvitationCommand(
@@ -125,12 +124,12 @@ class InvitationService(
           tenantId = tenant.id,
           userId = user.id,
           status = TenantMemberStatus.ACTIVE,
-          joinedAt = now(),
+          joinedAt = clock.now(),
           invitedBy = invitation.invitedBy,
         )
       )
     }
-    collaborators.invitations.consume(invitation.id, now())
+    collaborators.invitations.consume(invitation.id, clock.now())
     return InvitationAcceptView(
       type = InvitationType.TENANT_MEMBER,
       tenant = TenantSummary.from(tenant),
@@ -157,7 +156,7 @@ class InvitationService(
           status = TenantStatus.ACTIVE,
         )
       )
-    collaborators.invitations.consume(invitation.id, now())
+    collaborators.invitations.consume(invitation.id, clock.now())
     return InvitationAcceptView(
       type = InvitationType.TENANT_ADMIN,
       tenant = TenantSummary.from(activatedTenant),
@@ -180,7 +179,7 @@ class InvitationService(
     command: AcceptInvitationCommand,
   ): UserRecord {
     val passwordMethod =
-      identity.loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
+      identity.login.loginMethods.findLoginMethodByCode(PASSWORD_METHOD_CODE)
         ?: throw ResourceNotFoundException(
           WorkbenchErrorCode.RESOURCE_PASSWORD_LOGIN_METHOD_NOT_FOUND
         )
@@ -192,7 +191,7 @@ class InvitationService(
         )
       )
     val loginAccount =
-      identity.loginAccounts.createLoginAccount(
+      identity.login.loginAccounts.createLoginAccount(
         CreateLoginAccountCommand(
           loginMethodId = passwordMethod.id,
           subject = invitation.email,
@@ -200,14 +199,14 @@ class InvitationService(
           displayName = command.displayName,
         )
       )
-    identity.loginAccounts.upsertParameter(
+    identity.login.loginAccounts.upsertParameter(
       UpsertLoginAccountParameterCommand(
         loginAccountId = loginAccount.id,
         parameterKey = LoginAccountParameterKey.PasswordHash,
-        parameterValue = identity.passwordHasher.hash(command.password),
+        parameterValue = identity.login.passwordHasher.hash(command.password),
       )
     )
-    identity.userLoginAccounts.linkUser(
+    identity.login.userLoginAccounts.linkUser(
       LinkUserLoginAccountCommand(
         userId = user.id,
         loginAccountId = loginAccount.id,
@@ -218,11 +217,13 @@ class InvitationService(
   }
 
   private suspend fun requireActiveInvitation(token: String) =
-    collaborators.invitations.findActiveByHash(collaborators.credentialHasher.hash(token), now())
-      ?: throw InvalidRequestException(WorkbenchErrorCode.INVITATION_INVALID_OR_EXPIRED)
-
-  private fun now(): OffsetDateTime = OffsetDateTime.now(clock)
+    collaborators.invitations.findActiveByHash(
+      collaborators.credentialHasher.hash(token),
+      clock.now(),
+    ) ?: throw InvalidRequestException(WorkbenchErrorCode.INVITATION_INVALID_OR_EXPIRED)
 }
+
+private fun Clock.now(): OffsetDateTime = OffsetDateTime.now(this)
 
 data class CreateInvitationResult(
   val id: String,

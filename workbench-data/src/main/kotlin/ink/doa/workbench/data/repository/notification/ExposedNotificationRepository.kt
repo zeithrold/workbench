@@ -30,7 +30,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-@Suppress("TooManyFunctions")
 class ExposedNotificationRepository(private val database: Database) :
   NotificationStore, WorkItemNotificationEventStore {
   override suspend fun processIfUnprocessed(

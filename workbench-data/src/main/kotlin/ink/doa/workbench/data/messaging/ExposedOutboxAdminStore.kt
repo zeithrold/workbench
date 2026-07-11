@@ -3,6 +3,7 @@ package ink.doa.workbench.data.messaging
 import ink.doa.workbench.core.messaging.OutboxMessageQuery
 import ink.doa.workbench.core.messaging.OutboxMessageRecord
 import ink.doa.workbench.core.port.messaging.OutboxAdminStore
+import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -29,7 +30,6 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
     val where = if (conditions.isEmpty()) "" else "WHERE ${conditions.joinToString(" AND ")}"
     params += query.limit.coerceIn(1, 100)
     params += query.offset.coerceAtLeast(0)
-    @Suppress("SpreadOperator")
     return jdbc.query(
       """
       SELECT id, event_id, event_type, topic, partition_key, tenant_id, status,
@@ -40,8 +40,8 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
       LIMIT ? OFFSET ?
       """
         .trimIndent(),
+      params.toPreparedStatementSetter(),
       { rs, _ -> rs.toRecord() },
-      *params.toTypedArray(),
     )
   }
 

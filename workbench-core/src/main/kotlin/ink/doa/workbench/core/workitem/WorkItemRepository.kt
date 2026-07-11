@@ -44,10 +44,30 @@ data class ReassignSprintBatchResult(
   val changedItems: List<WorkItemRecord> = emptyList(),
 )
 
-@Suppress("TooManyFunctions")
-interface WorkItemRepository {
+interface WorkItemRepository : WorkItemMutationRepository, WorkItemReadRepository
+
+interface WorkItemMutationRepository {
   suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult
 
+  suspend fun update(
+    command: UpdateWorkItemCommand,
+    propertyValues: List<WorkItemPropertyValue>,
+  ): WorkItemMutationResult
+
+  suspend fun transition(
+    command: TransitionPersistenceCommand,
+    fromStatusId: UUID,
+    toStatusId: UUID,
+    transitionId: UUID,
+    propertyValues: List<WorkItemPropertyValue>,
+  ): WorkItemMutationResult
+
+  suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult
+
+  suspend fun reassignSprintBatch(command: ReassignSprintBatchCommand): ReassignSprintBatchResult
+}
+
+interface WorkItemReadRepository {
   suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord?
 
   suspend fun findByApiId(
@@ -69,23 +89,6 @@ interface WorkItemRepository {
     tenantId: UUID,
     issueId: UUID,
   ): Map<String, JsonElement>
-
-  suspend fun update(
-    command: UpdateWorkItemCommand,
-    propertyValues: List<WorkItemPropertyValue>,
-  ): WorkItemMutationResult
-
-  suspend fun transition(
-    command: TransitionPersistenceCommand,
-    fromStatusId: UUID,
-    toStatusId: UUID,
-    transitionId: UUID,
-    propertyValues: List<WorkItemPropertyValue>,
-  ): WorkItemMutationResult
-
-  suspend fun softDelete(command: DeleteWorkItemCommand): WorkItemMutationResult
-
-  suspend fun reassignSprintBatch(command: ReassignSprintBatchCommand): ReassignSprintBatchResult
 
   suspend fun countChildrenNotInStatusGroups(
     tenantId: UUID,

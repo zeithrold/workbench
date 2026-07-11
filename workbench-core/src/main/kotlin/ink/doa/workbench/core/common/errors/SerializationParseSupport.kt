@@ -1,5 +1,3 @@
-@file:Suppress("SwallowedException")
-
 package ink.doa.workbench.core.common.errors
 
 import kotlinx.serialization.SerializationException

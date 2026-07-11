@@ -1,5 +1,3 @@
-@file:Suppress("RedundantSuspendModifier")
-
 package ink.doa.workbench.web.api
 
 import ink.doa.workbench.core.common.context.InstanceRequestContext

@@ -3,3 +3,6 @@ complexity:
     active: false
   LargeClass:
     active: false
+coroutines:
+  RedundantSuspendModifier:
+    active: false

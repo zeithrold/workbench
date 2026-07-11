@@ -16,7 +16,6 @@ class EmailNotificationRelay(
 ) {
   private val logger = LoggerFactory.getLogger(javaClass)
 
-  @Suppress("TooGenericExceptionCaught")
   @Scheduled(fixedDelayString = "\${workbench.notification.email-relay-delay-ms:5000}")
   fun relay() {
     val now = OffsetDateTime.now(ZoneOffset.UTC)
@@ -24,7 +23,9 @@ class EmailNotificationRelay(
       try {
         sender.send(EmailMessage(delivery.recipient, delivery.subject, delivery.body))
         repository.markSent(delivery.deliveryId, OffsetDateTime.now(ZoneOffset.UTC))
-      } catch (error: Exception) {
+      } catch (
+        // Relay boundary: every sender failure must be persisted for retry or dead-lettering.
+        @Suppress("TooGenericExceptionCaught") error: Exception) {
         val attempts = delivery.attempts + 1
         repository.markFailed(
           delivery.deliveryId,

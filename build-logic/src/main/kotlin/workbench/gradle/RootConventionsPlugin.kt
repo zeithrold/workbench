@@ -81,11 +81,26 @@ class RootConventionsPlugin : Plugin<Project> {
                     }
                 }
             }
+        val detektSuppressionCheck =
+            tasks.register("detektSuppressionCheck", DetektSuppressionCheckTask::class.java) {
+                rootDirectory.set(layout.projectDirectory)
+                (backendProjects + project(":workbench-test-support")).forEach { module ->
+                    listOf("src/main/kotlin", "src/test/kotlin", "src/integrationTest/kotlin", "src/testFixtures/kotlin")
+                        .forEach { sourceRoot ->
+                            kotlinSources.from(
+                                module.fileTree(sourceRoot) {
+                                    include("**/*.kt")
+                                }
+                            )
+                        }
+                }
+            }
 
         tasks.register("quickCheck") {
             group = "verification"
             description = "Fast local verification: Spotless, Detekt, and unit tests."
             dependsOn(testArchitectureCheck)
+            dependsOn(detektSuppressionCheck)
             dependsOn(backendQuickTasks)
             dependsOn(":workbench-test-support:quickCheck")
             dependsOn(":workbench-frontend:quickCheck")
@@ -93,6 +108,7 @@ class RootConventionsPlugin : Plugin<Project> {
 
         tasks.named("check") {
             dependsOn(testArchitectureCheck)
+            dependsOn(detektSuppressionCheck)
             dependsOn(subprojects.map { subproject -> subproject.tasks.named("check") })
             dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
         }

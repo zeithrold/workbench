@@ -4,6 +4,7 @@ import ink.doa.workbench.core.common.errors.InvalidRequestException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.workitem.query.QueryField
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate
 
@@ -36,13 +37,11 @@ class JdbcPostgresWorkItemFieldResolver(
       .singleOrNull()
   }
 
-  // Spread is isolated here so field resolution stays free of detekt SpreadOperator noise.
-  @Suppress("SpreadOperator")
   private fun <T> queryWithParams(
     sql: String,
     params: List<Any?>,
     rowMapper: (java.sql.ResultSet, Int) -> T,
-  ): List<T> = jdbcTemplate.query(sql, rowMapper, *params.toTypedArray())
+  ): List<T> = jdbcTemplate.query(sql, params.toPreparedStatementSetter(), rowMapper)
 
   private fun propertyLookupSql(property: QueryField.Property): String {
     val identitySql =

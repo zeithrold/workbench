@@ -74,7 +74,6 @@ class ProjectManagementApplicationService(private val dependencies: ProjectManag
   suspend fun unarchive(tenantId: UUID, projectId: UUID): ProjectView =
     toView(projects.unarchive(tenantId, projectId))
 
-  @Suppress("ThrowsCount")
   suspend fun requestDestroy(
     tenantId: UUID,
     tenantPublicId: PublicId,

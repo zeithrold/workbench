@@ -5,9 +5,12 @@ import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
 import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
 import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.core.workitem.model.IssueStatusRecord
 import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.core.workitem.model.IssueTypeRecord
 import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.core.workitem.model.WorkflowRecord
 import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -16,83 +19,141 @@ import org.springframework.stereotype.Service
 private const val TASK_TYPE_CODE = "task"
 private const val DEFAULT_WORKFLOW_CODE = "default-task"
 
+private data class DefaultStatuses(
+  val todo: IssueStatusRecord,
+  val inProgress: IssueStatusRecord,
+  val done: IssueStatusRecord,
+)
+
+private data class DefaultStatusSpec(
+  val code: String,
+  val name: String,
+  val group: WorkItemStatusGroup,
+  val rank: Int,
+  val terminal: Boolean,
+)
+
+private data class DefaultTransitionSpec(
+  val name: String,
+  val fromStatusId: String,
+  val toStatusId: String,
+  val rank: Int,
+)
+
 @Service
 class TenantDefaultWorkItemTemplateService(
   private val catalog: WorkItemCatalogService,
   private val workflows: WorkflowConfigurationService,
   private val configs: IssueTypeConfigService,
 ) {
-  @Suppress("ComplexCondition", "LongMethod")
   suspend fun ensureProvisioned(tenantId: UUID, createdBy: UUID?) {
-    val todo = ensureStatus(tenantId, "todo", "To Do", WorkItemStatusGroup.TODO, 100, false)
-    val inProgress =
-      ensureStatus(
-        tenantId,
-        "in_progress",
-        "In Progress",
-        WorkItemStatusGroup.IN_PROGRESS,
-        200,
-        false,
+    val statuses = ensureStatuses(tenantId)
+    val task = ensureTaskType(tenantId)
+    val workflow = ensureWorkflow(tenantId, createdBy)
+    ensureTransitions(tenantId, workflow, statuses)
+    ensureConfig(tenantId, createdBy, task, workflow, statuses)
+    if (workflow.publishedAt == null) workflows.publishWorkflow(tenantId, workflow.apiId.value)
+  }
+
+  private suspend fun ensureStatuses(tenantId: UUID) =
+    DefaultStatuses(
+      todo =
+        ensureStatus(
+          tenantId,
+          DefaultStatusSpec("todo", "To Do", WorkItemStatusGroup.TODO, 100, false),
+        ),
+      inProgress =
+        ensureStatus(
+          tenantId,
+          DefaultStatusSpec(
+            "in_progress",
+            "In Progress",
+            WorkItemStatusGroup.IN_PROGRESS,
+            200,
+            false,
+          ),
+        ),
+      done =
+        ensureStatus(
+          tenantId,
+          DefaultStatusSpec("done", "Done", WorkItemStatusGroup.DONE, 300, true),
+        ),
+    )
+
+  private suspend fun ensureTaskType(tenantId: UUID): IssueTypeRecord =
+    catalog.listIssueTypes(tenantId).firstOrNull { it.code == TASK_TYPE_CODE }
+      ?: catalog.createIssueType(
+        CreateIssueTypeCommand(
+          tenantId = tenantId,
+          scope = WorkItemConfigScope.TENANT,
+          code = TASK_TYPE_CODE,
+          name = "Task",
+          description = "Default work item type.",
+        )
       )
-    val done = ensureStatus(tenantId, "done", "Done", WorkItemStatusGroup.DONE, 300, true)
-    val task =
-      catalog.listIssueTypes(tenantId).firstOrNull { it.code == TASK_TYPE_CODE }
-        ?: catalog.createIssueType(
-          CreateIssueTypeCommand(
-            tenantId = tenantId,
-            scope = WorkItemConfigScope.TENANT,
-            code = TASK_TYPE_CODE,
-            name = "Task",
-            description = "Default work item type.",
-          )
+
+  private suspend fun ensureWorkflow(tenantId: UUID, createdBy: UUID?): WorkflowRecord =
+    workflows.listWorkflows(tenantId).firstOrNull { it.code == DEFAULT_WORKFLOW_CODE }
+      ?: workflows.createWorkflow(
+        CreateWorkflowCommand(
+          tenantId = tenantId,
+          code = DEFAULT_WORKFLOW_CODE,
+          name = "Default Task Workflow",
+          description = "Default workflow for Task work items.",
+          createdBy = createdBy,
         )
-    val workflow =
-      workflows.listWorkflows(tenantId).firstOrNull { it.code == DEFAULT_WORKFLOW_CODE }
-        ?: workflows.createWorkflow(
-          CreateWorkflowCommand(
-            tenantId = tenantId,
-            code = DEFAULT_WORKFLOW_CODE,
-            name = "Default Task Workflow",
-            description = "Default workflow for Task work items.",
-            createdBy = createdBy,
-          )
-        )
+      )
+
+  private suspend fun ensureTransitions(
+    tenantId: UUID,
+    workflow: WorkflowRecord,
+    statuses: DefaultStatuses,
+  ) {
     val transitions = workflows.listTransitions(tenantId, workflow.apiId.value)
     ensureTransition(
       tenantId,
       workflow.apiId.value,
       transitions,
-      "Start progress",
-      todo.apiId.value,
-      inProgress.apiId.value,
-      100,
+      DefaultTransitionSpec(
+        "Start progress",
+        statuses.todo.apiId.value,
+        statuses.inProgress.apiId.value,
+        100,
+      ),
     )
     ensureTransition(
       tenantId,
       workflow.apiId.value,
       transitions,
-      "Complete",
-      inProgress.apiId.value,
-      done.apiId.value,
-      200,
+      DefaultTransitionSpec(
+        "Complete",
+        statuses.inProgress.apiId.value,
+        statuses.done.apiId.value,
+        200,
+      ),
     )
     ensureTransition(
       tenantId,
       workflow.apiId.value,
       transitions,
-      "Reopen",
-      done.apiId.value,
-      inProgress.apiId.value,
-      300,
+      DefaultTransitionSpec(
+        "Reopen",
+        statuses.done.apiId.value,
+        statuses.inProgress.apiId.value,
+        300,
+      ),
     )
-    if (
-      configs.list(tenantId).none {
-        it.config.scope == WorkItemConfigScope.TENANT &&
-          it.config.issueTypeApiId == task.apiId &&
-          it.config.isActive &&
-          it.config.validTo == null
-      }
-    ) {
+  }
+
+  private suspend fun ensureConfig(
+    tenantId: UUID,
+    createdBy: UUID?,
+    task: IssueTypeRecord,
+    workflow: WorkflowRecord,
+    statuses: DefaultStatuses,
+  ) {
+    val activeConfigExists = configs.list(tenantId).any { it.config.isActiveFor(task) }
+    if (!activeConfigExists) {
       configs.create(
         CreateIssueTypeConfigCommand(
           tenantId = tenantId,
@@ -108,48 +169,60 @@ class TenantDefaultWorkItemTemplateService(
               .jsonObject,
           statuses =
             listOf(
-              IssueTypeConfigStatusInput(todo.apiId.value, isInitial = true, rank = 100),
-              IssueTypeConfigStatusInput(inProgress.apiId.value, rank = 200),
-              IssueTypeConfigStatusInput(done.apiId.value, isTerminal = true, rank = 300),
+              IssueTypeConfigStatusInput(statuses.todo.apiId.value, isInitial = true, rank = 100),
+              IssueTypeConfigStatusInput(statuses.inProgress.apiId.value, rank = 200),
+              IssueTypeConfigStatusInput(statuses.done.apiId.value, isTerminal = true, rank = 300),
             ),
         )
       )
     }
-    if (workflow.publishedAt == null) workflows.publishWorkflow(tenantId, workflow.apiId.value)
   }
 
-  @Suppress("LongParameterList")
   private suspend fun ensureStatus(
     tenantId: UUID,
-    code: String,
-    name: String,
-    group: WorkItemStatusGroup,
-    rank: Int,
-    terminal: Boolean,
+    spec: DefaultStatusSpec,
   ) =
-    catalog.listStatuses(tenantId).firstOrNull { it.code == code }
+    catalog.listStatuses(tenantId).firstOrNull { it.code == spec.code }
       ?: catalog.createStatus(
-        CreateIssueStatusCommand(tenantId, code, name, group, rank, isTerminal = terminal)
+        CreateIssueStatusCommand(
+          tenantId,
+          spec.code,
+          spec.name,
+          spec.group,
+          spec.rank,
+          isTerminal = spec.terminal,
+        )
       )
 
-  @Suppress("ComplexCondition", "LongParameterList")
   private suspend fun ensureTransition(
     tenantId: UUID,
     workflowId: String,
     existing: List<ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord>,
-    name: String,
-    fromStatusId: String,
-    toStatusId: String,
-    rank: Int,
+    spec: DefaultTransitionSpec,
   ) {
-    if (
-      existing.any {
-        it.fromStatusApiId?.value == fromStatusId && it.toStatusApiId?.value == toStatusId
-      }
-    )
-      return
+    if (existing.any { it.connects(spec.fromStatusId, spec.toStatusId) }) return
     workflows.createTransition(
-      CreateWorkflowTransitionCommand(tenantId, workflowId, name, fromStatusId, toStatusId, rank)
+      CreateWorkflowTransitionCommand(
+        tenantId,
+        workflowId,
+        spec.name,
+        spec.fromStatusId,
+        spec.toStatusId,
+        spec.rank,
+      )
     )
   }
+
+  private fun ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord.connects(
+    fromStatusId: String,
+    toStatusId: String,
+  ): Boolean = fromStatusApiId?.value == fromStatusId && toStatusApiId?.value == toStatusId
+
+  private fun ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord.isActiveFor(
+    task: IssueTypeRecord
+  ): Boolean =
+    scope == WorkItemConfigScope.TENANT &&
+      issueTypeApiId == task.apiId &&
+      isActive &&
+      validTo == null
 }

@@ -16,7 +16,8 @@ complexity:
     allowedFunctionsPerClass: 11
     ignoreDeprecated: true
     ignorePrivate: false
-    ignoreOverridden: false
+    # Port declarations are segregated below the limit; adapters may implement every port method.
+    ignoreOverridden: true
   LongMethod:
     active: true
     excludes:

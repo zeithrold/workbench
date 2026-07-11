@@ -7,6 +7,7 @@ import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
 import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
 import ink.doa.workbench.core.workitem.query.WorkItemGroupLabelCode
 import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import ink.doa.workbench.data.persistence.postgres.workitem.query.JdbcPostgresWorkItemFieldResolver
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate
@@ -65,25 +66,25 @@ class WorkItemGroupLabelResolver(private val jdbcTemplate: JdbcTemplate) {
         "status" ->
           lookupName(
             "SELECT name FROM issue_statuses WHERE tenant_id = ? AND api_id = ?",
-            tenantId,
-            value,
+            listOf(tenantId, value),
           )
         "priority" ->
           lookupName(
             "SELECT name FROM priorities WHERE tenant_id = ? AND api_id = ?",
-            tenantId,
-            value,
+            listOf(tenantId, value),
           )
         "issueType" ->
           lookupName(
             "SELECT name FROM issue_types WHERE tenant_id = ? AND api_id = ?",
-            tenantId,
-            value,
+            listOf(tenantId, value),
           )
         "assignee",
-        "reporter" -> lookupName("SELECT display_name FROM users WHERE api_id = ?", value)
+        "reporter" -> lookupName("SELECT display_name FROM users WHERE api_id = ?", listOf(value))
         "sprint" ->
-          lookupName("SELECT name FROM sprints WHERE tenant_id = ? AND api_id = ?", tenantId, value)
+          lookupName(
+            "SELECT name FROM sprints WHERE tenant_id = ? AND api_id = ?",
+            listOf(tenantId, value),
+          )
         "statusGroup" -> value.replace('_', ' ').replaceFirstChar { it.uppercase() }
         else -> value
       }
@@ -101,11 +102,10 @@ class WorkItemGroupLabelResolver(private val jdbcTemplate: JdbcTemplate) {
         WorkItemQueryFieldType.SINGLE_SELECT ->
           lookupName(
             "SELECT label FROM property_options WHERE tenant_id = ? AND api_id = ?",
-            tenantId,
-            value,
+            listOf(tenantId, value),
           )
         WorkItemQueryFieldType.USER ->
-          lookupName("SELECT display_name FROM users WHERE api_id = ?", value)
+          lookupName("SELECT display_name FROM users WHERE api_id = ?", listOf(value))
         else -> value
       }
     return WorkItemGroupLabel.Text(text)
@@ -122,8 +122,7 @@ class WorkItemGroupLabelResolver(private val jdbcTemplate: JdbcTemplate) {
 
   private fun lookupPropertyName(tenantId: UUID, field: QueryField.Property): String {
     val params = propertyLookupParams(tenantId, field)
-    @Suppress("SpreadOperator")
-    return lookupName(propertyNameSql(field), *params.toTypedArray())
+    return lookupName(propertyNameSql(field), params)
   }
 
   private fun propertyNameSql(field: QueryField.Property): String {
@@ -139,9 +138,9 @@ class WorkItemGroupLabelResolver(private val jdbcTemplate: JdbcTemplate) {
   private fun propertyLookupParams(tenantId: UUID, field: QueryField.Property): List<Any?> =
     listOf(tenantId) + listOfNotNull(field.apiId, field.code)
 
-  private fun lookupName(sql: String, vararg params: Any?): String {
-    @Suppress("SpreadOperator")
-    return jdbcTemplate.query(sql, { rs, _ -> rs.getString(1) }, *params).firstOrNull()
-      ?: params.last().toString()
+  private fun lookupName(sql: String, params: List<Any?>): String {
+    return jdbcTemplate
+      .query(sql, params.toPreparedStatementSetter()) { rs, _ -> rs.getString(1) }
+      .firstOrNull() ?: params.last().toString()
   }
 }

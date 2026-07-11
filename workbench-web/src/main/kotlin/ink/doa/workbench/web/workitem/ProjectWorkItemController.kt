@@ -45,7 +45,6 @@ import org.springframework.web.bind.annotation.RestController
 @Tag(name = "Project Work Items", description = "Project-scoped work item runtime APIs.")
 @SessionSecured
 @StandardErrorResponses
-@Suppress("TooManyFunctions")
 class ProjectWorkItemController(
   private val service: WorkItemService,
   private val transitionService: WorkItemTransitionService,
@@ -79,9 +78,11 @@ class ProjectWorkItemController(
     @Valid @RequestBody request: CreateWorkItemRequest,
     projectContext: ProjectRequestContext,
   ): ResponseEntity<WorkItemResponse> {
-    val result = service.create(request.toCommand(projectContext, actorUserId(projectContext)))
+    val result = service.create(request.toCommand(projectContext, projectContext.actorUserId()))
     val response = WorkItemResponse.from(result.workItem)
-    return ResponseEntity.created(location(projectContext.project.publicId.value, response.id))
+    return ResponseEntity.created(
+        workItemLocation(projectContext.project.publicId.value, response.id)
+      )
       .body(response)
   }
 
@@ -149,7 +150,7 @@ class ProjectWorkItemController(
         projectContext.tenant.id,
         projectContext.project.id,
         issueTypeId,
-        actorUserId(projectContext),
+        projectContext.actorUserId(),
       )
     )
 
@@ -180,7 +181,7 @@ class ProjectWorkItemController(
   ): WorkItemResponse =
     WorkItemResponse.from(
       service
-        .update(request.toCommand(projectContext, workItemId, actorUserId(projectContext)))
+        .update(request.toCommand(projectContext, workItemId, projectContext.actorUserId()))
         .workItem
     )
 
@@ -201,7 +202,7 @@ class ProjectWorkItemController(
         tenantId = projectContext.tenant.id,
         projectId = projectContext.project.id,
         workItemApiId = workItemId,
-        actorUserId = actorUserId(projectContext),
+        actorUserId = projectContext.actorUserId(),
         deleteReason = request?.deleteReason,
       )
     )
@@ -222,8 +223,8 @@ class ProjectWorkItemController(
         projectContext.tenant.id,
         projectContext.project.id,
         workItemId,
-        actorUserId(projectContext),
-        actorUserApiId(projectContext),
+        projectContext.actorUserId(),
+        projectContext.actorUserApiId(),
       )
       .map(WorkItemTransitionResponse::from)
 
@@ -244,21 +245,20 @@ class ProjectWorkItemController(
           request.toCommand(
             projectContext,
             workItemId,
-            actorUserId(projectContext),
-            actorUserApiId(projectContext),
+            projectContext.actorUserId(),
+            projectContext.actorUserApiId(),
           )
         )
         .workItem
     )
-
-  private fun actorUserId(projectContext: ProjectRequestContext) =
-    projectContext.actor?.id
-      ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
-
-  private fun actorUserApiId(projectContext: ProjectRequestContext) =
-    projectContext.actor?.publicId?.value
-      ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
-
-  private fun location(projectId: String, workItemId: String): URI =
-    URI.create("/api/projects/$projectId/work-items/$workItemId")
 }
+
+private fun ProjectRequestContext.actorUserId() =
+  actor?.id ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+
+private fun ProjectRequestContext.actorUserApiId() =
+  actor?.publicId?.value
+    ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
+
+private fun workItemLocation(projectId: String, workItemId: String): URI =
+  URI.create("/api/projects/$projectId/work-items/$workItemId")

@@ -21,6 +21,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.IssueHierarchyTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuePropertyValuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintChange
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
+import ink.doa.workbench.data.persistence.postgres.workitem.PreparedWorkItemInsert
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.StatusHistoryEntry
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemTransitionCompletion
@@ -44,11 +45,13 @@ import ink.doa.workbench.data.persistence.postgres.workitem.resolveUser
 import ink.doa.workbench.data.persistence.postgres.workitem.snapshot
 import ink.doa.workbench.data.persistence.postgres.workitem.toJsonValue
 import ink.doa.workbench.data.persistence.postgres.workitem.toWorkItemRecord
+import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -60,7 +63,24 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
-@Suppress("TooManyFunctions")
+private data class WorkItemUpdateState(
+  val issueId: UUID,
+  val before: WorkItemRecord,
+  val previousSprintId: UUID?,
+  val nextSprintId: UUID?,
+  val snapshot: JsonObject,
+  val changedAt: OffsetDateTime,
+)
+
+private data class ReassignmentEventInput(
+  val command: ReassignSprintBatchCommand,
+  val issueId: UUID,
+  val before: WorkItemRecord,
+  val after: WorkItemRecord,
+  val targetSprintApiId: String?,
+  val changedAt: OffsetDateTime,
+)
+
 @Repository
 class ExposedWorkItemRepository(
   private val database: Database,
@@ -68,7 +88,6 @@ class ExposedWorkItemRepository(
   private val eventCodec: WorkItemEventCodec,
   private val outboxAppender: WorkItemOutboxAppender,
 ) : WorkItemRepository {
-  @Suppress("LongMethod")
   override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
     suspendTransaction(db = database) {
       val prepared = prepareWorkItemInsert(command.command, command.propertyValues)
@@ -82,70 +101,80 @@ class ExposedWorkItemRepository(
           propertyValues = command.propertyValues,
         )
       )
-      command.parentIssueId?.let { parentIssueId ->
-        insertHierarchyLink(
-          InsertHierarchyLinkCommand(
-            tenantId = command.command.tenantId,
-            projectId = command.command.projectId,
-            parentIssueId = parentIssueId,
-            childIssueId = prepared.issueId,
-            actorUserId = command.command.actorUserId,
-            createdAt = prepared.now,
-          )
+      recordCreatedRelations(command, prepared)
+      createdResult(command, prepared).also { outboxAppender.append(it) }
+    }
+
+  private fun recordCreatedRelations(
+    command: CreateWorkItemPersistenceCommand,
+    prepared: PreparedWorkItemInsert,
+  ) {
+    command.parentIssueId?.let { parentIssueId ->
+      insertHierarchyLink(
+        InsertHierarchyLinkCommand(
+          tenantId = command.command.tenantId,
+          projectId = command.command.projectId,
+          parentIssueId = parentIssueId,
+          childIssueId = prepared.issueId,
+          actorUserId = command.command.actorUserId,
+          createdAt = prepared.now,
         )
-      }
-      insertStatusHistory(
-        StatusHistoryEntry(
+      )
+    }
+    insertStatusHistory(
+      StatusHistoryEntry(
+        tenantId = command.command.tenantId,
+        issueId = prepared.issueId,
+        fromStatusId = null,
+        toStatusId = command.initialStatusId,
+        transitionId = null,
+        actorUserId = command.command.actorUserId,
+        changedAt = prepared.now,
+      )
+    )
+    prepared.sprintId?.let { sprintId ->
+      recordIssueSprintChange(
+        IssueSprintChange(
           tenantId = command.command.tenantId,
           issueId = prepared.issueId,
-          fromStatusId = null,
-          toStatusId = command.initialStatusId,
-          transitionId = null,
+          previousSprintId = null,
+          nextSprintId = sprintId,
           actorUserId = command.command.actorUserId,
           changedAt = prepared.now,
         )
       )
-      prepared.sprintId?.let { sprintId ->
-        recordIssueSprintChange(
-          IssueSprintChange(
-            tenantId = command.command.tenantId,
-            issueId = prepared.issueId,
-            previousSprintId = null,
-            nextSprintId = sprintId,
-            actorUserId = command.command.actorUserId,
-            changedAt = prepared.now,
-          )
-        )
-      }
-      val insertedEvent =
-        appendWorkItemEvent(
-          eventCodec,
-          eventFactory.created(
-            context =
-              WorkItemActivityContext(
-                tenantId = command.command.tenantId,
-                projectId = command.command.projectId,
-                workItemId = prepared.issueId,
-                actorUserId = command.command.actorUserId,
-                occurredAt = prepared.now,
-              ),
-            issueTypeId = command.issueTypeId,
-            initialStatusId = command.initialStatusId,
-          ),
-        )
-      WorkItemMutationResult(
-          workItem =
-            requireWorkItem(
-              command.command.tenantId,
-              command.command.projectId,
-              prepared.issueApiId.value,
-            ),
-          eventType = "work_item.created",
-          streamEventId = insertedEvent.id,
-          streamEventApiId = insertedEvent.apiId,
-        )
-        .also { outboxAppender.append(it) }
     }
+  }
+
+  private fun createdResult(
+    command: CreateWorkItemPersistenceCommand,
+    prepared: PreparedWorkItemInsert,
+  ): WorkItemMutationResult {
+    val context =
+      WorkItemActivityContext(
+        tenantId = command.command.tenantId,
+        projectId = command.command.projectId,
+        workItemId = prepared.issueId,
+        actorUserId = command.command.actorUserId,
+        occurredAt = prepared.now,
+      )
+    val event =
+      appendWorkItemEvent(
+        eventCodec,
+        eventFactory.created(context, command.issueTypeId, command.initialStatusId),
+      )
+    return WorkItemMutationResult(
+      workItem =
+        requireWorkItem(
+          command.command.tenantId,
+          command.command.projectId,
+          prepared.issueApiId.value,
+        ),
+      eventType = "work_item.created",
+      streamEventId = event.id,
+      streamEventApiId = event.apiId,
+    )
+  }
 
   override suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord? =
     suspendTransaction(db = database) {
@@ -232,89 +261,111 @@ class ExposedWorkItemRepository(
         }
     }
 
-  @Suppress("LongMethod", "CyclomaticComplexMethod")
   override suspend fun update(
     command: UpdateWorkItemCommand,
     propertyValues: List<WorkItemPropertyValue>,
   ): WorkItemMutationResult =
     suspendTransaction(db = database) {
-      val issue = requireIssueRow(command.tenantId, command.projectId, command.workItemApiId)
-      val before = issue.toWorkItemRecord()
-      val issueId = issue[IssuesTable.id].toJavaUuid()
-      val previousSprintId = issue[IssuesTable.sprintId]?.toJavaUuid()
-      val current = issue[IssuesTable.propertiesSnapshot].asObject()
-      val snapshot = JsonObject(current + snapshot(propertyValues))
-      val now = now()
-      val sprintApiId = command.sprintApiId
-      val nextSprintId =
-        when {
-          command.clearSprint -> null
-          sprintApiId != null -> resolveSprint(command.tenantId, command.projectId, sprintApiId)
-          else -> previousSprintId
-        }
-      IssuesTable.update({
-        (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
-          (IssuesTable.id eq issue[IssuesTable.id])
-      }) {
-        command.title?.let { value -> it[IssuesTable.title] = value }
-        command.description?.let { value -> it[IssuesTable.description] = value }
-        command.descriptionPlainText?.let { value ->
-          it[IssuesTable.descriptionPlainText] = value
-        }
-        command.assigneeApiId?.let { value ->
-          it[IssuesTable.assigneeId] = resolveUser(value).toKotlinUuid()
-        }
-        command.priorityApiId?.let { value ->
-          it[IssuesTable.priorityId] = resolvePriority(command.tenantId, value).toKotlinUuid()
-        }
-        if (command.clearSprint || sprintApiId != null) {
-          it[IssuesTable.sprintId] = nextSprintId?.toKotlinUuid()
-        }
-        it[IssuesTable.propertiesSnapshot] = snapshot
-        it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
-        it[IssuesTable.updatedAt] = now
-      }
-      if (command.clearSprint || sprintApiId != null) {
-        recordIssueSprintChange(
-          IssueSprintChange(
-            tenantId = command.tenantId,
-            issueId = issueId,
-            previousSprintId = previousSprintId,
-            nextSprintId = nextSprintId,
-            actorUserId = command.actorUserId,
-            changedAt = now,
-          )
-        )
-      }
-      replacePropertyValues(command.tenantId, issueId, propertyValues, command.actorUserId, now)
+      val state = prepareUpdate(command, propertyValues)
+      persistUpdate(command, state)
+      recordUpdatedSprint(command, state)
+      replacePropertyValues(
+        command.tenantId,
+        state.issueId,
+        propertyValues,
+        command.actorUserId,
+        state.changedAt,
+      )
       val after = requireWorkItem(command.tenantId, command.projectId, command.workItemApiId)
-      val updateEvent =
-        eventFactory
-          .updated(
-            WorkItemUpdateActivityInput(
-              context =
-                WorkItemActivityContext(
-                  tenantId = command.tenantId,
-                  projectId = command.projectId,
-                  workItemId = issueId,
-                  actorUserId = command.actorUserId,
-                  occurredAt = now,
-                ),
-              before = before,
-              after = after,
-              command = command,
-              propertyValues = propertyValues,
-            )
-          )
-          ?.let { appendWorkItemEvent(eventCodec, it) }
-      WorkItemMutationResult(
-          workItem = after,
-          eventType = "work_item.updated",
-          streamEventId = updateEvent?.id,
-          streamEventApiId = updateEvent?.apiId,
-        )
-        .also { outboxAppender.append(it) }
+      updatedResult(command, propertyValues, state, after).also { outboxAppender.append(it) }
     }
+
+  private fun prepareUpdate(
+    command: UpdateWorkItemCommand,
+    propertyValues: List<WorkItemPropertyValue>,
+  ): WorkItemUpdateState {
+    val issue = requireIssueRow(command.tenantId, command.projectId, command.workItemApiId)
+    val previousSprintId = issue[IssuesTable.sprintId]?.toJavaUuid()
+    val sprintApiId = command.sprintApiId
+    val nextSprintId =
+      when {
+        command.clearSprint -> null
+        sprintApiId != null -> resolveSprint(command.tenantId, command.projectId, sprintApiId)
+        else -> previousSprintId
+      }
+    return WorkItemUpdateState(
+      issueId = issue[IssuesTable.id].toJavaUuid(),
+      before = issue.toWorkItemRecord(),
+      previousSprintId = previousSprintId,
+      nextSprintId = nextSprintId,
+      snapshot =
+        JsonObject(issue[IssuesTable.propertiesSnapshot].asObject() + snapshot(propertyValues)),
+      changedAt = now(),
+    )
+  }
+
+  private fun persistUpdate(command: UpdateWorkItemCommand, state: WorkItemUpdateState) {
+    IssuesTable.update({
+      (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
+        (IssuesTable.id eq state.issueId.toKotlinUuid())
+    }) {
+      command.title?.let { value -> it[IssuesTable.title] = value }
+      command.description?.let { value -> it[IssuesTable.description] = value }
+      command.descriptionPlainText?.let { value -> it[IssuesTable.descriptionPlainText] = value }
+      command.assigneeApiId?.let { value ->
+        it[IssuesTable.assigneeId] = resolveUser(value).toKotlinUuid()
+      }
+      command.priorityApiId?.let { value ->
+        it[IssuesTable.priorityId] = resolvePriority(command.tenantId, value).toKotlinUuid()
+      }
+      if (command.clearSprint || command.sprintApiId != null) {
+        it[IssuesTable.sprintId] = state.nextSprintId?.toKotlinUuid()
+      }
+      it[IssuesTable.propertiesSnapshot] = state.snapshot
+      it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
+      it[IssuesTable.updatedAt] = state.changedAt
+    }
+  }
+
+  private fun recordUpdatedSprint(command: UpdateWorkItemCommand, state: WorkItemUpdateState) {
+    if (!command.clearSprint && command.sprintApiId == null) return
+    recordIssueSprintChange(
+      IssueSprintChange(
+        tenantId = command.tenantId,
+        issueId = state.issueId,
+        previousSprintId = state.previousSprintId,
+        nextSprintId = state.nextSprintId,
+        actorUserId = command.actorUserId,
+        changedAt = state.changedAt,
+      )
+    )
+  }
+
+  private fun updatedResult(
+    command: UpdateWorkItemCommand,
+    propertyValues: List<WorkItemPropertyValue>,
+    state: WorkItemUpdateState,
+    after: WorkItemRecord,
+  ): WorkItemMutationResult {
+    val context =
+      WorkItemActivityContext(
+        tenantId = command.tenantId,
+        projectId = command.projectId,
+        workItemId = state.issueId,
+        actorUserId = command.actorUserId,
+        occurredAt = state.changedAt,
+      )
+    val event =
+      eventFactory
+        .updated(WorkItemUpdateActivityInput(context, state.before, after, command, propertyValues))
+        ?.let { appendWorkItemEvent(eventCodec, it) }
+    return WorkItemMutationResult(
+      workItem = after,
+      eventType = "work_item.updated",
+      streamEventId = event?.id,
+      streamEventApiId = event?.apiId,
+    )
+  }
 
   override suspend fun transition(
     command: TransitionPersistenceCommand,
@@ -399,105 +450,108 @@ class ExposedWorkItemRepository(
         .also { outboxAppender.append(it) }
     }
 
-  @Suppress("LongMethod")
   override suspend fun reassignSprintBatch(
     command: ReassignSprintBatchCommand
   ): ReassignSprintBatchResult =
     suspendTransaction(db = database) {
-      val sourceSprintApiId =
-        SprintsTable.selectAll()
-          .where { SprintsTable.id eq command.sourceSprintId.toKotlinUuid() }
-          .single()[SprintsTable.apiId]
-      val targetSprintApiId =
-        command.targetSprintId?.let { targetId ->
-          SprintsTable.selectAll()
-            .where { SprintsTable.id eq targetId.toKotlinUuid() }
-            .single()[SprintsTable.apiId]
+      val sourceSprintApiId = sprintApiId(command.sourceSprintId)
+      val targetSprintApiId = command.targetSprintId?.let(::sprintApiId)
+      val changed =
+        reassignmentCandidates(command).mapNotNull { row ->
+          reassignCandidate(command, row, sourceSprintApiId, targetSprintApiId)
         }
-      val candidates =
-        IssuesTable.selectAll()
-          .where {
-            (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
-              (IssuesTable.projectId eq command.projectId.toKotlinUuid()) and
-              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid()) and
-              IssuesTable.archivedAt.isNull() and
-              IssuesTable.deletedAt.isNull()
-          }
-          .mapNotNull { row ->
-            row.takeUnless { requireStatus(it[IssuesTable.statusId].toJavaUuid()).group == "done" }
-          }
-          .take(command.limit)
-      val changed = candidates.mapNotNull { row ->
-        val issueId = row[IssuesTable.id].toJavaUuid()
-        val before = row.toWorkItemRecord()
-        val now = now()
-        val updated =
-          IssuesTable.update({
-            (IssuesTable.id eq row[IssuesTable.id]) and
-              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid())
-          }) {
-            it[IssuesTable.sprintId] = command.targetSprintId?.toKotlinUuid()
-            it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
-            it[IssuesTable.updatedAt] = now
-          }
-        if (updated == 0) return@mapNotNull null
-        recordIssueSprintChange(
-          IssueSprintChange(
-            tenantId = command.tenantId,
-            issueId = issueId,
-            previousSprintId = command.sourceSprintId,
-            nextSprintId = command.targetSprintId,
-            actorUserId = command.actorUserId,
-            changedAt = now,
-          )
-        )
-        val after = requireWorkItem(command.tenantId, command.projectId, before.apiId.value)
-        eventFactory
-          .updated(
-            WorkItemUpdateActivityInput(
-              context =
-                WorkItemActivityContext(
-                  tenantId = command.tenantId,
-                  projectId = command.projectId,
-                  workItemId = issueId,
-                  actorUserId = command.actorUserId,
-                  occurredAt = now,
-                ),
-              before = before,
-              after = after,
-              command =
-                UpdateWorkItemCommand(
-                  tenantId = command.tenantId,
-                  projectId = command.projectId,
-                  workItemApiId = before.apiId.value,
-                  sprintApiId = targetSprintApiId,
-                  clearSprint = command.targetSprintId == null,
-                  actorUserId = command.actorUserId,
-                ),
-              propertyValues = emptyList(),
-            )
-          )
-          ?.let { appendWorkItemEvent(eventCodec, it) }
-        outboxAppender.appendSprintChanged(after, command, sourceSprintApiId, targetSprintApiId)
-        after
-      }
-      val remaining =
-        IssuesTable.selectAll()
-          .where {
-            (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
-              (IssuesTable.projectId eq command.projectId.toKotlinUuid()) and
-              (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid()) and
-              IssuesTable.archivedAt.isNull() and
-              IssuesTable.deletedAt.isNull()
-          }
-          .count { row -> requireStatus(row[IssuesTable.statusId].toJavaUuid()).group != "done" }
-          .toInt()
       ReassignSprintBatchResult(
         processedItems = changed.size,
-        remainingItems = remaining,
+        remainingItems = remainingReassignments(command),
         changedItems = changed,
       )
     }
+
+  private fun reassignmentCandidates(command: ReassignSprintBatchCommand): List<ResultRow> =
+    activeSprintIssues(command)
+      .mapNotNull { row ->
+        row.takeUnless { requireStatus(it[IssuesTable.statusId].toJavaUuid()).group == "done" }
+      }
+      .take(command.limit)
+
+  private fun reassignCandidate(
+    command: ReassignSprintBatchCommand,
+    row: ResultRow,
+    sourceSprintApiId: String,
+    targetSprintApiId: String?,
+  ): WorkItemRecord? {
+    val issueId = row[IssuesTable.id].toJavaUuid()
+    val before = row.toWorkItemRecord()
+    val changedAt = now()
+    if (!updateCandidateSprint(command, row, changedAt)) return null
+    recordIssueSprintChange(
+      IssueSprintChange(
+        tenantId = command.tenantId,
+        issueId = issueId,
+        previousSprintId = command.sourceSprintId,
+        nextSprintId = command.targetSprintId,
+        actorUserId = command.actorUserId,
+        changedAt = changedAt,
+      )
+    )
+    val after = requireWorkItem(command.tenantId, command.projectId, before.apiId.value)
+    appendReassignmentEvent(
+      ReassignmentEventInput(command, issueId, before, after, targetSprintApiId, changedAt)
+    )
+    outboxAppender.appendSprintChanged(after, command, sourceSprintApiId, targetSprintApiId)
+    return after
+  }
+
+  private fun updateCandidateSprint(
+    command: ReassignSprintBatchCommand,
+    row: ResultRow,
+    changedAt: OffsetDateTime,
+  ): Boolean =
+    IssuesTable.update({
+      (IssuesTable.id eq row[IssuesTable.id]) and
+        (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid())
+    }) {
+      it[IssuesTable.sprintId] = command.targetSprintId?.toKotlinUuid()
+      it[IssuesTable.updatedBy] = command.actorUserId.toKotlinUuid()
+      it[IssuesTable.updatedAt] = changedAt
+    } > 0
+
+  private fun appendReassignmentEvent(input: ReassignmentEventInput) {
+    val command = input.command
+    val updateCommand =
+      UpdateWorkItemCommand(
+        tenantId = command.tenantId,
+        projectId = command.projectId,
+        workItemApiId = input.before.apiId.value,
+        sprintApiId = input.targetSprintApiId,
+        clearSprint = command.targetSprintId == null,
+        actorUserId = command.actorUserId,
+      )
+    val context =
+      WorkItemActivityContext(
+        tenantId = command.tenantId,
+        projectId = command.projectId,
+        workItemId = input.issueId,
+        actorUserId = command.actorUserId,
+        occurredAt = input.changedAt,
+      )
+    eventFactory
+      .updated(
+        WorkItemUpdateActivityInput(
+          context,
+          input.before,
+          input.after,
+          updateCommand,
+          emptyList(),
+        )
+      )
+      ?.let { appendWorkItemEvent(eventCodec, it) }
+  }
+
+  private fun remainingReassignments(command: ReassignSprintBatchCommand): Int =
+    activeSprintIssues(command)
+      .count { row -> requireStatus(row[IssuesTable.statusId].toJavaUuid()).group != "done" }
+      .toInt()
 
   override suspend fun countChildrenNotInStatusGroups(
     tenantId: UUID,
@@ -546,3 +600,17 @@ class ExposedWorkItemRepository(
         ?.let(::PublicId)
     }
 }
+
+private fun sprintApiId(id: UUID): String =
+  SprintsTable.selectAll()
+    .where { SprintsTable.id eq id.toKotlinUuid() }
+    .single()[SprintsTable.apiId]
+
+private fun activeSprintIssues(command: ReassignSprintBatchCommand) =
+  IssuesTable.selectAll().where {
+    (IssuesTable.tenantId eq command.tenantId.toKotlinUuid()) and
+      (IssuesTable.projectId eq command.projectId.toKotlinUuid()) and
+      (IssuesTable.sprintId eq command.sourceSprintId.toKotlinUuid()) and
+      IssuesTable.archivedAt.isNull() and
+      IssuesTable.deletedAt.isNull()
+  }
