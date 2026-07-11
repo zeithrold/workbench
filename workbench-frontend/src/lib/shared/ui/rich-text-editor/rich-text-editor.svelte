@@ -1,27 +1,42 @@
 <script lang='ts'>
-  import type { RichTextEditorProps } from './types.js'
+  import type { RichTextDocument, RichTextEditorProps } from './types.js'
   import { cn } from '$lib/utils.js'
   import { Editor } from '@tiptap/core'
   import Placeholder from '@tiptap/extension-placeholder'
   import StarterKit from '@tiptap/starter-kit'
   import { onMount } from 'svelte'
   import { WorkbenchCodeBlock } from './code-block.js'
+  import { resolveCommandGroups } from './editor-commands.js'
+  import { DEFAULT_RICH_TEXT_EDITOR_PRESET, EDITOR_PRESETS } from './editor-presets.js'
   import RichTextToolbar from './rich-text-toolbar.svelte'
   import { SlashCommand } from './slash-command.js'
 
   const {
     value,
     onChange,
+    preset = DEFAULT_RICH_TEXT_EDITOR_PRESET,
     editable = true,
     placeholder = 'Start writing…',
     ariaLabel = 'Rich text editor',
     contentWidth = 'full',
+    onSubmit,
+    submitting = false,
     class: className,
   }: RichTextEditorProps = $props()
 
   let element: HTMLDivElement
   let editor = $state.raw<Editor | undefined>()
   let revision = $state(0)
+  const presetConfig = $derived(EDITOR_PRESETS[preset])
+  const commandGroups = $derived(resolveCommandGroups(presetConfig.commandGroups))
+
+  function currentDocument(currentEditor: Editor): RichTextDocument {
+    return {
+      format: 'tiptap',
+      schemaVersion: 1,
+      content: currentEditor.getJSON(),
+    }
+  }
 
   onMount(() => {
     editor = new Editor({
@@ -31,12 +46,13 @@
       enableContentCheck: true,
       extensions: [
         StarterKit.configure({
-          heading: { levels: [1, 2, 3] },
+          heading: presetConfig.headings ? { levels: [1, 2, 3] as [1, 2, 3] } : false,
           link: { openOnClick: false, defaultProtocol: 'https' },
           codeBlock: false,
+          horizontalRule: presetConfig.horizontalRule ? {} : false,
         }),
-        WorkbenchCodeBlock,
-        SlashCommand,
+        ...(presetConfig.codeBlock ? [WorkbenchCodeBlock] : []),
+        ...(presetConfig.slashCommands ? [SlashCommand] : []),
         Placeholder.configure({ placeholder }),
       ],
       editorProps: {
@@ -46,13 +62,18 @@
           'aria-multiline': 'true',
           'class': 'tiptap',
         },
+        handleKeyDown: (_view, event) => {
+          if (preset !== 'comment' || event.key !== 'Enter' || (!event.metaKey && !event.ctrlKey))
+            return false
+          if (!editable || submitting || editor?.isEmpty || !editor || !onSubmit)
+            return true
+          event.preventDefault()
+          onSubmit(currentDocument(editor))
+          return true
+        },
       },
       onTransaction: () => revision += 1,
-      onUpdate: ({ editor: currentEditor }) => onChange({
-        format: 'tiptap',
-        schemaVersion: 1,
-        content: currentEditor.getJSON(),
-      }),
+      onUpdate: ({ editor: currentEditor }) => onChange(currentDocument(currentEditor)),
     })
 
     return () => editor?.destroy()
@@ -83,9 +104,13 @@
   data-slot='rich-text-editor'
   data-editable={editable}
   data-content-width={contentWidth}
+  data-preset={preset}
 >
   {#if editor && editable}
-    <RichTextToolbar {editor} {revision} />
+    <RichTextToolbar {editor} {revision} {commandGroups} compact={presetConfig.compact} disabled={submitting} />
+    {#if preset === 'comment'}
+      <div class='border-b border-border/60 px-3 py-1 text-right text-[11px] text-muted-foreground'>Press Ctrl/⌘+Enter to submit</div>
+    {/if}
   {/if}
   <div class={cn(contentWidth === 'reading' && 'mx-auto w-full max-w-[45rem]')}>
     <div bind:this={element} class:read-only={!editable}></div>
@@ -157,6 +182,12 @@
   :global(.tiptap a) { color: color-mix(in oklab, var(--foreground) 82%, var(--ring)); cursor: text; text-decoration: underline; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); text-underline-offset: 3px; }
   :global(.tiptap p.is-editor-empty:first-child::before) { color: color-mix(in oklab, var(--muted-foreground) 78%, transparent); content: attr(data-placeholder); float: left; height: 0; pointer-events: none; }
   :global(.read-only .tiptap) { min-height: auto; padding-top: 1.5rem; padding-bottom: 1.5rem; }
+  [data-preset='comment'] :global(.tiptap) { min-height: 4.5rem; max-height: 16rem; overflow-y: auto; padding: 0.75rem 1rem 1rem; line-height: 1.6; }
+  [data-preset='comment'] :global(.tiptap p) { margin: 0.375rem 0; }
+  [data-preset='comment'] :global(.tiptap blockquote) { margin: 0.625rem 0; }
+  [data-preset='comment'] :global(.tiptap ul),
+  [data-preset='comment'] :global(.tiptap ol) { margin: 0.5rem 0; }
+  [data-preset='comment'] :global(.read-only .tiptap) { padding: 0.75rem 1rem; }
 
   @media (max-width: 640px) {
     :global(.tiptap) { padding: 1.25rem 1.125rem 1.75rem; }

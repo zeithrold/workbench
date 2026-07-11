@@ -24,6 +24,11 @@
   const controlledChange = fn()
   const emptyChange = fn()
   const slashChange = fn()
+  const commentChange = fn()
+  const commentSubmit = fn()
+  const emptyCommentSubmit = fn()
+  const submittingCommentSubmit = fn()
+  const readOnlyCommentSubmit = fn()
 
   const { Story } = defineMeta({
     title: 'Shared/RichTextEditor',
@@ -98,6 +103,82 @@
     await expect(canvasElement.querySelector('[data-slot="rich-text-editor"]')).toHaveAttribute('data-editable', 'false')
     await expect(canvas.getByRole('textbox')).toHaveAttribute('contenteditable', 'false')
   }
+
+  async function commentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox', { name: 'Rich text editor' })
+    const toolbar = canvas.getByRole('toolbar', { name: 'Text formatting' })
+    await expect(within(toolbar).getByRole('button', { name: 'Bold' })).toBeVisible()
+    await expect(within(toolbar).getByRole('button', { name: 'Bulleted list' })).toBeVisible()
+    await expect(within(toolbar).getByRole('button', { name: 'Quote' })).toBeVisible()
+    await expect(within(toolbar).queryByRole('button', { name: 'Heading 1' })).not.toBeInTheDocument()
+    await expect(within(toolbar).queryByRole('button', { name: 'Code block' })).not.toBeInTheDocument()
+
+    await userEvent.click(editor)
+    await userEvent.type(editor, '/heading')
+    await expect(within(document.body).queryByRole('listbox', { name: 'Editor commands' })).not.toBeInTheDocument()
+    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.type(editor, 'First line{Enter}Second line')
+    await expect(canvas.getByTestId('document-json')).toHaveTextContent('Second line')
+    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Bold' }))
+    await expect(canvas.getByTestId('document-json')).toHaveTextContent('bold')
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Edit link' }))
+    const body = within(document.body)
+    await userEvent.type(await body.findByRole('textbox', { name: 'Link URL' }), 'https://workbench.example/comment')
+    await userEvent.click(body.getByRole('button', { name: 'Apply' }))
+    await expect(canvas.getByTestId('document-json')).toHaveTextContent('https://workbench.example/comment')
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Bulleted list' }))
+    await expect(canvas.getByTestId('document-json')).toHaveTextContent('bulletList')
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Bulleted list' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Quote' }))
+    await expect(canvas.getByTestId('document-json')).toHaveTextContent('blockquote')
+    await userEvent.keyboard('{Meta>}{Enter}{/Meta}')
+    await expect(commentSubmit).toHaveBeenCalledTimes(1)
+    await expect(commentChange).toHaveBeenCalled()
+  }
+
+  async function emptyCommentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox')
+    await userEvent.click(editor)
+    await userEvent.keyboard('{Meta>}{Enter}{/Meta}')
+    await expect(emptyCommentSubmit).not.toHaveBeenCalled()
+  }
+
+  async function submittingCommentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox')
+    await userEvent.click(editor)
+    await userEvent.keyboard('{Meta>}{Enter}{/Meta}')
+    await expect(submittingCommentSubmit).not.toHaveBeenCalled()
+    await expect(canvas.getByRole('button', { name: 'Bold' })).toBeDisabled()
+  }
+
+  async function pastedCommentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox')
+    await userEvent.click(editor)
+    const clipboard = new DataTransfer()
+    clipboard.setData('text/plain', 'Heading\nconst value = 1')
+    clipboard.setData('text/html', '<h1>Heading</h1><pre><code>const value = 1</code></pre>')
+    await userEvent.paste(clipboard)
+    const json = canvas.getByTestId('document-json')
+    await expect(json).toHaveTextContent('Heading')
+    await expect(json).toHaveTextContent('const value = 1')
+    await expect(json).not.toHaveTextContent('heading')
+    await expect(json).not.toHaveTextContent('codeBlock')
+  }
+
+  async function readOnlyCommentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('toolbar', { name: 'Text formatting' })).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Press Ctrl/⌘+Enter to submit')).not.toBeInTheDocument()
+    const editor = canvas.getByRole('textbox')
+    await expect(editor).toHaveAttribute('contenteditable', 'false')
+    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
+    await expect(readOnlyCommentSubmit).not.toHaveBeenCalled()
+  }
 </script>
 
 <Story
@@ -121,3 +202,37 @@
   play={slashPlay}
 />
 <Story name='Read Only' args={{ initialValue: formattedDocument, editable: false }} play={readOnlyPlay} />
+<Story
+  name='Comment'
+  args={{ initialValue: EMPTY_RICH_TEXT_DOCUMENT, preset: 'comment', placeholder: 'Write a comment…', showJson: true, onChange: commentChange, onSubmit: commentSubmit }}
+  play={commentPlay}
+/>
+<Story
+  name='Empty Comment'
+  args={{ initialValue: EMPTY_RICH_TEXT_DOCUMENT, preset: 'comment', onSubmit: emptyCommentSubmit }}
+  play={emptyCommentPlay}
+/>
+<Story
+  name='Submitting Comment'
+  args={{ initialValue: { ...EMPTY_RICH_TEXT_DOCUMENT, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Sending' }] }] } }, preset: 'comment', submitting: true, onSubmit: submittingCommentSubmit }}
+  play={submittingCommentPlay}
+/>
+<Story
+  name='Comment Paste Normalization'
+  args={{ initialValue: EMPTY_RICH_TEXT_DOCUMENT, preset: 'comment', showJson: true }}
+  play={pastedCommentPlay}
+/>
+<Story
+  name='Read Only Comment'
+  args={{ initialValue: { ...EMPTY_RICH_TEXT_DOCUMENT, content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A compact read-only comment.' }] }] } }, preset: 'comment', editable: false, onSubmit: readOnlyCommentSubmit }}
+  play={readOnlyCommentPlay}
+/>
+<Story
+  name='Dark Comment'
+  args={{ initialValue: EMPTY_RICH_TEXT_DOCUMENT, preset: 'comment', dark: true, placeholder: 'Write a comment…' }}
+/>
+<Story
+  name='Narrow Comment'
+  args={{ initialValue: EMPTY_RICH_TEXT_DOCUMENT, preset: 'comment' }}
+  parameters={{ viewport: { defaultViewport: 'mobile1' } }}
+/>

@@ -16,8 +16,13 @@ import {
   Strikethrough,
 } from '@lucide/svelte'
 
+export type EditorCommandId
+  = | 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3'
+    | 'bullet-list' | 'ordered-list' | 'blockquote' | 'code-block' | 'horizontal-rule'
+    | 'bold' | 'italic' | 'strike' | 'inline-code'
+
 export interface EditorCommand {
-  id: string
+  id: EditorCommandId
   label: string
   description: string
   keywords: string[]
@@ -52,7 +57,16 @@ export const EDITOR_COMMANDS: EditorCommand[] = [
   { id: 'inline-code', label: 'Inline code', description: 'Toggle inline code', keywords: ['inline code', 'code'], group: 'Formatting', icon: Braces, active: e => e.isActive('code'), available: e => e.can().toggleCode(), execute: e => run(e, c => c.toggleCode()), slash: false },
 ]
 
-export const TOOLBAR_COMMANDS = EDITOR_COMMANDS.filter(command => command.id !== 'horizontal-rule')
+const COMMANDS_BY_ID = new Map(EDITOR_COMMANDS.map(command => [command.id, command]))
+
+export function resolveCommandGroups(groups: readonly (readonly EditorCommandId[])[]): EditorCommand[][] {
+  return groups.map(group => group.map((id) => {
+    const command = COMMANDS_BY_ID.get(id)
+    if (!command)
+      throw new Error(`Unknown editor command: ${id}`)
+    return command
+  }))
+}
 
 export function slashCommands(query: string, editor: Editor) {
   const normalized = query.trim().toLocaleLowerCase()
