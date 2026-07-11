@@ -23,7 +23,7 @@ class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) {
     jdbc.query(
       """
       WITH candidates AS (
-        SELECT d.id
+        SELECT d.id, d.notification_id
         FROM notification_deliveries d
         WHERE d.channel = 'EMAIL'
           AND d.status IN ('PENDING', 'RETRY')
@@ -35,7 +35,7 @@ class NotificationDeliveryRepository(private val jdbc: JdbcTemplate) {
       UPDATE notification_deliveries d
       SET status = 'RETRY', next_attempt_at = ?
       FROM candidates c
-      JOIN notifications n ON n.id = d.notification_id
+      JOIN notifications n ON n.id = c.notification_id
       JOIN users u ON u.id = n.recipient_user_id
       WHERE d.id = c.id
       RETURNING d.id, d.notification_id, u.primary_email, n.title, n.body, d.attempts
