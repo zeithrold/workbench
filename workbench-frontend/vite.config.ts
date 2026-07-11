@@ -21,6 +21,9 @@ export default defineConfig({
   build: {
     sourcemap: true,
   },
+  optimizeDeps: {
+    include: ['@lucide/svelte'],
+  },
   plugins: [tailwindcss(), sveltekit()],
   resolve: {
     conditions: process.env.VITEST ? ['browser'] : undefined,
@@ -51,6 +54,7 @@ export default defineConfig({
           server: {
             deps: {
               inline: [
+                '@lucide/svelte',
                 'bits-ui',
                 '@storybook/addon-svelte-csf',
                 '@storybook/svelte',
