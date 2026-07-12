@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
+import kotlin.time.Duration.Companion.milliseconds
 
 object KafkaTestSupport {
   fun publish(
@@ -37,7 +38,7 @@ object KafkaTestSupport {
     val deadline = System.nanoTime() + timeout.toNanos()
     while (System.nanoTime() < deadline) {
       if (condition()) return
-      delay(poll.toMillis())
+      delay(poll.toMillis().milliseconds)
     }
     error("Condition not met within $timeout")
   }
