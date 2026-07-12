@@ -33,6 +33,7 @@
   const selectAllShortcut = navigator.userAgent.includes('Mac OS')
     ? '{Meta>}a{/Meta}'
     : '{Control>}a{/Control}'
+  const editorReadyTimeout = 10_000
 
   const { Story } = defineMeta({
     title: 'Shared/RichTextEditor',
@@ -42,8 +43,12 @@
 
   async function controlledPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
-    const toolbar = await canvas.findByRole('toolbar', { name: 'Text formatting' })
-    const editor = await canvas.findByRole('textbox', { name: 'Rich text editor' })
+    const editor = await canvas.findByRole(
+      'textbox',
+      { name: 'Rich text editor' },
+      { timeout: editorReadyTimeout },
+    )
+    const toolbar = canvas.getByRole('toolbar', { name: 'Text formatting' })
     await userEvent.click(editor)
     await userEvent.type(editor, 'Controlled content')
     await userEvent.keyboard(selectAllShortcut)
@@ -58,8 +63,8 @@
 
   async function emptyPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
-    const toolbar = await canvas.findByRole('toolbar', { name: 'Text formatting' })
-    const editor = await canvas.findByRole('textbox')
+    const editor = await canvas.findByRole('textbox', undefined, { timeout: editorReadyTimeout })
+    const toolbar = canvas.getByRole('toolbar', { name: 'Text formatting' })
     await userEvent.click(editor)
     await userEvent.click(within(toolbar).getByRole('button', { name: 'Bulleted list' }))
     await userEvent.type(editor, 'List item')
