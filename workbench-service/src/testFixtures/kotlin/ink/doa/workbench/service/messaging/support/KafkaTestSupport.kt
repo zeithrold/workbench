@@ -3,12 +3,12 @@ package ink.doa.workbench.service.messaging.support
 import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.StringSerializer
-import kotlin.time.Duration.Companion.milliseconds
 
 object KafkaTestSupport {
   fun publish(
