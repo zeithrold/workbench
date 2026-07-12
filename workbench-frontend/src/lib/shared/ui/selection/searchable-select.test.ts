@@ -38,7 +38,10 @@ describe('searchable select', () => {
   it('places the selected option first', async () => {
     render(SearchableSelect, { value: 'progress', options, onValueChange: vi.fn() })
     await fireEvent.click(screen.getByRole('button', { name: /In progress/i }))
-    expect(screen.getAllByRole('option')[0].getAttribute('aria-selected')).toBe('true')
+    const selectedOption = screen.getAllByRole('option')[0]
+    expect(selectedOption.getAttribute('aria-selected')).toBe('true')
+    expect(selectedOption.classList.contains('w-full')).toBe(true)
+    expect(selectedOption.querySelectorAll('.lucide-check')).toHaveLength(1)
   })
 
   it('shows skeleton rows while loading search results', async () => {
@@ -46,6 +49,16 @@ describe('searchable select', () => {
     await fireEvent.click(screen.getByRole('button', { name: /select/i }))
     expect(screen.getByRole('status', { name: 'Loading options' })).not.toBeNull()
     expect(screen.getByRole('listbox').getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('selects the keyboard-highlighted option', async () => {
+    const onValueChange = vi.fn()
+    render(SearchableSelect, { value: null, options, onValueChange })
+    await fireEvent.click(screen.getByRole('button', { name: /select/i }))
+    const search = screen.getByRole('combobox')
+    await fireEvent.keyDown(search, { key: 'ArrowDown' })
+    await fireEvent.keyDown(search, { key: 'Enter' })
+    expect(onValueChange).toHaveBeenCalledWith('progress')
   })
 })
 
@@ -73,12 +86,24 @@ describe('searchable multi-select', () => {
   it('places selected multi-select options first', async () => {
     const view = render(SearchableMultiSelect, { values: ['progress'], options, onValuesChange: vi.fn() })
     await fireEvent.click(view.container.querySelector('[aria-haspopup="listbox"]')!)
-    expect(screen.getAllByRole('option')[0].getAttribute('aria-selected')).toBe('true')
+    const selectedOption = screen.getAllByRole('option')[0]
+    expect(selectedOption.getAttribute('aria-selected')).toBe('true')
+    expect(selectedOption.classList.contains('w-full')).toBe(true)
   })
 
   it('supports loading remote multi-select options', async () => {
     const view = render(SearchableMultiSelect, { values: [], options: [], loading: true, onValuesChange: vi.fn() })
     await fireEvent.click(view.container.querySelector('[aria-haspopup="listbox"]')!)
     expect(screen.getByRole('status', { name: 'Loading options' })).not.toBeNull()
+  })
+
+  it('toggles the keyboard-highlighted multi-select option', async () => {
+    const onValuesChange = vi.fn()
+    const view = render(SearchableMultiSelect, { values: [], options, onValuesChange })
+    await fireEvent.click(view.container.querySelector('[aria-haspopup="listbox"]')!)
+    const search = screen.getByRole('combobox')
+    await fireEvent.keyDown(search, { key: 'ArrowDown' })
+    await fireEvent.keyDown(search, { key: 'Enter' })
+    expect(onValuesChange).toHaveBeenCalledWith(['progress'])
   })
 })

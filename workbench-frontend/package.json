@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-bundle-size.mjs",
     "preview": "vite preview",
     "check": "node scripts/ensure-env.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint . && pnpm check",
@@ -31,6 +31,7 @@
     "@sveltejs/kit": "2.69.2",
     "@sveltejs/vite-plugin-svelte": "7.2.0",
     "@tiptap/core": "^3.27.1",
+    "@tiptap/extension-bubble-menu": "^3.27.3",
     "@tiptap/extension-code-block-lowlight": "^3.27.3",
     "@tiptap/extension-placeholder": "^3.27.1",
     "@tiptap/pm": "^3.27.1",

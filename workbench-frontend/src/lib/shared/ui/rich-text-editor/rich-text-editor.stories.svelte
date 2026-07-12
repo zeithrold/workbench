@@ -42,13 +42,15 @@
 
   async function controlledPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
+    const toolbar = await canvas.findByRole('toolbar', { name: 'Text formatting' })
     const editor = await canvas.findByRole('textbox', { name: 'Rich text editor' })
     await userEvent.click(editor)
     await userEvent.type(editor, 'Controlled content')
     await userEvent.keyboard(selectAllShortcut)
-    await userEvent.click(canvas.getByRole('button', { name: 'Bold' }))
+    const bubbleMenu = await canvas.findByRole('toolbar', { name: 'Selection formatting' })
+    await userEvent.click(within(bubbleMenu).getByRole('button', { name: 'Bold' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('bold')
-    await userEvent.click(canvas.getByRole('button', { name: 'Heading 1' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Heading 1' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('heading')
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('Controlled content')
     await expect(controlledChange).toHaveBeenCalled()
@@ -56,22 +58,23 @@
 
   async function emptyPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
+    const toolbar = await canvas.findByRole('toolbar', { name: 'Text formatting' })
     const editor = await canvas.findByRole('textbox')
     await userEvent.click(editor)
-    await userEvent.click(canvas.getByRole('button', { name: 'Bulleted list' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Bulleted list' }))
     await userEvent.type(editor, 'List item')
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('bulletList')
-    await userEvent.click(canvas.getByRole('button', { name: 'Undo' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Redo' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Undo' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Redo' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('List item')
     await userEvent.keyboard(selectAllShortcut)
-    await userEvent.click(canvas.getByRole('button', { name: 'Edit link' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Edit link' }))
     const body = within(document.body)
     const input = await body.findByRole('textbox', { name: 'Link URL' })
     await userEvent.type(input, 'https://workbench.example')
     await userEvent.click(body.getByRole('button', { name: 'Apply' }))
     await expect(canvas.getByTestId('document-json')).toHaveTextContent('https://workbench.example')
-    await userEvent.click(canvas.getByRole('button', { name: 'Edit link' }))
+    await userEvent.click(within(toolbar).getByRole('button', { name: 'Edit link' }))
     await userEvent.click(await body.findByRole('button', { name: 'Remove' }))
     await expect(canvas.getByTestId('document-json')).not.toHaveTextContent('https://workbench.example')
     await expect(emptyChange).toHaveBeenCalled()
@@ -79,13 +82,15 @@
 
   async function readingPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('textbox')).toBeVisible()
+    await expect(await canvas.findByRole('textbox')).toBeVisible()
     await expect(canvasElement.querySelector('[data-slot="rich-text-editor"]')).toHaveAttribute('data-content-width', 'reading')
     await expect(canvas.getByRole('toolbar', { name: 'Text formatting' })).toBeVisible()
     const language = canvas.getByRole('combobox', { name: 'Code language' })
     await expect(language).toHaveValue('typescript')
+    await expect(canvasElement.querySelector('pre code')).toHaveClass('hljs', 'language-typescript')
     await userEvent.selectOptions(language, 'kotlin')
     await expect(language).toHaveValue('kotlin')
+    await expect(canvasElement.querySelector('pre code')).toHaveClass('hljs', 'language-kotlin')
   }
 
   async function slashPlay({ canvasElement }: { canvasElement: HTMLElement }) {
@@ -103,9 +108,10 @@
 
   async function readOnlyPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox')
     await expect(canvas.queryByRole('toolbar', { name: 'Text formatting' })).not.toBeInTheDocument()
     await expect(canvasElement.querySelector('[data-slot="rich-text-editor"]')).toHaveAttribute('data-editable', 'false')
-    await expect(canvas.getByRole('textbox')).toHaveAttribute('contenteditable', 'false')
+    await expect(editor).toHaveAttribute('contenteditable', 'false')
   }
 
   async function commentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
@@ -176,9 +182,9 @@
 
   async function readOnlyCommentPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
+    const editor = await canvas.findByRole('textbox')
     await expect(canvas.queryByRole('toolbar', { name: 'Text formatting' })).not.toBeInTheDocument()
     await expect(canvas.queryByText('Press Ctrl/⌘+Enter to submit')).not.toBeInTheDocument()
-    const editor = canvas.getByRole('textbox')
     await expect(editor).toHaveAttribute('contenteditable', 'false')
     editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     await expect(readOnlyCommentSubmit).not.toHaveBeenCalled()

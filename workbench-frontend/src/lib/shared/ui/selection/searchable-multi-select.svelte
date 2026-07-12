@@ -1,7 +1,10 @@
 <script lang='ts'>
   import type { SelectorOption } from './selector-model.js'
+  import * as Command from '$lib/components/ui/command'
+  import { ScrollArea } from '$lib/components/ui/scroll-area'
   import { cn } from '$lib/utils.js'
-  import { Check, ChevronDown, Search, X } from '@lucide/svelte'
+  import { ChevronDown, X } from '@lucide/svelte'
+  import { tick } from 'svelte'
   import { dropdownInTransition, dropdownOutTransition } from './dropdown-transition.js'
   import SelectorLoading from './selector-loading.svelte'
   import { filterSelectorOptions, prioritizeSelectedOptions, selectedOptions, toggleSelectorValue } from './selector-model.js'
@@ -34,9 +37,26 @@
   } = $props()
   let open = $state(false)
   let query = $state('')
+  let commandValue = $state('')
+  let searchInput: HTMLInputElement | null = $state(null)
   let root: HTMLDivElement | null = $state(null)
   const selected = $derived(selectedOptions(options, values))
   const filtered = $derived(prioritizeSelectedOptions(filterSelectorOptions(options, query), values))
+
+  async function show() {
+    if (disabled)
+      return
+    open = true
+    commandValue = filtered[0]?.id ?? ''
+    await tick()
+    searchInput?.focus()
+  }
+
+  function close() {
+    open = false
+    query = ''
+    onSearchChange?.('')
+  }
 
   function removeValue(event: MouseEvent, id: string) {
     event.stopPropagation()
@@ -50,9 +70,7 @@
 
   function handleTriggerKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
-      open = false
-      query = ''
-      onSearchChange?.('')
+      close()
       return
     }
     if ((event.key === 'Delete' || event.key === 'Backspace') && values.length && clearable && !required) {
@@ -63,22 +81,25 @@
 
   function handleWindowClick(event: MouseEvent) {
     if (open && root && !root.contains(event.target as Node)) {
-      open = false
-      query = ''
-      onSearchChange?.('')
+      close()
     }
   }
 
   function updateQuery(event: Event) {
     query = (event.currentTarget as HTMLInputElement).value
+    commandValue = filtered[0]?.id ?? ''
     onSearchChange?.(query)
+  }
+
+  function toggleValue(id: string) {
+    onValuesChange(toggleSelectorValue(values, id))
   }
 </script>
 
 <svelte:window onclick={handleWindowClick} />
 
 <div bind:this={root} class={cn('relative w-full', className)} data-slot='searchable-multi-select'>
-  <button type='button' class='flex min-h-9 w-full items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50' aria-haspopup='listbox' aria-expanded={open} data-required={required} {disabled} onclick={() => open = !open} onkeydown={handleTriggerKeydown}>
+  <button type='button' class='flex min-h-9 w-full items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50' aria-haspopup='listbox' aria-expanded={open} data-required={required} {disabled} onclick={() => open ? close() : void show()} onkeydown={handleTriggerKeydown}>
     {#if selected.length === 0}<span class='text-muted-foreground'>{placeholder}</span>{/if}
     {#each selected.slice(0, maxVisible) as option (option.id)}
       <span class='flex max-w-40 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs'>
@@ -94,21 +115,26 @@
   </button>
   {#if open}
     <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
-      <div class='flex items-center gap-2 border-b px-2'><Search class='size-4 text-muted-foreground' /><input value={query} oninput={updateQuery} aria-label='Search options' class='h-9 min-w-0 flex-1 bg-transparent text-sm outline-none' placeholder='Search…' /></div>
-      <div class='max-h-52 overflow-y-auto overscroll-contain py-1' role='listbox' aria-multiselectable='true' aria-busy={loading}>
-        {#if loading}
-          <SelectorLoading />
-        {:else if filtered.length === 0}
-          <p class='px-2 py-6 text-center text-sm text-muted-foreground'>No options found</p>
-        {:else}
-          {#each filtered as option (option.id)}
-            <button type='button' role='option' aria-selected={values.includes(option.id)} class='flex w-full items-center justify-between gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent' onclick={() => onValuesChange(toggleSelectorValue(values, option.id))}>
-              <SelectorOptionView {option} />
-              {#if values.includes(option.id)}<Check class='size-4 shrink-0' />{/if}
-            </button>
-          {/each}
-        {/if}
-      </div>
+      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label='Options'>
+        <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder='Search…' />
+        <ScrollArea class='h-52'>
+          <Command.List class='max-h-none overflow-visible' aria-busy={loading}>
+            {#if loading}
+              <SelectorLoading />
+            {:else if filtered.length === 0}
+              <Command.Empty>No options found</Command.Empty>
+            {:else}
+              <Command.Group>
+                {#each filtered as option (option.id)}
+                  <Command.Item value={option.id} onSelect={() => toggleValue(option.id)} class='w-full py-2' data-checked={values.includes(option.id)}>
+                    <SelectorOptionView {option} />
+                  </Command.Item>
+                {/each}
+              </Command.Group>
+            {/if}
+          </Command.List>
+        </ScrollArea>
+      </Command.Root>
     </div>
   {/if}
 </div>

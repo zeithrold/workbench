@@ -10,31 +10,27 @@ export const WorkbenchCodeBlock = CodeBlockLowlight.extend({
       const header = document.createElement('div')
       header.className = 'code-block-header'
       header.contentEditable = 'false'
-      const select = document.createElement('select')
-      select.className = 'code-block-language'
-      select.setAttribute('aria-label', 'Code language')
+      const languageSelect = document.createElement('select')
+      languageSelect.className = 'code-block-language-select'
+      languageSelect.setAttribute('aria-label', 'Code language')
       for (const [value, label] of CODE_LANGUAGES) {
-        const option = document.createElement('option')
-        option.value = value
-        option.textContent = label
-        select.append(option)
+        languageSelect.add(new Option(label, value))
       }
-      select.value = node.attrs.language ?? 'plaintext'
-      header.append(select)
-      const pre = document.createElement('pre')
-      const contentDOM = document.createElement('code')
-      pre.append(contentDOM)
-      dom.append(header, pre)
-
-      const changeLanguage = () => {
+      languageSelect.value = node.attrs.language ?? 'plaintext'
+      languageSelect.addEventListener('change', () => {
         const pos = getPos()
         if (typeof pos !== 'number')
           return
         editor.view.dispatch(
-          editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, language: select.value }),
+          editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, language: languageSelect.value }),
         )
-      }
-      select.addEventListener('change', changeLanguage)
+      })
+      header.append(languageSelect)
+      const pre = document.createElement('pre')
+      const contentDOM = document.createElement('code')
+      contentDOM.className = `hljs language-${node.attrs.language ?? 'plaintext'}`
+      pre.append(contentDOM)
+      dom.append(header, pre)
 
       return {
         dom,
@@ -43,12 +39,10 @@ export const WorkbenchCodeBlock = CodeBlockLowlight.extend({
           if (updatedNode.type !== node.type)
             return false
           node = updatedNode
-          select.value = updatedNode.attrs.language ?? 'plaintext'
-          contentDOM.className = `language-${select.value}`
+          const language = updatedNode.attrs.language ?? 'plaintext'
+          languageSelect.value = language
+          contentDOM.className = `hljs language-${language}`
           return true
-        },
-        destroy() {
-          select.removeEventListener('change', changeLanguage)
         },
       }
     }

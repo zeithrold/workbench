@@ -1,7 +1,9 @@
 <script lang='ts'>
   import type { SelectorOption } from './selector-model.js'
+  import * as Command from '$lib/components/ui/command'
+  import { ScrollArea } from '$lib/components/ui/scroll-area'
   import { cn } from '$lib/utils.js'
-  import { Check, ChevronDown, Search, X } from '@lucide/svelte'
+  import { ChevronDown, X } from '@lucide/svelte'
   import { tick } from 'svelte'
   import { dropdownInTransition, dropdownOutTransition } from './dropdown-transition.js'
   import SelectorLoading from './selector-loading.svelte'
@@ -38,7 +40,7 @@
 
   let open = $state(false)
   let query = $state('')
-  let activeIndex = $state(0)
+  let commandValue = $state('')
   let searchInput: HTMLInputElement | null = $state(null)
   let root: HTMLDivElement | null = $state(null)
   const selected = $derived(options.find(option => option.id === value))
@@ -48,7 +50,7 @@
     if (disabled)
       return
     open = true
-    activeIndex = Math.max(0, filtered.findIndex(option => option.id === value))
+    commandValue = value ?? filtered[0]?.id ?? ''
     await tick()
     searchInput?.focus()
   }
@@ -83,25 +85,8 @@
 
   function updateQuery(event: Event) {
     query = (event.currentTarget as HTMLInputElement).value
-    activeIndex = 0
+    commandValue = filtered[0]?.id ?? ''
     onSearchChange?.(query)
-  }
-
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape')
-      close()
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      activeIndex = Math.min(activeIndex + 1, filtered.length - 1)
-    }
-    if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      activeIndex = Math.max(activeIndex - 1, 0)
-    }
-    if (event.key === 'Enter' && filtered[activeIndex]) {
-      event.preventDefault()
-      choose(filtered[activeIndex].id)
-    }
   }
 </script>
 
@@ -134,31 +119,26 @@
 
   {#if open}
     <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 text-popover-foreground shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
-      <div class='flex items-center gap-2 border-b px-2'>
-        <Search class='size-4 text-muted-foreground' />
-        <input bind:this={searchInput} value={query} oninput={updateQuery} onkeydown={handleKeydown} placeholder={searchPlaceholder} class='h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground' />
-      </div>
-      <div class='max-h-52 overflow-y-auto overscroll-contain py-1' role='listbox' aria-busy={loading}>
-        {#if loading}
-          <SelectorLoading />
-        {:else if filtered.length === 0}
-          <p class='px-2 py-6 text-center text-sm text-muted-foreground'>{emptyText}</p>
-        {:else}
-          {#each filtered as option, index (option.id)}
-            <button
-              type='button'
-              role='option'
-              aria-selected={option.id === value}
-              class={cn('flex w-full items-center justify-between gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent', index === activeIndex && 'bg-accent')}
-              onmouseenter={() => activeIndex = index}
-              onclick={() => choose(option.id)}
-            >
-              <SelectorOptionView {option} />
-              {#if option.id === value}<Check class='size-4 shrink-0' />{/if}
-            </button>
-          {/each}
-        {/if}
-      </div>
+      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label='Options'>
+        <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder={searchPlaceholder} />
+        <ScrollArea class='h-52'>
+          <Command.List class='max-h-none overflow-visible' aria-busy={loading}>
+            {#if loading}
+              <SelectorLoading />
+            {:else if filtered.length === 0}
+              <Command.Empty>{emptyText}</Command.Empty>
+            {:else}
+              <Command.Group>
+                {#each filtered as option (option.id)}
+                  <Command.Item value={option.id} onSelect={() => choose(option.id)} class='w-full py-2' data-checked={option.id === value}>
+                    <SelectorOptionView {option} />
+                  </Command.Item>
+                {/each}
+              </Command.Group>
+            {/if}
+          </Command.List>
+        </ScrollArea>
+      </Command.Root>
     </div>
   {/if}
 </div>

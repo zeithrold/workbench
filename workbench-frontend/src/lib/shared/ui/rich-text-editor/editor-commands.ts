@@ -71,6 +71,6 @@ export function resolveCommandGroups(groups: readonly (readonly EditorCommandId[
 export function slashCommands(query: string, editor: Editor) {
   const normalized = query.trim().toLocaleLowerCase()
   return EDITOR_COMMANDS.filter(command => command.slash && command.available(editor))
-    .filter(command => !normalized || [command.label, command.description, ...command.keywords]
+    .filter(command => !normalized || [command.id, command.label, command.description, ...command.keywords]
       .some(value => value.toLocaleLowerCase().includes(normalized)))
 }
