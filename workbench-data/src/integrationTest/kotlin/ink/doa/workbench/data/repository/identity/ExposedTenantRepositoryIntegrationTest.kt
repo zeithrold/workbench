@@ -1,18 +1,18 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.errors.ResourceConflictException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.model.CreateTenantCommand
-import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
-import ink.doa.workbench.core.identity.model.TenantStatus
-import ink.doa.workbench.core.identity.model.UpdateTenantCommand
-import ink.doa.workbench.core.messaging.DomainEventEncoder
-import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
 import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
 import ink.doa.workbench.data.persistence.postgres.workitem.DomainOutboxTable
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.errors.ResourceConflictException
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
+import ink.doa.workbench.tenant.model.CreateTenantCommand
+import ink.doa.workbench.tenant.model.FinalizeTenantDestroyCommand
+import ink.doa.workbench.tenant.model.TenantStatus
+import ink.doa.workbench.tenant.model.UpdateTenantCommand
+import ink.doa.workbench.tenant.tenant.events.TenantDestroyRequestedEvent
+import ink.doa.workbench.tenant.tenant.events.TenantDomainEvents
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContain

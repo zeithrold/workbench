@@ -1,13 +1,13 @@
 package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.workitem.IssueTypeConfigService
-import ink.doa.workbench.core.common.context.ProjectRequestContext
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.ProjectScoped
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.ProjectRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping

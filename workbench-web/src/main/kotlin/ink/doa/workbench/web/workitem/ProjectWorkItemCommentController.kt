@@ -1,12 +1,11 @@
 package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.ProjectScoped
@@ -14,6 +13,7 @@ import ink.doa.workbench.web.api.ResourceId
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.ProjectRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid

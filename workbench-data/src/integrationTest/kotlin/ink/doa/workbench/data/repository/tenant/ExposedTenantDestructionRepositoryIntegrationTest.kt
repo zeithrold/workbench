@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.tenant
 
-import ink.doa.workbench.core.common.ids.PublicId
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime

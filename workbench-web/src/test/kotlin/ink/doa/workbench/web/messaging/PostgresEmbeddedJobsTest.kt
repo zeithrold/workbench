@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.messaging
 
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
-import ink.doa.workbench.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.every
 import io.mockk.mockk

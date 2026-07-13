@@ -1,9 +1,9 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.context.TenantRequestContext
 import ink.doa.workbench.web.admin.AdminUserController
+import ink.doa.workbench.web.api.context.InstanceRequestContext
+import ink.doa.workbench.web.api.context.ProjectRequestContext
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import ink.doa.workbench.web.identity.BearerTokenAuthController
 import ink.doa.workbench.web.identity.FederatedAuthController
 import ink.doa.workbench.web.identity.LoginDiscoveryController

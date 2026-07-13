@@ -1,6 +1,6 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 

@@ -1,15 +1,15 @@
 package ink.doa.workbench.data.notification
 
-import ink.doa.workbench.core.notification.CreateNotificationCommand
-import ink.doa.workbench.core.notification.NotificationChannel
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.events.WorkItemMutationEvent
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.repository.notification.ExposedNotificationRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.workItemRepository
+import ink.doa.workbench.notification.CreateNotificationCommand
+import ink.doa.workbench.notification.NotificationChannel
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.jdbcTemplate

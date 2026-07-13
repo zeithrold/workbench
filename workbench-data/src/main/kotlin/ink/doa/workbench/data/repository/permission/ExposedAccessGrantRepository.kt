@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.AccessGrantRecord
-import ink.doa.workbench.core.permission.AccessGrantRepository
-import ink.doa.workbench.core.permission.CreateAccessGrantCommand
-import ink.doa.workbench.core.permission.GrantScope
 import ink.doa.workbench.data.persistence.postgres.permission.AccessGrantsTable
+import ink.doa.workbench.identity.permission.AccessGrantRecord
+import ink.doa.workbench.identity.permission.AccessGrantRepository
+import ink.doa.workbench.identity.permission.CreateAccessGrantCommand
+import ink.doa.workbench.identity.permission.GrantScope
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

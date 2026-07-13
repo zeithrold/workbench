@@ -1,15 +1,15 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommentCommand
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemCommentRepository
 import ink.doa.workbench.data.support.workItemRepository
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull

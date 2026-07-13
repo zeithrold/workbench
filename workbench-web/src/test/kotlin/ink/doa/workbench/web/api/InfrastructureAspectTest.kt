@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.permission.model.PermissionService
+import ink.doa.workbench.identity.permission.model.PermissionService
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec

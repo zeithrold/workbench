@@ -1,6 +1,6 @@
 package ink.doa.workbench.tenant.instance
 
-import ink.doa.workbench.core.common.context.InstanceContextSummary
+import ink.doa.workbench.kernel.common.context.InstanceContextSummary
 import java.net.InetAddress
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component

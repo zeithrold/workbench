@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.LoginMethodRepository
-import ink.doa.workbench.core.identity.model.CreateLoginMethodDefinitionCommand
-import ink.doa.workbench.core.identity.model.LoginMethodDefinitionRecord
 import ink.doa.workbench.data.persistence.postgres.identity.LoginMethodDefinitionsTable
+import ink.doa.workbench.identity.LoginMethodRepository
+import ink.doa.workbench.identity.model.CreateLoginMethodDefinitionCommand
+import ink.doa.workbench.identity.model.LoginMethodDefinitionRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and

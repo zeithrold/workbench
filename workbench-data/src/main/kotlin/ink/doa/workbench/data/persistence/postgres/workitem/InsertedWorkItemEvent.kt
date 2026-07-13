@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.stream.AppendWorkItemEventCommand
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.workitem.stream.AppendWorkItemEventCommand
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

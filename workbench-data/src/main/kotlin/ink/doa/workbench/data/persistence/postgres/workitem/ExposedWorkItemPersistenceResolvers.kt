@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.model.SprintStatus
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

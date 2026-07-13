@@ -12,8 +12,8 @@ class QualityReportsTest {
     @Test
     fun `merges root Kover counters from module reports`() {
         val root = Files.createTempDirectory("kover-merge")
-        val coreReport = root.resolve("workbench-core/build/reports/kover/report.xml")
-        val serviceReport = root.resolve("workbench-service/build/reports/kover/report.xml")
+        val coreReport = root.resolve("workbench-kernel/build/reports/kover/report.xml")
+        val serviceReport = root.resolve("workbench-application/build/reports/kover/report.xml")
         coreReport.parent.createDirectories()
         serviceReport.parent.createDirectories()
         coreReport.writeText(koverReport(lineMissed = 1, lineCovered = 9))
@@ -29,14 +29,14 @@ class QualityReportsTest {
     @Test
     fun `computes unit full coverage warnings`() {
         val root = Files.createTempDirectory("coverage-delta")
-        val full = root.resolve("workbench-core/build/reports/kover/report.xml")
-        val unit = root.resolve("workbench-core/build/reports/kover/unit/report.xml")
+        val full = root.resolve("workbench-kernel/build/reports/kover/report.xml")
+        val unit = root.resolve("workbench-kernel/build/reports/kover/unit/report.xml")
         full.parent.createDirectories()
         unit.parent.createDirectories()
         full.writeText(koverReport(lineMissed = 0, lineCovered = 100))
         unit.writeText(koverReport(lineMissed = 40, lineCovered = 60))
 
-        val deltas = QualityReports.moduleCoverageDeltas(root.toFile(), listOf("workbench-core"))
+        val deltas = QualityReports.moduleCoverageDeltas(root.toFile(), listOf("workbench-kernel"))
 
         assertEquals(40.0, deltas.single().lineDelta)
         assertTrue(deltas.single().warnings.size == 2)
@@ -45,8 +45,8 @@ class QualityReportsTest {
     @Test
     fun `merges pit mutations and preserves partial marker`() {
         val root = Files.createTempDirectory("pit-merge")
-        val core = root.resolve("workbench-core/build/reports/pitest/mutations.xml")
-        val service = root.resolve("workbench-service/build/reports/pitest/mutations.xml")
+        val core = root.resolve("workbench-kernel/build/reports/pitest/mutations.xml")
+        val service = root.resolve("workbench-application/build/reports/pitest/mutations.xml")
         core.parent.createDirectories()
         service.parent.createDirectories()
         core.writeText(
@@ -97,8 +97,8 @@ class QualityReportsTest {
     @Test
     fun `renders coverage summary markdown and json`() {
         val root = Files.createTempDirectory("summary")
-        val full = root.resolve("workbench-core/build/reports/kover/report.xml")
-        val unit = root.resolve("workbench-core/build/reports/kover/unit/report.xml")
+        val full = root.resolve("workbench-kernel/build/reports/kover/report.xml")
+        val unit = root.resolve("workbench-kernel/build/reports/kover/unit/report.xml")
         full.parent.createDirectories()
         unit.parent.createDirectories()
         full.writeText(koverReport(lineMissed = 0, lineCovered = 100))
@@ -108,7 +108,7 @@ class QualityReportsTest {
 
         assertContains(markdown, "#### Unit coverage and delta")
         assertContains(markdown, "full-unit line delta")
-        assertContains(json, "\"module\": \"workbench-core\"")
+        assertContains(json, "\"module\": \"workbench-kernel\"")
         assertContains(json, "\"lineDelta\": 40.0000")
     }
 

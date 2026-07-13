@@ -1,19 +1,19 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
-import ink.doa.workbench.core.workitem.view.CreateWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.DeleteWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.UpdateWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
-import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
-import ink.doa.workbench.core.workitem.view.WorkItemViewRepository
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.project.ProjectRepository
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.agile.workitem.view.CreateWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.DeleteWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.UpdateWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.WorkItemViewDefaults
+import ink.doa.workbench.agile.workitem.view.WorkItemViewRecord
+import ink.doa.workbench.agile.workitem.view.WorkItemViewRepository
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -137,7 +137,7 @@ class WorkItemViewServiceTest :
         sampleRecord
       coEvery { access.requireManage(sampleRecord, actorId) } throws
         PermissionDeniedException(
-          ink.doa.workbench.core.common.errors.WorkbenchErrorCode.WORK_ITEM_VIEW_MANAGE_DENIED
+          ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode.WORK_ITEM_VIEW_MANAGE_DENIED
         )
 
       shouldThrow<PermissionDeniedException> {

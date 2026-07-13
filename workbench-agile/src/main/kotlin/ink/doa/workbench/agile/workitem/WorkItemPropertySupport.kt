@@ -1,14 +1,14 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValueValidator
-import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
-import ink.doa.workbench.core.workitem.template.TemplateSystemFields
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValueValidator
+import ink.doa.workbench.agile.workitem.richtext.RichTextProcessor
+import ink.doa.workbench.agile.workitem.template.TemplateSystemFields
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 

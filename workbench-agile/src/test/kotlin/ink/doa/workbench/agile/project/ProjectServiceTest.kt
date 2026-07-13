@@ -1,11 +1,9 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.project.ProjectDestroyRequest
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.events.ProjectDestroyRequestedEvent
-import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.core.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.events.ProjectDestroyRequestedEvent
+import ink.doa.workbench.agile.project.model.CreateProjectCommand
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -73,23 +71,23 @@ class ProjectServiceTest :
       service.unarchive(tenantId, projectId).identifier shouldBe "CORE"
       coEvery {
         repository.markDestroying(tenantId, projectId, actorId, "cleanup")
-      } returns record.copy(status = ink.doa.workbench.core.project.model.ProjectStatus.DESTROYING)
+      } returns record.copy(status = ink.doa.workbench.agile.project.model.ProjectStatus.DESTROYING)
       service.markDestroying(tenantId, projectId, actorId, "cleanup").status shouldBe
-        ink.doa.workbench.core.project.model.ProjectStatus.DESTROYING
+        ink.doa.workbench.agile.project.model.ProjectStatus.DESTROYING
       coEvery {
         repository.updateStatus(
           tenantId,
           projectId,
-          ink.doa.workbench.core.project.model.ProjectStatus.ACTIVE,
+          ink.doa.workbench.agile.project.model.ProjectStatus.ACTIVE,
         )
       } returns true
       service.restoreStatus(
         tenantId,
         projectId,
-        ink.doa.workbench.core.project.model.ProjectStatus.ACTIVE,
+        ink.doa.workbench.agile.project.model.ProjectStatus.ACTIVE,
       ) shouldBe true
       val updateCommand =
-        ink.doa.workbench.core.project.model.UpdateProjectCommand(
+        ink.doa.workbench.agile.project.model.UpdateProjectCommand(
           tenantId = tenantId,
           projectId = projectId,
           name = "Renamed",
@@ -115,7 +113,7 @@ class ProjectServiceTest :
           identifier = "CORE",
           name = "Core",
           description = null,
-          status = ink.doa.workbench.core.project.model.ProjectStatus.DESTROYING,
+          status = ink.doa.workbench.agile.project.model.ProjectStatus.DESTROYING,
         )
       val request =
         ProjectDestroyRequest(

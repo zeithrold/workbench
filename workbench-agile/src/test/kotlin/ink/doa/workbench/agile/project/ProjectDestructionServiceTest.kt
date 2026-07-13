@@ -1,10 +1,8 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.project.ProjectDestructionRepository
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery

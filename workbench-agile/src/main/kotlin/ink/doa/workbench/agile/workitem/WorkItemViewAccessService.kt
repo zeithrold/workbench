@@ -1,15 +1,15 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.agile.project.ProjectAccessService
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.TenantMemberRepository
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.ResolvedPermissionRule
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.workitem.view.WorkItemViewRecord
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.identity.TenantMemberRepository
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.ResolvedPermissionRule
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

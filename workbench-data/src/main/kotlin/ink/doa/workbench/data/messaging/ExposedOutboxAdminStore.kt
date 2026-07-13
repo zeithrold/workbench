@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.OutboxMessageQuery
-import ink.doa.workbench.core.messaging.OutboxMessageRecord
-import ink.doa.workbench.core.port.messaging.OutboxAdminStore
+import ink.doa.workbench.application.messaging.OutboxAdminStore
+import ink.doa.workbench.application.messaging.OutboxMessageQuery
+import ink.doa.workbench.application.messaging.OutboxMessageRecord
 import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import java.time.OffsetDateTime
 import java.util.UUID

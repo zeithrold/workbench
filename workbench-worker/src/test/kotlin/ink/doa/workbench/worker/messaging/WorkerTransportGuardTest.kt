@@ -1,7 +1,7 @@
 package ink.doa.workbench.worker.messaging
 
-import ink.doa.workbench.jobs.messaging.MessagingProperties
-import ink.doa.workbench.jobs.messaging.MessagingTransport
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.MessagingTransport
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.mockk

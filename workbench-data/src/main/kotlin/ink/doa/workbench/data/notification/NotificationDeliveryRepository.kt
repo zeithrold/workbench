@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.notification
 
-import ink.doa.workbench.core.port.notification.EmailDeliveryStore
-import ink.doa.workbench.core.port.notification.PendingEmailDelivery
+import ink.doa.workbench.notification.port.EmailDeliveryStore
+import ink.doa.workbench.notification.port.PendingEmailDelivery
 import java.time.OffsetDateTime
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository

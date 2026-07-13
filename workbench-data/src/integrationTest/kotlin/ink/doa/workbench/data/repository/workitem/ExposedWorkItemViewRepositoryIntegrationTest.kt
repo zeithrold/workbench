@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.view.CreateWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.DeleteWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.UpdateWorkItemViewCommand
-import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.workitem.view.CreateWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.DeleteWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.UpdateWorkItemViewCommand
+import ink.doa.workbench.agile.workitem.view.WorkItemViewDefaults
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import io.kotest.core.spec.style.StringSpec

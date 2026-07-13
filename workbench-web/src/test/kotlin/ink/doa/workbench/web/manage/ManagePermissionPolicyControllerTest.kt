@@ -1,13 +1,13 @@
 package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.PermissionPolicyRecord
-import ink.doa.workbench.core.permission.PermissionPolicyRepository
+import ink.doa.workbench.application.permission.PermissionPolicyManagementService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.permission.PermissionPolicyRecord
+import ink.doa.workbench.identity.permission.PermissionPolicyRepository
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.security.permission.PermissionPolicyManagementService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.RequestContextResolver
@@ -187,15 +187,15 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -242,13 +242,13 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
           updatedAt = now,
         )
       val issueUpdateRule =
-        ink.doa.workbench.core.permission.PermissionPolicyRuleRecord(
+        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("prr"),
           policyId = customPolicyId,
-          action = ink.doa.workbench.core.permission.model.AuthorizationAction("issue.update"),
+          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.update"),
           resourcePattern = "issue:*",
-          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
           conditionJson = null,
           createdAt = now,
         )
@@ -256,10 +256,11 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
         issueUpdateRule.copy(
           id = UUID.randomUUID(),
           apiId = PublicId.new("prr"),
-          action = ink.doa.workbench.core.permission.model.AuthorizationAction("issue.view"),
+          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.view"),
           conditionJson = """{"field":"issue.statusGroup","op":"eq","value":"todo"}""",
         )
-      var rules: List<ink.doa.workbench.core.permission.PermissionPolicyRuleRecord> = emptyList()
+      var rules: List<ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord> =
+        emptyList()
 
       coEvery { policies.list(tenantId) } returns listOf(adminPolicy)
       coEvery { policies.findByCode(tenantId, "editor") } returns null
@@ -269,7 +270,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       coEvery { policies.addRule(any()) } answers
         {
           val command =
-            firstArg<ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand>()
+            firstArg<ink.doa.workbench.identity.permission.CreatePermissionPolicyRuleCommand>()
           val rule =
             when (command.action.code) {
               "issue.update" -> issueUpdateRule

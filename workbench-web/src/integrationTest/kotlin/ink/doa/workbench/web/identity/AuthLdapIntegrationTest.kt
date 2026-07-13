@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.LoginMethodKind
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.InMemoryLdapTestServer

@@ -1,16 +1,16 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.model.AuthEventRecord
-import ink.doa.workbench.core.identity.model.AuthLoginStateRecord
-import ink.doa.workbench.core.identity.model.AuthSessionRecord
-import ink.doa.workbench.core.identity.model.BearerTokenRecord
-import ink.doa.workbench.core.identity.model.MagicLinkTokenRecord
 import ink.doa.workbench.data.persistence.postgres.event.AuthEventsTable
 import ink.doa.workbench.data.persistence.postgres.identity.AuthLoginStatesTable
 import ink.doa.workbench.data.persistence.postgres.identity.AuthSessionsTable
 import ink.doa.workbench.data.persistence.postgres.identity.BearerTokensTable
 import ink.doa.workbench.data.persistence.postgres.identity.MagicLinkTokensTable
+import ink.doa.workbench.identity.model.AuthEventRecord
+import ink.doa.workbench.identity.model.AuthLoginStateRecord
+import ink.doa.workbench.identity.model.AuthSessionRecord
+import ink.doa.workbench.identity.model.BearerTokenRecord
+import ink.doa.workbench.identity.model.MagicLinkTokenRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import kotlin.uuid.toJavaUuid
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive

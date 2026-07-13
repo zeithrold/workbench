@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.LoginMethodKind
 import ink.doa.workbench.web.api.OpenApiExamples
 import io.swagger.v3.oas.annotations.media.Schema
 
@@ -84,9 +84,9 @@ data class MagicLinkRequest(
 )
 
 fun LoginRequest.toCommand(
-  client: ink.doa.workbench.security.identity.ClientContext
-): ink.doa.workbench.core.identity.model.LoginCommand =
-  ink.doa.workbench.core.identity.model.LoginCommand(
+  client: ink.doa.workbench.identity.ClientContext
+): ink.doa.workbench.identity.model.LoginCommand =
+  ink.doa.workbench.identity.model.LoginCommand(
     method = method,
     loginMethodId = loginMethodId,
     tenantId = tenantId,

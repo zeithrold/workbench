@@ -1,15 +1,15 @@
 package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.permission.PermissionPrincipalType
-import ink.doa.workbench.security.permission.GroupMemberView
-import ink.doa.workbench.security.permission.PermissionBindingView
-import ink.doa.workbench.security.permission.PermissionGroupView
-import ink.doa.workbench.security.permission.PermissionPolicyRuleView
-import ink.doa.workbench.security.permission.PermissionPolicySummary
-import ink.doa.workbench.security.permission.PermissionPolicyView
+import ink.doa.workbench.agile.project.ProjectSummary
+import ink.doa.workbench.application.permission.GroupMemberView
+import ink.doa.workbench.application.permission.PermissionBindingView
+import ink.doa.workbench.application.permission.PermissionGroupView
+import ink.doa.workbench.application.permission.PermissionPolicyRuleView
+import ink.doa.workbench.application.permission.PermissionPolicySummary
+import ink.doa.workbench.application.permission.PermissionPolicyView
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

@@ -1,10 +1,10 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.warning.WorkbenchWarning
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
-import ink.doa.workbench.core.common.warning.WorkbenchWarningMetaValidator
-import ink.doa.workbench.core.common.warning.meta.WorkbenchWarningMeta
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarning
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningMetaValidator
+import ink.doa.workbench.kernel.common.warning.meta.WorkbenchWarningMeta
 
 class RequestScopedWorkbenchWarningCollector : WorkbenchWarningCollector {
   private val warnings = mutableListOf<WorkbenchWarning>()

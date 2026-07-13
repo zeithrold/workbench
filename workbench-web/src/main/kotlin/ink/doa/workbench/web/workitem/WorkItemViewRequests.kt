@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 

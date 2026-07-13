@@ -1,14 +1,14 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigPropertyRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldContainExactly

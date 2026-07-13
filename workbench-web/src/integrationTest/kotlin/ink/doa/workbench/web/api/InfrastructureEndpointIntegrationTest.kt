@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.port.locking.DistributedLockService
-import ink.doa.workbench.core.storage.BlobStorage
 import ink.doa.workbench.data.storage.blob.InMemoryBlobStorage
+import ink.doa.workbench.kernel.port.locking.DistributedLockService
+import ink.doa.workbench.kernel.storage.BlobStorage
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.registerWorkbenchDataSource

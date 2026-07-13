@@ -1,14 +1,12 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.events.WorkItemDomainEvents
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.events.WorkItemDomainEvents
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.port.messaging.DomainEventPublisher
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

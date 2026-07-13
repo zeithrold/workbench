@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.warning.WorkbenchWarningConstants
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningConstants
 import ink.doa.workbench.web.api.warning.WorkbenchWarningEnvelope
 import io.swagger.v3.oas.annotations.headers.Header
 import io.swagger.v3.oas.annotations.media.Content

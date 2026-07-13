@@ -1,25 +1,22 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
-import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
-import ink.doa.workbench.core.workitem.model.IssueStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyInput
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.agile.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.agile.workitem.model.IssueStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigPropertyInput
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkflowRecord
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -326,7 +323,7 @@ class IssueTypeConfigServiceTest :
           statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
         )
       val invalidTransition =
-        ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
+        ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("trn"),
           tenantId = tenantId,
@@ -614,7 +611,7 @@ class IssueTypeConfigServiceTest :
           statuses = listOf(IssueTypeConfigStatusInput(status.apiId.value, isInitial = true)),
         )
       val invalidTransition =
-        ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
+        ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("trn"),
           tenantId = tenantId,
@@ -684,7 +681,7 @@ class IssueTypeConfigServiceTest :
               )
           )
       val globalTransition =
-        ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord(
+        ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("trn"),
           tenantId = tenantId,

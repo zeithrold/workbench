@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api.http
 
-import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
-import ink.doa.workbench.core.common.pagination.WorkbenchCursor
+import ink.doa.workbench.kernel.common.pagination.WorkItemStreamCursor
+import ink.doa.workbench.kernel.common.pagination.WorkbenchCursor
 import org.springframework.http.ResponseEntity
 
 fun <T : Any> ResponseEntity.BodyBuilder.headersIfNext(

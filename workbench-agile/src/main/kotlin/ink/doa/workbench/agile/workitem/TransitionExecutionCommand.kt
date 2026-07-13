@@ -1,10 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
-import ink.doa.workbench.core.workitem.model.TransitionRequest
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
 import java.util.UUID
 
 data class TransitionExecutionCommand(

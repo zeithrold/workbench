@@ -1,12 +1,12 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkItemCommentFormMeta
-import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
-import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentFormMeta
+import ink.doa.workbench.agile.workitem.model.WorkItemCreateFormOption
+import ink.doa.workbench.agile.workitem.model.WorkItemFormFieldMeta
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -29,7 +29,7 @@ class ProjectWorkItemResponsesTest :
           key = "WB-1",
           title = "First issue",
           description =
-            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
+            ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText("Details"),
           statusId = UUID.randomUUID(),
           statusApiId = PublicId.new("sts"),
           statusGroup = WorkItemStatusGroup.TODO,

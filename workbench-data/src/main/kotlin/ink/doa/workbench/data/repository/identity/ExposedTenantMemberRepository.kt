@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.TenantMemberRepository
-import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
-import ink.doa.workbench.core.identity.model.TenantMemberRecord
 import ink.doa.workbench.data.persistence.postgres.identity.TenantMembersTable
+import ink.doa.workbench.identity.TenantMemberRepository
+import ink.doa.workbench.identity.model.CreateTenantMemberCommand
+import ink.doa.workbench.identity.model.TenantMemberRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and

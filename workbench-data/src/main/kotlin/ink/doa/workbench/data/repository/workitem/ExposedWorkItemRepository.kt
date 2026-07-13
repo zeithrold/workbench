@@ -1,17 +1,16 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
-import ink.doa.workbench.core.workitem.ReassignSprintBatchResult
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.ReassignSprintBatchCommand
+import ink.doa.workbench.agile.workitem.ReassignSprintBatchResult
+import ink.doa.workbench.agile.workitem.WorkItemRepository
+import ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.messaging.WorkItemOutboxAppender
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
@@ -45,6 +44,7 @@ import ink.doa.workbench.data.persistence.postgres.workitem.resolveUser
 import ink.doa.workbench.data.persistence.postgres.workitem.snapshot
 import ink.doa.workbench.data.persistence.postgres.workitem.toJsonValue
 import ink.doa.workbench.data.persistence.postgres.workitem.toWorkItemRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

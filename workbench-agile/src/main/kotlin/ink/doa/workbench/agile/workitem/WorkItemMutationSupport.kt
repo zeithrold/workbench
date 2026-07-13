@@ -1,15 +1,13 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.events.WorkItemDomainEvents
-import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.agile.workitem.events.WorkItemDomainEvents
+import ink.doa.workbench.agile.workitem.events.WorkItemMutationEvent
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.port.messaging.DomainEventPublisher
 import java.util.UUID
 import org.springframework.stereotype.Component
 

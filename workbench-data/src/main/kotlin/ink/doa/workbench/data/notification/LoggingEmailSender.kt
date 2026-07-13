@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.notification
 
-import ink.doa.workbench.core.notification.EmailMessage
-import ink.doa.workbench.core.notification.EmailSender
+import ink.doa.workbench.notification.EmailMessage
+import ink.doa.workbench.notification.EmailSender
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 

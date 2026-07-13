@@ -1,11 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.model.TransitionRequest
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Service
 

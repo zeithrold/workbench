@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.repository.project
 
-import ink.doa.workbench.core.project.ProjectDestructionRepository
+import ink.doa.workbench.agile.project.ProjectDestructionRepository
 import ink.doa.workbench.data.persistence.postgres.permission.PermissionBindingsTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectIdentifierAliasesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.AttachmentsTable

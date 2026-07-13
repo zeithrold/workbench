@@ -1,15 +1,27 @@
 package ink.doa.workbench.security.identity.auth
 
-import ink.doa.workbench.core.identity.LoginAccountStore
-import ink.doa.workbench.core.identity.LoginMethodRepository
-import ink.doa.workbench.core.identity.TenantLoginMethodSettingRepository
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.UserLoginAccountRepository
-import ink.doa.workbench.core.identity.auth.PasswordVerifier
-import ink.doa.workbench.core.identity.model.AuthenticatedIdentity
-import ink.doa.workbench.core.identity.model.LoginAccountParameterKey
-import ink.doa.workbench.core.identity.model.LoginCommand
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.LoginAccountStore
+import ink.doa.workbench.identity.LoginMethodRepository
+import ink.doa.workbench.identity.TenantLoginMethodSettingRepository
+import ink.doa.workbench.identity.UserLoginAccountRepository
+import ink.doa.workbench.identity.auth.LoginAuthenticator
+import ink.doa.workbench.identity.auth.PasswordVerifier
+import ink.doa.workbench.identity.auth.authInvalidCredentials
+import ink.doa.workbench.identity.auth.normalizeSubject
+import ink.doa.workbench.identity.auth.requireEnabledLdapSetting
+import ink.doa.workbench.identity.auth.requireLdapLoginMethodId
+import ink.doa.workbench.identity.auth.requireLdapMethod
+import ink.doa.workbench.identity.auth.requireLdapPassword
+import ink.doa.workbench.identity.auth.requireLdapSubject
+import ink.doa.workbench.identity.auth.requireLdapTenantId
+import ink.doa.workbench.identity.auth.requireLoginPassword
+import ink.doa.workbench.identity.auth.requireLoginSubject
+import ink.doa.workbench.identity.auth.requireLoginToken
+import ink.doa.workbench.identity.model.AuthenticatedIdentity
+import ink.doa.workbench.identity.model.LoginAccountParameterKey
+import ink.doa.workbench.identity.model.LoginCommand
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.tenant.TenantRepository
 import org.springframework.stereotype.Component
 
 private const val PASSWORD_METHOD_CODE = "password"
@@ -52,7 +64,7 @@ class ApiTokenLoginAuthenticator(
   private val loginMethods: LoginMethodRepository,
   private val loginAccounts: LoginAccountStore,
   private val userLoginAccounts: UserLoginAccountRepository,
-  private val credentialHasher: ink.doa.workbench.core.identity.auth.CredentialHasher,
+  private val credentialHasher: ink.doa.workbench.identity.auth.CredentialHasher,
 ) : LoginAuthenticator {
   override val kind: LoginMethodKind = LoginMethodKind.API_TOKEN
 

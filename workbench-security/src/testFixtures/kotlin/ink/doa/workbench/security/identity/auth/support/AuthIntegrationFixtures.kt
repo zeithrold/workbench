@@ -1,16 +1,6 @@
 package ink.doa.workbench.security.identity.auth.support
 
 import dasniko.testcontainers.keycloak.KeycloakContainer
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.auth.SecretResolver
-import ink.doa.workbench.core.identity.model.CreateLoginAccountCommand
-import ink.doa.workbench.core.identity.model.CreateLoginMethodDefinitionCommand
-import ink.doa.workbench.core.identity.model.CreateTenantLoginMethodSettingCommand
-import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
-import ink.doa.workbench.core.identity.model.CreateUserCommand
-import ink.doa.workbench.core.identity.model.LinkUserLoginAccountCommand
-import ink.doa.workbench.core.identity.model.LoginMethodKind
-import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.repository.identity.ExposedLoginAccountStore
 import ink.doa.workbench.data.repository.identity.ExposedLoginMethodRepository
@@ -18,6 +8,16 @@ import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettin
 import ink.doa.workbench.data.repository.identity.ExposedTenantMemberRepository
 import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountRepository
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
+import ink.doa.workbench.identity.auth.SecretResolver
+import ink.doa.workbench.identity.model.CreateLoginAccountCommand
+import ink.doa.workbench.identity.model.CreateLoginMethodDefinitionCommand
+import ink.doa.workbench.identity.model.CreateTenantLoginMethodSettingCommand
+import ink.doa.workbench.identity.model.CreateTenantMemberCommand
+import ink.doa.workbench.identity.model.CreateUserCommand
+import ink.doa.workbench.identity.model.LinkUserLoginAccountCommand
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.TenantMemberStatus
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.PostgresTestDatabaseLease
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport

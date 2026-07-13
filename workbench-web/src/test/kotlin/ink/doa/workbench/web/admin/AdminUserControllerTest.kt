@@ -1,21 +1,23 @@
 package ink.doa.workbench.web.admin
 
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.model.AuthorizationDecision
-import ink.doa.workbench.core.permission.model.AuthorizationScope
-import ink.doa.workbench.core.permission.model.DecisionReason
-import ink.doa.workbench.core.permission.model.PermissionService
+import ink.doa.workbench.application.identity.PublicIdResolver
+import ink.doa.workbench.application.permission.AccessGrantManagementService
+import ink.doa.workbench.application.permission.AccessGrantView
+import ink.doa.workbench.application.permission.ActionView
+import ink.doa.workbench.application.permission.AdminUserService
+import ink.doa.workbench.application.permission.AdminUserView
+import ink.doa.workbench.application.permission.CreateManagedAccessGrantCommand
+import ink.doa.workbench.application.permission.PermissionActionService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.permission.AdminScope
+import ink.doa.workbench.identity.permission.model.AuthorizationDecision
+import ink.doa.workbench.identity.permission.model.AuthorizationScope
+import ink.doa.workbench.identity.permission.model.DecisionReason
+import ink.doa.workbench.identity.permission.model.PermissionService
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.common.PublicIdResolver
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.security.permission.AccessGrantManagementService
-import ink.doa.workbench.security.permission.AdminUserService
-import ink.doa.workbench.security.permission.AdminUserView
-import ink.doa.workbench.security.permission.CreateManagedAccessGrantCommand
-import ink.doa.workbench.security.permission.PermissionActionService
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
@@ -251,8 +253,8 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String): AuthenticatedPrincipal? =
           if (sessionId == ADMIN_SESSION || sessionId == TenantWebMvcFixtures.SESSION) {
             TenantWebMvcFixtures.PRINCIPAL
@@ -262,8 +264,8 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -289,7 +291,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     fun permissionService(): PermissionService =
       object : PermissionService {
         override suspend fun decide(
-          request: ink.doa.workbench.core.permission.model.AuthorizationRequest
+          request: ink.doa.workbench.identity.permission.model.AuthorizationRequest
         ): AuthorizationDecision =
           if (
             request.scope == AuthorizationScope.INSTANCE &&
@@ -373,13 +375,13 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     fun permissionActionServiceSetup(service: PermissionActionService): Boolean {
       coEvery { service.listActions() } returns
         listOf(
-          ink.doa.workbench.security.permission.ActionView(
+          ink.doa.workbench.application.permission.ActionView(
             code = "project.read",
             description = "Read projects",
           )
         )
       coEvery { service.ensureAction("project.archive", "Archive projects") } returns
-        ink.doa.workbench.security.permission.ActionView(
+        ink.doa.workbench.application.permission.ActionView(
           code = "project.archive",
           description = "Archive projects",
         )
@@ -396,15 +398,15 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
         )
       } returns
         listOf(
-          ink.doa.workbench.security.permission.AccessGrantView(
+          ink.doa.workbench.application.permission.AccessGrantView(
             id = "grt_01JABCDEFGHJKMNPQRSTVWXYZ0",
-            scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+            scope = ink.doa.workbench.identity.permission.GrantScope.TENANT,
             tenantId = TenantWebMvcFixtures.TENANT_ID.toString(),
             projectId = null,
             userId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
             action = "project.read",
             resourcePattern = "project:*",
-            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
             validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
             validTo = null,
           )
@@ -412,26 +414,26 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
       coEvery {
         service.createGrant(
           CreateManagedAccessGrantCommand(
-            scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+            scope = ink.doa.workbench.identity.permission.GrantScope.TENANT,
             tenantId = TenantWebMvcFixtures.TENANT_ID,
             userPublicId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
             actionCode = "project.write",
             resourcePattern = "project:*",
-            effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+            effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
             projectPublicId = null,
             actorUserId = TenantWebMvcFixtures.USER_ID,
           )
         )
       } returns
-        ink.doa.workbench.security.permission.AccessGrantView(
+        ink.doa.workbench.application.permission.AccessGrantView(
           id = "grt_01JABCDEFGHJKMNPQRSTVWXYZ1",
-          scope = ink.doa.workbench.core.permission.GrantScope.TENANT,
+          scope = ink.doa.workbench.identity.permission.GrantScope.TENANT,
           tenantId = TenantWebMvcFixtures.TENANT_ID.toString(),
           projectId = null,
           userId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
           action = "project.write",
           resourcePattern = "project:*",
-          effect = ink.doa.workbench.core.permission.model.PermissionEffect.ALLOW,
+          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
           validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
           validTo = null,
         )

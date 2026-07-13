@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.api.http
 
-import ink.doa.workbench.core.common.context.RequestHost
+import ink.doa.workbench.kernel.common.context.RequestHost
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpHeaders
 
@@ -37,8 +37,8 @@ data class HttpClientContext(
   }
 }
 
-fun HttpClientContext.toServiceContext(): ink.doa.workbench.security.identity.ClientContext =
-  ink.doa.workbench.security.identity.ClientContext(
+fun HttpClientContext.toServiceContext(): ink.doa.workbench.identity.ClientContext =
+  ink.doa.workbench.identity.ClientContext(
     ipAddress = ipAddress,
     userAgent = userAgent,
   )

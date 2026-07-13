@@ -1,19 +1,19 @@
 package ink.doa.workbench.web.instance
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.model.AuthorizationDecision
-import ink.doa.workbench.core.permission.model.AuthorizationScope
-import ink.doa.workbench.core.permission.model.DecisionReason
+import ink.doa.workbench.application.identity.PublicIdResolver
+import ink.doa.workbench.application.instance.CreateTenantView
+import ink.doa.workbench.application.instance.TenantManagementApplicationService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.identity.permission.model.AuthorizationDecision
+import ink.doa.workbench.identity.permission.model.AuthorizationScope
+import ink.doa.workbench.identity.permission.model.DecisionReason
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.common.PublicIdResolver
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.service.instance.CreateTenantView
-import ink.doa.workbench.service.instance.TenantManagementApplicationService
+import ink.doa.workbench.tenant.model.TenantRecord
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
@@ -124,8 +124,8 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String): AuthenticatedPrincipal? =
           when (sessionId) {
             ADMIN_SESSION -> ADMIN_PRINCIPAL
@@ -135,17 +135,17 @@ class TenantAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String): AuthenticatedPrincipal? = null
       }
 
     @Bean
-    fun permissionService(): ink.doa.workbench.core.permission.model.PermissionService =
-      object : ink.doa.workbench.core.permission.model.PermissionService {
+    fun permissionService(): ink.doa.workbench.identity.permission.model.PermissionService =
+      object : ink.doa.workbench.identity.permission.model.PermissionService {
         override suspend fun decide(
-          request: ink.doa.workbench.core.permission.model.AuthorizationRequest
-        ): ink.doa.workbench.core.permission.model.AuthorizationDecision =
+          request: ink.doa.workbench.identity.permission.model.AuthorizationRequest
+        ): ink.doa.workbench.identity.permission.model.AuthorizationDecision =
           if (
             request.scope == AuthorizationScope.INSTANCE && request.subject.userId == ADMIN_USER_ID
           ) {

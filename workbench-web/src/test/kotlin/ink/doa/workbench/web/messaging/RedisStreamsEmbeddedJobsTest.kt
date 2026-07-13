@@ -1,11 +1,11 @@
 package ink.doa.workbench.web.messaging
 
-import ink.doa.workbench.core.port.messaging.ClaimedOutboxPublication
-import ink.doa.workbench.core.port.messaging.MessagingBackend
-import ink.doa.workbench.core.port.messaging.OutboxPublicationStore
-import ink.doa.workbench.jobs.messaging.DomainEventDispatcher
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
-import ink.doa.workbench.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.DomainEventDispatcher
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.messaging.ClaimedOutboxPublication
+import ink.doa.workbench.application.messaging.MessagingBackend
+import ink.doa.workbench.application.messaging.OutboxPublicationStore
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.every
 import io.mockk.mockk

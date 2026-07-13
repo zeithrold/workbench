@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import org.springdoc.core.service.AbstractRequestService

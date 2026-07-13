@@ -7,7 +7,10 @@ kotlin {
 }
 
 dependencies {
-  implementation(project(":workbench-core"))
+  implementation(project(":workbench-kernel"))
+  implementation(project(":workbench-agile"))
+  implementation(project(":workbench-tenant"))
+  implementation(project(":workbench-identity"))
   implementation(
     platform("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
   )

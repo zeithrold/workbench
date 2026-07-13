@@ -1,8 +1,8 @@
 package ink.doa.workbench.security.identity.auth
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -15,8 +15,8 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class FederatedAuthClientTest :
   StringSpec({
-    val oauthClient = OAuthFederatedClient(MapSecretResolver(emptyMap()))
-    val samlClient = SamlFederatedClient()
+    val oauthClient = DefaultOAuthFederatedClient(MapSecretResolver(emptyMap()))
+    val samlClient = DefaultSamlFederatedClient()
 
     "encodeQueryValue url-encodes values" {
       encodeQueryValue("a+b c") shouldBe "a%2Bb+c"
@@ -77,7 +77,7 @@ class FederatedAuthClientTest :
     "saml response parser extracts NameID" {
       val xml = """<Response><NameID>ada@example.test</NameID></Response>"""
       val encoded = Base64.getEncoder().encodeToString(xml.toByteArray(StandardCharsets.UTF_8))
-      SamlResponseParser.parseNameId(encoded) shouldBe "ada@example.test"
+      DefaultSamlFederatedClient().parseNameId(encoded) shouldBe "ada@example.test"
     }
 
     "resolveSubject reads email from id token payload" {

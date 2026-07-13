@@ -1,6 +1,6 @@
 package ink.doa.workbench.worker.messaging
 
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.every
 import io.mockk.mockk

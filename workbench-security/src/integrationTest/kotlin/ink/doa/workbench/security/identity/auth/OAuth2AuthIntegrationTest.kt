@@ -7,6 +7,12 @@ import ink.doa.workbench.data.repository.identity.ExposedLoginMethodRepository
 import ink.doa.workbench.data.repository.identity.ExposedTenantLoginMethodSettingRepository
 import ink.doa.workbench.data.repository.identity.ExposedTenantRepository
 import ink.doa.workbench.data.repository.identity.ExposedUserLoginAccountRepository
+import ink.doa.workbench.identity.auth.CredentialCryptoSupport
+import ink.doa.workbench.identity.auth.FederatedAuthClients
+import ink.doa.workbench.identity.auth.FederatedAuthRepositories
+import ink.doa.workbench.identity.auth.FederatedAuthService
+import ink.doa.workbench.identity.auth.SecureRandomCredentialSecretGenerator
+import ink.doa.workbench.identity.auth.Sha256CredentialHasher
 import ink.doa.workbench.security.identity.auth.support.AuthIntegrationFixtures
 import ink.doa.workbench.security.identity.auth.support.FederatedAuthFixture
 import ink.doa.workbench.security.identity.auth.support.KeycloakTestContainer
@@ -48,8 +54,8 @@ class OAuth2AuthIntegrationTest :
             ),
           clients =
             FederatedAuthClients(
-              oauth = OAuthFederatedClient(secretResolver),
-              saml = SamlFederatedClient(),
+              oauth = DefaultOAuthFederatedClient(secretResolver),
+              saml = DefaultSamlFederatedClient(),
             ),
           crypto =
             CredentialCryptoSupport(

@@ -1,15 +1,13 @@
 package ink.doa.workbench.web.project
 
 import ink.doa.workbench.agile.project.ProjectOperationalGuard
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
-import ink.doa.workbench.core.project.model.NonMemberVisibility
-import ink.doa.workbench.core.project.model.UpdateProjectCommand
-import ink.doa.workbench.service.project.ProjectManagementApplicationService
+import ink.doa.workbench.agile.project.model.CreateProjectCommand
+import ink.doa.workbench.agile.project.model.NonMemberJoinPolicy
+import ink.doa.workbench.agile.project.model.NonMemberVisibility
+import ink.doa.workbench.agile.project.model.UpdateProjectCommand
+import ink.doa.workbench.application.project.ProjectManagementApplicationService
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.web.api.Audit
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
@@ -18,6 +16,8 @@ import ink.doa.workbench.web.api.ProjectScoped
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.ProjectRequestContext
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid

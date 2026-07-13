@@ -1,15 +1,15 @@
 package ink.doa.workbench.web.instance
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.security.common.PublicIdResolver
-import ink.doa.workbench.service.instance.TenantManagementApplicationService
+import ink.doa.workbench.application.identity.PublicIdResolver
+import ink.doa.workbench.application.instance.TenantManagementApplicationService
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.InstanceScoped
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
+import ink.doa.workbench.web.api.context.InstanceRequestContext
 import ink.doa.workbench.web.api.http.HttpClientContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter

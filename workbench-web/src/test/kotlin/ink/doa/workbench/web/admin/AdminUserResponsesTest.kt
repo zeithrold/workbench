@@ -1,13 +1,13 @@
 package ink.doa.workbench.web.admin
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.GrantScope
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.security.permission.AccessGrantView
-import ink.doa.workbench.security.permission.ActionView
-import ink.doa.workbench.security.permission.AdminUserView
+import ink.doa.workbench.application.permission.AccessGrantView
+import ink.doa.workbench.application.permission.ActionView
+import ink.doa.workbench.application.permission.AdminUserView
+import ink.doa.workbench.identity.permission.AdminScope
+import ink.doa.workbench.identity.permission.GrantScope
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.web.api.ProblemDetailSupport
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

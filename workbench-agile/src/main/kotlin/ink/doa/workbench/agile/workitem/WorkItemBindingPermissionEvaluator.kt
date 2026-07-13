@@ -1,14 +1,14 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.PermissionConditionResult
-import ink.doa.workbench.core.permission.ResolvedPermissionRule
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.access.AccessConditionContext
-import ink.doa.workbench.core.workitem.access.AccessConditionEvaluator
-import ink.doa.workbench.core.workitem.template.TemplateField
-import ink.doa.workbench.core.workitem.template.toPermissionResourceId
+import ink.doa.workbench.agile.workitem.access.AccessConditionContext
+import ink.doa.workbench.agile.workitem.access.AccessConditionEvaluator
+import ink.doa.workbench.agile.workitem.template.TemplateField
+import ink.doa.workbench.agile.workitem.template.toPermissionResourceId
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.PermissionConditionResult
+import ink.doa.workbench.identity.permission.ResolvedPermissionRule
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

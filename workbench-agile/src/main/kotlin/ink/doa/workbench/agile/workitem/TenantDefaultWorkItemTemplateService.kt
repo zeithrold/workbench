@@ -1,16 +1,16 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
-import ink.doa.workbench.core.workitem.model.IssueStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.agile.workitem.model.IssueStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkflowRecord
 import java.util.UUID
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -197,7 +197,7 @@ class TenantDefaultWorkItemTemplateService(
   private suspend fun ensureTransition(
     tenantId: UUID,
     workflowId: String,
-    existing: List<ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord>,
+    existing: List<ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord>,
     spec: DefaultTransitionSpec,
   ) {
     if (existing.any { it.connects(spec.fromStatusId, spec.toStatusId) }) return
@@ -213,12 +213,12 @@ class TenantDefaultWorkItemTemplateService(
     )
   }
 
-  private fun ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord.connects(
+  private fun ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord.connects(
     fromStatusId: String,
     toStatusId: String,
   ): Boolean = fromStatusApiId?.value == fromStatusId && toStatusApiId?.value == toStatusId
 
-  private fun ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord.isActiveFor(
+  private fun ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord.isActiveFor(
     task: IssueTypeRecord
   ): Boolean =
     scope == WorkItemConfigScope.TENANT &&

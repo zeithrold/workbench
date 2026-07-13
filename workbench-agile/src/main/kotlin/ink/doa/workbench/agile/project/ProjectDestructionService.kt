@@ -1,8 +1,6 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.project.ProjectDestructionRepository
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.ProjectStatus
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

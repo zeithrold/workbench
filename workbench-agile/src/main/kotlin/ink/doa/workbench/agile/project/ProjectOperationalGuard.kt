@@ -1,12 +1,11 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.common.errors.ProjectArchivedException
-import ink.doa.workbench.core.common.errors.ProjectDestroyingException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.kernel.common.errors.ProjectArchivedException
+import ink.doa.workbench.kernel.common.errors.ProjectDestroyingException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Service
 

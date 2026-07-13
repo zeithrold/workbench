@@ -1,22 +1,22 @@
 package ink.doa.workbench.data.repository.sprint
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventOutbox
-import ink.doa.workbench.core.sprint.CreateSprintCloseOperationCommand
-import ink.doa.workbench.core.sprint.SprintCloseFailureRequest
-import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
-import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
-import ink.doa.workbench.core.sprint.SprintCloseSuccessRequest
-import ink.doa.workbench.core.sprint.events.SprintCloseFailedEvent
-import ink.doa.workbench.core.sprint.events.SprintClosedEvent
-import ink.doa.workbench.core.sprint.events.SprintDomainEvents
-import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
-import ink.doa.workbench.core.sprint.model.SprintCloseOperationRecord
-import ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus
-import ink.doa.workbench.core.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.CreateSprintCloseOperationCommand
+import ink.doa.workbench.agile.sprint.SprintCloseFailureRequest
+import ink.doa.workbench.agile.sprint.SprintCloseOperationRepository
+import ink.doa.workbench.agile.sprint.SprintCloseRetryRequest
+import ink.doa.workbench.agile.sprint.SprintCloseSuccessRequest
+import ink.doa.workbench.agile.sprint.events.SprintCloseFailedEvent
+import ink.doa.workbench.agile.sprint.events.SprintClosedEvent
+import ink.doa.workbench.agile.sprint.events.SprintDomainEvents
+import ink.doa.workbench.agile.sprint.model.SprintCloseDisposition
+import ink.doa.workbench.agile.sprint.model.SprintCloseOperationRecord
+import ink.doa.workbench.agile.sprint.model.SprintCloseOperationStatus
+import ink.doa.workbench.agile.sprint.model.SprintStatus
+import ink.doa.workbench.application.messaging.DomainEventOutbox
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintCloseOperationsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.messaging.EventMetadata
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
@@ -74,7 +74,7 @@ class ExposedSprintCloseOperationRepository(
         spec = SprintDomainEvents.CloseRequested,
         key = sprintApiId,
         payload =
-          ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent(
+          ink.doa.workbench.agile.sprint.events.SprintCloseRequestedEvent(
             tenantId = tenantId.toString(),
             projectId = projectId.toString(),
             sprintId = sprintApiId,
@@ -175,12 +175,13 @@ class ExposedSprintCloseOperationRepository(
           }
           .singleOrNull()
           ?.let(::toRecord)
-          ?: throw ink.doa.workbench.core.common.errors.ResourceNotFoundException(
-            ink.doa.workbench.core.common.errors.WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_NOT_FOUND
+          ?: throw ink.doa.workbench.kernel.common.errors.ResourceNotFoundException(
+            ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+              .SPRINT_CLOSE_OPERATION_NOT_FOUND
           )
       if (operation.status != SprintCloseOperationStatus.FAILED) {
-        throw ink.doa.workbench.core.common.errors.InvalidRequestException(
-          ink.doa.workbench.core.common.errors.WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT
+        throw ink.doa.workbench.kernel.common.errors.InvalidRequestException(
+          ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT
         )
       }
       SprintCloseOperationsTable.update({

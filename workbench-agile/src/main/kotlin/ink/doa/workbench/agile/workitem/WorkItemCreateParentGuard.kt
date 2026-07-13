@@ -1,12 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Component
 

@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.model.CreateInvitationCommand
-import ink.doa.workbench.core.identity.model.InvitationType
 import ink.doa.workbench.data.support.seedTenant
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.identity.model.CreateInvitationCommand
+import ink.doa.workbench.identity.model.InvitationType
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull

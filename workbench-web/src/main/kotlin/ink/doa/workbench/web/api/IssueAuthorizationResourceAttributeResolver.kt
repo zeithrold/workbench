@@ -1,10 +1,10 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.permission.AuthorizationResourceAttributeResolver
-import ink.doa.workbench.core.permission.model.AuthorizationRequest
-import ink.doa.workbench.core.permission.model.AuthorizationResource
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
+import ink.doa.workbench.agile.project.ProjectRepository
+import ink.doa.workbench.agile.workitem.WorkItemRepository
+import ink.doa.workbench.identity.permission.AuthorizationResourceAttributeResolver
+import ink.doa.workbench.identity.permission.model.AuthorizationRequest
+import ink.doa.workbench.identity.permission.model.AuthorizationResource
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 

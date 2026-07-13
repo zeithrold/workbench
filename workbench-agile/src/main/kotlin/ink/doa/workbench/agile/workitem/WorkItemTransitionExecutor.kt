@@ -1,8 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
 import org.springframework.stereotype.Component
 
 @Component

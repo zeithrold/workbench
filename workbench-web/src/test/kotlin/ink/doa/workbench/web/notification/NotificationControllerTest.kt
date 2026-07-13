@@ -1,12 +1,12 @@
 package ink.doa.workbench.web.notification
 
-import ink.doa.workbench.core.notification.NotificationPreferenceRecord
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.notification.NotificationApplicationService
+import ink.doa.workbench.notification.NotificationPreferenceRecord
+import ink.doa.workbench.notification.NotificationView
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.service.notification.NotificationApplicationService
-import ink.doa.workbench.service.notification.NotificationView
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.RequestContextResolver
@@ -156,15 +156,15 @@ class NotificationControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 

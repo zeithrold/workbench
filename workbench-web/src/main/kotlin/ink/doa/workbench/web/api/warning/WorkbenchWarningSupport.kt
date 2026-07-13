@@ -1,11 +1,12 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.warning.WorkbenchWarning
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
-import ink.doa.workbench.core.common.warning.WorkbenchWarningConstants
-import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
-import ink.doa.workbench.core.common.warning.meta.WarningTruncatedMeta
-import ink.doa.workbench.core.common.warning.meta.WorkbenchWarningMeta
+import ink.doa.workbench.agile.project.ProjectSummary
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarning
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningConstants
+import ink.doa.workbench.kernel.common.warning.meta.ProjectDestroyScheduledMeta
+import ink.doa.workbench.kernel.common.warning.meta.WarningTruncatedMeta
+import ink.doa.workbench.kernel.common.warning.meta.WorkbenchWarningMeta
 import tools.jackson.module.kotlin.jacksonObjectMapper
 
 class WorkbenchWarningSupport {
@@ -83,7 +84,12 @@ class WorkbenchWarningSupport {
     when (meta) {
       is ProjectDestroyScheduledMeta ->
         ProjectDestroyScheduledMetaSchema(
-          project = meta.project,
+          project =
+            ProjectSummary(
+              id = meta.project.id,
+              identifier = meta.project.identifier,
+              name = meta.project.name,
+            ),
           deleteReason = meta.deleteReason,
         )
       is WarningTruncatedMeta -> WarningTruncatedMetaSchema()

@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.model.CreateUserCommand
-import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.AdminUserStatus
-import ink.doa.workbench.core.permission.CreateAdminUserCommand
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import ink.doa.workbench.identity.model.CreateUserCommand
+import ink.doa.workbench.identity.permission.AdminScope
+import ink.doa.workbench.identity.permission.AdminUserStatus
+import ink.doa.workbench.identity.permission.CreateAdminUserCommand
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull

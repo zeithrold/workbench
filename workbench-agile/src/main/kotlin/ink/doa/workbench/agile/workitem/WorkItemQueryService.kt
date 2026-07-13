@@ -1,14 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.WorkItemQueryRepository
-import ink.doa.workbench.core.workitem.WorkItemSearchGroupsPageRequest
-import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
-import ink.doa.workbench.core.workitem.WorkItemSearchScope
-import ink.doa.workbench.core.workitem.model.WorkItemSearchGroupsPage
-import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
-import ink.doa.workbench.core.workitem.query.WorkItemQuery
-import ink.doa.workbench.core.workitem.query.WorkItemQueryValidator
-import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.agile.workitem.model.WorkItemSearchGroupsPage
+import ink.doa.workbench.agile.workitem.model.WorkItemSearchResult
+import ink.doa.workbench.agile.workitem.query.WorkItemQuery
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryValidator
+import ink.doa.workbench.agile.workitem.query.WorkItemSearchGroupScope
 import org.springframework.stereotype.Service
 
 @Service

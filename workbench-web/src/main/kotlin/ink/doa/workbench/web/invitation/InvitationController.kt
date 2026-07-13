@@ -1,12 +1,11 @@
 package ink.doa.workbench.web.invitation
 
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.model.AcceptInvitationCommand
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.security.invitation.CreateManagedInvitationCommand
-import ink.doa.workbench.security.invitation.InvitationService
+import ink.doa.workbench.application.invitation.CreateManagedInvitationCommand
+import ink.doa.workbench.application.invitation.InvitationService
+import ink.doa.workbench.identity.model.AcceptInvitationCommand
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.AuthenticatedOnly
 import ink.doa.workbench.web.api.Authorize
@@ -14,6 +13,7 @@ import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import ink.doa.workbench.web.api.http.HttpClientContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -54,7 +54,7 @@ class InvitationController(private val service: InvitationService) {
     InvitationCreatedResponse.from(
       service.create(
         CreateManagedInvitationCommand(
-          type = ink.doa.workbench.core.identity.model.InvitationType.TENANT_MEMBER,
+          type = ink.doa.workbench.identity.model.InvitationType.TENANT_MEMBER,
           tenantId = tenantContext.tenant.id,
           email = request.email,
           displayName = request.displayName,
@@ -151,7 +151,7 @@ data class InvitationCreatedResponse(
   val invitationLink: String,
 ) {
   companion object {
-    fun from(result: ink.doa.workbench.security.invitation.CreateInvitationResult) =
+    fun from(result: ink.doa.workbench.application.invitation.CreateInvitationResult) =
       InvitationCreatedResponse(result.id, result.email, result.expiresAt, result.invitationLink)
   }
 }

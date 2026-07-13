@@ -1,8 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.template.FieldParticipation
-import ink.doa.workbench.core.workitem.template.FieldWriteGrant
-import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
+import ink.doa.workbench.agile.workitem.template.FieldParticipation
+import ink.doa.workbench.agile.workitem.template.FieldWriteGrant
+import ink.doa.workbench.agile.workitem.template.TransitionFieldSpec
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 

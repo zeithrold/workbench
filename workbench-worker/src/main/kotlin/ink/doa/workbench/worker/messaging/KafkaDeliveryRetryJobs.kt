@@ -1,7 +1,7 @@
 package ink.doa.workbench.worker.messaging
 
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
-import ink.doa.workbench.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component

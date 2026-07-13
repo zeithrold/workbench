@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable
 import ink.doa.workbench.data.persistence.postgres.requireColumn
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

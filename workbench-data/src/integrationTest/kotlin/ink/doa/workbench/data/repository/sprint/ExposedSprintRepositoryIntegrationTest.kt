@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.repository.sprint
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.sprint.model.ArchiveSprintCommand
-import ink.doa.workbench.core.sprint.model.CreateSprintCommand
-import ink.doa.workbench.core.sprint.model.DeleteSprintCommand
-import ink.doa.workbench.core.sprint.model.SprintStatus
-import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
+import ink.doa.workbench.agile.sprint.model.ArchiveSprintCommand
+import ink.doa.workbench.agile.sprint.model.CreateSprintCommand
+import ink.doa.workbench.agile.sprint.model.DeleteSprintCommand
+import ink.doa.workbench.agile.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.model.UpdateSprintCommand
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize

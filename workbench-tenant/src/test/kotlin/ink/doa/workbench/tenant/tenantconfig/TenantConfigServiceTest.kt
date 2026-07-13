@@ -1,13 +1,12 @@
 package ink.doa.workbench.tenant.tenantconfig
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.tenantconfig.TenantConfigRepository
-import ink.doa.workbench.core.tenantconfig.model.MailSmtpTenantConfig
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigKey
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigRecord
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigSpecs
-import ink.doa.workbench.core.tenantconfig.model.UpsertTenantConfigCommand
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.tenant.tenantconfig.model.MailSmtpTenantConfig
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigKey
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigRecord
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigSpecs
+import ink.doa.workbench.tenant.tenantconfig.model.UpsertTenantConfigCommand
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize

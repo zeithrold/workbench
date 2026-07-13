@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.messaging
 
 import com.zaxxer.hikari.HikariDataSource
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
-import ink.doa.workbench.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
 import java.sql.DriverManager
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.LockSupport

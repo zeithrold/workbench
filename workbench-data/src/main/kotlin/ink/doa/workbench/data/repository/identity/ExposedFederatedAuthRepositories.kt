@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.auth.AuthLoginStateRepository
-import ink.doa.workbench.core.identity.auth.MagicLinkTokenRepository
-import ink.doa.workbench.core.identity.model.AuthLoginStateRecord
-import ink.doa.workbench.core.identity.model.CreateAuthLoginStateCommand
-import ink.doa.workbench.core.identity.model.MagicLinkTokenRecord
 import ink.doa.workbench.data.persistence.postgres.identity.AuthLoginStatesTable
 import ink.doa.workbench.data.persistence.postgres.identity.MagicLinkTokensTable
+import ink.doa.workbench.identity.auth.AuthLoginStateRepository
+import ink.doa.workbench.identity.auth.MagicLinkTokenRepository
+import ink.doa.workbench.identity.model.AuthLoginStateRecord
+import ink.doa.workbench.identity.model.CreateAuthLoginStateCommand
+import ink.doa.workbench.identity.model.MagicLinkTokenRecord
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

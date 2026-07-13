@@ -1,14 +1,14 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.common.pagination.WorkItemSearchCursor
-import ink.doa.workbench.core.common.pagination.WorkItemSearchGroupCursor
-import ink.doa.workbench.core.workitem.WorkItemSearchScope
-import ink.doa.workbench.core.workitem.query.ConditionNode
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
-import ink.doa.workbench.core.workitem.query.WorkItemQuery
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
-import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.agile.workitem.WorkItemSearchScope
+import ink.doa.workbench.agile.workitem.query.ConditionNode
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupKeySupport
+import ink.doa.workbench.agile.workitem.query.WorkItemQuery
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.agile.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.kernel.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.kernel.common.pagination.WorkItemSearchGroupCursor
 
 class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldResolver) {
   private val operatorCompiler = PostgresWorkItemOperatorCompiler()
@@ -146,8 +146,8 @@ class PostgresWorkItemFilter(private val fieldResolver: PostgresWorkItemFieldRes
       field.definition.type == WorkItemQueryFieldType.LONG_TEXT &&
         predicate.op in TEXT_SEARCH_OPERATORS
     ) {
-      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
-        ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+      throw ink.doa.workbench.kernel.common.errors.InvalidRequestException(
+        ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
           .WORK_ITEM_QUERY_LONG_TEXT_REQUIRES_ELASTICSEARCH
       )
     }

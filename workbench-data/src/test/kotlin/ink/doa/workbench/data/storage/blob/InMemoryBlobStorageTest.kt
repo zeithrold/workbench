@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.storage.blob
 
-import ink.doa.workbench.core.storage.BlobStorageObjectNotFoundException
+import ink.doa.workbench.kernel.storage.BlobStorageObjectNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

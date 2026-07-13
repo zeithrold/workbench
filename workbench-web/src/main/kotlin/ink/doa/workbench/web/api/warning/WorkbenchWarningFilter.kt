@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
-import ink.doa.workbench.core.common.warning.WorkbenchWarningConstants
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningConstants
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

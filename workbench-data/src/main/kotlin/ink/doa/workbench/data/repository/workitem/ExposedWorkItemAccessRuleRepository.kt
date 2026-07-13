@@ -1,14 +1,14 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.access.CreateWorkItemAccessRuleCommand
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRepository
-import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
+import ink.doa.workbench.agile.workitem.access.CreateWorkItemAccessRuleCommand
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRecord
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRepository
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessSubjectType
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigAccessRulesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.asObject
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

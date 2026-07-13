@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.DomainEventEncoder
-import ink.doa.workbench.core.messaging.DomainEventEnvelope
-import ink.doa.workbench.core.messaging.DomainEventSpec
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventOutbox
+import ink.doa.workbench.application.messaging.DomainEventOutbox
 import ink.doa.workbench.data.persistence.postgres.workitem.DomainOutboxTable
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
+import ink.doa.workbench.kernel.messaging.DomainEventEnvelope
+import ink.doa.workbench.kernel.messaging.DomainEventSpec
+import ink.doa.workbench.kernel.messaging.EventMetadata
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

@@ -3,11 +3,11 @@ package ink.doa.workbench.agile.workitem
 import ink.doa.workbench.agile.testfixtures.AgileServiceFactory
 import ink.doa.workbench.agile.testfixtures.AgileWorkItemFixtures
 import ink.doa.workbench.agile.testfixtures.TransitionTestHarness
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -42,8 +42,8 @@ class WorkItemTransitionServiceTest :
       tenantId: UUID,
       projectId: UUID,
       actorId: UUID,
-      issue: ink.doa.workbench.core.workitem.model.WorkItemRecord,
-      config: ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails,
+      issue: ink.doa.workbench.agile.workitem.model.WorkItemRecord,
+      config: ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails,
     ) {
       coEvery { harness.repository.listPropertyValues(tenantId, issue.id) } returns emptyMap()
       coEvery {
@@ -180,7 +180,7 @@ class WorkItemTransitionServiceTest :
         val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorId)
         val transition = AgileWorkItemFixtures.sampleTransition(config)
         val mutationResult =
-          ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
+          ink.doa.workbench.agile.workitem.model.WorkItemMutationResult(
             issue,
             "work_item.transitioned",
           )
@@ -238,7 +238,7 @@ class WorkItemTransitionServiceTest :
                   .jsonObject
             )
         val mutationResult =
-          ink.doa.workbench.core.workitem.model.WorkItemMutationResult(
+          ink.doa.workbench.agile.workitem.model.WorkItemMutationResult(
             issue,
             "work_item.transitioned",
             statusHistoryId = UUID.randomUUID(),

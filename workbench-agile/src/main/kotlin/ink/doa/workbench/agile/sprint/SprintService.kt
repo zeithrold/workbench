@@ -1,24 +1,20 @@
 package ink.doa.workbench.agile.sprint
 
 import ink.doa.workbench.agile.project.ProjectOperationalGuard
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.sprint.CreateSprintCloseOperationCommand
-import ink.doa.workbench.core.sprint.SprintCloseOperationRepository
-import ink.doa.workbench.core.sprint.SprintCloseRetryRequest
-import ink.doa.workbench.core.sprint.SprintRepository
-import ink.doa.workbench.core.sprint.model.ArchiveSprintCommand
-import ink.doa.workbench.core.sprint.model.CloseSprintCommand
-import ink.doa.workbench.core.sprint.model.CreateSprintCommand
-import ink.doa.workbench.core.sprint.model.DeleteSprintCommand
-import ink.doa.workbench.core.sprint.model.SprintRecord
-import ink.doa.workbench.core.sprint.model.SprintStatus
-import ink.doa.workbench.core.sprint.model.StartSprintCommand
-import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
-import ink.doa.workbench.core.workitem.WorkItemRepository
+import ink.doa.workbench.agile.sprint.model.ArchiveSprintCommand
+import ink.doa.workbench.agile.sprint.model.CloseSprintCommand
+import ink.doa.workbench.agile.sprint.model.CreateSprintCommand
+import ink.doa.workbench.agile.sprint.model.DeleteSprintCommand
+import ink.doa.workbench.agile.sprint.model.SprintRecord
+import ink.doa.workbench.agile.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.model.StartSprintCommand
+import ink.doa.workbench.agile.sprint.model.UpdateSprintCommand
+import ink.doa.workbench.agile.workitem.WorkItemRepository
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -157,7 +153,9 @@ class SprintService(
     val operation =
       closeOperations.findByApiId(tenantId, projectId, sprintApiId, operationApiId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_NOT_FOUND)
-    if (operation.status != ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus.FAILED) {
+    if (
+      operation.status != ink.doa.workbench.agile.sprint.model.SprintCloseOperationStatus.FAILED
+    ) {
       throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_OPERATION_CONFLICT)
     }
     val retried =
@@ -168,7 +166,7 @@ class SprintService(
           sprintApiId = sprintApiId,
           operationApiId = operationApiId,
           payload =
-            ink.doa.workbench.core.sprint.events.SprintCloseRequestedEvent(
+            ink.doa.workbench.agile.sprint.events.SprintCloseRequestedEvent(
               tenantId = tenantId.toString(),
               projectId = projectId.toString(),
               sprintId = sprintApiId,
@@ -267,7 +265,7 @@ private fun validateCloseTarget(
   target: SprintRecord?,
 ) {
   val expectsTarget =
-    command.disposition == ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT
+    command.disposition == ink.doa.workbench.agile.sprint.model.SprintCloseDisposition.NEXT_SPRINT
   if (expectsTarget && target == null) {
     throw InvalidRequestException(WorkbenchErrorCode.SPRINT_CLOSE_TARGET_REQUIRED)
   }
@@ -296,7 +294,7 @@ data class SprintCloseOperationView(
   val completedAt: OffsetDateTime?,
 ) {
   companion object {
-    fun from(record: ink.doa.workbench.core.sprint.model.SprintCloseOperationRecord) =
+    fun from(record: ink.doa.workbench.agile.sprint.model.SprintCloseOperationRecord) =
       SprintCloseOperationView(
         id = record.apiId.value,
         sprintId = record.sprintApiId.value,

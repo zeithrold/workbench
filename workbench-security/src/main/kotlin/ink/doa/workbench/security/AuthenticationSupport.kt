@@ -1,7 +1,7 @@
 package ink.doa.workbench.security
 
-import ink.doa.workbench.core.identity.auth.PasswordHasher
-import ink.doa.workbench.core.identity.auth.PasswordVerifier
+import ink.doa.workbench.identity.auth.PasswordHasher
+import ink.doa.workbench.identity.auth.PasswordVerifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder

@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.notification
 
-import ink.doa.workbench.core.notification.CreateNotificationCommand
-import ink.doa.workbench.core.notification.NotificationChannel
-import ink.doa.workbench.core.notification.NotificationPreferenceRecord
+import ink.doa.workbench.notification.CreateNotificationCommand
+import ink.doa.workbench.notification.NotificationChannel
+import ink.doa.workbench.notification.NotificationPreferenceRecord
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.jdbcTemplate

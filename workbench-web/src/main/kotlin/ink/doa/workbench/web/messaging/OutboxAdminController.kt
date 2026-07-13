@@ -1,14 +1,14 @@
 package ink.doa.workbench.web.messaging
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.messaging.OutboxMessageQuery
-import ink.doa.workbench.core.messaging.OutboxMessageRecord
-import ink.doa.workbench.service.messaging.OutboxAdminApplicationService
+import ink.doa.workbench.application.messaging.OutboxAdminApplicationService
+import ink.doa.workbench.application.messaging.OutboxMessageQuery
+import ink.doa.workbench.application.messaging.OutboxMessageRecord
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.InstanceScoped
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
+import ink.doa.workbench.web.api.context.InstanceRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import java.time.OffsetDateTime

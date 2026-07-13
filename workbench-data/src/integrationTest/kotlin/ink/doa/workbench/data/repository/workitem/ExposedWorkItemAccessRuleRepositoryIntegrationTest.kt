@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.access.CreateWorkItemAccessRuleCommand
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
-import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.agile.workitem.access.CreateWorkItemAccessRuleCommand
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessSubjectType
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowTransitionCommand
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize

@@ -1,9 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Component
 
@@ -27,7 +26,7 @@ class WorkItemTransitionContextLoader(
   }
 
   suspend fun load(
-    issue: ink.doa.workbench.core.workitem.model.WorkItemRecord,
+    issue: ink.doa.workbench.agile.workitem.model.WorkItemRecord,
     actorUserId: UUID,
     actorUserApiId: String,
   ): WorkItemTransitionContext {
@@ -99,7 +98,7 @@ class WorkItemTransitionContextLoader(
     )
 
   private fun workItemResourceAttributes(
-    issue: ink.doa.workbench.core.workitem.model.WorkItemRecord,
+    issue: ink.doa.workbench.agile.workitem.model.WorkItemRecord,
     projectApiId: String,
   ): Map<String, String> =
     mapOf(

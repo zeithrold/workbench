@@ -1,15 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
-import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
-import ink.doa.workbench.core.workitem.model.IssueStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.agile.workitem.WorkItemCatalogRepository
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand
+import ink.doa.workbench.agile.workitem.model.CreatePropertyDefinitionCommand
+import ink.doa.workbench.agile.workitem.model.IssueStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.PropertyDefinitionRecord
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigQueries.findIssueTypeRow
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigUsageChecks.rejectIfActiveConfigsUseIssueType
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigUsageChecks.rejectIfActiveConfigsUseProperty
@@ -21,6 +18,9 @@ import ink.doa.workbench.data.persistence.postgres.workitem.now
 import ink.doa.workbench.data.persistence.postgres.workitem.toIssueStatusRecord
 import ink.doa.workbench.data.persistence.postgres.workitem.toIssueTypeRecord
 import ink.doa.workbench.data.persistence.postgres.workitem.toPropertyDefinitionRecord
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

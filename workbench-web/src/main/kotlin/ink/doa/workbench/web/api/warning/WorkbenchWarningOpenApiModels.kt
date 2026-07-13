@@ -2,7 +2,7 @@ package ink.doa.workbench.web.api.warning
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import ink.doa.workbench.core.common.summary.ProjectSummary
+import ink.doa.workbench.agile.project.ProjectSummary
 import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(

@@ -1,7 +1,7 @@
 package ink.doa.workbench.agile.testfixtures
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 
 object AgileProjectFixtures {

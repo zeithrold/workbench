@@ -1,14 +1,13 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.ResolvedPermissionRule
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.NonMemberVisibility
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.NonMemberVisibility
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.ResolvedPermissionRule
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

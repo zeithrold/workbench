@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.workitem
 
+import ink.doa.workbench.agile.project.ProjectSummary
 import ink.doa.workbench.agile.workitem.WorkItemViewView
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
 import java.time.OffsetDateTime
 import kotlinx.serialization.json.JsonElement
 

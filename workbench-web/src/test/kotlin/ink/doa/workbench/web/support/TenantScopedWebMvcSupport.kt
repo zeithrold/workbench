@@ -1,16 +1,16 @@
 package ink.doa.workbench.web.support
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.model.AuthorizationDecision
-import ink.doa.workbench.core.permission.model.DecisionReason
-import ink.doa.workbench.core.permission.model.PermissionService
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
-import ink.doa.workbench.security.common.PublicIdResolver
-import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.application.identity.PublicIdResolver
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.identity.permission.model.AuthorizationDecision
+import ink.doa.workbench.identity.permission.model.DecisionReason
+import ink.doa.workbench.identity.permission.model.PermissionService
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.tenant.model.TenantRecord
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -78,7 +78,7 @@ class TenantScopedWebMvcSupport {
   fun permissionService(): PermissionService =
     object : PermissionService {
       override suspend fun decide(
-        request: ink.doa.workbench.core.permission.model.AuthorizationRequest
+        request: ink.doa.workbench.identity.permission.model.AuthorizationRequest
       ): AuthorizationDecision =
         AuthorizationDecision.Allow(DecisionReason("grant_allowed", "allowed"))
     }

@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.CreateIssueSubtypeConstraintCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabel
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf

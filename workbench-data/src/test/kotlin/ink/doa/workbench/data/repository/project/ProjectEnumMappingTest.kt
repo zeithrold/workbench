@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.project
 
-import ink.doa.workbench.core.project.model.NonMemberJoinPolicy
-import ink.doa.workbench.core.project.model.NonMemberVisibility
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.NonMemberJoinPolicy
+import ink.doa.workbench.agile.project.model.NonMemberVisibility
+import ink.doa.workbench.agile.project.model.ProjectStatus
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

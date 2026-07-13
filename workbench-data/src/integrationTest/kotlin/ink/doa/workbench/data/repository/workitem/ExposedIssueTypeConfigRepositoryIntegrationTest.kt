@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyInput
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigPropertyInput
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -133,12 +133,12 @@ class ExposedIssueTypeConfigRepositoryIntegrationTest :
         val repository = ExposedIssueTypeConfigRepository(database, catalog, workflows)
         val property =
           catalog.createProperty(
-            ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand(
+            ink.doa.workbench.agile.workitem.model.CreatePropertyDefinitionCommand(
               tenantId = stack.tenantId,
               code = "labels",
               name = "Labels",
               description = null,
-              dataType = ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType.TEXT,
+              dataType = ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType.TEXT,
             )
           )
         val created =

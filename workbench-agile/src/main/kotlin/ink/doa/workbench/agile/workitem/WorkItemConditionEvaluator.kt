@@ -1,9 +1,9 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.access.AccessConditionContext
-import ink.doa.workbench.core.workitem.access.AccessConditionEvaluator
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
+import ink.doa.workbench.agile.workitem.access.AccessConditionContext
+import ink.doa.workbench.agile.workitem.access.AccessConditionEvaluator
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.query.WorkItemConditionJson
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 

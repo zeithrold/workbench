@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api.http
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.web.identity.LoginResponse
 import io.kotest.matchers.shouldBe
@@ -142,15 +142,15 @@ class ApiVersionFilterTest {
   fun `filter echoes requested api version`() {
     val request =
       MockHttpServletRequest().apply {
-        addHeader(ink.doa.workbench.core.common.context.ApiVersion.HeaderName, "2026-07-01")
+        addHeader(ink.doa.workbench.web.api.context.ApiVersion.HeaderName, "2026-07-01")
       }
     val response = MockHttpServletResponse()
 
     filter.doFilter(request, response, MockFilterChain())
 
-    response.getHeader(ink.doa.workbench.core.common.context.ApiVersion.HeaderName) shouldBe
+    response.getHeader(ink.doa.workbench.web.api.context.ApiVersion.HeaderName) shouldBe
       "2026-07-01"
-    request.getAttribute(ink.doa.workbench.core.common.context.ApiVersion::class.java.name) shouldBe
-      ink.doa.workbench.core.common.context.ApiVersion("2026-07-01")
+    request.getAttribute(ink.doa.workbench.web.api.context.ApiVersion::class.java.name) shouldBe
+      ink.doa.workbench.web.api.context.ApiVersion("2026-07-01")
   }
 }

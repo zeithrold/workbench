@@ -1,13 +1,13 @@
 package ink.doa.workbench.web.messaging
 
-import ink.doa.workbench.core.messaging.OutboxLocator
-import ink.doa.workbench.core.port.messaging.EventSubscription
-import ink.doa.workbench.core.port.messaging.MessagingBackend
-import ink.doa.workbench.core.port.messaging.OutboxPublicationFailure
-import ink.doa.workbench.core.port.messaging.OutboxPublicationStore
-import ink.doa.workbench.jobs.messaging.DomainEventDispatcher
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
-import ink.doa.workbench.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.jobs.messaging.DomainEventDispatcher
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.MessagingProperties
+import ink.doa.workbench.application.messaging.EventSubscription
+import ink.doa.workbench.application.messaging.MessagingBackend
+import ink.doa.workbench.application.messaging.OutboxLocator
+import ink.doa.workbench.application.messaging.OutboxPublicationFailure
+import ink.doa.workbench.application.messaging.OutboxPublicationStore
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

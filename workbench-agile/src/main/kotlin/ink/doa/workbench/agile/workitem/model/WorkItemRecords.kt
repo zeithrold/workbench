@@ -1,0 +1,217 @@
+package ink.doa.workbench.agile.workitem.model
+
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupKey
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabel
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.common.pagination.WorkItemSearchCursor
+import ink.doa.workbench.kernel.common.pagination.WorkItemSearchGroupCursor
+import java.time.OffsetDateTime
+import java.util.UUID
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+
+enum class IssueStatusGroup {
+  TODO,
+  IN_PROGRESS,
+  DONE,
+}
+
+data class WorkItemRecord(
+  val id: UUID,
+  val apiId: PublicId,
+  val tenantId: UUID,
+  val projectId: UUID,
+  val issueTypeId: UUID = UUID(0L, 0L),
+  val issueTypeApiId: PublicId,
+  val issueTypeConfigApiId: PublicId,
+  val key: String,
+  val title: String,
+  val description: RichTextDocument?,
+  val statusId: UUID,
+  val statusApiId: PublicId,
+  val statusGroup: WorkItemStatusGroup,
+  val reporterId: UUID,
+  val assigneeId: UUID?,
+  val priorityApiId: PublicId?,
+  val reporterApiId: PublicId,
+  val assigneeApiId: PublicId?,
+  val sprintApiId: PublicId?,
+  val properties: JsonObject,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+)
+
+data class CreateWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val issueTypeApiId: String,
+  val title: String,
+  val description: RichTextDocument?,
+  val descriptionPlainText: String? = null,
+  val reporterId: UUID,
+  val actorUserId: UUID,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
+  val parentWorkItemApiId: String? = null,
+  val properties: Map<String, JsonElement> = emptyMap(),
+)
+
+data class UpdateWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val title: String? = null,
+  val description: RichTextDocument? = null,
+  val descriptionPlainText: String? = null,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
+  val clearSprint: Boolean = false,
+  val properties: Map<String, JsonElement> = emptyMap(),
+  val actorUserId: UUID,
+)
+
+data class DeleteWorkItemCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val actorUserId: UUID,
+  val deleteReason: String? = null,
+)
+
+/** API / service boundary for executing a workflow transition. */
+data class TransitionRequest(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val transitionApiId: String,
+  val actorUserId: UUID,
+  val actorUserApiId: String,
+  val properties: Map<String, JsonElement> = emptyMap(),
+  val title: String? = null,
+  val description: RichTextDocument? = null,
+  val comment: RichTextDocument? = null,
+)
+
+/** Persistence payload after field reconciliation. */
+data class TransitionPersistenceCommand(
+  val tenantId: UUID,
+  val projectId: UUID,
+  val workItemApiId: String,
+  val actorUserId: UUID,
+  val title: String? = null,
+  val description: RichTextDocument? = null,
+  val descriptionPlainText: String? = null,
+  val assigneeApiId: String? = null,
+  val priorityApiId: String? = null,
+  val sprintApiId: String? = null,
+)
+
+data class WorkItemPropertyValue(
+  val propertyId: UUID,
+  val propertyApiId: PublicId,
+  val code: String,
+  val dataType: WorkItemPropertyDataType,
+  val value: JsonElement,
+)
+
+data class WorkItemFormFieldMeta(
+  val path: String,
+  val editable: Boolean,
+  val participation: String,
+  val defaultValue: JsonElement? = null,
+)
+
+data class WorkItemCommentFormMeta(
+  val participation: String,
+  val editable: Boolean,
+  val defaultTemplate: String? = null,
+)
+
+data class WorkItemTransitionOption(
+  val id: PublicId,
+  val name: String,
+  val fromStatusId: PublicId?,
+  val toStatusId: PublicId,
+  val enabled: Boolean,
+  val reason: String? = null,
+  val fields: JsonObject,
+  val editableFields: List<String> = emptyList(),
+  val fieldMeta: List<WorkItemFormFieldMeta> = emptyList(),
+  val commentMeta: WorkItemCommentFormMeta? = null,
+)
+
+data class WorkItemCreateFormOption(
+  val issueTypeId: PublicId,
+  val initialStatusId: PublicId,
+  val fields: JsonObject,
+  val editableFields: List<String> = emptyList(),
+  val fieldMeta: List<WorkItemFormFieldMeta> = emptyList(),
+)
+
+data class WorkItemMutationResult(
+  val workItem: WorkItemRecord,
+  val eventType: String,
+  val statusHistoryId: UUID? = null,
+  val streamEventId: UUID? = null,
+  val streamEventApiId: PublicId? = null,
+)
+
+data class WorkItemResponse(
+  val apiId: String,
+  val key: String,
+  val title: String,
+  val description: RichTextDocument?,
+  val statusGroup: String,
+) {
+  companion object {
+    fun from(record: WorkItemRecord): WorkItemResponse =
+      WorkItemResponse(
+        apiId = record.apiId.value,
+        key = record.key,
+        title = record.title,
+        description = record.description,
+        statusGroup = record.statusGroup.dbValue,
+      )
+  }
+}
+
+data class WorkItemSearchResult(
+  val hits: List<WorkItemSearchHit>,
+  val nextCursor: WorkItemSearchCursor?,
+)
+
+data class WorkItemSearchHit(
+  val apiId: String,
+  val key: String,
+  val title: String,
+  val description: RichTextDocument?,
+  val projectApiId: String,
+  val issueTypeApiId: String,
+  val issueTypeConfigApiId: String,
+  val statusApiId: String,
+  val statusGroup: String,
+  val priorityApiId: String?,
+  val reporterApiId: String,
+  val assigneeApiId: String?,
+  val sprintApiId: String?,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+  val properties: JsonObject,
+  val groupKey: WorkItemGroupKey? = null,
+  val groupLabel: WorkItemGroupLabel? = null,
+)
+
+data class WorkItemSearchGroupBucket(
+  val key: WorkItemGroupKey,
+  val label: WorkItemGroupLabel,
+  val count: Long,
+)
+
+data class WorkItemSearchGroupsPage(
+  val groups: List<WorkItemSearchGroupBucket>,
+  val nextGroupCursor: WorkItemSearchGroupCursor?,
+  val truncated: Boolean,
+)

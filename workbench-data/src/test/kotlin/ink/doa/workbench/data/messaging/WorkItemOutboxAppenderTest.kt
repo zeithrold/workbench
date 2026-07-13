@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventOutbox
-import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
-import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
-import ink.doa.workbench.core.workitem.events.WorkItemSprintDomainEvents
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.sprint.model.SprintCloseDisposition
+import ink.doa.workbench.agile.workitem.ReassignSprintBatchCommand
+import ink.doa.workbench.agile.workitem.events.WorkItemSprintDomainEvents
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.application.messaging.DomainEventOutbox
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.messaging.EventMetadata
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.mockk
 import io.mockk.verify

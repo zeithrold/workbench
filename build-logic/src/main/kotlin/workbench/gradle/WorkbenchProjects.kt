@@ -7,13 +7,14 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 
 internal val backendProjectPaths =
     listOf(
-        ":workbench-core",
-        ":workbench-service",
+        ":workbench-kernel",
+        ":workbench-application",
         ":workbench-agile",
         ":workbench-tenant",
+        ":workbench-identity",
+        ":workbench-notification",
         ":workbench-data",
         ":workbench-security",
-        ":workbench-jobs",
         ":workbench-web",
         ":workbench-worker",
     )
@@ -26,6 +27,7 @@ internal val koverExcludedClasses =
         "*.security.*Configuration",
         "*.infrastructure.persistence.*Configuration",
         "*.data.persistence.*Configuration",
+        "ink.doa.workbench.security.identity.auth.support.*",
     )
 
 internal fun moduleLineCoverageFloor(moduleName: String): Int = 90

@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.project
 
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.service.project.ProjectView
+import ink.doa.workbench.application.project.ProjectView
+import ink.doa.workbench.identity.common.summary.UserSummary
 import ink.doa.workbench.web.api.OpenApiExamples
 import io.swagger.v3.oas.annotations.media.Schema
 

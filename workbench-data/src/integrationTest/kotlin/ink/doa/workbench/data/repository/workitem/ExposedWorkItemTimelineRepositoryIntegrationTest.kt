@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.stream.WorkItemEventType
-import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityPayload
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventType
+import ink.doa.workbench.agile.workitem.timeline.ListWorkItemTimelineQuery
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelineEntry
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemCommentRepository
@@ -133,7 +133,7 @@ class ExposedWorkItemTimelineRepositoryIntegrationTest :
             created.workItem.id,
           )
         comments.softDelete(
-          ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand(
+          ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommentCommand(
             tenantId = stack.tenantId,
             projectId = stack.projectId,
             workItemApiId = workItemApiId,

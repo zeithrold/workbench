@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.CreatePropertyDefinitionCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -107,9 +107,9 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
         val repository = ExposedWorkItemCatalogRepository(database)
 
         repository.createIssueType(
-          ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand(
+          ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand(
             tenantId = tenantId,
-            scope = ink.doa.workbench.core.workitem.model.WorkItemConfigScope.TENANT,
+            scope = ink.doa.workbench.agile.workitem.model.WorkItemConfigScope.TENANT,
             code = "bug",
             name = "Bug",
           )
@@ -167,9 +167,9 @@ class ExposedWorkItemCatalogRepositoryIntegrationTest :
         val repository = ExposedWorkItemCatalogRepository(database)
         val issueType =
           repository.createIssueType(
-            ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand(
+            ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand(
               tenantId = tenantId,
-              scope = ink.doa.workbench.core.workitem.model.WorkItemConfigScope.TENANT,
+              scope = ink.doa.workbench.agile.workitem.model.WorkItemConfigScope.TENANT,
               code = "task",
               name = "Task",
             )

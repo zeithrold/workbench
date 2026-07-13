@@ -1,13 +1,13 @@
 package ink.doa.workbench.agile.testfixtures
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlinx.serialization.json.Json

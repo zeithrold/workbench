@@ -2,8 +2,8 @@ package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.agile.testfixtures.AgileServiceFactory
 import ink.doa.workbench.agile.testfixtures.AgileWorkItemFixtures
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.agile.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
@@ -85,9 +85,9 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
   val config = AgileWorkItemFixtures.sampleConfig(tenantId)
   val issue = AgileWorkItemFixtures.sampleIssue(tenantId, projectId, config, actorUserId)
   val accessEvaluation =
-    ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
+    ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext(
       actor =
-        ink.doa.workbench.core.workitem.access.WorkItemAccessActor(
+        ink.doa.workbench.agile.workitem.access.WorkItemAccessActor(
           userId = actorUserId,
           userApiId = ACTOR_API_ID,
           groupIds = emptySet(),
@@ -109,7 +109,7 @@ private fun sampleBuildContext(): WorkItemTransitionContext {
     conditionContext = WorkItemConditionContext(issue, ACTOR_API_ID, PROJECT_API_ID, emptyMap()),
     accessEvaluation = accessEvaluation,
     templateContext =
-      ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext(
+      ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateContext(
         tenantId = tenantId,
         projectId = projectId,
         currentUserApiId = ACTOR_API_ID,

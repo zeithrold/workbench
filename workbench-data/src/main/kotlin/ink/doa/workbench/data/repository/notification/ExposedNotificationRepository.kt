@@ -1,15 +1,15 @@
 package ink.doa.workbench.data.repository.notification
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.notification.CreateNotificationCommand
-import ink.doa.workbench.core.notification.NotificationDeliveryStatus
-import ink.doa.workbench.core.notification.NotificationPreferenceRecord
-import ink.doa.workbench.core.notification.NotificationRecord
-import ink.doa.workbench.core.notification.NotificationStore
-import ink.doa.workbench.core.notification.WorkItemNotificationEventStore
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationDeliveriesTable
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationPreferencesTable
 import ink.doa.workbench.data.persistence.postgres.notification.NotificationsTable
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.notification.CreateNotificationCommand
+import ink.doa.workbench.notification.NotificationDeliveryStatus
+import ink.doa.workbench.notification.NotificationPreferenceRecord
+import ink.doa.workbench.notification.NotificationRecord
+import ink.doa.workbench.notification.NotificationStore
+import ink.doa.workbench.notification.WorkItemNotificationEventStore
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

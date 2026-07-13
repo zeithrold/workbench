@@ -25,7 +25,7 @@ class DetektSuppressionConventionsTest {
         val root = Files.createTempDirectory("suppression-governance")
         val broad =
             root.writeSource(
-                "workbench-core/src/main/kotlin/example/Broad.kt",
+                "workbench-kernel/src/main/kotlin/example/Broad.kt",
                 "@file:Suppress(\"LongMethod\")\npackage example",
             )
         val excessive =

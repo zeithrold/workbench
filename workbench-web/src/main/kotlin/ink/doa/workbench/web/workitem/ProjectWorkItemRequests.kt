@@ -1,10 +1,10 @@
 package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.TransitionRequest
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.web.api.context.ProjectRequestContext
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.util.UUID

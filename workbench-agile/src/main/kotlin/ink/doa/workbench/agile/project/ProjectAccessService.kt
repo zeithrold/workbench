@@ -1,11 +1,10 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.NonMemberVisibility
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.NonMemberVisibility
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

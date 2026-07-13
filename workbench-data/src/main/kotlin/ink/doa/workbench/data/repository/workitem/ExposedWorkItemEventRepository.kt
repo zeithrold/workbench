@@ -1,18 +1,18 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.stream.AppendWorkItemEventCommand
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
-import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
-import ink.doa.workbench.core.workitem.stream.WorkItemEventRepository
-import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
-import ink.doa.workbench.core.workitem.stream.WorkItemEventType
+import ink.doa.workbench.agile.workitem.stream.AppendWorkItemEventCommand
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventRepository
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventType
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemEventsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.appendWorkItemEvent
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

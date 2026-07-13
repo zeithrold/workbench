@@ -1,9 +1,9 @@
 package ink.doa.workbench.security.identity.auth
 
 import com.sun.net.httpserver.HttpServer
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.security.identity.auth.support.MapSecretResolver
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -17,7 +17,8 @@ import kotlinx.serialization.json.JsonPrimitive
 
 class OAuthFederatedClientTest :
   StringSpec({
-    val oauthClient = OAuthFederatedClient(MapSecretResolver(mapOf("secret-ref" to "top-secret")))
+    val oauthClient =
+      DefaultOAuthFederatedClient(MapSecretResolver(mapOf("secret-ref" to "top-secret")))
 
     "buildAuthorizeUrl uses explicit authorization endpoint" {
       val url =

@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.locking
 
-import ink.doa.workbench.core.port.locking.DistributedLockService
+import ink.doa.workbench.kernel.port.locking.DistributedLockService
 import java.time.Duration
 import org.redisson.api.RedissonClient
 import org.springframework.stereotype.Component

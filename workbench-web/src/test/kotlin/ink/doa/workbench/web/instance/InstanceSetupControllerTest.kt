@@ -1,16 +1,16 @@
 package ink.doa.workbench.web.instance
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.LoginMethodSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.application.instance.InstanceBootstrapView
+import ink.doa.workbench.application.instance.InstanceSetupApplicationService
+import ink.doa.workbench.application.instance.InstanceSetupStatusView
+import ink.doa.workbench.identity.LoginView
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.common.summary.LoginMethodSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.LoginView
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.service.instance.InstanceBootstrapView
-import ink.doa.workbench.service.instance.InstanceSetupApplicationService
-import ink.doa.workbench.service.instance.InstanceSetupStatusView
 import ink.doa.workbench.web.api.http.SessionCookieWriter
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -89,14 +89,14 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) = null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -107,7 +107,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 
     @Bean
-    fun publicIdResolver(): ink.doa.workbench.security.common.PublicIdResolver =
+    fun publicIdResolver(): ink.doa.workbench.application.identity.PublicIdResolver =
       mockk(relaxed = true)
 
     @Bean

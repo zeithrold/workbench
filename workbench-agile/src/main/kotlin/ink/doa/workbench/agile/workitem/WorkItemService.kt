@@ -1,17 +1,15 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemCreateFormOption
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -47,7 +45,7 @@ class WorkItemService(
         createFields = config.config.config.createFields,
       )
     return repository.create(
-      ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand(
+      ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand(
         command = plan.command,
         issueTypeId = config.config.config.issueTypeId,
         issueTypeConfigId = config.config.config.id,
@@ -157,7 +155,7 @@ class WorkItemService(
     command: CreateWorkItemCommand
   ): Pair<
     WorkItemFieldPermissionContext,
-    ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext,
+    ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateContext,
   > {
     val permissionContext =
       fieldPermissionContext(

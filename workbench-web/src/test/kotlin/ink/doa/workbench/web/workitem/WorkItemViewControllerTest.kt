@@ -1,17 +1,17 @@
 package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.project.ProjectResolver
+import ink.doa.workbench.agile.project.ProjectSummary
 import ink.doa.workbench.agile.workitem.WorkItemViewService
 import ink.doa.workbench.agile.workitem.WorkItemViewView
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.workitem.view.WorkItemViewDefaults
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.ProjectRequestContextResolver
@@ -241,15 +241,15 @@ class WorkItemViewControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 

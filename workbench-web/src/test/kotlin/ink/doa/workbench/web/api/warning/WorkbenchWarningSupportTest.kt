@@ -1,15 +1,15 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.warning.InMemoryWorkbenchWarningCollector
-import ink.doa.workbench.core.common.warning.WorkbenchWarning
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
-import ink.doa.workbench.core.common.warning.WorkbenchWarningConstants
-import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
-import ink.doa.workbench.core.common.warning.meta.TenantDestroyScheduledMeta
-import ink.doa.workbench.core.common.warning.meta.WarningTruncatedMeta
+import ink.doa.workbench.agile.project.ProjectSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.common.warning.InMemoryWorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarning
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningConstants
+import ink.doa.workbench.kernel.common.warning.meta.ProjectDestroyScheduledMeta
+import ink.doa.workbench.kernel.common.warning.meta.TenantDestroyScheduledMeta
+import ink.doa.workbench.kernel.common.warning.meta.WarningTruncatedMeta
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.ints.shouldBeLessThanOrEqual
@@ -196,7 +196,7 @@ class WorkbenchWarningFilterTest {
 
   private fun filterFor(collector: InMemoryWorkbenchWarningCollector): WorkbenchWarningFilter {
     val provider =
-      mockk<ObjectProvider<ink.doa.workbench.core.common.warning.WorkbenchWarningCollector>>()
+      mockk<ObjectProvider<ink.doa.workbench.kernel.common.warning.WorkbenchWarningCollector>>()
     every { provider.ifAvailable } returns collector
     return WorkbenchWarningFilter(provider, support)
   }

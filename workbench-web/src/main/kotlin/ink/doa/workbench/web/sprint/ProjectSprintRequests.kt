@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.sprint
 
-import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
-import ink.doa.workbench.core.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.model.SprintCloseDisposition
+import ink.doa.workbench.agile.sprint.model.SprintStatus
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import java.time.OffsetDateTime

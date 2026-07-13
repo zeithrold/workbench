@@ -1,29 +1,29 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.AddGroupMemberCommand
-import ink.doa.workbench.core.permission.CreatePermissionBindingCommand
-import ink.doa.workbench.core.permission.CreatePermissionGroupCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
-import ink.doa.workbench.core.permission.GroupMemberRecord
-import ink.doa.workbench.core.permission.GroupMemberStatus
-import ink.doa.workbench.core.permission.PermissionBindingRecord
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.PermissionGroupRecord
-import ink.doa.workbench.core.permission.PermissionGroupRepository
-import ink.doa.workbench.core.permission.PermissionPolicyRecord
-import ink.doa.workbench.core.permission.PermissionPolicyRepository
-import ink.doa.workbench.core.permission.PermissionPolicyRuleRecord
-import ink.doa.workbench.core.permission.PermissionPrincipalType
-import ink.doa.workbench.core.permission.ResolvedPermissionRule
-import ink.doa.workbench.core.permission.UpdatePermissionGroupCommand
-import ink.doa.workbench.core.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.data.persistence.postgres.permission.GroupMembersTable
 import ink.doa.workbench.data.persistence.postgres.permission.GroupsTable
 import ink.doa.workbench.data.persistence.postgres.permission.PermissionBindingsTable
 import ink.doa.workbench.data.persistence.postgres.permission.PermissionPoliciesTable
 import ink.doa.workbench.data.persistence.postgres.permission.PermissionPolicyRulesTable
+import ink.doa.workbench.identity.permission.AddGroupMemberCommand
+import ink.doa.workbench.identity.permission.CreatePermissionBindingCommand
+import ink.doa.workbench.identity.permission.CreatePermissionGroupCommand
+import ink.doa.workbench.identity.permission.CreatePermissionPolicyCommand
+import ink.doa.workbench.identity.permission.CreatePermissionPolicyRuleCommand
+import ink.doa.workbench.identity.permission.GroupMemberRecord
+import ink.doa.workbench.identity.permission.GroupMemberStatus
+import ink.doa.workbench.identity.permission.PermissionBindingRecord
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.PermissionGroupRecord
+import ink.doa.workbench.identity.permission.PermissionGroupRepository
+import ink.doa.workbench.identity.permission.PermissionPolicyRecord
+import ink.doa.workbench.identity.permission.PermissionPolicyRepository
+import ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.permission.ResolvedPermissionRule
+import ink.doa.workbench.identity.permission.UpdatePermissionGroupCommand
+import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
@@ -496,7 +496,7 @@ class ExposedPermissionBindingRepository(private val database: Database) :
                 ResolvedPermissionRule(
                   bindingId = bindingId,
                   action =
-                    ink.doa.workbench.core.permission.model.AuthorizationAction(
+                    ink.doa.workbench.identity.permission.model.AuthorizationAction(
                       ruleRow[PermissionPolicyRulesTable.action]
                     ),
                   resourcePattern = ruleRow[PermissionPolicyRulesTable.resourcePattern],

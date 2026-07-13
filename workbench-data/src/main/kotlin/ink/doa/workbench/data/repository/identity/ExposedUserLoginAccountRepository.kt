@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.UserLoginAccountRepository
-import ink.doa.workbench.core.identity.model.LinkUserLoginAccountCommand
-import ink.doa.workbench.core.identity.model.UserLoginAccountRecord
-import ink.doa.workbench.core.identity.model.UserRecord
 import ink.doa.workbench.data.persistence.postgres.identity.UserLoginAccountsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.identity.UserLoginAccountRepository
+import ink.doa.workbench.identity.model.LinkUserLoginAccountCommand
+import ink.doa.workbench.identity.model.UserLoginAccountRecord
+import ink.doa.workbench.identity.model.UserRecord
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toJavaUuid

@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventOutbox
-import ink.doa.workbench.core.tenant.events.TenantCreatedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
+import ink.doa.workbench.application.messaging.DomainEventOutbox
+import ink.doa.workbench.kernel.messaging.EventMetadata
+import ink.doa.workbench.tenant.tenant.events.TenantCreatedEvent
+import ink.doa.workbench.tenant.tenant.events.TenantDomainEvents
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.mockk
 import io.mockk.verify

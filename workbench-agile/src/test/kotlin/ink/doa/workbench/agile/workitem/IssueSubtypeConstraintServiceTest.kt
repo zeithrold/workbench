@@ -1,13 +1,11 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
-import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
-import ink.doa.workbench.core.workitem.model.CreateIssueSubtypeConstraintCommand
-import ink.doa.workbench.core.workitem.model.IssueSubtypeConstraintRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.CreateIssueSubtypeConstraintCommand
+import ink.doa.workbench.agile.workitem.model.IssueSubtypeConstraintRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

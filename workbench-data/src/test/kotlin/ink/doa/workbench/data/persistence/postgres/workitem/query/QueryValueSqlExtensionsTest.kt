@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

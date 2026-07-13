@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.tenantconfig
 
-import ink.doa.workbench.core.tenantconfig.TenantConfigRepository
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigKey
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigRecord
-import ink.doa.workbench.core.tenantconfig.model.UpsertTenantConfigCommand
 import ink.doa.workbench.data.persistence.postgres.tenantconfig.TenantConfigEntriesTable
+import ink.doa.workbench.tenant.tenantconfig.TenantConfigRepository
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigKey
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigRecord
+import ink.doa.workbench.tenant.tenantconfig.model.UpsertTenantConfigCommand
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID

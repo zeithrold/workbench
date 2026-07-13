@@ -1,9 +1,9 @@
 package ink.doa.workbench.testsupport.summary
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.agile.project.ProjectSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 
 object SummaryFixtures {
   val sampleTenantId: PublicId = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ0")

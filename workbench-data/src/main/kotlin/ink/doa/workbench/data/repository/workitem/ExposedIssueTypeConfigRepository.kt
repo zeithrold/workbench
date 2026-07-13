@@ -1,15 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemCatalogRepository
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
-import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.IssueTypeConfigRepository
+import ink.doa.workbench.agile.workitem.WorkItemCatalogRepository
+import ink.doa.workbench.agile.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.agile.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigQueries.closeCurrentConfig
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigQueries.findActiveConfigRow
 import ink.doa.workbench.data.persistence.postgres.workitem.ExposedWorkItemConfigQueries.findIssueTypeRow
@@ -20,6 +17,9 @@ import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigStatu
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueTypeConfigsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.now
 import ink.doa.workbench.data.persistence.postgres.workitem.toIssueTypeRecord
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

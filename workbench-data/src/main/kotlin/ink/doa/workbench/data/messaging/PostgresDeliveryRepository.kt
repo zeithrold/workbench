@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.OutboxDeliveryQuery
-import ink.doa.workbench.core.messaging.OutboxDeliveryRecord
-import ink.doa.workbench.core.port.messaging.ClaimedEventDelivery
-import ink.doa.workbench.core.port.messaging.DomainEventExecutionStore
-import ink.doa.workbench.core.port.messaging.EventDeliveryFailure
-import ink.doa.workbench.core.port.messaging.EventSubscription
-import ink.doa.workbench.core.port.messaging.OutboxDeliveryAdminStore
+import ink.doa.workbench.application.messaging.ClaimedEventDelivery
+import ink.doa.workbench.application.messaging.DomainEventExecutionStore
+import ink.doa.workbench.application.messaging.EventDeliveryFailure
+import ink.doa.workbench.application.messaging.EventSubscription
+import ink.doa.workbench.application.messaging.OutboxDeliveryAdminStore
+import ink.doa.workbench.application.messaging.OutboxDeliveryQuery
+import ink.doa.workbench.application.messaging.OutboxDeliveryRecord
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate

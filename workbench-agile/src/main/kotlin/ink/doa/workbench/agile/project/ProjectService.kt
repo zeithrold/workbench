@@ -1,11 +1,9 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.project.ProjectDestroyRequest
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
-import ink.doa.workbench.core.project.model.UpdateProjectCommand
+import ink.doa.workbench.agile.project.model.CreateProjectCommand
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.UpdateProjectCommand
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service

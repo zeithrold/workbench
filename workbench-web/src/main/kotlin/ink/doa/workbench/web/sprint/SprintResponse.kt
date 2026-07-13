@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.sprint
 
 import ink.doa.workbench.agile.sprint.SprintView
-import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
 import java.time.OffsetDateTime
 
 data class SprintResponse(

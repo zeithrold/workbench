@@ -1,5 +1,7 @@
 package ink.doa.workbench.agile.testfixtures
 
+import ink.doa.workbench.agile.workitem.IssueSubtypeConstraintRepository
+import ink.doa.workbench.agile.workitem.IssueTypeConfigRepository
 import ink.doa.workbench.agile.workitem.WorkItemAccessPolicyEngine
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
 import ink.doa.workbench.agile.workitem.WorkItemCreateParentGuard
@@ -7,6 +9,7 @@ import ink.doa.workbench.agile.workitem.WorkItemFieldMutationEngine
 import ink.doa.workbench.agile.workitem.WorkItemFieldMutationPipeline
 import ink.doa.workbench.agile.workitem.WorkItemFieldPermissionService
 import ink.doa.workbench.agile.workitem.WorkItemMutationSupport
+import ink.doa.workbench.agile.workitem.WorkItemRepository
 import ink.doa.workbench.agile.workitem.WorkItemService
 import ink.doa.workbench.agile.workitem.WorkItemTransitionContextLoader
 import ink.doa.workbench.agile.workitem.WorkItemTransitionEvaluator
@@ -14,16 +17,13 @@ import ink.doa.workbench.agile.workitem.WorkItemTransitionExecutor
 import ink.doa.workbench.agile.workitem.WorkItemTransitionOptionBuilder
 import ink.doa.workbench.agile.workitem.WorkItemTransitionService
 import ink.doa.workbench.agile.workitem.WorkItemTransitionValidator
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
-import ink.doa.workbench.core.workitem.IssueSubtypeConstraintRepository
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActor
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.agile.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActor
+import ink.doa.workbench.agile.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.kernel.port.messaging.DomainEventPublisher
 import io.mockk.coEvery
 import io.mockk.mockk
 import java.time.Clock
@@ -84,7 +84,7 @@ object AgileServiceFactory {
     coEvery { users.findById(any()) } returns
       UserRecord(
         id = java.util.UUID.randomUUID(),
-        apiId = ink.doa.workbench.core.common.ids.PublicId.new("usr"),
+        apiId = ink.doa.workbench.kernel.common.ids.PublicId.new("usr"),
         displayName = "Test User",
         primaryEmail = "test@example.com",
       )

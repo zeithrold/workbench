@@ -1,14 +1,14 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.LoginDiscoveryRepository
-import ink.doa.workbench.core.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.LoginDiscoveryRepository
+import ink.doa.workbench.identity.LoginDiscoveryService
+import ink.doa.workbench.identity.LoginDiscoveryView
+import ink.doa.workbench.identity.LoginFlow
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.LoginDiscoveryService
-import ink.doa.workbench.security.identity.LoginDiscoveryView
-import ink.doa.workbench.security.identity.LoginFlow
-import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.support.ContextWebMvcSupport
 import ink.doa.workbench.web.support.ProjectWebMvcSupport
@@ -71,14 +71,14 @@ class LoginDiscoveryControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) = null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -87,22 +87,22 @@ class LoginDiscoveryControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 
     @Bean
-    fun publicIdResolver(): ink.doa.workbench.security.common.PublicIdResolver =
+    fun publicIdResolver(): ink.doa.workbench.application.identity.PublicIdResolver =
       mockk(relaxed = true)
 
     @Bean
     fun loginDiscoveryRepository(): LoginDiscoveryRepository = mockk {
       coEvery { listLoginOptionsForIdentifier("ada@example.test") } returns
         listOf(
-          ink.doa.workbench.core.identity.model.TenantLoginOption(
+          ink.doa.workbench.identity.model.TenantLoginOption(
             tenant =
-              ink.doa.workbench.core.common.summary.TenantSummary(
+              ink.doa.workbench.tenant.common.summary.TenantSummary(
                 id = PublicId.new("ten"),
                 slug = "acme",
                 name = "Acme",
               ),
             loginMethod =
-              ink.doa.workbench.core.common.summary.LoginMethodSummary(
+              ink.doa.workbench.identity.common.summary.LoginMethodSummary(
                 id = "lmd_abc",
                 code = "password",
                 kind = LoginMethodKind.PASSWORD,

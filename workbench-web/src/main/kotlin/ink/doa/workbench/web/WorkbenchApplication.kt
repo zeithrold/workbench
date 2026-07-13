@@ -1,22 +1,22 @@
 package ink.doa.workbench.web
 
-import ink.doa.workbench.jobs.messaging.MessagingProperties
-import ink.doa.workbench.security.invitation.InvitationLinkProperties
-import ink.doa.workbench.tenant.instance.InstanceProperties
+import ink.doa.workbench.application.ApplicationModuleConfiguration
+import ink.doa.workbench.data.DataModuleConfiguration
+import ink.doa.workbench.security.SecurityModuleConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Import
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties(
-  InstanceProperties::class,
-  InvitationLinkProperties::class,
-  MessagingProperties::class,
+@Import(
+  ApplicationModuleConfiguration::class,
+  DataModuleConfiguration::class,
+  SecurityModuleConfiguration::class,
 )
-@SpringBootApplication(scanBasePackages = ["ink.doa.workbench"])
+@SpringBootApplication
 class WorkbenchApplication
 
 fun main(args: Array<String>) {

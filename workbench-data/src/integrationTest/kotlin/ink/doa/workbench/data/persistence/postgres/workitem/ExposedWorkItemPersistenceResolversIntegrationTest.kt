@@ -1,18 +1,18 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.CreatePropertyDefinitionCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.repository.identity.ExposedUserRepository
 import ink.doa.workbench.data.repository.project.ExposedProjectRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull

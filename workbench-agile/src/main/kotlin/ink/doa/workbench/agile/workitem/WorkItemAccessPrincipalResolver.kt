@@ -1,11 +1,11 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.PermissionGroupRepository
-import ink.doa.workbench.core.permission.PermissionPolicyRepository
-import ink.doa.workbench.core.permission.PermissionPrincipalType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActor
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActor
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.PermissionGroupRepository
+import ink.doa.workbench.identity.permission.PermissionPolicyRepository
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -61,14 +61,14 @@ class WorkItemAccessPrincipalResolver(
   private fun now(): OffsetDateTime = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
 }
 
-private fun ink.doa.workbench.core.permission.PermissionBindingRecord.isActiveAt(
+private fun ink.doa.workbench.identity.permission.PermissionBindingRecord.isActiveAt(
   at: OffsetDateTime
 ): Boolean {
   val expiresAt = validTo
   return validFrom <= at && (expiresAt == null || expiresAt > at)
 }
 
-private fun ink.doa.workbench.core.permission.PermissionBindingRecord.matchesActor(
+private fun ink.doa.workbench.identity.permission.PermissionBindingRecord.matchesActor(
   actorUserId: UUID,
   groupIds: Set<UUID>,
 ): Boolean =

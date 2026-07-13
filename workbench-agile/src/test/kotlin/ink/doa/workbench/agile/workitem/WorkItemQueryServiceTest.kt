@@ -1,15 +1,12 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.WorkItemQueryRepository
-import ink.doa.workbench.core.workitem.WorkItemSearchPageRequest
-import ink.doa.workbench.core.workitem.WorkItemSearchScope
-import ink.doa.workbench.core.workitem.model.WorkItemSearchResult
-import ink.doa.workbench.core.workitem.query.ConditionNode
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.WorkItemQuery
-import ink.doa.workbench.core.workitem.query.WorkItemSearchGroupScope
+import ink.doa.workbench.agile.workitem.model.WorkItemSearchResult
+import ink.doa.workbench.agile.workitem.query.ConditionNode
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.WorkItemQuery
+import ink.doa.workbench.agile.workitem.query.WorkItemSearchGroupScope
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

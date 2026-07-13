@@ -2,25 +2,25 @@ package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.project.ProjectResolver
 import ink.doa.workbench.agile.workitem.WorkItemTimelineService
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCommentRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusSnapshot
-import ink.doa.workbench.core.workitem.activity.WorkItemCommentCreatedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
-import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
-import ink.doa.workbench.core.workitem.stream.WorkItemEventSourceType
-import ink.doa.workbench.core.workitem.stream.WorkItemEventType
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityCommentRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityEntityRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityStatusRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityStatusSnapshot
+import ink.doa.workbench.agile.workitem.activity.WorkItemCommentCreatedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemCreatedPayload
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventSourceType
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventType
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelineEntry
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.common.pagination.WorkItemStreamCursor
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.ProjectRequestContextResolver
@@ -103,15 +103,15 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -213,7 +213,7 @@ class ProjectWorkItemTimelineControllerTest(@Autowired private val mockMvc: Mock
                   authorId = TenantWebMvcFixtures.USER_ID,
                   authorApiId = PublicId.new("usr"),
                   body =
-                    ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+                    ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText(
                       "Ship it"
                     )!!,
                   bodyPlainText = "Ship it",

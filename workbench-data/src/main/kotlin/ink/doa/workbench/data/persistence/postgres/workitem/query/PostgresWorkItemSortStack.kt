@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.workitem.query.NullOrdering
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.SortDirection
-import ink.doa.workbench.core.workitem.query.WorkItemQuery
+import ink.doa.workbench.agile.workitem.query.NullOrdering
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.SortDirection
+import ink.doa.workbench.agile.workitem.query.WorkItemQuery
 
 data class PostgresSortSpec(
   val field: QueryField,

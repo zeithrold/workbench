@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.project
 
-import ink.doa.workbench.service.project.ProjectView
+import ink.doa.workbench.application.project.ProjectView
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

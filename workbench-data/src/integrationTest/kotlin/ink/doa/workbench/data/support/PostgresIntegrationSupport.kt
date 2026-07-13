@@ -1,16 +1,14 @@
 package ink.doa.workbench.data.support
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.messaging.DomainEventEncoder
-import ink.doa.workbench.core.project.model.CreateProjectCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeCommand
-import ink.doa.workbench.core.workitem.model.CreateIssueTypeConfigCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusInput
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.project.model.CreateProjectCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeCommand
+import ink.doa.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowCommand
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusInput
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
 import ink.doa.workbench.data.messaging.WorkItemOutboxAppender
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
@@ -24,6 +22,8 @@ import ink.doa.workbench.data.repository.workitem.ExposedWorkItemRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkItemTimelineRepository
 import ink.doa.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
 import ink.doa.workbench.data.repository.workitem.WorkItemEventFactory
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import java.time.OffsetDateTime

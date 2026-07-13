@@ -1,12 +1,12 @@
 package ink.doa.workbench.web.manage
 
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.security.permission.PermissionGroupManagementService
+import ink.doa.workbench.application.permission.PermissionGroupManagementService
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid

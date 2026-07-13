@@ -7,13 +7,14 @@ plugins {
 
 dependencies {
   kapt("org.springframework.boot:spring-boot-configuration-processor")
-  implementation(project(":workbench-core"))
-  implementation(project(":workbench-service"))
+  implementation(project(":workbench-kernel"))
+  implementation(project(":workbench-application"))
   implementation(project(":workbench-agile"))
   implementation(project(":workbench-tenant"))
+  implementation(project(":workbench-identity"))
+  implementation(project(":workbench-notification"))
   implementation(project(":workbench-data"))
   implementation(project(":workbench-security"))
-  implementation(project(":workbench-jobs"))
   implementation("org.springframework.boot:spring-boot-starter-webmvc")
   implementation("org.springframework.boot:spring-boot-starter-validation")
   implementation("org.springframework.boot:spring-boot-starter-security")
@@ -35,7 +36,7 @@ dependencies {
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.keycloak)
   testImplementation(libs.exposed.jdbc)
-  testImplementation(testFixtures(project(":workbench-service")))
+  testImplementation(testFixtures(project(":workbench-application")))
   testImplementation(testFixtures(project(":workbench-security")))
   testImplementation(project(":workbench-test-support"))
 }

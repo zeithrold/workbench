@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.WorkItemFieldDefinition
 
 data class SqlFragment(val sql: String, val params: List<Any?> = emptyList()) {
   fun parenthesized(): SqlFragment = copy(sql = "($sql)")

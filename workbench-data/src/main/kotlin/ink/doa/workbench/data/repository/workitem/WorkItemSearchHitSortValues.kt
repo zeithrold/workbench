@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.model.WorkItemSearchHit
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
+import ink.doa.workbench.agile.workitem.model.WorkItemSearchHit
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupKeySupport
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -21,10 +21,10 @@ internal object WorkItemSearchHitSortValues {
       is JsonNull -> null
       is JsonPrimitive ->
         WorkItemGroupKeySupport.bucketValueFromKey(
-          ink.doa.workbench.core.workitem.query.ConditionNode.Predicate(
+          ink.doa.workbench.agile.workitem.query.ConditionNode.Predicate(
             field = field,
-            op = ink.doa.workbench.core.workitem.query.QueryOperator.EQ,
-            value = ink.doa.workbench.core.workitem.query.QueryValue.Literal(element),
+            op = ink.doa.workbench.agile.workitem.query.QueryOperator.EQ,
+            value = ink.doa.workbench.agile.workitem.query.QueryValue.Literal(element),
           )
         )
       else -> null

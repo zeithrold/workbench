@@ -1,7 +1,7 @@
 package ink.doa.workbench.worker.messaging
 
-import ink.doa.workbench.core.messaging.DomainTopics
-import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.application.jobs.messaging.DomainEventExecutionService
+import ink.doa.workbench.kernel.messaging.DomainTopics
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.apache.kafka.clients.consumer.ConsumerRecord

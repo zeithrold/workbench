@@ -1,9 +1,9 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.identity.LoginDiscoveryRepository
-import ink.doa.workbench.security.identity.LoginDiscoveryService
-import ink.doa.workbench.security.identity.LoginOptionView
-import ink.doa.workbench.security.identity.auth.normalizeSubject
+import ink.doa.workbench.identity.LoginDiscoveryRepository
+import ink.doa.workbench.identity.LoginDiscoveryService
+import ink.doa.workbench.identity.LoginOptionView
+import ink.doa.workbench.identity.auth.normalizeSubject
 import ink.doa.workbench.web.api.OpenApiExamples
 import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses

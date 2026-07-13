@@ -1,17 +1,17 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.summary.UserSummary
+import ink.doa.workbench.identity.AuthApplicationService
+import ink.doa.workbench.identity.LoginContext
+import ink.doa.workbench.identity.LoginView
+import ink.doa.workbench.identity.MembershipService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.TenantMembershipView
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.AuthApplicationService
-import ink.doa.workbench.security.identity.LoginContext
-import ink.doa.workbench.security.identity.LoginView
-import ink.doa.workbench.security.identity.MembershipService
-import ink.doa.workbench.security.identity.SessionService
-import ink.doa.workbench.security.identity.TenantMembershipView
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.http.SessionCookieWriter
 import ink.doa.workbench.web.support.ContextWebMvcSupport
@@ -133,8 +133,8 @@ class SessionAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == SessionControllerSecurityTestFixtures.SESSION_SECRET) {
             SessionControllerSecurityTestFixtures.PRINCIPAL
@@ -144,8 +144,8 @@ class SessionAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -156,7 +156,7 @@ class SessionAuthControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun sessionService(): SessionService = mockk(relaxed = true)
 
     @Bean
-    fun publicIdResolver(): ink.doa.workbench.security.common.PublicIdResolver =
+    fun publicIdResolver(): ink.doa.workbench.application.identity.PublicIdResolver =
       mockk(relaxed = true)
 
     @Bean
@@ -202,11 +202,11 @@ internal object SessionControllerSecurityTestFixtures {
   val SESSION_ID: UUID = UUID.fromString("00000000-0000-0000-0000-000000000003")
   const val SESSION_SECRET = "session-secret"
   val PRINCIPAL =
-    ink.doa.workbench.core.identity.model.AuthenticatedPrincipal(
+    ink.doa.workbench.identity.model.AuthenticatedPrincipal(
       user =
-        ink.doa.workbench.core.identity.model.UserRecord(
+        ink.doa.workbench.identity.model.UserRecord(
           id = USER_ID,
-          apiId = ink.doa.workbench.core.common.ids.PublicId.new("usr"),
+          apiId = ink.doa.workbench.kernel.common.ids.PublicId.new("usr"),
           displayName = "Ada Lovelace",
           primaryEmail = "ada@example.test",
         ),

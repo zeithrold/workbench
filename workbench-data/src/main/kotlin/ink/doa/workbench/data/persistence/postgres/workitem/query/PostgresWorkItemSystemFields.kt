@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.WorkItemFieldDefinition
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldResolver
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.WorkItemFieldDefinition
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldResolver
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 
 interface PostgresWorkItemFieldResolver : WorkItemQueryFieldResolver {
   fun resolvePostgresField(field: QueryField): PostgresWorkItemField

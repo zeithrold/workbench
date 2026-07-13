@@ -1,17 +1,17 @@
 package ink.doa.workbench.worker.messaging
 
-import ink.doa.workbench.core.messaging.DomainEventDecoder
-import ink.doa.workbench.core.messaging.DomainEventEncoder
-import ink.doa.workbench.core.messaging.DomainTopics
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent
-import ink.doa.workbench.core.tenant.events.TenantDomainEvents
-import ink.doa.workbench.jobs.messaging.DomainEventDispatcher
-import ink.doa.workbench.jobs.messaging.DomainEventHandler
-import ink.doa.workbench.jobs.messaging.TenantEventRouter
-import ink.doa.workbench.jobs.messaging.TenantJobRegistration
-import ink.doa.workbench.service.messaging.support.KafkaTestSupport
-import ink.doa.workbench.service.messaging.support.MessagingIntegrationFixtures
+import ink.doa.workbench.application.jobs.messaging.DomainEventDispatcher
+import ink.doa.workbench.application.jobs.messaging.DomainEventHandler
+import ink.doa.workbench.application.jobs.messaging.TenantEventRouter
+import ink.doa.workbench.application.jobs.messaging.TenantJobRegistration
+import ink.doa.workbench.application.messaging.support.KafkaTestSupport
+import ink.doa.workbench.application.messaging.support.MessagingIntegrationFixtures
+import ink.doa.workbench.kernel.messaging.DomainEventDecoder
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
+import ink.doa.workbench.kernel.messaging.DomainTopics
+import ink.doa.workbench.kernel.messaging.EventMetadata
+import ink.doa.workbench.tenant.tenant.events.TenantDestroyRequestedEvent
+import ink.doa.workbench.tenant.tenant.events.TenantDomainEvents
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.Clock
@@ -36,7 +36,7 @@ class TenantDestroyListenerIntegrationTest :
       DomainEventEncoder(Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC))
     val processedCount = AtomicInteger(0)
     val createdHandler =
-      DomainEventHandler<ink.doa.workbench.core.tenant.events.TenantCreatedEvent> {}
+      DomainEventHandler<ink.doa.workbench.tenant.tenant.events.TenantCreatedEvent> {}
     val destroyHandler =
       DomainEventHandler<TenantDestroyRequestedEvent> { processedCount.incrementAndGet() }
     val pipeline =

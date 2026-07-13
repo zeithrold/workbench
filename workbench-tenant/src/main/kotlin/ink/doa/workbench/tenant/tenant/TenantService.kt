@@ -1,13 +1,13 @@
 package ink.doa.workbench.tenant.tenant
 
-import ink.doa.workbench.core.common.errors.ResourceConflictException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.model.CreateTenantCommand
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.TenantStatus
-import ink.doa.workbench.core.identity.model.UpdateTenantCommand
+import ink.doa.workbench.kernel.common.errors.ResourceConflictException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.tenant.TenantRepository
+import ink.doa.workbench.tenant.model.CreateTenantCommand
+import ink.doa.workbench.tenant.model.TenantRecord
+import ink.doa.workbench.tenant.model.TenantStatus
+import ink.doa.workbench.tenant.model.UpdateTenantCommand
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -48,7 +48,7 @@ class TenantService(private val tenants: TenantRepository) {
   suspend fun requestDestroy(
     tenantId: UUID,
     tenantApiId: String,
-    payload: ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent,
+    payload: ink.doa.workbench.tenant.tenant.events.TenantDestroyRequestedEvent,
   ): TenantRecord = tenants.requestDestroy(tenantId, tenantApiId, payload)
 
   suspend fun restoreStatus(tenantId: UUID, status: TenantStatus): TenantRecord =

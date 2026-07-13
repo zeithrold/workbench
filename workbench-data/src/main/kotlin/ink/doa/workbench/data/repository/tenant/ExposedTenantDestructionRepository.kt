@@ -1,7 +1,5 @@
 package ink.doa.workbench.data.repository.tenant
 
-import ink.doa.workbench.core.permission.AdminUserStatus
-import ink.doa.workbench.core.tenant.TenantDestructionRepository
 import ink.doa.workbench.data.persistence.postgres.identity.AuthSessionsTable
 import ink.doa.workbench.data.persistence.postgres.identity.BearerTokensTable
 import ink.doa.workbench.data.persistence.postgres.identity.InvitationsTable
@@ -34,6 +32,8 @@ import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemViewsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkflowTransitionsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkflowsTable
+import ink.doa.workbench.identity.permission.AdminUserStatus
+import ink.doa.workbench.tenant.tenant.TenantDestructionRepository
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

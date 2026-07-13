@@ -65,7 +65,7 @@ Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 ./gradlew quickCheck                      # local: unit tests + static analysis
 ./gradlew check                           # pre-PR / CI: + integration tests + full Kover (90%)
 ./gradlew extendedCheck                   # full + fuzz + mutation verification
-./gradlew :workbench-core:ciNightlyCheck  # internal per-module Nightly task
+./gradlew :workbench-application:ciNightlyCheck  # internal per-module Nightly task
 ./gradlew koverUnitXmlReport              # unit-only coverage report (soft warnings)
 ```
 
@@ -73,7 +73,7 @@ Focused verification and reporting:
 
 ```bash
 ./gradlew mutationTest
-./gradlew :workbench-core:pitest
+./gradlew :workbench-application:pitest
 ./gradlew frontendUnitCoverage
 ./gradlew frontendFullCoverage
 ./gradlew :workbench-frontend:e2eCheck
@@ -102,4 +102,4 @@ Unit tests live under `src/test` and must not start a full Spring context. Integ
 
 ## Architecture Notes
 
-The monolith is split by responsibility-oriented Gradle modules: `workbench-core`, `workbench-service`, `workbench-data`, `workbench-security`, `workbench-jobs`, `workbench-web`, `workbench-worker`, and `workbench-frontend`. `workbench-jobs` contains transport-neutral background handlers: PostgreSQL and Redis Streams embed them in Web, while Kafka loads them in the standalone Worker. Controllers stay thin and call services, services call repository ports, and Exposed persistence remains behind repository interfaces. Public API names avoid ambiguous suffixes such as BO, PO, VO, or DTO; use Request, Response, Command, Query, Event, Record, Snapshot, View, or Projection instead.
+The monolith is split into `workbench-kernel`, the `tenant`, `identity`, `agile`, and `notification` domain modules, `workbench-application`, the `data` and `security` adapters, and the `web`/`worker` composition roots. Transport-neutral background handlers live under `workbench-application`; PostgreSQL and Redis Streams embed them in Web, while Kafka invokes them from the standalone Worker. See [the enforced module architecture](docs/module-architecture.md). Controllers stay thin, application services depend on domain ports, and Exposed persistence remains behind repository interfaces. Public API names avoid ambiguous suffixes such as BO, PO, VO, or DTO; use Request, Response, Command, Query, Event, Record, Snapshot, View, or Projection instead.

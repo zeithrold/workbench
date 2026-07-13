@@ -1,10 +1,10 @@
 package ink.doa.workbench.security
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator
-import ink.doa.workbench.core.identity.auth.SessionAuthenticator
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.identity.model.UserRecord
+import ink.doa.workbench.identity.auth.BearerTokenAuthenticator
+import ink.doa.workbench.identity.auth.SessionAuthenticator
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.util.UUID

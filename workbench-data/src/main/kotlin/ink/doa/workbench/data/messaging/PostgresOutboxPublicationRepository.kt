@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.port.messaging.ClaimedOutboxPublication
-import ink.doa.workbench.core.port.messaging.MessagingBackend
-import ink.doa.workbench.core.port.messaging.OutboxPublicationFailure
-import ink.doa.workbench.core.port.messaging.OutboxPublicationStore
+import ink.doa.workbench.application.messaging.ClaimedOutboxPublication
+import ink.doa.workbench.application.messaging.MessagingBackend
+import ink.doa.workbench.application.messaging.OutboxPublicationFailure
+import ink.doa.workbench.application.messaging.OutboxPublicationStore
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate

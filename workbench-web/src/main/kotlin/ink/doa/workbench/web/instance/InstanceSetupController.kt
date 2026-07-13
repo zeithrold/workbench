@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.instance
 
-import ink.doa.workbench.service.instance.InstanceSetupApplicationService
+import ink.doa.workbench.application.instance.InstanceSetupApplicationService
 import ink.doa.workbench.web.api.PublicEndpoint
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.http.HttpClientContext

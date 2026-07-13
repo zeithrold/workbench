@@ -5,13 +5,9 @@ plugins {
 }
 
 dependencies {
-  implementation(project(":workbench-core"))
-  implementation(project(":workbench-service"))
-  implementation(project(":workbench-agile"))
-  implementation(project(":workbench-tenant"))
+  implementation(project(":workbench-kernel"))
+  implementation(project(":workbench-application"))
   implementation(project(":workbench-data"))
-  implementation(project(":workbench-security"))
-  implementation(project(":workbench-jobs"))
   implementation("org.springframework.boot:spring-boot-starter")
   implementation("org.springframework.boot:spring-boot-starter-actuator")
   implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
@@ -24,7 +20,8 @@ dependencies {
   testImplementation(libs.testcontainers.postgresql)
   testImplementation(libs.testcontainers.kafka)
   testImplementation(project(":workbench-test-support"))
-  testImplementation(testFixtures(project(":workbench-service")))
+  testImplementation(testFixtures(project(":workbench-application")))
+  integrationTestImplementation(project(":workbench-tenant"))
 }
 
 sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))

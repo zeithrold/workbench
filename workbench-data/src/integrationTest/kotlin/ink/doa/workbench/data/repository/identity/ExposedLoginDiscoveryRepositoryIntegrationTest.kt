@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.model.CreateLoginAccountCommand
-import ink.doa.workbench.core.identity.model.CreateTenantLoginMethodSettingCommand
-import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
-import ink.doa.workbench.core.identity.model.CreateUserCommand
-import ink.doa.workbench.core.identity.model.LinkUserLoginAccountCommand
-import ink.doa.workbench.core.identity.model.TenantMemberStatus
 import ink.doa.workbench.data.support.seedTenant
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.identity.model.CreateLoginAccountCommand
+import ink.doa.workbench.identity.model.CreateTenantLoginMethodSettingCommand
+import ink.doa.workbench.identity.model.CreateTenantMemberCommand
+import ink.doa.workbench.identity.model.CreateUserCommand
+import ink.doa.workbench.identity.model.LinkUserLoginAccountCommand
+import ink.doa.workbench.identity.model.TenantMemberStatus
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

@@ -1,19 +1,17 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemCommentRepository
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
-import ink.doa.workbench.core.workitem.richtext.ProcessedRichText
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
-import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommentCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.agile.workitem.richtext.ProcessedRichText
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.richtext.RichTextProcessor
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import org.springframework.stereotype.Service
 
@@ -21,7 +19,7 @@ import org.springframework.stereotype.Service
 class WorkItemCommentService(
   private val comments: WorkItemCommentRepository,
   private val accessPolicy: WorkItemAccessPolicyEngine,
-  private val repository: ink.doa.workbench.core.workitem.WorkItemRepository,
+  private val repository: ink.doa.workbench.agile.workitem.WorkItemRepository,
   private val configs: IssueTypeConfigRepository,
 ) {
   suspend fun create(command: CreateWorkItemCommentCommand): WorkItemCommentRecord {

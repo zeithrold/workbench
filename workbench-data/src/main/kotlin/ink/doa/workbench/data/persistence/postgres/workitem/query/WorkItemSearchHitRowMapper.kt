@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.workitem.model.WorkItemSearchHit
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.model.WorkItemSearchHit
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
 import java.sql.ResultSet
 import java.sql.Timestamp
 import java.time.OffsetDateTime

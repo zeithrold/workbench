@@ -40,7 +40,7 @@ Copy and track progress:
 |--------|-----------------|----------------|-------|
 | New/changed API | core → service → web | OpenAPI; regen client; changed Kotlin lines ≥ 90% diff coverage | [api-design](../api-design/SKILL.md) |
 | Schema / persistence | workbench-data | `V{n}__*.sql`; Exposed; bump migration test | [kotlin-exposed-patterns](../kotlin-exposed-patterns/SKILL.md) |
-| Business logic | workbench-service, workbench-agile | Unit tests without Spring; changed Kotlin lines ≥ 90% diff coverage | [kotlin-patterns](../kotlin-patterns/SKILL.md), [kotlin-testing](../kotlin-testing/SKILL.md) |
+| Business logic | workbench-application and the owning domain module | Unit tests without Spring; changed Kotlin lines ≥ 90% diff coverage | [kotlin-patterns](../kotlin-patterns/SKILL.md), [kotlin-testing](../kotlin-testing/SKILL.md) |
 | Frontend UI | workbench-frontend | Lint + Vitest (in `check`); changed TS/JS lines ≥ 70% diff coverage | [svelte](../svelte/SKILL.md) |
 | Background / Kafka | workbench-worker | integration profile + Testcontainers; changed Kotlin lines ≥ 90% diff coverage | [springboot-patterns](../springboot-patterns/SKILL.md) |
 
@@ -58,8 +58,9 @@ Client → Controller (web) → Service → Repository port (core) → Exposed (
 
 | Module | Responsibility |
 |--------|----------------|
-| `workbench-core` | Domain models, ports (`*Record`, `*Query`, `*Summary`) |
-| `workbench-service` | Business logic (`*Command`, `*View`) |
+| `workbench-kernel` | Pure shared types, event protocol, lock and blob ports |
+| `workbench-tenant`, `workbench-identity`, `workbench-agile`, `workbench-notification` | Domain models, ports, events, and domain services |
+| `workbench-application` | Cross-domain use cases, asynchronous handlers, and Outbox execution |
 | `workbench-agile` | Project/work-item domain services |
 | `workbench-data` | Exposed tables, repository impls, Flyway SQL |
 | `workbench-security` | Spring Security integration |
@@ -115,7 +116,7 @@ Module tasks: `test` runs unit tests from `src/test`; `integrationTest` runs int
 | **PIT** | Included | Excluded (`config/pitest/pitest.properties`) |
 | **Prefer** | State/result assertions over `coVerify`-only | Scenarios Fake cannot model (transactions, JSONB, migrations) |
 
-**Consistency:** share fixtures (`workbench-test-support` / module `testFixtures`); use Fake implementations of `workbench-core` ports in unit tests; reserve integration tests for adapter/wiring proof. Do not duplicate the same business matrix in both layers.
+**Consistency:** share fixtures (`workbench-test-support` / module `testFixtures`); use Fake implementations of ports from their owning domain or application module in unit tests; reserve integration tests for adapter/wiring proof. Do not duplicate the same business matrix in both layers.
 
 ### Testing principles
 

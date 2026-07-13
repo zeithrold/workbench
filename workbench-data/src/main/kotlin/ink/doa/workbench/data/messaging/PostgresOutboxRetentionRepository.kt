@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.port.messaging.OutboxRetentionStore
+import ink.doa.workbench.application.messaging.OutboxRetentionStore
 import java.time.OffsetDateTime
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository

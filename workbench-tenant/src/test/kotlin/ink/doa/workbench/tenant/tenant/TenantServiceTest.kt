@@ -1,13 +1,13 @@
 package ink.doa.workbench.tenant.tenant
 
-import ink.doa.workbench.core.common.errors.ResourceConflictException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.model.CreateTenantCommand
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.TenantStatus
-import ink.doa.workbench.core.identity.model.UpdateTenantCommand
+import ink.doa.workbench.kernel.common.errors.ResourceConflictException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.tenant.TenantRepository
+import ink.doa.workbench.tenant.model.CreateTenantCommand
+import ink.doa.workbench.tenant.model.TenantRecord
+import ink.doa.workbench.tenant.model.TenantStatus
+import ink.doa.workbench.tenant.model.UpdateTenantCommand
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

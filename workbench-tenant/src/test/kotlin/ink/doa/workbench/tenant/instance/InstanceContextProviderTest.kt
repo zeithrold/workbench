@@ -1,6 +1,6 @@
 package ink.doa.workbench.tenant.instance
 
-import ink.doa.workbench.core.common.context.InstanceContextSummary
+import ink.doa.workbench.kernel.common.context.InstanceContextSummary
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

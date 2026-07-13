@@ -1,14 +1,11 @@
 package ink.doa.workbench.data.repository.sprint
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.messaging.DomainEventEncoder
-import ink.doa.workbench.core.messaging.DomainTopics
-import ink.doa.workbench.core.sprint.SprintCloseFailureRequest
-import ink.doa.workbench.core.sprint.SprintCloseSuccessRequest
-import ink.doa.workbench.core.sprint.events.SprintDomainEvents
-import ink.doa.workbench.core.sprint.model.SprintCloseDisposition
-import ink.doa.workbench.core.sprint.model.SprintCloseOperationStatus
-import ink.doa.workbench.core.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.SprintCloseFailureRequest
+import ink.doa.workbench.agile.sprint.SprintCloseSuccessRequest
+import ink.doa.workbench.agile.sprint.events.SprintDomainEvents
+import ink.doa.workbench.agile.sprint.model.SprintCloseDisposition
+import ink.doa.workbench.agile.sprint.model.SprintCloseOperationStatus
+import ink.doa.workbench.agile.sprint.model.SprintStatus
 import ink.doa.workbench.data.messaging.ExposedDomainEventOutbox
 import ink.doa.workbench.data.persistence.postgres.workitem.DomainOutboxTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintCloseOperationsTable
@@ -16,6 +13,9 @@ import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
+import ink.doa.workbench.kernel.messaging.DomainTopics
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.Clock

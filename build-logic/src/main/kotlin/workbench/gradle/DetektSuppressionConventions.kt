@@ -16,11 +16,11 @@ internal object DetektSuppressionConventions {
 
     private val allowances =
         mapOf(
-            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/sprint/SprintCloseRequestedEventHandler.kt" to
+            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/sprint/SprintCloseRequestedEventHandler.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "consumer failure boundary")),
-            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/messaging/DomainEventExecutionService.kt" to
+            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/messaging/DomainEventExecutionService.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "shared handler execution boundary")),
-            "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/notification/EmailNotificationRelay.kt" to
+            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/notification/EmailNotificationRelay.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
             "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/PostgresEmbeddedJobs.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 2, "listener and delivery failure boundaries")),
@@ -46,7 +46,7 @@ internal object DetektSuppressionConventions {
                 listOf(Allowance("UNCHECKED_CAST", 2, "Exposed dynamic column lookup")),
             "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/ProjectRequestContextResolver.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 1, "Spring URI variable attribute type")),
-            "workbench-service/src/testFixtures/kotlin/ink/doa/workbench/service/messaging/support/RecordingDomainEventPublisher.kt" to
+            "workbench-application/src/testFixtures/kotlin/ink/doa/workbench/application/messaging/support/RecordingDomainEventPublisher.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 1, "generic recording fixture")),
             "workbench-test-support/src/main/kotlin/ink/doa/workbench/testsupport/postgres/PostgresDatabaseProvisioner.kt" to
                 listOf(Allowance("SpreadOperator", 1, "Flyway Java vararg boundary")),

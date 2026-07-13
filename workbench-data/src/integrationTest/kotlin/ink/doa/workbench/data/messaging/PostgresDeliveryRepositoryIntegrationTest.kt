@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.OutboxDeliveryQuery
-import ink.doa.workbench.core.port.messaging.EventDeliveryFailure
-import ink.doa.workbench.core.port.messaging.EventSubscription
+import ink.doa.workbench.application.messaging.EventDeliveryFailure
+import ink.doa.workbench.application.messaging.EventSubscription
+import ink.doa.workbench.application.messaging.OutboxDeliveryQuery
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.jdbcTemplate

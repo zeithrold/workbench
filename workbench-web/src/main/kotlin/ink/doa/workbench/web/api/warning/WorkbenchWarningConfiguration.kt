@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCollector
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean

@@ -1,11 +1,11 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
-import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.agile.workitem.template.WorkItemTransitionFieldsTemplate
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import org.springframework.stereotype.Component
 
 data class TransitionEvaluation(

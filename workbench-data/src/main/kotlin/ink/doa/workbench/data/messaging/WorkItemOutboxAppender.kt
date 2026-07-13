@@ -1,14 +1,14 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.EventMetadata
-import ink.doa.workbench.core.port.messaging.DomainEventOutbox
-import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
-import ink.doa.workbench.core.workitem.events.WorkItemDomainEvents
-import ink.doa.workbench.core.workitem.events.WorkItemMutationEvent
-import ink.doa.workbench.core.workitem.events.WorkItemSprintChangedEvent
-import ink.doa.workbench.core.workitem.events.WorkItemSprintDomainEvents
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.ReassignSprintBatchCommand
+import ink.doa.workbench.agile.workitem.events.WorkItemDomainEvents
+import ink.doa.workbench.agile.workitem.events.WorkItemMutationEvent
+import ink.doa.workbench.agile.workitem.events.WorkItemSprintChangedEvent
+import ink.doa.workbench.agile.workitem.events.WorkItemSprintDomainEvents
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.application.messaging.DomainEventOutbox
+import ink.doa.workbench.kernel.messaging.EventMetadata
 import org.springframework.stereotype.Component
 
 @Component

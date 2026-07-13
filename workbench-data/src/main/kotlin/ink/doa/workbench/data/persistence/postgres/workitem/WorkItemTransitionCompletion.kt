@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
-import ink.doa.workbench.core.workitem.model.WorkItemMutationResult
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemMutationResult
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
 import ink.doa.workbench.data.repository.workitem.WorkItemActivityContext
 import ink.doa.workbench.data.repository.workitem.WorkItemEventFactory
 import ink.doa.workbench.data.repository.workitem.WorkItemStatusChangedInput

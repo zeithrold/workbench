@@ -1,12 +1,12 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.IssueStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.IssueStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.WorkflowRecord
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.mockk.coEvery
 import io.mockk.coVerify

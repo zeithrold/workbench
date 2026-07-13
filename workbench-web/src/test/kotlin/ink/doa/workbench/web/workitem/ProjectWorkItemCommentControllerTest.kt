@@ -2,12 +2,12 @@ package ink.doa.workbench.web.workitem
 
 import ink.doa.workbench.agile.project.ProjectResolver
 import ink.doa.workbench.agile.workitem.WorkItemCommentService
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.identity.SessionService
 import ink.doa.workbench.web.api.GlobalExceptionHandler
 import ink.doa.workbench.web.api.InfrastructureAspect
 import ink.doa.workbench.web.api.ProjectRequestContextResolver
@@ -121,15 +121,15 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
   @TestConfiguration
   class TestBeans {
     @Bean
-    fun sessionAuthenticator(): ink.doa.workbench.core.identity.auth.SessionAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.SessionAuthenticator {
+    fun sessionAuthenticator(): ink.doa.workbench.identity.auth.SessionAuthenticator =
+      object : ink.doa.workbench.identity.auth.SessionAuthenticator {
         override suspend fun authenticateSession(sessionId: String) =
           if (sessionId == TenantWebMvcFixtures.SESSION) TenantWebMvcFixtures.PRINCIPAL else null
       }
 
     @Bean
-    fun bearerTokenAuthenticator(): ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator =
-      object : ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator {
+    fun bearerTokenAuthenticator(): ink.doa.workbench.identity.auth.BearerTokenAuthenticator =
+      object : ink.doa.workbench.identity.auth.BearerTokenAuthenticator {
         override suspend fun authenticateBearerToken(token: String) = null
       }
 
@@ -155,7 +155,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
     fun workItemCommentServiceSetup(service: WorkItemCommentService): Boolean {
       coEvery {
         service.create(
-          ink.doa.workbench.core.workitem.model.CreateWorkItemCommentCommand(
+          ink.doa.workbench.agile.workitem.model.CreateWorkItemCommentCommand(
             tenantId = TenantWebMvcFixtures.TENANT_ID,
             projectId = TenantWebMvcFixtures.PROJECT_ID,
             workItemApiId = "iss_test",
@@ -166,7 +166,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
       } returns SAMPLE_COMMENT.copy(body = richText("New comment"), bodyPlainText = "New comment")
       coEvery {
         service.update(
-          ink.doa.workbench.core.workitem.model.UpdateWorkItemCommentCommand(
+          ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommentCommand(
             tenantId = TenantWebMvcFixtures.TENANT_ID,
             projectId = TenantWebMvcFixtures.PROJECT_ID,
             workItemApiId = "iss_test",
@@ -179,7 +179,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
         SAMPLE_COMMENT.copy(body = richText("Updated comment"), bodyPlainText = "Updated comment")
       coEvery {
         service.delete(
-          ink.doa.workbench.core.workitem.model.DeleteWorkItemCommentCommand(
+          ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommentCommand(
             tenantId = TenantWebMvcFixtures.TENANT_ID,
             projectId = TenantWebMvcFixtures.PROJECT_ID,
             workItemApiId = "iss_test",
@@ -213,7 +213,7 @@ class ProjectWorkItemCommentControllerTest(@Autowired private val mockMvc: MockM
 }
 
 private fun richText(value: String) =
-  ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(value)!!
+  ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText(value)!!
 
 private fun commentRequest(value: String) =
   """{"body":{"format":"tiptap","schemaVersion":1,"content":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"$value"}]}]}}}"""

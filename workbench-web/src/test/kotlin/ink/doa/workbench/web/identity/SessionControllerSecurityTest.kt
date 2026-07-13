@@ -1,32 +1,30 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.LoginMethodRepository
-import ink.doa.workbench.core.identity.TenantMemberRepository
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.identity.auth.AuthSessionRepository
-import ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator
-import ink.doa.workbench.core.identity.auth.BearerTokenRepository
-import ink.doa.workbench.core.identity.auth.SessionAuthenticator
-import ink.doa.workbench.core.identity.model.AuthSessionRecord
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.identity.model.CreateAuthSessionCommand
-import ink.doa.workbench.core.identity.model.CreateTenantMemberCommand
-import ink.doa.workbench.core.identity.model.TenantMemberRecord
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.AccessGrantRepository
-import ink.doa.workbench.core.permission.AdminUserQueryRepository
-import ink.doa.workbench.core.project.ProjectRepository
+import ink.doa.workbench.agile.project.ProjectRepository
+import ink.doa.workbench.identity.LoginCompletionService
+import ink.doa.workbench.identity.LoginMethodRepository
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.TenantMemberRepository
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.auth.AuthSessionRepository
+import ink.doa.workbench.identity.auth.BearerTokenAuthenticator
+import ink.doa.workbench.identity.auth.BearerTokenRepository
+import ink.doa.workbench.identity.auth.SessionAuthenticator
+import ink.doa.workbench.identity.common.IdentityPublicIdResolver
+import ink.doa.workbench.identity.model.AuthSessionRecord
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.CreateAuthSessionCommand
+import ink.doa.workbench.identity.model.CreateTenantMemberCommand
+import ink.doa.workbench.identity.model.TenantMemberRecord
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.identity.permission.AccessGrantRepository
+import ink.doa.workbench.identity.permission.AdminUserQueryRepository
+import ink.doa.workbench.kernel.common.ids.PublicId
 import ink.doa.workbench.security.SecurityConfiguration
 import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.security.WorkbenchAuthenticationFilter
-import ink.doa.workbench.security.common.PublicIdIdentitySupport
-import ink.doa.workbench.security.common.PublicIdPermissionSupport
-import ink.doa.workbench.security.common.PublicIdResolver
-import ink.doa.workbench.security.identity.LoginCompletionService
-import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.tenant.TenantRepository
+import ink.doa.workbench.tenant.model.TenantRecord
 import ink.doa.workbench.tenant.tenant.TenantOperationalGuard
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -89,22 +87,8 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun clock(): Clock = Clock.fixed(Instant.parse("2026-07-02T00:00:00Z"), ZoneOffset.UTC)
 
     @Bean
-    fun publicIdResolver(): PublicIdResolver =
-      PublicIdResolver(
-        identity =
-          PublicIdIdentitySupport(
-            tenants = TestTenants,
-            users = UnusedUserRepository,
-            loginMethods = UnusedLoginMethodRepository,
-            bearerTokens = UnusedBearerTokenRepository,
-          ),
-        permission =
-          PublicIdPermissionSupport(
-            adminUserQueries = UnusedAdminUserQueryRepository,
-            accessGrants = UnusedAccessGrantRepository,
-          ),
-        projects = UnusedProjectRepository,
-      )
+    fun publicIdResolver(): IdentityPublicIdResolver =
+      IdentityPublicIdResolver(TestTenants, UnusedBearerTokenRepository)
 
     @Bean
     fun loginCompletionService(): LoginCompletionService =
@@ -123,7 +107,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     @Bean
     fun sessionService(
       clock: Clock,
-      publicIdResolver: PublicIdResolver,
+      publicIdResolver: IdentityPublicIdResolver,
       loginCompletionService: LoginCompletionService,
     ): SessionService =
       SessionService(
@@ -187,24 +171,22 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   private object TestTenants : TenantRepository {
-    override suspend fun create(
-      command: ink.doa.workbench.core.identity.model.CreateTenantCommand
-    ) = error("unused")
+    override suspend fun create(command: ink.doa.workbench.tenant.model.CreateTenantCommand) =
+      error("unused")
 
-    override suspend fun update(
-      command: ink.doa.workbench.core.identity.model.UpdateTenantCommand
-    ) = error("unused")
+    override suspend fun update(command: ink.doa.workbench.tenant.model.UpdateTenantCommand) =
+      error("unused")
 
     override suspend fun markDestroying(tenantId: UUID) = error("unused")
 
     override suspend fun requestDestroy(
       tenantId: UUID,
       tenantApiId: String,
-      payload: ink.doa.workbench.core.tenant.events.TenantDestroyRequestedEvent,
+      payload: ink.doa.workbench.tenant.tenant.events.TenantDestroyRequestedEvent,
     ) = error("unused")
 
     override suspend fun finalizeDestroy(
-      command: ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
+      command: ink.doa.workbench.tenant.model.FinalizeTenantDestroyCommand
     ) = false
 
     override suspend fun findById(id: UUID): TenantRecord? = null
@@ -227,7 +209,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   private object UnusedUserRepository : UserRepository {
-    override suspend fun create(command: ink.doa.workbench.core.identity.model.CreateUserCommand) =
+    override suspend fun create(command: ink.doa.workbench.identity.model.CreateUserCommand) =
       error("unused")
 
     override suspend fun findById(id: UUID) = null
@@ -239,7 +221,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
   private object UnusedLoginMethodRepository : LoginMethodRepository {
     override suspend fun createLoginMethod(
-      command: ink.doa.workbench.core.identity.model.CreateLoginMethodDefinitionCommand
+      command: ink.doa.workbench.identity.model.CreateLoginMethodDefinitionCommand
     ) = error("unused")
 
     override suspend fun findLoginMethodByCode(code: String) = null
@@ -251,7 +233,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
   private object UnusedBearerTokenRepository : BearerTokenRepository {
     override suspend fun create(
-      command: ink.doa.workbench.core.identity.model.CreateBearerTokenCommand
+      command: ink.doa.workbench.identity.model.CreateBearerTokenCommand
     ) = error("unused")
 
     override suspend fun findById(id: UUID) = null
@@ -285,18 +267,18 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
       false
 
     override suspend fun listByUser(userId: UUID) =
-      emptyList<ink.doa.workbench.core.permission.AdminUserRecord>()
+      emptyList<ink.doa.workbench.identity.permission.AdminUserRecord>()
 
     override suspend fun listInstanceAdmins() =
-      emptyList<ink.doa.workbench.core.permission.AdminUserRecord>()
+      emptyList<ink.doa.workbench.identity.permission.AdminUserRecord>()
 
     override suspend fun listTenantAdmins(tenantId: UUID) =
-      emptyList<ink.doa.workbench.core.permission.AdminUserRecord>()
+      emptyList<ink.doa.workbench.identity.permission.AdminUserRecord>()
   }
 
   private object UnusedAccessGrantRepository : AccessGrantRepository {
     override suspend fun create(
-      command: ink.doa.workbench.core.permission.CreateAccessGrantCommand
+      command: ink.doa.workbench.identity.permission.CreateAccessGrantCommand
     ) = error("unused")
 
     override suspend fun findById(id: UUID) = null
@@ -305,24 +287,24 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
     override suspend fun listBySubject(
       subjectUserId: UUID,
-      scope: ink.doa.workbench.core.permission.GrantScope?,
+      scope: ink.doa.workbench.identity.permission.GrantScope?,
       tenantId: UUID?,
       projectId: UUID?,
-    ) = emptyList<ink.doa.workbench.core.permission.AccessGrantRecord>()
+    ) = emptyList<ink.doa.workbench.identity.permission.AccessGrantRecord>()
 
     override suspend fun listActiveForSubject(
       subjectUserId: UUID,
-      scope: ink.doa.workbench.core.permission.GrantScope,
+      scope: ink.doa.workbench.identity.permission.GrantScope,
       tenantId: UUID?,
       projectId: UUID?,
       at: OffsetDateTime,
-    ) = emptyList<ink.doa.workbench.core.permission.AccessGrantRecord>()
+    ) = emptyList<ink.doa.workbench.identity.permission.AccessGrantRecord>()
 
     override suspend fun listByTenant(tenantId: UUID) =
-      emptyList<ink.doa.workbench.core.permission.AccessGrantRecord>()
+      emptyList<ink.doa.workbench.identity.permission.AccessGrantRecord>()
 
     override suspend fun listInstanceGrants() =
-      emptyList<ink.doa.workbench.core.permission.AccessGrantRecord>()
+      emptyList<ink.doa.workbench.identity.permission.AccessGrantRecord>()
 
     override suspend fun expire(id: UUID, validTo: OffsetDateTime) = false
 
@@ -331,7 +313,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
 
   private object UnusedProjectRepository : ProjectRepository {
     override suspend fun create(
-      command: ink.doa.workbench.core.project.model.CreateProjectCommand
+      command: ink.doa.workbench.agile.project.model.CreateProjectCommand
     ) = error("unused")
 
     override suspend fun findByApiId(tenantId: UUID, apiId: String) = null
@@ -339,10 +321,10 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findById(tenantId: UUID, id: UUID) = null
 
     override suspend fun list(tenantId: UUID, identifier: String?) =
-      emptyList<ink.doa.workbench.core.project.model.ProjectRecord>()
+      emptyList<ink.doa.workbench.agile.project.model.ProjectRecord>()
 
     override suspend fun update(
-      command: ink.doa.workbench.core.project.model.UpdateProjectCommand
+      command: ink.doa.workbench.agile.project.model.UpdateProjectCommand
     ) = error("unused")
 
     override suspend fun markArchived(
@@ -362,7 +344,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     ) = error("unused")
 
     override suspend fun requestDestroy(
-      request: ink.doa.workbench.core.project.ProjectDestroyRequest
+      request: ink.doa.workbench.agile.project.ProjectDestroyRequest
     ) = error("unused")
 
     override suspend fun finalizeDestroy(
@@ -376,7 +358,7 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun updateStatus(
       tenantId: UUID,
       projectId: UUID,
-      status: ink.doa.workbench.core.project.model.ProjectStatus,
+      status: ink.doa.workbench.agile.project.model.ProjectStatus,
     ) = false
   }
 

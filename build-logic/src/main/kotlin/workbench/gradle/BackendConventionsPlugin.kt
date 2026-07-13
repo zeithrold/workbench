@@ -116,7 +116,7 @@ class BackendConventionsPlugin : Plugin<Project> {
                 timestampedReports.set(pitestProperties.string("timestampedReports").toBoolean())
                 exportLineCoverage.set(pitestProperties.string("exportLineCoverage").toBoolean())
                 threads.set(Runtime.getRuntime().availableProcessors())
-                if (name == "workbench-core") {
+                if (name == "workbench-application") {
                     reportAggregator {
                         mutationThreshold.set(pitestProperties.string("mutationThreshold").toInt())
                     }

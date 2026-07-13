@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.permission.AdminUserCommandRepository
-import ink.doa.workbench.core.permission.AdminUserRecord
-import ink.doa.workbench.core.permission.AdminUserStatus
-import ink.doa.workbench.core.permission.CreateAdminUserCommand
 import ink.doa.workbench.data.persistence.postgres.permission.AdminUsersTable
+import ink.doa.workbench.identity.permission.AdminUserCommandRepository
+import ink.doa.workbench.identity.permission.AdminUserRecord
+import ink.doa.workbench.identity.permission.AdminUserStatus
+import ink.doa.workbench.identity.permission.CreateAdminUserCommand
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

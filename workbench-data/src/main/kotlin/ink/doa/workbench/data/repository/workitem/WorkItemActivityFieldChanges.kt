@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityFieldChange
-import ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityFieldChange
+import ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
 import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.loadUserEntityRef

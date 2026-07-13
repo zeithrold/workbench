@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.OutboxMessageQuery
+import ink.doa.workbench.application.messaging.OutboxMessageQuery
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.jdbcTemplate

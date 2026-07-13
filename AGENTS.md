@@ -39,13 +39,13 @@ Unit vs integration responsibilities and thresholds: [`.agents/skills/workbench-
 - **Diff coverage:** after `./gradlew check`, run `./gradlew frontendFullCoverage` then `uv run --directory scripts/ci check-diff-coverage`. CI runs this in the `quality-gate-finalize` job (not nightly) after parallel `frontend-e2e` completes. See [`.agents/skills/workbench-development/SKILL.md`](.agents/skills/workbench-development/SKILL.md).
 - **Frontend coverage tiers:** Unit (`coverage/unit/lcov.info`), Full (`coverage/full/lcov.info` = unit + storybook), E2E (`coverage/e2e/lcov.info`). Commands: `./gradlew frontendUnitCoverage`, `frontendFullCoverage`, `:workbench-frontend:e2eCheck`. LCOV measures `src/**/*.{ts,js}` only (`.svelte` components are tested but not counted).
 - JVM integration tests use Testcontainers, so the Docker daemon must be running.
-- Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-core:pitest`.
+- Mutation testing: `./gradlew mutationTest --no-parallel --no-configuration-cache` (nightly / extended CI); config in `config/pitest/pitest.properties`. Per-module debug: `./gradlew :workbench-application:pitest`.
 
 ### Dependency notes
 - Redisson is pinned to `4.6.1` (3.x's `RedissonAutoConfigurationV2` is incompatible with Spring Boot 4's package relocation), and `workbench-web` includes `kotlinx-coroutines-reactor` at runtime (required for Spring MVC to invoke `suspend` handler functions). Both are needed for the apps to boot and serve requests on Spring Boot 4.
 
 ### workbench-data package layout
 - `data.persistence.{tech}.{domain}` — low-level storage access (Exposed tables, SQL/query builders, future ES/ClickHouse clients); no `@Repository`.
-- `data.repository.{domain}` — Spring beans implementing `workbench-core` ports; orchestrate persistence.
+- `data.repository.{domain}` — Spring beans implementing ports owned by the corresponding domain or application module; orchestrate persistence.
 - `data.storage.{blob|config}` — object/blob storage (S3, in-memory).
 - `data.messaging`, `data.locking`, `data.migration` — infrastructure adapters at the `data` root.

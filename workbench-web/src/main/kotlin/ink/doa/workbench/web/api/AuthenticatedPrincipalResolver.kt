@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.errors.AuthenticationFailedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.kernel.common.errors.AuthenticationFailedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component

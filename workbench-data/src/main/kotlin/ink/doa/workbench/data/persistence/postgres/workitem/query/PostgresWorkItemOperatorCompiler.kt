@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.query.DateDirection
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.RelativeDateUnit
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.agile.workitem.query.DateDirection
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.RelativeDateUnit
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull

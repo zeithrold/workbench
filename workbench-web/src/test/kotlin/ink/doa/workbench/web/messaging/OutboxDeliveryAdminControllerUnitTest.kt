@@ -1,9 +1,9 @@
 package ink.doa.workbench.web.messaging
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.messaging.OutboxDeliveryQuery
-import ink.doa.workbench.core.messaging.OutboxDeliveryRecord
-import ink.doa.workbench.service.messaging.OutboxDeliveryAdminApplicationService
+import ink.doa.workbench.application.messaging.OutboxDeliveryAdminApplicationService
+import ink.doa.workbench.application.messaging.OutboxDeliveryQuery
+import ink.doa.workbench.application.messaging.OutboxDeliveryRecord
+import ink.doa.workbench.web.api.context.InstanceRequestContext
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every

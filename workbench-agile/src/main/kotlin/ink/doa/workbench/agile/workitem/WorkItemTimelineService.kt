@@ -1,12 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.WorkItemTimelineRepository
-import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.agile.workitem.timeline.ListWorkItemTimelineQuery
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.pagination.WorkItemStreamCursor
 import java.util.UUID
 import org.springframework.stereotype.Service
 

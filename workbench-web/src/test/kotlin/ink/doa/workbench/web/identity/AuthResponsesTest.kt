@@ -1,18 +1,18 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.LoginMethodSummary
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.model.LoginMethodKind
-import ink.doa.workbench.security.identity.FederatedAuthorizeView
-import ink.doa.workbench.security.identity.IssuedTokenView
-import ink.doa.workbench.security.identity.LoginDiscoveryView
-import ink.doa.workbench.security.identity.LoginFlow
-import ink.doa.workbench.security.identity.LoginMethodChoiceView
-import ink.doa.workbench.security.identity.LoginOptionView
-import ink.doa.workbench.security.identity.LoginView
-import ink.doa.workbench.security.identity.TenantMembershipView
+import ink.doa.workbench.identity.FederatedAuthorizeView
+import ink.doa.workbench.identity.IssuedTokenView
+import ink.doa.workbench.identity.LoginDiscoveryView
+import ink.doa.workbench.identity.LoginFlow
+import ink.doa.workbench.identity.LoginMethodChoiceView
+import ink.doa.workbench.identity.LoginOptionView
+import ink.doa.workbench.identity.LoginView
+import ink.doa.workbench.identity.TenantMembershipView
+import ink.doa.workbench.identity.common.summary.LoginMethodSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -32,7 +32,7 @@ class AuthResponsesTest :
             sessionSecret = "session-secret",
             sessionExpiresAt = expiresAt,
             bearerToken = IssuedTokenView(id = "btk_abc", token = "secret", expiresAt = expiresAt),
-            loginContext = ink.doa.workbench.security.identity.LoginContext.TENANT,
+            loginContext = ink.doa.workbench.identity.LoginContext.TENANT,
             activeTenant = tenant,
             eligibleTenants = listOf(tenant),
           )

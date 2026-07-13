@@ -1,8 +1,8 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.template.FieldParticipation
-import ink.doa.workbench.core.workitem.template.FieldWriteGrant
-import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
+import ink.doa.workbench.agile.workitem.template.FieldParticipation
+import ink.doa.workbench.agile.workitem.template.FieldWriteGrant
+import ink.doa.workbench.agile.workitem.template.TransitionFieldSpec
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.JsonElement

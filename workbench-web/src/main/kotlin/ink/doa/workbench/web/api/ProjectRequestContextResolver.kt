@@ -2,11 +2,11 @@ package ink.doa.workbench.web.api
 
 import ink.doa.workbench.agile.project.ProjectOperationalGuard
 import ink.doa.workbench.agile.project.ProjectResolver
-import ink.doa.workbench.core.common.context.ProjectContextSummary
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.web.api.context.ProjectContextSummary
+import ink.doa.workbench.web.api.context.ProjectRequestContext
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import kotlinx.coroutines.runBlocking
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component

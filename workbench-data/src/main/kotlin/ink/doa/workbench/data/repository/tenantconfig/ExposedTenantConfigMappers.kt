@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.tenantconfig
 
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigKey
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigRecord
 import ink.doa.workbench.data.persistence.postgres.tenantconfig.TenantConfigEntriesTable
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigKey
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigRecord
 import kotlin.uuid.toJavaUuid
 import org.jetbrains.exposed.v1.core.ResultRow
 

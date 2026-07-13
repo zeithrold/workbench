@@ -1,21 +1,21 @@
 package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.EffectiveIssueTypeConfig
-import ink.doa.workbench.core.workitem.model.IssueStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigStatusRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeRecord
-import ink.doa.workbench.core.workitem.model.PropertyDefinitionRecord
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.model.WorkflowRecord
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.model.EffectiveIssueTypeConfig
+import ink.doa.workbench.agile.workitem.model.IssueStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigPropertyRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigStatusRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeRecord
+import ink.doa.workbench.agile.workitem.model.PropertyDefinitionRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkflowRecord
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime
@@ -249,7 +249,7 @@ class WorkItemConfigurationResponsesTest :
           authorId = UUID.randomUUID(),
           authorApiId = PublicId.new("usr"),
           body =
-            ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText(
+            ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText(
               "Looks good"
             )!!,
           bodyPlainText = "Looks good",
@@ -261,7 +261,7 @@ class WorkItemConfigurationResponsesTest :
         )
 
       WorkItemCommentResponse.from(record).body.toDomain() shouldBe
-        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Looks good")
+        ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText("Looks good")
     }
 
     "json node helpers convert objects and maps" {
@@ -325,9 +325,9 @@ class WorkItemConfigurationResponsesTest :
 
     "comment request types store body text" {
       val created =
-        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Created")!!
+        ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText("Created")!!
       val updated =
-        ink.doa.workbench.core.workitem.richtext.RichTextProcessor.fromPlainText("Updated")!!
+        ink.doa.workbench.agile.workitem.richtext.RichTextProcessor.fromPlainText("Updated")!!
       CreateWorkItemCommentRequest(body = RichTextDocumentPayload.from(created))
         .body
         .toDomain() shouldBe created

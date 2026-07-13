@@ -1,15 +1,15 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.InstanceContextSummary
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.common.context.ProjectContextSummary
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.context.RequestContext
-import ink.doa.workbench.core.common.context.TenantContextSummary
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.common.context.UserContextSummary
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.core.identity.model.UserRecord
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.kernel.common.context.InstanceContextSummary
+import ink.doa.workbench.web.api.context.InstanceRequestContext
+import ink.doa.workbench.web.api.context.ProjectContextSummary
+import ink.doa.workbench.web.api.context.ProjectRequestContext
+import ink.doa.workbench.web.api.context.RequestContext
+import ink.doa.workbench.web.api.context.TenantContextSummary
+import ink.doa.workbench.web.api.context.TenantRequestContext
+import ink.doa.workbench.web.api.context.UserContextSummary
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info

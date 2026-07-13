@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.InvitationRepository
-import ink.doa.workbench.core.identity.model.CreateInvitationCommand
-import ink.doa.workbench.core.identity.model.InvitationRecord
 import ink.doa.workbench.data.persistence.postgres.identity.InvitationsTable
+import ink.doa.workbench.identity.InvitationRepository
+import ink.doa.workbench.identity.model.CreateInvitationCommand
+import ink.doa.workbench.identity.model.InvitationRecord
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

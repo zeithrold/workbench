@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.messaging
 
-import ink.doa.workbench.core.messaging.DomainEventDecoder
-import ink.doa.workbench.core.messaging.DomainEventEncoder
+import ink.doa.workbench.kernel.messaging.DomainEventDecoder
+import ink.doa.workbench.kernel.messaging.DomainEventEncoder
 import java.time.Clock
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.model.AuditEventResult
-import ink.doa.workbench.core.identity.model.AuthEventType
-import ink.doa.workbench.core.identity.model.InvitationType
-import ink.doa.workbench.core.identity.model.LoginMethodKind
-import ink.doa.workbench.core.identity.model.TenantMemberStatus
-import ink.doa.workbench.core.identity.model.TenantStatus
+import ink.doa.workbench.identity.model.AuditEventResult
+import ink.doa.workbench.identity.model.AuthEventType
+import ink.doa.workbench.identity.model.InvitationType
+import ink.doa.workbench.identity.model.LoginMethodKind
+import ink.doa.workbench.identity.model.TenantMemberStatus
+import ink.doa.workbench.tenant.model.TenantStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

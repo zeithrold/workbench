@@ -1,14 +1,14 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.identity.model.UserRecord
-import ink.doa.workbench.core.permission.PermissionBindingRecord
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.PermissionGroupRepository
-import ink.doa.workbench.core.permission.PermissionPolicyRecord
-import ink.doa.workbench.core.permission.PermissionPolicyRepository
-import ink.doa.workbench.core.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.model.UserRecord
+import ink.doa.workbench.identity.permission.PermissionBindingRecord
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.PermissionGroupRepository
+import ink.doa.workbench.identity.permission.PermissionPolicyRecord
+import ink.doa.workbench.identity.permission.PermissionPolicyRepository
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery

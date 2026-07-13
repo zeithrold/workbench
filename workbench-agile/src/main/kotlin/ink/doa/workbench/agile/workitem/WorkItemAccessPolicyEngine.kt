@@ -1,16 +1,16 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.access.AccessConditionContext
-import ink.doa.workbench.core.workitem.access.AccessConditionEvaluator
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActor
-import ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRepository
-import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
-import ink.doa.workbench.core.workitem.template.TemplateField
-import ink.doa.workbench.core.workitem.template.toPermissionResourceId
+import ink.doa.workbench.agile.workitem.access.AccessConditionContext
+import ink.doa.workbench.agile.workitem.access.AccessConditionEvaluator
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActor
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRecord
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRepository
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessSubjectType
+import ink.doa.workbench.agile.workitem.template.TemplateField
+import ink.doa.workbench.agile.workitem.template.toPermissionResourceId
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import java.util.UUID
 import org.springframework.stereotype.Component
 
@@ -109,7 +109,7 @@ class WorkItemAccessPolicyEngine(
     tenantId: UUID,
     projectId: UUID,
     actorUserId: UUID,
-    action: ink.doa.workbench.core.permission.model.AuthorizationAction,
+    action: ink.doa.workbench.identity.permission.model.AuthorizationAction,
   ): Boolean = bindingEvaluator.allowsComment(tenantId, projectId, actorUserId, action)
 
   private suspend fun evaluateTypeScopedAction(query: TypeScopedActionQuery): Boolean {

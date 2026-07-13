@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.common.context.ProjectRequestContext
-import ink.doa.workbench.core.common.context.TenantRequestContext
+import ink.doa.workbench.web.api.context.InstanceRequestContext
+import ink.doa.workbench.web.api.context.ProjectRequestContext
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import org.springframework.aop.support.AopUtils

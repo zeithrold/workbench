@@ -1,12 +1,12 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.WorkItemGroupKey
-import ink.doa.workbench.core.workitem.query.WorkItemGroupKeySupport
-import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
-import ink.doa.workbench.core.workitem.query.WorkItemGroupLabelCode
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupKey
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupKeySupport
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabel
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabelCode
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldType
 import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import ink.doa.workbench.data.persistence.postgres.workitem.query.JdbcPostgresWorkItemFieldResolver
 import java.util.UUID

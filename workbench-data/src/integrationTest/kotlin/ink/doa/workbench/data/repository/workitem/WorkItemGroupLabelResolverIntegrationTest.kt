@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.query.ConditionNode
-import ink.doa.workbench.core.workitem.query.QueryField
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.WorkItemGroupLabel
-import ink.doa.workbench.core.workitem.query.WorkItemGroupLabelCode
+import ink.doa.workbench.agile.workitem.query.ConditionNode
+import ink.doa.workbench.agile.workitem.query.QueryField
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabel
+import ink.doa.workbench.agile.workitem.query.WorkItemGroupLabelCode
 import ink.doa.workbench.testsupport.postgres.MigrationSpec
 import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import io.kotest.core.spec.style.StringSpec

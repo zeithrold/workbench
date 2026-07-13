@@ -1,15 +1,15 @@
 package ink.doa.workbench.data.repository.sprint
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.sprint.SprintRepository
-import ink.doa.workbench.core.sprint.model.ArchiveSprintCommand
-import ink.doa.workbench.core.sprint.model.CreateSprintCommand
-import ink.doa.workbench.core.sprint.model.DeleteSprintCommand
-import ink.doa.workbench.core.sprint.model.SprintRecord
-import ink.doa.workbench.core.sprint.model.SprintStatus
-import ink.doa.workbench.core.sprint.model.UpdateSprintCommand
+import ink.doa.workbench.agile.sprint.SprintRepository
+import ink.doa.workbench.agile.sprint.model.ArchiveSprintCommand
+import ink.doa.workbench.agile.sprint.model.CreateSprintCommand
+import ink.doa.workbench.agile.sprint.model.DeleteSprintCommand
+import ink.doa.workbench.agile.sprint.model.SprintRecord
+import ink.doa.workbench.agile.sprint.model.SprintStatus
+import ink.doa.workbench.agile.sprint.model.UpdateSprintCommand
 import ink.doa.workbench.data.persistence.postgres.workitem.SprintsTable
 import ink.doa.workbench.data.persistence.postgres.workitem.now
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

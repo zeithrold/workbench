@@ -1,21 +1,19 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.errors.requireValid
-import ink.doa.workbench.core.identity.UserRepository
-import ink.doa.workbench.core.permission.PermissionGroupRepository
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.access.CreateWorkItemAccessRuleCommand
-import ink.doa.workbench.core.workitem.access.WorkItemAccessActionType
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRecord
-import ink.doa.workbench.core.workitem.access.WorkItemAccessRuleRepository
-import ink.doa.workbench.core.workitem.access.WorkItemAccessSubjectType
-import ink.doa.workbench.core.workitem.query.WorkItemConditionJson
-import ink.doa.workbench.core.workitem.query.WorkItemTransitionConditionValidator
+import ink.doa.workbench.agile.workitem.access.CreateWorkItemAccessRuleCommand
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessActionType
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRecord
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessRuleRepository
+import ink.doa.workbench.agile.workitem.access.WorkItemAccessSubjectType
+import ink.doa.workbench.agile.workitem.query.WorkItemConditionJson
+import ink.doa.workbench.agile.workitem.query.WorkItemTransitionConditionValidator
+import ink.doa.workbench.identity.UserRepository
+import ink.doa.workbench.identity.permission.PermissionGroupRepository
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.errors.requireValid
 import java.util.UUID
 import kotlinx.serialization.json.JsonObject
 import org.springframework.stereotype.Service
@@ -85,7 +83,7 @@ class IssueTypeConfigAccessRuleService(
   private suspend fun present(
     tenantId: UUID,
     record: WorkItemAccessRuleRecord,
-    transitions: Map<UUID, ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord> =
+    transitions: Map<UUID, ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord> =
       emptyMap(),
   ): WorkItemAccessRulePresentation =
     WorkItemAccessRulePresentation(

@@ -1,19 +1,19 @@
 package ink.doa.workbench.data.repository.project
 
-import ink.doa.workbench.core.permission.CreatePermissionBindingCommand
-import ink.doa.workbench.core.permission.CreatePermissionGroupCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyCommand
-import ink.doa.workbench.core.permission.CreatePermissionPolicyRuleCommand
-import ink.doa.workbench.core.permission.PermissionPrincipalType
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
 import ink.doa.workbench.data.repository.permission.ExposedPermissionBindingRepository
 import ink.doa.workbench.data.repository.permission.ExposedPermissionGroupRepository
 import ink.doa.workbench.data.repository.permission.ExposedPermissionPolicyRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
+import ink.doa.workbench.identity.permission.CreatePermissionBindingCommand
+import ink.doa.workbench.identity.permission.CreatePermissionGroupCommand
+import ink.doa.workbench.identity.permission.CreatePermissionPolicyCommand
+import ink.doa.workbench.identity.permission.CreatePermissionPolicyRuleCommand
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import java.time.OffsetDateTime

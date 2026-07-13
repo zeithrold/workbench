@@ -1,7 +1,7 @@
 package ink.doa.workbench.security
 
-import ink.doa.workbench.core.identity.auth.BearerTokenAuthenticator
-import ink.doa.workbench.core.identity.auth.SessionAuthenticator
+import ink.doa.workbench.identity.auth.BearerTokenAuthenticator
+import ink.doa.workbench.identity.auth.SessionAuthenticator
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

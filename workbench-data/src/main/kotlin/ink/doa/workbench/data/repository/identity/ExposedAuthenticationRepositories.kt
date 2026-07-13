@@ -1,14 +1,14 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.auth.AuthSessionRepository
-import ink.doa.workbench.core.identity.auth.BearerTokenRepository
-import ink.doa.workbench.core.identity.model.AuthSessionRecord
-import ink.doa.workbench.core.identity.model.BearerTokenRecord
-import ink.doa.workbench.core.identity.model.CreateAuthSessionCommand
-import ink.doa.workbench.core.identity.model.CreateBearerTokenCommand
 import ink.doa.workbench.data.persistence.postgres.identity.AuthSessionsTable
 import ink.doa.workbench.data.persistence.postgres.identity.BearerTokensTable
+import ink.doa.workbench.identity.auth.AuthSessionRepository
+import ink.doa.workbench.identity.auth.BearerTokenRepository
+import ink.doa.workbench.identity.model.AuthSessionRecord
+import ink.doa.workbench.identity.model.BearerTokenRecord
+import ink.doa.workbench.identity.model.CreateAuthSessionCommand
+import ink.doa.workbench.identity.model.CreateBearerTokenCommand
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid

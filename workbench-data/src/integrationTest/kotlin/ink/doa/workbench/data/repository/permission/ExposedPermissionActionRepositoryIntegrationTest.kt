@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.permission.CreatePermissionActionCommand
-import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.identity.permission.CreatePermissionActionCommand
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.nulls.shouldNotBeNull

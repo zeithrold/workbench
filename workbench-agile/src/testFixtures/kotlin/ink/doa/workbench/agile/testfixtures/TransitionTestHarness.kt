@@ -1,11 +1,11 @@
 package ink.doa.workbench.agile.testfixtures
 
+import ink.doa.workbench.agile.workitem.IssueTypeConfigRepository
+import ink.doa.workbench.agile.workitem.WorkItemRepository
 import ink.doa.workbench.agile.workitem.WorkItemTransitionService
-import ink.doa.workbench.core.port.messaging.DomainEventPublisher
-import ink.doa.workbench.core.workitem.IssueTypeConfigRepository
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.WorkflowConfigurationRepository
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.agile.workitem.WorkflowConfigurationRepository
+import ink.doa.workbench.agile.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.kernel.port.messaging.DomainEventPublisher
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant

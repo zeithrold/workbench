@@ -1,11 +1,10 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.workitem.WorkItemRepository
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkflowTransitionRecord
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -44,7 +43,7 @@ class WorkItemTransitionValidator(
 
   suspend fun accessEvaluationContext(
     request: WorkItemTransitionEvaluationRequest
-  ): ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext {
+  ): ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext {
     val conditionContext =
       conditionContext(
         request.issue,
@@ -52,7 +51,7 @@ class WorkItemTransitionValidator(
         request.projectApiId,
         request.properties,
       )
-    return ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext(
+    return ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext(
       actor =
         accessPolicy.resolveActor(
           tenantId = request.issue.tenantId,
@@ -88,12 +87,12 @@ class WorkItemTransitionValidator(
       transition.workflowId != config.config.workflowId ||
         (transition.fromStatusId != null && transition.fromStatusId != issue.statusId)
     ) {
-      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+      throw ink.doa.workbench.kernel.common.errors.InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_TRANSITION_STATUS_MISMATCH
       )
     }
     if (config.statuses.none { it.statusId == transition.toStatusId }) {
-      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+      throw ink.doa.workbench.kernel.common.errors.InvalidRequestException(
         WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE
       )
     }
@@ -102,7 +101,7 @@ class WorkItemTransitionValidator(
   suspend fun requireTransitionPermission(
     issueTypeConfigId: UUID,
     transition: WorkflowTransitionRecord,
-    evaluationContext: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext,
+    evaluationContext: ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext,
   ) {
     if (
       !accessPolicy.isTransitionPermitted(
@@ -120,7 +119,7 @@ class WorkItemTransitionValidator(
     context: WorkItemConditionContext,
   ) {
     if (!conditions.evaluate(transition.preconditionAst, context)) {
-      throw ink.doa.workbench.core.common.errors.InvalidRequestException(
+      throw ink.doa.workbench.kernel.common.errors.InvalidRequestException(
         WorkbenchErrorCode.WORK_ITEM_TRANSITION_PRECONDITION_FAILED
       )
     }

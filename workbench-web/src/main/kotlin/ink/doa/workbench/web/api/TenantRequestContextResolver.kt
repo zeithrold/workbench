@@ -1,12 +1,12 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.TenantContextSummary
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.common.errors.AuthenticationFailedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.kernel.common.errors.AuthenticationFailedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.tenant.instance.InstanceContextProvider
+import ink.doa.workbench.web.api.context.TenantContextSummary
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import kotlinx.coroutines.runBlocking
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.context.SecurityContextHolder

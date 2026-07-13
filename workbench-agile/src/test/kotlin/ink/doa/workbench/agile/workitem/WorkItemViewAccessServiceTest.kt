@@ -1,18 +1,18 @@
 package ink.doa.workbench.agile.workitem
 
 import ink.doa.workbench.agile.project.ProjectAccessService
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.identity.TenantMemberRepository
-import ink.doa.workbench.core.identity.model.TenantMemberRecord
-import ink.doa.workbench.core.permission.PermissionBindingRepository
-import ink.doa.workbench.core.permission.ResolvedPermissionRule
-import ink.doa.workbench.core.permission.model.AuthorizationAction
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.core.workitem.view.WorkItemViewDefaults
-import ink.doa.workbench.core.workitem.view.WorkItemViewRecord
-import ink.doa.workbench.core.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.agile.workitem.view.WorkItemViewDefaults
+import ink.doa.workbench.agile.workitem.view.WorkItemViewRecord
+import ink.doa.workbench.agile.workitem.view.WorkItemViewVisibility
+import ink.doa.workbench.identity.TenantMemberRepository
+import ink.doa.workbench.identity.model.TenantMemberRecord
+import ink.doa.workbench.identity.permission.PermissionBindingRepository
+import ink.doa.workbench.identity.permission.ResolvedPermissionRule
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -105,7 +105,7 @@ class WorkItemViewAccessServiceTest :
           apiId = PublicId("tmb_01JABCDEFGHJKMNPQRSTVWXYZ2"),
           tenantId = tenantId,
           userId = otherUserId,
-          status = ink.doa.workbench.core.identity.model.TenantMemberStatus.ACTIVE,
+          status = ink.doa.workbench.identity.model.TenantMemberStatus.ACTIVE,
           joinedAt = now,
           invitedBy = null,
           createdAt = now,

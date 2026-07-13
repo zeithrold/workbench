@@ -1,7 +1,7 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.template.FieldParticipation
-import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
+import ink.doa.workbench.agile.workitem.template.FieldParticipation
+import ink.doa.workbench.agile.workitem.template.TransitionFieldSpec
 
 enum class FieldSubmissionPolicy {
   /**
@@ -37,7 +37,7 @@ data class WorkItemFieldPermissionContext(
   val actorUserId: java.util.UUID,
   val actorUserApiId: String,
   val operation: FieldPermissionOperation,
-  val accessEvaluation: ink.doa.workbench.core.workitem.access.WorkItemAccessEvaluationContext? =
+  val accessEvaluation: ink.doa.workbench.agile.workitem.access.WorkItemAccessEvaluationContext? =
     null,
   val resourceAttributes: Map<String, String> = emptyMap(),
 )

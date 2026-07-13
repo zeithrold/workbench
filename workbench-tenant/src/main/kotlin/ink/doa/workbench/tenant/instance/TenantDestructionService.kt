@@ -1,9 +1,9 @@
 package ink.doa.workbench.tenant.instance
 
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.model.FinalizeTenantDestroyCommand
-import ink.doa.workbench.core.identity.model.TenantStatus
-import ink.doa.workbench.core.tenant.TenantDestructionRepository
+import ink.doa.workbench.tenant.TenantRepository
+import ink.doa.workbench.tenant.model.FinalizeTenantDestroyCommand
+import ink.doa.workbench.tenant.model.TenantStatus
+import ink.doa.workbench.tenant.tenant.TenantDestructionRepository
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.util.UUID

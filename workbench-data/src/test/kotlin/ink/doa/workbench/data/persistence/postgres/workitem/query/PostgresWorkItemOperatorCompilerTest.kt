@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.workitem.query.DateDirection
-import ink.doa.workbench.core.workitem.query.QueryOperator
-import ink.doa.workbench.core.workitem.query.QueryValue
-import ink.doa.workbench.core.workitem.query.RelativeDateUnit
-import ink.doa.workbench.core.workitem.query.WorkItemQueryFieldType
+import ink.doa.workbench.agile.workitem.query.DateDirection
+import ink.doa.workbench.agile.workitem.query.QueryOperator
+import ink.doa.workbench.agile.workitem.query.QueryValue
+import ink.doa.workbench.agile.workitem.query.RelativeDateUnit
+import ink.doa.workbench.agile.workitem.query.WorkItemQueryFieldType
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -59,7 +59,7 @@ class PostgresWorkItemOperatorCompilerTest :
     }
 
     "compile BETWEEN rejects non-between value" {
-      shouldThrow<ink.doa.workbench.core.common.errors.InvalidRequestException> {
+      shouldThrow<ink.doa.workbench.kernel.common.errors.InvalidRequestException> {
         compiler.compile(
           valueSql = "ipv.value_number",
           type = WorkItemQueryFieldType.NUMBER,

@@ -1,15 +1,15 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
-import ink.doa.workbench.core.workitem.model.TransitionRequest
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
-import ink.doa.workbench.core.workitem.richtext.RichTextProcessor
-import ink.doa.workbench.core.workitem.template.TransitionFieldsParser
-import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.TransitionRequest
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.workitem.richtext.RichTextProcessor
+import ink.doa.workbench.agile.workitem.template.TransitionFieldsParser
+import ink.doa.workbench.agile.workitem.template.WorkItemTransitionFieldsTemplate
+import ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateTarget
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component
 data class TransitionMutationPlan(
   val persistence: TransitionPersistenceCommand,
   val propertyValues: List<WorkItemPropertyValue>,
-  val commentBody: ink.doa.workbench.core.workitem.richtext.RichTextDocument?,
+  val commentBody: ink.doa.workbench.agile.workitem.richtext.RichTextDocument?,
 )
 
 data class CreateMutationPlan(

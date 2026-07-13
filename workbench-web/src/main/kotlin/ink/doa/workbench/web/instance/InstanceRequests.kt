@@ -1,16 +1,16 @@
 package ink.doa.workbench.web.instance
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.summary.LoginMethodSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.model.BootstrapInstanceAdminCommand
-import ink.doa.workbench.core.identity.model.CreateTenantWithAdminCommand
-import ink.doa.workbench.core.identity.model.TenantAdminAssignment
-import ink.doa.workbench.core.identity.model.TenantRecord
-import ink.doa.workbench.core.identity.model.UpdateTenantCommand
-import ink.doa.workbench.service.instance.CreateTenantView
-import ink.doa.workbench.service.instance.InstanceBootstrapView
+import ink.doa.workbench.application.instance.CreateTenantView
+import ink.doa.workbench.application.instance.InstanceBootstrapView
+import ink.doa.workbench.identity.common.summary.LoginMethodSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.identity.model.BootstrapInstanceAdminCommand
+import ink.doa.workbench.identity.model.CreateTenantWithAdminCommand
+import ink.doa.workbench.identity.model.TenantAdminAssignment
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.tenant.model.TenantRecord
+import ink.doa.workbench.tenant.model.UpdateTenantCommand
 import ink.doa.workbench.web.admin.AdminUserResponse
 import ink.doa.workbench.web.identity.LoginResponse
 import io.swagger.v3.oas.annotations.media.Schema

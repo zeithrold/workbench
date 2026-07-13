@@ -1,10 +1,10 @@
 package ink.doa.workbench.web.api.warning
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.ProjectSummary
-import ink.doa.workbench.core.common.warning.WorkbenchWarning
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCode
-import ink.doa.workbench.core.common.warning.meta.ProjectDestroyScheduledMeta
+import ink.doa.workbench.agile.project.ProjectSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarning
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCode
+import ink.doa.workbench.kernel.common.warning.meta.ProjectDestroyScheduledMeta
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.kernel.common.ids.PublicId
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import org.jetbrains.exposed.v1.core.ResultRow

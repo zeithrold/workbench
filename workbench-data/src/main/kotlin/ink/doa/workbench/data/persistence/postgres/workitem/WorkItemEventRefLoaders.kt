@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityEntityRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityEntityRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityStatusRef
 import ink.doa.workbench.data.persistence.postgres.findColumn
 import ink.doa.workbench.data.persistence.postgres.requireColumn
 import java.util.UUID

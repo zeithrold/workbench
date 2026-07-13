@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
-import ink.doa.workbench.security.identity.SessionService
+import ink.doa.workbench.identity.SessionService
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
 import ink.doa.workbench.web.api.AuthenticatedOnly
 import ink.doa.workbench.web.api.OpenApiExamples
 import ink.doa.workbench.web.api.SessionSecured

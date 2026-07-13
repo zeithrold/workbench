@@ -1,13 +1,13 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.CreateIssueStatusCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.model.CreateIssueStatusCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.seedUser
 import ink.doa.workbench.data.support.withPostgresDatabase
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull

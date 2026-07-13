@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.persistence.postgres.workitem.query
 
-import ink.doa.workbench.core.workitem.query.SortDirection
+import ink.doa.workbench.agile.workitem.query.SortDirection
 
 object PostgresWorkItemSearchAfter {
   fun afterCursor(specs: List<PostgresSortSpec>, cursorValues: List<Any?>): SqlFragment {

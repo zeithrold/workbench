@@ -3,9 +3,9 @@ package ink.doa.workbench.web.project
 import ink.doa.workbench.agile.project.ProjectMemberPolicyView
 import ink.doa.workbench.agile.project.ProjectMemberView
 import ink.doa.workbench.agile.project.ProjectPermissionPolicySummary
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.service.project.ProjectView
+import ink.doa.workbench.application.project.ProjectView
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

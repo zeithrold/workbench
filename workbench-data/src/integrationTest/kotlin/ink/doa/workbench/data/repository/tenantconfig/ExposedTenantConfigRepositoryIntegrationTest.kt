@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.repository.tenantconfig
 
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigKey
-import ink.doa.workbench.core.tenantconfig.model.UpsertTenantConfigCommand
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.support.withCorePostgresDatabase
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigKey
+import ink.doa.workbench.tenant.tenantconfig.model.UpsertTenantConfigCommand
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe

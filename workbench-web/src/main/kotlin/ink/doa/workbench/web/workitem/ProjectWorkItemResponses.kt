@@ -1,10 +1,10 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.core.workitem.model.WorkItemCommentFormMeta
-import ink.doa.workbench.core.workitem.model.WorkItemCreateFormOption
-import ink.doa.workbench.core.workitem.model.WorkItemFormFieldMeta
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemTransitionOption
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentFormMeta
+import ink.doa.workbench.agile.workitem.model.WorkItemCreateFormOption
+import ink.doa.workbench.agile.workitem.model.WorkItemFormFieldMeta
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemTransitionOption
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 

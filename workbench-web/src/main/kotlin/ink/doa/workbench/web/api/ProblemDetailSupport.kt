@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.errors.WorkbenchException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.errors.WorkbenchException
 import java.net.URI
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail

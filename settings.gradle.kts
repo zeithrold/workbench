@@ -44,14 +44,15 @@ dependencyResolutionManagement {
 rootProject.name = "workbench"
 
 include(
-    ":workbench-core",
+    ":workbench-kernel",
     ":workbench-test-support",
-    ":workbench-service",
+    ":workbench-application",
     ":workbench-agile",
     ":workbench-tenant",
+    ":workbench-identity",
+    ":workbench-notification",
     ":workbench-data",
     ":workbench-security",
-    ":workbench-jobs",
     ":workbench-web",
     ":workbench-worker",
     ":workbench-frontend",

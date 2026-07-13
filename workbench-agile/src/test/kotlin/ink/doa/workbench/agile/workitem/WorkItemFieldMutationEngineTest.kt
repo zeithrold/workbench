@@ -1,25 +1,25 @@
 package ink.doa.workbench.agile.workitem
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.PermissionDeniedException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigDetails
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigPropertyRecord
-import ink.doa.workbench.core.workitem.model.IssueTypeConfigRecord
-import ink.doa.workbench.core.workitem.model.WorkItemConfigScope
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemRecord
-import ink.doa.workbench.core.workitem.model.WorkItemStatusGroup
-import ink.doa.workbench.core.workitem.template.FieldParticipation
-import ink.doa.workbench.core.workitem.template.FieldWriteGrant
-import ink.doa.workbench.core.workitem.template.TemplateField
-import ink.doa.workbench.core.workitem.template.TemplateValueExpression
-import ink.doa.workbench.core.workitem.template.TransitionFieldSpec
-import ink.doa.workbench.core.workitem.template.UnauthorizedMutationBehavior
-import ink.doa.workbench.core.workitem.template.WorkItemTransitionFieldsTemplate
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateContext
-import ink.doa.workbench.core.workitem.template.WorkItemValueTemplateTarget
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigDetails
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigPropertyRecord
+import ink.doa.workbench.agile.workitem.model.IssueTypeConfigRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemConfigScope
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemRecord
+import ink.doa.workbench.agile.workitem.model.WorkItemStatusGroup
+import ink.doa.workbench.agile.workitem.template.FieldParticipation
+import ink.doa.workbench.agile.workitem.template.FieldWriteGrant
+import ink.doa.workbench.agile.workitem.template.TemplateField
+import ink.doa.workbench.agile.workitem.template.TemplateValueExpression
+import ink.doa.workbench.agile.workitem.template.TransitionFieldSpec
+import ink.doa.workbench.agile.workitem.template.UnauthorizedMutationBehavior
+import ink.doa.workbench.agile.workitem.template.WorkItemTransitionFieldsTemplate
+import ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateContext
+import ink.doa.workbench.agile.workitem.template.WorkItemValueTemplateTarget
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.PermissionDeniedException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
@@ -154,9 +154,9 @@ class WorkItemFieldMutationEngineTest :
                       TemplateValueExpression.RelativeDate(
                         amount = 3,
                         unit =
-                          ink.doa.workbench.core.workitem.template.TemplateRelativeDateUnit.DAY,
+                          ink.doa.workbench.agile.workitem.template.TemplateRelativeDateUnit.DAY,
                         direction =
-                          ink.doa.workbench.core.workitem.template.TemplateDateDirection.FUTURE,
+                          ink.doa.workbench.agile.workitem.template.TemplateDateDirection.FUTURE,
                         anchor = "date.today",
                       ),
                   ),
@@ -848,7 +848,7 @@ class WorkItemFieldMutationEngineTest :
       val body =
         engine.reconcileTransitionComment(
           spec =
-            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+            ink.doa.workbench.agile.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
               template = TemplateValueExpression.Literal(JsonPrimitive("Resolved via transition")),
             ),
@@ -863,7 +863,7 @@ class WorkItemFieldMutationEngineTest :
       val body =
         engine.reconcileTransitionComment(
           spec =
-            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+            ink.doa.workbench.agile.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
               template = null,
             ),
@@ -964,7 +964,7 @@ class WorkItemFieldMutationEngineTest :
       val meta =
         engine.buildCommentMeta(
           spec =
-            ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+            ink.doa.workbench.agile.workitem.template.CommentFieldSpec(
               participation = FieldParticipation.OPTIONAL,
               template = TemplateValueExpression.Literal(JsonPrimitive("Auto comment")),
             ),
@@ -979,7 +979,7 @@ class WorkItemFieldMutationEngineTest :
       shouldThrow<InvalidRequestException> {
           engine.reconcileTransitionComment(
             spec =
-              ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+              ink.doa.workbench.agile.workitem.template.CommentFieldSpec(
                 participation = FieldParticipation.AUTOMATIC,
                 template = TemplateValueExpression.Literal(JsonPrimitive("auto")),
               ),
@@ -994,7 +994,7 @@ class WorkItemFieldMutationEngineTest :
       shouldThrow<InvalidRequestException> {
           engine.reconcileTransitionComment(
             spec =
-              ink.doa.workbench.core.workitem.template.CommentFieldSpec(
+              ink.doa.workbench.agile.workitem.template.CommentFieldSpec(
                 participation = FieldParticipation.REQUIRED,
                 template = null,
               ),

@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.workitem
 
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import tools.jackson.databind.JsonNode

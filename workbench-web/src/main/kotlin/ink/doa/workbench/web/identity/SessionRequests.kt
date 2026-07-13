@@ -15,16 +15,16 @@ data class SwitchTenantRequest(
 @Schema(description = "Current session aggregate keyed by the session cookie.")
 data class SessionResponse(
   @field:Schema(description = "Authenticated user summary.")
-  val user: ink.doa.workbench.core.common.summary.UserSummary,
+  val user: ink.doa.workbench.identity.common.summary.UserSummary,
   @field:Schema(description = "Tenant currently selected in the session, if any.")
-  val activeTenant: ink.doa.workbench.core.common.summary.TenantSummary?,
+  val activeTenant: ink.doa.workbench.tenant.common.summary.TenantSummary?,
   @field:Schema(description = "When the session expires.", example = "2026-07-02T12:00:00+00:00")
   val sessionExpiresAt: java.time.OffsetDateTime,
   @field:Schema(description = "Administrator scopes available to the user.")
   val adminScopes: List<String> = emptyList(),
 ) {
   companion object {
-    fun from(view: ink.doa.workbench.security.identity.SessionView): SessionResponse =
+    fun from(view: ink.doa.workbench.identity.SessionView): SessionResponse =
       SessionResponse(
         user = view.user,
         activeTenant = view.activeTenant,

@@ -1,15 +1,14 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.sprint.model.CreateSprintCommand
-import ink.doa.workbench.core.workitem.CreateWorkItemPersistenceCommand
-import ink.doa.workbench.core.workitem.ReassignSprintBatchCommand
-import ink.doa.workbench.core.workitem.model.CreatePropertyDefinitionCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkItemCommand
-import ink.doa.workbench.core.workitem.model.CreateWorkflowTransitionCommand
-import ink.doa.workbench.core.workitem.model.TransitionPersistenceCommand
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyDataType
-import ink.doa.workbench.core.workitem.model.WorkItemPropertyValue
+import ink.doa.workbench.agile.sprint.model.CreateSprintCommand
+import ink.doa.workbench.agile.workitem.CreateWorkItemPersistenceCommand
+import ink.doa.workbench.agile.workitem.ReassignSprintBatchCommand
+import ink.doa.workbench.agile.workitem.model.CreatePropertyDefinitionCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkItemCommand
+import ink.doa.workbench.agile.workitem.model.CreateWorkflowTransitionCommand
+import ink.doa.workbench.agile.workitem.model.TransitionPersistenceCommand
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyDataType
+import ink.doa.workbench.agile.workitem.model.WorkItemPropertyValue
 import ink.doa.workbench.data.persistence.postgres.workitem.IssueSprintHistoryTable
 import ink.doa.workbench.data.persistence.postgres.workitem.PrioritiesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.PropertyOptionsTable
@@ -18,6 +17,7 @@ import ink.doa.workbench.data.repository.sprint.ExposedSprintRepository
 import ink.doa.workbench.data.support.seedWorkItemStack
 import ink.doa.workbench.data.support.withPostgresDatabase
 import ink.doa.workbench.data.support.workItemRepository
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
@@ -232,7 +232,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val updated =
           repository.update(
-            ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand(
+            ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand(
               tenantId = stack.tenantId,
               projectId = stack.projectId,
               workItemApiId = created.workItem.apiId.value,
@@ -273,7 +273,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val deleted =
           repository.softDelete(
-            ink.doa.workbench.core.workitem.model.DeleteWorkItemCommand(
+            ink.doa.workbench.agile.workitem.model.DeleteWorkItemCommand(
               tenantId = stack.tenantId,
               projectId = stack.projectId,
               workItemApiId = created.workItem.apiId.value,
@@ -538,7 +538,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
 
         val updated =
           repository.update(
-            ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand(
+            ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand(
               tenantId = stack.tenantId,
               projectId = stack.projectId,
               workItemApiId = created.workItem.apiId.value,
@@ -829,7 +829,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
         }
 
         repository.update(
-          ink.doa.workbench.core.workitem.model.UpdateWorkItemCommand(
+          ink.doa.workbench.agile.workitem.model.UpdateWorkItemCommand(
             tenantId = stack.tenantId,
             projectId = stack.projectId,
             workItemApiId = created.workItem.apiId.value,
@@ -933,7 +933,7 @@ class ExposedWorkItemRepositoryIntegrationTest :
               projectId = stack.projectId,
               sourceSprintId = source.id,
               targetSprintId = target.id,
-              disposition = ink.doa.workbench.core.sprint.model.SprintCloseDisposition.NEXT_SPRINT,
+              disposition = ink.doa.workbench.agile.sprint.model.SprintCloseDisposition.NEXT_SPRINT,
               actorUserId = stack.actorId,
               operationId = "op_batch",
               limit = 100,

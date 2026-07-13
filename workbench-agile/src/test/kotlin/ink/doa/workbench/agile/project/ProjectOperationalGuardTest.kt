@@ -1,12 +1,11 @@
 package ink.doa.workbench.agile.project
 
-import ink.doa.workbench.core.common.errors.ProjectArchivedException
-import ink.doa.workbench.core.common.errors.ProjectDestroyingException
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.project.ProjectRepository
-import ink.doa.workbench.core.project.model.ProjectRecord
-import ink.doa.workbench.core.project.model.ProjectStatus
+import ink.doa.workbench.agile.project.model.ProjectRecord
+import ink.doa.workbench.agile.project.model.ProjectStatus
+import ink.doa.workbench.kernel.common.errors.ProjectArchivedException
+import ink.doa.workbench.kernel.common.errors.ProjectDestroyingException
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.repository.identity
 
-import ink.doa.workbench.core.identity.TenantLoginMethodSettingRepository
-import ink.doa.workbench.core.identity.model.CreateTenantLoginMethodSettingCommand
-import ink.doa.workbench.core.identity.model.TenantLoginMethodSettingRecord
 import ink.doa.workbench.data.persistence.postgres.identity.TenantLoginMethodSettingsTable
+import ink.doa.workbench.identity.TenantLoginMethodSettingRepository
+import ink.doa.workbench.identity.model.CreateTenantLoginMethodSettingCommand
+import ink.doa.workbench.identity.model.TenantLoginMethodSettingRecord
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and

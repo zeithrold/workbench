@@ -1,11 +1,11 @@
 package ink.doa.workbench.web.invitation
 
-import ink.doa.workbench.core.common.ids.PublicId
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.core.identity.model.InvitationType
-import ink.doa.workbench.security.invitation.InvitationAcceptView
-import ink.doa.workbench.security.invitation.InvitationPreviewView
+import ink.doa.workbench.application.invitation.InvitationAcceptView
+import ink.doa.workbench.application.invitation.InvitationPreviewView
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.identity.model.InvitationType
+import ink.doa.workbench.kernel.common.ids.PublicId
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 

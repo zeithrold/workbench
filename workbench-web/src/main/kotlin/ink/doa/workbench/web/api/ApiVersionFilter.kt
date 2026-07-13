@@ -1,6 +1,6 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.ApiVersion
+import ink.doa.workbench.web.api.context.ApiVersion
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

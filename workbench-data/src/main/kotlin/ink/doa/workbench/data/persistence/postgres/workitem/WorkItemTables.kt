@@ -1,6 +1,6 @@
 package ink.doa.workbench.data.persistence.postgres.workitem
 
-import ink.doa.workbench.core.workitem.richtext.RichTextDocument
+import ink.doa.workbench.agile.workitem.richtext.RichTextDocument
 import ink.doa.workbench.data.persistence.postgres.identity.TenantsTable
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
 import ink.doa.workbench.data.persistence.postgres.project.ProjectsTable

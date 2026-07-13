@@ -1,16 +1,16 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.common.pagination.WorkItemStreamCursor
-import ink.doa.workbench.core.workitem.WorkItemTimelineRepository
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityPayload
-import ink.doa.workbench.core.workitem.stream.WorkItemEventType
-import ink.doa.workbench.core.workitem.timeline.ListWorkItemTimelineQuery
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.agile.workitem.WorkItemTimelineRepository
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityPayload
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventType
+import ink.doa.workbench.agile.workitem.timeline.ListWorkItemTimelineQuery
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelineEntry
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelinePage
 import ink.doa.workbench.data.persistence.postgres.workitem.IssuesTable
 import ink.doa.workbench.data.persistence.postgres.workitem.WorkItemTimelineEntriesTable
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.kernel.common.pagination.WorkItemStreamCursor
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid
@@ -77,7 +77,7 @@ class ExposedWorkItemTimelineRepository(
   }
 
   private fun hydrateCommentEntry(
-    event: ink.doa.workbench.core.workitem.stream.WorkItemEventRecord,
+    event: ink.doa.workbench.agile.workitem.stream.WorkItemEventRecord,
     tenantId: UUID,
   ): WorkItemTimelineEntry? {
     val commentApiId = event.commentApiId() ?: return null
@@ -116,7 +116,7 @@ class ExposedWorkItemTimelineRepository(
   }
 }
 
-private fun ink.doa.workbench.core.workitem.stream.WorkItemEventRecord.commentApiId(): String? =
+private fun ink.doa.workbench.agile.workitem.stream.WorkItemEventRecord.commentApiId(): String? =
   when (val payload = payload) {
     is WorkItemActivityPayload.CommentAdded -> payload.value.comment.id
     is WorkItemActivityPayload.CommentEdited -> payload.value.comment.id

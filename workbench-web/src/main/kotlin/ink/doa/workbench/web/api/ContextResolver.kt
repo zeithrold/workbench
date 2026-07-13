@@ -1,9 +1,9 @@
 package ink.doa.workbench.web.api
 
-import ink.doa.workbench.core.common.context.ApiVersion
-import ink.doa.workbench.core.common.context.RequestContext
-import ink.doa.workbench.core.common.context.UserContextSummary
-import ink.doa.workbench.core.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.identity.model.AuthenticatedPrincipal
+import ink.doa.workbench.web.api.context.ApiVersion
+import ink.doa.workbench.web.api.context.RequestContext
+import ink.doa.workbench.web.api.context.UserContextSummary
 import java.time.Clock
 import java.util.UUID
 import org.springframework.context.annotation.Configuration

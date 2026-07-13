@@ -1,11 +1,10 @@
 package ink.doa.workbench.tenant.tenantconfig
 
-import ink.doa.workbench.core.common.errors.InvalidRequestException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.tenantconfig.TenantConfigRepository
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigRecord
-import ink.doa.workbench.core.tenantconfig.model.TenantConfigSpec
-import ink.doa.workbench.core.tenantconfig.model.UpsertTenantConfigCommand
+import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigRecord
+import ink.doa.workbench.tenant.tenantconfig.model.TenantConfigSpec
+import ink.doa.workbench.tenant.tenantconfig.model.UpsertTenantConfigCommand
 import java.util.UUID
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json

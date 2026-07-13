@@ -1,16 +1,16 @@
 package ink.doa.workbench.web.identity
 
-import ink.doa.workbench.core.common.summary.LoginMethodSummary
-import ink.doa.workbench.core.common.summary.TenantSummary
-import ink.doa.workbench.core.common.summary.UserSummary
-import ink.doa.workbench.security.identity.FederatedAuthorizeView
-import ink.doa.workbench.security.identity.IssuedTokenView
-import ink.doa.workbench.security.identity.LoginDiscoveryView
-import ink.doa.workbench.security.identity.LoginFlow
-import ink.doa.workbench.security.identity.LoginMethodChoiceView
-import ink.doa.workbench.security.identity.LoginOptionView
-import ink.doa.workbench.security.identity.LoginView
-import ink.doa.workbench.security.identity.TenantMembershipView
+import ink.doa.workbench.identity.FederatedAuthorizeView
+import ink.doa.workbench.identity.IssuedTokenView
+import ink.doa.workbench.identity.LoginDiscoveryView
+import ink.doa.workbench.identity.LoginFlow
+import ink.doa.workbench.identity.LoginMethodChoiceView
+import ink.doa.workbench.identity.LoginOptionView
+import ink.doa.workbench.identity.LoginView
+import ink.doa.workbench.identity.TenantMembershipView
+import ink.doa.workbench.identity.common.summary.LoginMethodSummary
+import ink.doa.workbench.identity.common.summary.UserSummary
+import ink.doa.workbench.tenant.common.summary.TenantSummary
 import ink.doa.workbench.web.api.OpenApiExamples
 import io.swagger.v3.oas.annotations.media.Schema
 import java.time.OffsetDateTime

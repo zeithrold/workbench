@@ -1,13 +1,11 @@
 package ink.doa.workbench.web.admin
 
-import ink.doa.workbench.core.common.context.InstanceRequestContext
-import ink.doa.workbench.core.common.context.TenantRequestContext
-import ink.doa.workbench.core.permission.GrantScope
-import ink.doa.workbench.core.permission.model.PermissionEffect
-import ink.doa.workbench.security.permission.AccessGrantManagementService
-import ink.doa.workbench.security.permission.AdminUserService
-import ink.doa.workbench.security.permission.CreateManagedAccessGrantCommand
-import ink.doa.workbench.security.permission.PermissionActionService
+import ink.doa.workbench.application.permission.AccessGrantManagementService
+import ink.doa.workbench.application.permission.AdminUserService
+import ink.doa.workbench.application.permission.CreateManagedAccessGrantCommand
+import ink.doa.workbench.application.permission.PermissionActionService
+import ink.doa.workbench.identity.permission.GrantScope
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
 import ink.doa.workbench.web.api.InstanceScoped
@@ -15,6 +13,8 @@ import ink.doa.workbench.web.api.OpenApiExamples
 import ink.doa.workbench.web.api.SessionSecured
 import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
+import ink.doa.workbench.web.api.context.InstanceRequestContext
+import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
@@ -192,7 +192,7 @@ data class AdminUserResponse(
   val status: String,
 ) {
   companion object {
-    fun from(view: ink.doa.workbench.security.permission.AdminUserView) =
+    fun from(view: ink.doa.workbench.application.permission.AdminUserView) =
       AdminUserResponse(
         id = view.id,
         userId = view.userId,
@@ -212,7 +212,7 @@ data class AccessGrantResponse(
   val effect: String,
 ) {
   companion object {
-    fun from(view: ink.doa.workbench.security.permission.AccessGrantView) =
+    fun from(view: ink.doa.workbench.application.permission.AccessGrantView) =
       AccessGrantResponse(
         id = view.id,
         scope = view.scope.dbValue,
@@ -226,7 +226,7 @@ data class AccessGrantResponse(
 
 data class ActionResponse(val code: String, val description: String?) {
   companion object {
-    fun from(view: ink.doa.workbench.security.permission.ActionView) =
+    fun from(view: ink.doa.workbench.application.permission.ActionView) =
       ActionResponse(code = view.code, description = view.description)
   }
 }

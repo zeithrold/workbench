@@ -2,11 +2,11 @@ package ink.doa.workbench.web.workitem
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import ink.doa.workbench.core.workitem.model.WorkItemCommentRecord
-import ink.doa.workbench.core.workitem.stream.WorkItemEventCodec
-import ink.doa.workbench.core.workitem.stream.WorkItemEventRecord
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelineEntry
-import ink.doa.workbench.core.workitem.timeline.WorkItemTimelinePage
+import ink.doa.workbench.agile.workitem.model.WorkItemCommentRecord
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventCodec
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventRecord
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelineEntry
+import ink.doa.workbench.agile.workitem.timeline.WorkItemTimelinePage
 import java.time.OffsetDateTime
 import kotlinx.serialization.json.JsonElement
 

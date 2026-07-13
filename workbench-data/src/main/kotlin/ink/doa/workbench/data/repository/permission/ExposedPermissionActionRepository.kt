@@ -1,10 +1,10 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.permission.CreatePermissionActionCommand
-import ink.doa.workbench.core.permission.PermissionActionRecord
-import ink.doa.workbench.core.permission.PermissionActionRepository
-import ink.doa.workbench.core.permission.model.AuthorizationAction
 import ink.doa.workbench.data.persistence.postgres.permission.PermissionActionsTable
+import ink.doa.workbench.identity.permission.CreatePermissionActionCommand
+import ink.doa.workbench.identity.permission.PermissionActionRecord
+import ink.doa.workbench.identity.permission.PermissionActionRepository
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
 import java.util.UUID
 import kotlin.uuid.toJavaUuid
 import kotlin.uuid.toKotlinUuid

@@ -1,7 +1,7 @@
 package ink.doa.workbench.data.config
 
-import ink.doa.workbench.core.common.warning.InMemoryWorkbenchWarningCollector
-import ink.doa.workbench.core.common.warning.WorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.InMemoryWorkbenchWarningCollector
+import ink.doa.workbench.kernel.common.warning.WorkbenchWarningCollector
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

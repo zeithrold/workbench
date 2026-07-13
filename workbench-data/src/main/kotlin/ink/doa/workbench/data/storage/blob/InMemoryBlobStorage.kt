@@ -1,9 +1,9 @@
 package ink.doa.workbench.data.storage.blob
 
-import ink.doa.workbench.core.storage.BlobObjectHead
-import ink.doa.workbench.core.storage.BlobStorage
-import ink.doa.workbench.core.storage.BlobStorageObjectNotFoundException
-import ink.doa.workbench.core.storage.PresignedBlobRequest
+import ink.doa.workbench.kernel.storage.BlobObjectHead
+import ink.doa.workbench.kernel.storage.BlobStorage
+import ink.doa.workbench.kernel.storage.BlobStorageObjectNotFoundException
+import ink.doa.workbench.kernel.storage.PresignedBlobRequest
 import java.security.MessageDigest
 import java.time.OffsetDateTime
 import java.time.ZoneOffset

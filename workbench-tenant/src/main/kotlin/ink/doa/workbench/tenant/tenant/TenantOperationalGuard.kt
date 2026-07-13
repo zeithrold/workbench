@@ -1,10 +1,10 @@
 package ink.doa.workbench.tenant.tenant
 
-import ink.doa.workbench.core.common.errors.ResourceNotFoundException
-import ink.doa.workbench.core.common.errors.TenantDestroyingException
-import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
-import ink.doa.workbench.core.identity.TenantRepository
-import ink.doa.workbench.core.identity.model.TenantStatus
+import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
+import ink.doa.workbench.kernel.common.errors.TenantDestroyingException
+import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
+import ink.doa.workbench.tenant.TenantRepository
+import ink.doa.workbench.tenant.model.TenantStatus
 import java.util.UUID
 import org.springframework.stereotype.Service
 

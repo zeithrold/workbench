@@ -1,8 +1,8 @@
 package ink.doa.workbench.data.storage.config
 
-import ink.doa.workbench.core.storage.BlobStorage
-import ink.doa.workbench.core.storage.StorageLimits
 import ink.doa.workbench.data.storage.blob.S3BlobStorage
+import ink.doa.workbench.kernel.storage.BlobStorage
+import ink.doa.workbench.kernel.storage.StorageLimits
 import kotlinx.coroutines.CoroutineDispatcher
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties

@@ -1,15 +1,15 @@
 package ink.doa.workbench.data.repository.workitem
 
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityCommentRef
-import ink.doa.workbench.core.workitem.activity.WorkItemActivityStatusSnapshot
-import ink.doa.workbench.core.workitem.activity.WorkItemCommentCreatedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemCommentDeletedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemCommentEditedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemCreatedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemStatusChangedPayload
-import ink.doa.workbench.core.workitem.activity.WorkItemUpdatedPayload
-import ink.doa.workbench.core.workitem.stream.AppendWorkItemEventCommand
-import ink.doa.workbench.core.workitem.stream.WorkItemEventSpecs
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityCommentRef
+import ink.doa.workbench.agile.workitem.activity.WorkItemActivityStatusSnapshot
+import ink.doa.workbench.agile.workitem.activity.WorkItemCommentCreatedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemCommentDeletedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemCommentEditedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemCreatedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemStatusChangedPayload
+import ink.doa.workbench.agile.workitem.activity.WorkItemUpdatedPayload
+import ink.doa.workbench.agile.workitem.stream.AppendWorkItemEventCommand
+import ink.doa.workbench.agile.workitem.stream.WorkItemEventSpecs
 import ink.doa.workbench.data.persistence.postgres.workitem.loadIssueTypeRef
 import ink.doa.workbench.data.persistence.postgres.workitem.loadStatusRef
 import ink.doa.workbench.data.persistence.postgres.workitem.loadTransitionRef

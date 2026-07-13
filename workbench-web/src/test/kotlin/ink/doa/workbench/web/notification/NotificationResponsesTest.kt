@@ -1,7 +1,7 @@
 package ink.doa.workbench.web.notification
 
-import ink.doa.workbench.core.notification.NotificationPreferenceRecord
-import ink.doa.workbench.service.notification.NotificationView
+import ink.doa.workbench.notification.NotificationPreferenceRecord
+import ink.doa.workbench.notification.NotificationView
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe

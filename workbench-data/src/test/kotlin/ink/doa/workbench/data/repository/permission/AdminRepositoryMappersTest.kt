@@ -1,11 +1,11 @@
 package ink.doa.workbench.data.repository.permission
 
-import ink.doa.workbench.core.permission.AdminScope
-import ink.doa.workbench.core.permission.AdminUserStatus
-import ink.doa.workbench.core.permission.GrantScope
-import ink.doa.workbench.core.permission.GroupMemberStatus
-import ink.doa.workbench.core.permission.PermissionPrincipalType
-import ink.doa.workbench.core.permission.model.PermissionEffect
+import ink.doa.workbench.identity.permission.AdminScope
+import ink.doa.workbench.identity.permission.AdminUserStatus
+import ink.doa.workbench.identity.permission.GrantScope
+import ink.doa.workbench.identity.permission.GroupMemberStatus
+import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe

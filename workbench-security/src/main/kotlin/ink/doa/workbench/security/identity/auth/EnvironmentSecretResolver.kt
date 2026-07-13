@@ -1,6 +1,6 @@
 package ink.doa.workbench.security.identity.auth
 
-import ink.doa.workbench.core.identity.auth.SecretResolver
+import ink.doa.workbench.identity.auth.SecretResolver
 import org.springframework.stereotype.Component
 
 @Component
