@@ -15,7 +15,6 @@ class ExposedOutboxAdminStoreIntegrationTest :
     fun insertMessage(
       jdbc: org.springframework.jdbc.core.JdbcTemplate,
       id: UUID,
-      status: String,
       tenantId: String = "ten_1",
       eventType: String = "work_item.updated",
     ) {
@@ -23,79 +22,49 @@ class ExposedOutboxAdminStoreIntegrationTest :
         """
         INSERT INTO domain_outbox (
           id, event_id, event_type, event_version, topic, partition_key, tenant_id, payload,
-          status, created_at, updated_at, next_attempt_at, attempts
+          created_at, retention_until
         )
         VALUES (?, ?, ?, 1, 'workbench.work-item', 'wki_1', ?, '{}'::jsonb,
-                ?, now(), now(), now(), 0)
+                now(), now() + interval '30 days')
         """
           .trimIndent(),
         id,
         "evt_$id",
         eventType,
         tenantId,
-        status,
       )
     }
 
-    "list filters by status tenant and event type" {
+    "list filters immutable events by tenant and event type" {
       WorkbenchPostgresTestSupport.openDatabase(MigrationSpec.Full).use { lease ->
         val jdbc = lease.jdbcTemplate()
         val store = ExposedOutboxAdminStore(jdbc)
-        val pendingId = UUID.randomUUID()
-        val deadId = UUID.randomUUID()
+        val createdId = UUID.randomUUID()
+        insertMessage(jdbc, createdId, tenantId = "ten_a", eventType = "work_item.created")
         insertMessage(
           jdbc,
-          pendingId,
-          "PENDING",
-          tenantId = "ten_a",
-          eventType = "work_item.created",
+          UUID.randomUUID(),
+          tenantId = "ten_b",
+          eventType = "work_item.updated",
         )
-        insertMessage(jdbc, deadId, "DEAD", tenantId = "ten_b", eventType = "work_item.updated")
 
-        store.list(OutboxMessageQuery(status = "DEAD")).single().id shouldBe deadId
         store.list(OutboxMessageQuery(tenantId = "ten_a")).single().tenantId shouldBe "ten_a"
-        store.list(OutboxMessageQuery(eventType = "work_item.created")).single().eventType shouldBe
-          "work_item.created"
+        store.list(OutboxMessageQuery(eventType = "work_item.created")).single().id shouldBe
+          createdId
         store.list(OutboxMessageQuery(limit = 1, offset = 0)) shouldHaveSize 1
-        store.countByStatus("DEAD") shouldBe 1
-        store.countByStatus("PENDING") shouldBe 1
       }
     }
 
-    "findById returns record or null" {
+    "findById returns immutable record or null" {
       WorkbenchPostgresTestSupport.openDatabase(MigrationSpec.Full).use { lease ->
         val jdbc = lease.jdbcTemplate()
         val store = ExposedOutboxAdminStore(jdbc)
         val id = UUID.randomUUID()
-        insertMessage(jdbc, id, "PENDING")
+        insertMessage(jdbc, id)
 
         store.findById(id)?.eventId shouldBe "evt_$id"
+        store.findById(id)?.retentionUntil shouldBe store.findById(id)?.createdAt?.plusDays(30)
         store.findById(UUID.randomUUID()).shouldBeNull()
-      }
-    }
-
-    "replayDead resets dead message to retry" {
-      WorkbenchPostgresTestSupport.openDatabase(MigrationSpec.Full).use { lease ->
-        val jdbc = lease.jdbcTemplate()
-        val store = ExposedOutboxAdminStore(jdbc)
-        val id = UUID.randomUUID()
-        jdbc.update(
-          """
-          INSERT INTO domain_outbox (
-            id, event_id, event_type, event_version, topic, partition_key, payload,
-            status, created_at, updated_at, next_attempt_at, attempts, last_error
-          )
-          VALUES (?, 'evt_dead', 'work_item.updated', 1, 'workbench.work-item', 'wki_1',
-                  '{}'::jsonb, 'DEAD', now(), now(), now(), 8, 'broker down')
-          """
-            .trimIndent(),
-          id,
-        )
-
-        store.replayDead(id) shouldBe true
-        store.findById(id)?.status shouldBe "RETRY"
-        store.findById(id)?.attempts shouldBe 0
-        store.replayDead(id) shouldBe false
       }
     }
   })

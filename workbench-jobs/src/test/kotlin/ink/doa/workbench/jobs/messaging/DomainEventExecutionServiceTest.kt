@@ -19,6 +19,7 @@ class DomainEventExecutionServiceTest :
       val delivery = ClaimedEventDelivery(id, "consumer", "key", "{}", 0)
       every { dispatcher.subscriptions() } returns
         listOf(EventSubscription("consumer", "topic", setOf("event")))
+      every { store.markTransportNotified(id, "consumer", any()) } returns Unit
       every { store.claimByOutbox(id, "consumer", any(), any()) } returns listOf(delivery)
       coEvery { dispatcher.dispatch("{}", "consumer") } returns Unit
 
@@ -26,6 +27,7 @@ class DomainEventExecutionServiceTest :
         .executeLocator(id, "consumer")
 
       verify { store.materialize(any()) }
+      verify { store.markTransportNotified(id, "consumer", any()) }
       verify { store.markSucceeded(id, "consumer", any()) }
     }
 
@@ -43,5 +45,16 @@ class DomainEventExecutionServiceTest :
       verify {
         store.markFailed(match { it.outboxId == delivery.outboxId && it.attempts == 2 })
       }
+    }
+
+    "transport retry drain does not materialize or claim unsignaled deliveries" {
+      val store = mockk<DomainEventExecutionStore>(relaxed = true)
+      val dispatcher = mockk<DomainEventDispatcher>(relaxed = true)
+      every { store.claimTransportReady(any(), any(), any()) } returns emptyList()
+
+      DomainEventExecutionService(store, dispatcher, MessagingProperties()).drainTransportReady()
+
+      verify(exactly = 0) { store.materialize(any()) }
+      verify { store.claimTransportReady(any(), any(), any()) }
     }
   })

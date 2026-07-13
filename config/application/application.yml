@@ -10,6 +10,8 @@ workbench:
     lease-duration: ${WORKBENCH_MESSAGING_LEASE_DURATION:2m}
     fallback-poll-interval: ${WORKBENCH_MESSAGING_POLL_INTERVAL:5s}
     max-attempts: ${WORKBENCH_MESSAGING_MAX_ATTEMPTS:8}
+    retention-cleanup-batch-size: ${WORKBENCH_OUTBOX_CLEANUP_BATCH_SIZE:1000}
+    retention-cleanup-interval: ${WORKBENCH_OUTBOX_CLEANUP_INTERVAL:1h}
     shutdown-timeout: ${WORKBENCH_MESSAGING_SHUTDOWN_TIMEOUT:30s}
   instance:
     setup-token: ${WORKBENCH_SETUP_TOKEN:}

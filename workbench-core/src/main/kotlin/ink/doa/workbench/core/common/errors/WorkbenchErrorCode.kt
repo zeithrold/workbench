@@ -999,9 +999,9 @@ enum class WorkbenchErrorCode(
     "Project id path variable is required.",
   ),
   OUTBOX_MESSAGE_NOT_FOUND("outbox.message.not_found", "Outbox message was not found."),
-  OUTBOX_REPLAY_NOT_ALLOWED(
-    "outbox.replay.not_allowed",
-    "Only dead-letter outbox messages can be replayed.",
+  OUTBOX_DELIVERY_REPLAY_NOT_ALLOWED(
+    "outbox.delivery.replay.not_allowed",
+    "Only dead-letter outbox deliveries can be replayed.",
   ),
   INFRASTRUCTURE_DATABASE_UNAVAILABLE(
     "infrastructure.database_unavailable",

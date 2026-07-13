@@ -14,7 +14,7 @@ class OutboxDeliveryAdminApplicationService(private val store: OutboxDeliveryAdm
 
   fun replay(outboxId: UUID, consumerName: String): OutboxDeliveryRecord {
     if (!store.replayDeadDelivery(outboxId, consumerName)) {
-      throw ResourceConflictException(WorkbenchErrorCode.OUTBOX_REPLAY_NOT_ALLOWED)
+      throw ResourceConflictException(WorkbenchErrorCode.OUTBOX_DELIVERY_REPLAY_NOT_ALLOWED)
     }
     return store
       .listDeliveries(OutboxDeliveryQuery(consumerName = consumerName, limit = 100))

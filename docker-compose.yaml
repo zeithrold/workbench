@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: workbench
       POSTGRES_PASSWORD: workbench
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     command: ["postgres", "-c", "wal_level=logical"]
 
   valkey:
@@ -73,8 +73,35 @@ services:
       CONFIG_STORAGE_TOPIC: workbench.connect.configs
       OFFSET_STORAGE_TOPIC: workbench.connect.offsets
       STATUS_STORAGE_TOPIC: workbench.connect.status
+      CONNECT_CONFIG_PROVIDERS: env
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: org.apache.kafka.common.config.provider.EnvVarConfigProvider
+      WORKBENCH_DB_HOST: postgres
+      WORKBENCH_DB_PORT: 5432
+      WORKBENCH_DB_USER: workbench
+      WORKBENCH_DB_PASSWORD: workbench
+      WORKBENCH_DB_NAME: workbench
     ports:
       - "8083:8083"
+
+  debezium-init:
+    profiles: ["distributed"]
+    image: curlimages/curl:8.14.1
+    depends_on:
+      - debezium
+    volumes:
+      - ./docker/debezium/workbench-outbox-connector.json:/config/workbench-outbox-connector.json:ro
+    command:
+      - sh
+      - -ec
+      - |
+        until curl --fail --silent http://debezium:8083/connectors >/dev/null; do
+          sleep 2
+        done
+        curl --fail --show-error --silent \
+          -X PUT \
+          -H 'Content-Type: application/json' \
+          --data-binary @/config/workbench-outbox-connector.json \
+          http://debezium:8083/connectors/workbench-outbox/config
 
 volumes:
   valkey-data:

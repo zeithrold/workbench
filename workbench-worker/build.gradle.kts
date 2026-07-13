@@ -17,6 +17,7 @@ dependencies {
   implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
   implementation("org.springframework.boot:spring-boot-starter-flyway")
   implementation("org.springframework.boot:spring-boot-starter-kafka")
+  implementation(libs.kotlinx.serialization.json)
   implementation(libs.logstash.logback)
   runtimeOnly(libs.postgresql)
   testImplementation(libs.testcontainers.junit)

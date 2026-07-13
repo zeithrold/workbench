@@ -1,6 +1,5 @@
 package ink.doa.workbench.service.messaging
 
-import ink.doa.workbench.core.common.errors.ResourceConflictException
 import ink.doa.workbench.core.common.errors.ResourceNotFoundException
 import ink.doa.workbench.core.common.errors.WorkbenchErrorCode
 import ink.doa.workbench.core.messaging.OutboxMessageQuery
@@ -16,15 +15,4 @@ class OutboxAdminApplicationService(private val store: OutboxAdminStore) {
   fun get(id: UUID): OutboxMessageRecord =
     store.findById(id)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.OUTBOX_MESSAGE_NOT_FOUND)
-
-  fun replay(id: UUID): OutboxMessageRecord {
-    val existing = get(id)
-    if (existing.status != "DEAD") {
-      throw ResourceConflictException(WorkbenchErrorCode.OUTBOX_REPLAY_NOT_ALLOWED)
-    }
-    if (!store.replayDead(id)) {
-      throw ResourceConflictException(WorkbenchErrorCode.OUTBOX_REPLAY_NOT_ALLOWED)
-    }
-    return get(id)
-  }
 }

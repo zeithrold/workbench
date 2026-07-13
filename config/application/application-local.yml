@@ -12,8 +12,6 @@ spring:
 workbench:
   elasticsearch:
     url: http://localhost:9200
-  debezium:
-    connect-url: http://localhost:8083
   storage:
     endpoint: http://localhost:9000
     access-key: workbench

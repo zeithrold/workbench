@@ -39,6 +39,7 @@ class RedisStreamsEmbeddedJobs(
   fun runOnce() {
     relayOutbox()
     execution.materialize()
+    execution.drainTransportReady()
     // Groups are materialized from the shared registration list by the execution service.
     subscriptions().forEach(::consume)
   }

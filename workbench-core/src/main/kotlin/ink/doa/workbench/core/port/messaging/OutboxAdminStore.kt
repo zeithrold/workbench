@@ -8,8 +8,4 @@ interface OutboxAdminStore {
   fun list(query: OutboxMessageQuery): List<OutboxMessageRecord>
 
   fun findById(id: UUID): OutboxMessageRecord?
-
-  fun countByStatus(status: String): Long
-
-  fun replayDead(id: UUID): Boolean
 }

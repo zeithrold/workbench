@@ -47,7 +47,7 @@ class OpenApiConfiguration {
       .info(
         Info()
           .title("Workbench API")
-          .version("2026-07-11")
+          .version("2026-07-13")
           .description(
             "Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. " +
               "Successful responses may include X-Workbench-Warning for non-blocking business risks."

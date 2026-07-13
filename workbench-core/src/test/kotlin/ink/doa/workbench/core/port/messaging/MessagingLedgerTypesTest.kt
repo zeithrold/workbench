@@ -14,9 +14,8 @@ class MessagingLedgerTypesTest :
       EventSubscription("consumer", "topic", setOf("type")).topic shouldBe "topic"
       EventDeliveryFailure(id, "consumer", 3, now, "error", 8).attempts shouldBe 3
       ClaimedOutboxPublication(id, "topic", "key", 1).partitionKey shouldBe "key"
-      OutboxPublicationFailure(id, MessagingBackend.KAFKA, "epoch", 2, now, "error", 8)
-        .backend shouldBe MessagingBackend.KAFKA
-      MessagingBackend.entries shouldBe
-        listOf(MessagingBackend.REDIS_STREAMS, MessagingBackend.KAFKA)
+      OutboxPublicationFailure(id, MessagingBackend.REDIS_STREAMS, "epoch", 2, now, "error", 8)
+        .backend shouldBe MessagingBackend.REDIS_STREAMS
+      MessagingBackend.entries shouldBe listOf(MessagingBackend.REDIS_STREAMS)
     }
   })

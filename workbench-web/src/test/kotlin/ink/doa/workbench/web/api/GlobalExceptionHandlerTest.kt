@@ -162,7 +162,7 @@ class GlobalExceptionHandlerTest :
     }
 
     "default API version uses date header format" {
-      ApiVersion.Default.value shouldBe "2026-07-11"
+      ApiVersion.Default.value shouldBe "2026-07-13"
       ApiVersion.HeaderName shouldBe "X-Workbench-API-Version"
     }
   })

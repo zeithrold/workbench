@@ -37,3 +37,7 @@ logging:
 workbench:
   messaging:
     transport: ${WORKBENCH_MESSAGING_TRANSPORT:kafka}
+  debezium:
+    connect-url: ${DEBEZIUM_CONNECT_URL:http://localhost:8083}
+    connector-name: ${DEBEZIUM_CONNECTOR_NAME:workbench-outbox}
+    request-timeout: ${DEBEZIUM_REQUEST_TIMEOUT:5s}

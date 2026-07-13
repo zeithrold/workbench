@@ -19,25 +19,18 @@ class OutboxMessageRecordTest :
           topic = "workbench.work-item",
           partitionKey = "wki_1",
           tenantId = "ten_1",
-          status = "DEAD",
-          attempts = 3,
-          lastError = "timeout",
           createdAt = now,
-          updatedAt = now,
-          nextAttemptAt = now,
-          publishedAt = null,
+          retentionUntil = now.plusDays(30),
         )
 
       record.id shouldBe id
-      record.status shouldBe "DEAD"
+      record.retentionUntil shouldBe now.plusDays(30)
     }
 
     "outbox message query defaults limit and offset" {
-      val query =
-        OutboxMessageQuery(status = "DEAD", tenantId = "ten_1", eventType = "work_item.updated")
+      val query = OutboxMessageQuery(tenantId = "ten_1", eventType = "work_item.updated")
 
       query.limit shouldBe 50
       query.offset shouldBe 0L
-      query.status shouldBe "DEAD"
     }
   })

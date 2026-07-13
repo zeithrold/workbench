@@ -4,8 +4,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 enum class MessagingBackend {
-  REDIS_STREAMS,
-  KAFKA,
+  REDIS_STREAMS
 }
 
 data class ClaimedOutboxPublication(

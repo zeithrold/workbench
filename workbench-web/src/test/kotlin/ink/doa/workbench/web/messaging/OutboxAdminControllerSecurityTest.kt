@@ -35,7 +35,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -78,21 +77,6 @@ class OutboxAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
       mockMvc
         .perform(
           get("/api/admin/outbox/messages")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
-    mockMvc.perform(asyncDispatch(result)).andExpect(status().isOk())
-  }
-
-  @Test
-  fun `instance administrator can replay dead outbox messages`() {
-    val messageId = UUID.fromString("00000000-0000-0000-0000-000000000020")
-    val result =
-      mockMvc
-        .perform(
-          post("/api/admin/outbox/messages/$messageId/replay")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -158,7 +142,6 @@ class OutboxAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
     fun outboxAdminService(): OutboxAdminApplicationService {
       val service = mockk<OutboxAdminApplicationService>()
       every { service.list(any()) } returns listOf(SAMPLE_MESSAGE)
-      every { service.replay(SAMPLE_MESSAGE.id) } returns SAMPLE_MESSAGE.copy(status = "RETRY")
       return service
     }
   }
@@ -176,13 +159,8 @@ class OutboxAdminControllerSecurityTest(@Autowired private val mockMvc: MockMvc)
         topic = "workbench.work-item",
         partitionKey = "wki_1",
         tenantId = "ten_1",
-        status = "DEAD",
-        attempts = 8,
-        lastError = "broker down",
         createdAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        nextAttemptAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        publishedAt = null,
+        retentionUntil = OffsetDateTime.parse("2026-08-02T00:00:00Z"),
       )
     val ADMIN_PRINCIPAL =
       AuthenticatedPrincipal(

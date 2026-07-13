@@ -68,9 +68,10 @@ class WorkItemOutboxIntegrationTest :
               .where { DomainOutboxTable.eventType eq WorkItemDomainEvents.Created.type }
               .orderBy(DomainOutboxTable.createdAt to SortOrder.ASC)
               .last()
-          outbox[DomainOutboxTable.status] shouldBe "PENDING"
           outbox[DomainOutboxTable.eventType] shouldBe WorkItemDomainEvents.Created.type
           outbox[DomainOutboxTable.topic] shouldBe DomainTopics.WORK_ITEM
+          outbox[DomainOutboxTable.retentionUntil] shouldBe
+            (outbox[DomainOutboxTable.createdAt].plusDays(30))
         }
       }
     }

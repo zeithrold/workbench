@@ -1,8 +1,8 @@
 package ink.doa.workbench.worker.messaging
 
 import ink.doa.workbench.core.messaging.DomainTopics
-import ink.doa.workbench.core.messaging.OutboxLocator
 import ink.doa.workbench.jobs.messaging.DomainEventExecutionService
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -17,7 +17,15 @@ class KafkaEventListener(private val execution: DomainEventExecutionService) {
       [DomainTopics.TENANT, DomainTopics.PROJECT, DomainTopics.SPRINT, DomainTopics.WORK_ITEM]
   )
   fun onMessage(record: ConsumerRecord<String, String>) {
-    val locator = OutboxLocator.decode(record.value())
-    execution.executeLocator(UUID.fromString(locator.outboxId))
+    val id =
+      record.headers().lastHeader(OUTBOX_ID_HEADER)
+        ?: throw IllegalArgumentException("Kafka outbox event is missing the id header")
+    execution.executeLocator(
+      UUID.fromString(String(id.value(), StandardCharsets.UTF_8).removeSurrounding("\""))
+    )
+  }
+
+  private companion object {
+    const val OUTBOX_ID_HEADER = "id"
   }
 }

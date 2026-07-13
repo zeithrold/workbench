@@ -20,8 +20,6 @@ internal object DetektSuppressionConventions {
                 listOf(Allowance("TooGenericExceptionCaught", 1, "consumer failure boundary")),
             "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/messaging/DomainEventExecutionService.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "shared handler execution boundary")),
-            "workbench-worker/src/main/kotlin/ink/doa/workbench/worker/messaging/OutboxRelay.kt" to
-                listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
             "workbench-jobs/src/main/kotlin/ink/doa/workbench/jobs/notification/EmailNotificationRelay.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
             "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/PostgresEmbeddedJobs.kt" to

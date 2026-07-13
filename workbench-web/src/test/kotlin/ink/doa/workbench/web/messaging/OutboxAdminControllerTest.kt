@@ -21,7 +21,6 @@ import ink.doa.workbench.web.api.RequestContextResolver
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -36,7 +35,6 @@ import org.springframework.context.annotation.Import
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -54,17 +52,14 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
   GlobalExceptionHandler::class,
   OutboxAdminControllerTest.TestBeans::class,
 )
-class OutboxAdminControllerTest(
-  @Autowired private val mockMvc: MockMvc,
-  @Autowired private val outboxAdminService: OutboxAdminApplicationService,
-) {
+class OutboxAdminControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list outbox messages returns records for instance administrator`() {
     val result =
       mockMvc
         .perform(
           get("/api/admin/outbox/messages")
-            .param("status", "DEAD")
+            .param("eventType", "work_item.updated")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -74,7 +69,7 @@ class OutboxAdminControllerTest(
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$[0].eventType").value("work_item.updated"))
-      .andExpect(jsonPath("$[0].status").value("DEAD"))
+      .andExpect(jsonPath("$[0].retentionUntil").value("2026-08-02T00:00:00Z"))
   }
 
   @Test
@@ -93,25 +88,6 @@ class OutboxAdminControllerTest(
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.id").value(SAMPLE_MESSAGE.id.toString()))
       .andExpect(jsonPath("$.eventId").value("evt_1"))
-  }
-
-  @Test
-  fun `replay dead message returns updated record for instance administrator`() {
-    val result =
-      mockMvc
-        .perform(
-          post("/api/admin/outbox/messages/${SAMPLE_MESSAGE.id}/replay")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
-    mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$.status").value("RETRY"))
-
-    verify { outboxAdminService.replay(SAMPLE_MESSAGE.id) }
   }
 
   @TestConfiguration
@@ -166,9 +142,9 @@ class OutboxAdminControllerTest(
     @Bean
     fun outboxAdminService(): OutboxAdminApplicationService {
       val service = mockk<OutboxAdminApplicationService>()
-      every { service.list(match { it.status == "DEAD" }) } returns listOf(SAMPLE_MESSAGE)
+      every { service.list(match { it.eventType == "work_item.updated" }) } returns
+        listOf(SAMPLE_MESSAGE)
       every { service.get(SAMPLE_MESSAGE.id) } returns SAMPLE_MESSAGE
-      every { service.replay(SAMPLE_MESSAGE.id) } returns SAMPLE_MESSAGE.copy(status = "RETRY")
       return service
     }
   }
@@ -184,13 +160,8 @@ class OutboxAdminControllerTest(
         topic = "workbench.work-item",
         partitionKey = "wki_1",
         tenantId = "ten_1",
-        status = "DEAD",
-        attempts = 8,
-        lastError = "broker down",
         createdAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        updatedAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        nextAttemptAt = OffsetDateTime.parse("2026-07-03T00:00:00Z"),
-        publishedAt = null,
+        retentionUntil = OffsetDateTime.parse("2026-08-02T00:00:00Z"),
       )
     val ADMIN_PRINCIPAL =
       AuthenticatedPrincipal(

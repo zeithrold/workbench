@@ -248,14 +248,8 @@ object DomainOutboxTable : Table("domain_outbox") {
   val partitionKey = text("partition_key")
   val tenantId = text("tenant_id").nullable()
   val payload = jsonb("payload", Json.Default, JsonElement.serializer())
-  val status = text("status")
   val createdAt = timestampWithTimeZone("created_at")
-  val updatedAt = timestampWithTimeZone("updated_at")
-  val nextAttemptAt = timestampWithTimeZone("next_attempt_at")
-  val lockedUntil = timestampWithTimeZone("locked_until").nullable()
-  val publishedAt = timestampWithTimeZone("published_at").nullable()
-  val attempts = integer("attempts")
-  val lastError = text("last_error").nullable()
+  val retentionUntil = timestampWithTimeZone("retention_until")
   override val primaryKey = PrimaryKey(id)
 }
 

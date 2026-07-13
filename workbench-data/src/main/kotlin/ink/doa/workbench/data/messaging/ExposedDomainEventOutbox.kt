@@ -56,11 +56,8 @@ class ExposedDomainEventOutbox(
       it[DomainOutboxTable.partitionKey] = key
       it[DomainOutboxTable.tenantId] = envelope.tenantId
       it[DomainOutboxTable.payload] = json.parseToJsonElement(encoded)
-      it[DomainOutboxTable.status] = "PENDING"
       it[DomainOutboxTable.createdAt] = now
-      it[DomainOutboxTable.updatedAt] = now
-      it[DomainOutboxTable.nextAttemptAt] = now
-      it[DomainOutboxTable.attempts] = 0
+      it[DomainOutboxTable.retentionUntil] = now.plusDays(30)
     }
     TransactionManager.current().exec("SELECT pg_notify('workbench_outbox', '')")
   }

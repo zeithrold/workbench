@@ -35,6 +35,14 @@ interface DomainEventExecutionStore {
     lockedUntil: OffsetDateTime,
   ): List<ClaimedEventDelivery>
 
+  fun markTransportNotified(outboxId: UUID, consumerName: String?, now: OffsetDateTime)
+
+  fun claimTransportReady(
+    limit: Int,
+    now: OffsetDateTime,
+    lockedUntil: OffsetDateTime,
+  ): List<ClaimedEventDelivery>
+
   fun claimByOutbox(
     outboxId: UUID,
     consumerName: String?,

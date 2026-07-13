@@ -5,7 +5,6 @@ import ink.doa.workbench.core.messaging.OutboxMessageRecord
 import ink.doa.workbench.core.port.messaging.OutboxAdminStore
 import ink.doa.workbench.data.persistence.postgres.toPreparedStatementSetter
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Repository
@@ -15,10 +14,6 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
   override fun list(query: OutboxMessageQuery): List<OutboxMessageRecord> {
     val conditions = mutableListOf<String>()
     val params = mutableListOf<Any>()
-    query.status?.let {
-      conditions += "status = ?"
-      params += it
-    }
     query.tenantId?.let {
       conditions += "tenant_id = ?"
       params += it
@@ -32,8 +27,8 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
     params += query.offset.coerceAtLeast(0)
     return jdbc.query(
       """
-      SELECT id, event_id, event_type, topic, partition_key, tenant_id, status,
-             attempts, last_error, created_at, updated_at, next_attempt_at, published_at
+      SELECT id, event_id, event_type, topic, partition_key, tenant_id, created_at,
+             retention_until
       FROM domain_outbox
       $where
       ORDER BY created_at DESC
@@ -49,8 +44,8 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
     jdbc
       .query(
         """
-        SELECT id, event_id, event_type, topic, partition_key, tenant_id, status,
-               attempts, last_error, created_at, updated_at, next_attempt_at, published_at
+        SELECT id, event_id, event_type, topic, partition_key, tenant_id, created_at,
+               retention_until
         FROM domain_outbox
         WHERE id = ?
         """
@@ -60,29 +55,6 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
       )
       .singleOrNull()
 
-  override fun countByStatus(status: String): Long =
-    jdbc.queryForObject(
-      "SELECT count(*) FROM domain_outbox WHERE status = ?",
-      Long::class.java,
-      status,
-    ) ?: 0L
-
-  override fun replayDead(id: UUID): Boolean {
-    val now = OffsetDateTime.now(ZoneOffset.UTC)
-    return jdbc.update(
-      """
-      UPDATE domain_outbox
-      SET status = 'RETRY', attempts = 0, next_attempt_at = ?, locked_until = NULL,
-          last_error = NULL, updated_at = ?
-      WHERE id = ? AND status = 'DEAD'
-      """
-        .trimIndent(),
-      now,
-      now,
-      id,
-    ) > 0
-  }
-
   private fun java.sql.ResultSet.toRecord(): OutboxMessageRecord =
     OutboxMessageRecord(
       id = getObject("id", UUID::class.java),
@@ -91,12 +63,7 @@ class ExposedOutboxAdminStore(private val jdbc: JdbcTemplate) : OutboxAdminStore
       topic = getString("topic"),
       partitionKey = getString("partition_key"),
       tenantId = getString("tenant_id"),
-      status = getString("status"),
-      attempts = getInt("attempts"),
-      lastError = getString("last_error"),
       createdAt = getObject("created_at", OffsetDateTime::class.java),
-      updatedAt = getObject("updated_at", OffsetDateTime::class.java),
-      nextAttemptAt = getObject("next_attempt_at", OffsetDateTime::class.java),
-      publishedAt = getObject("published_at", OffsetDateTime::class.java),
+      retentionUntil = getObject("retention_until", OffsetDateTime::class.java),
     )
 }

@@ -29,9 +29,18 @@ class DomainEventExecutionService(
     return claimed.size
   }
 
+  fun drainTransportReady(): Int {
+    val now = now()
+    val claimed =
+      store.claimTransportReady(properties.batchSize, now, now.plus(properties.leaseDuration))
+    claimed.forEach(::execute)
+    return claimed.size
+  }
+
   fun executeLocator(outboxId: UUID, consumerName: String? = null): Int {
     materialize()
     val now = now()
+    store.markTransportNotified(outboxId, consumerName, now)
     val claimed =
       store.claimByOutbox(outboxId, consumerName, now, now.plus(properties.leaseDuration))
     claimed.forEach(::execute)

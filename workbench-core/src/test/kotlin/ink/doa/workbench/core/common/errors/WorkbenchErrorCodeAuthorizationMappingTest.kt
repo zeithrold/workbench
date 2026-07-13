@@ -19,6 +19,7 @@ class WorkbenchErrorCodeAuthorizationMappingTest :
 
     "exposes outbox admin error codes" {
       WorkbenchErrorCode.OUTBOX_MESSAGE_NOT_FOUND.code shouldBe "outbox.message.not_found"
-      WorkbenchErrorCode.OUTBOX_REPLAY_NOT_ALLOWED.code shouldBe "outbox.replay.not_allowed"
+      WorkbenchErrorCode.OUTBOX_DELIVERY_REPLAY_NOT_ALLOWED.code shouldBe
+        "outbox.delivery.replay.not_allowed"
     }
   })

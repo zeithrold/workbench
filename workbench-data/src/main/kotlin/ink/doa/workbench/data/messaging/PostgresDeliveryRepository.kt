@@ -42,7 +42,36 @@ class PostgresDeliveryRepository(private val jdbc: JdbcTemplate) :
     limit: Int,
     now: OffsetDateTime,
     lockedUntil: OffsetDateTime,
-  ): List<ClaimedEventDelivery> = claimWhere(null, null, limit, now, lockedUntil)
+  ): List<ClaimedEventDelivery> = claimWhere(ClaimSelection(), limit, now, lockedUntil)
+
+  override fun markTransportNotified(
+    outboxId: UUID,
+    consumerName: String?,
+    now: OffsetDateTime,
+  ) {
+    jdbc.update(
+      """
+      UPDATE domain_event_deliveries
+      SET transport_notified_at = COALESCE(transport_notified_at, ?), updated_at = ?
+      WHERE outbox_id = ?
+        AND (CAST(? AS text) IS NULL OR consumer_name = ?)
+        AND status NOT IN ('SUCCEEDED', 'DEAD')
+      """
+        .trimIndent(),
+      now,
+      now,
+      outboxId,
+      consumerName,
+      consumerName,
+    )
+  }
+
+  override fun claimTransportReady(
+    limit: Int,
+    now: OffsetDateTime,
+    lockedUntil: OffsetDateTime,
+  ): List<ClaimedEventDelivery> =
+    claimWhere(ClaimSelection(transportOnly = true), limit, now, lockedUntil)
 
   override fun claimByOutbox(
     outboxId: UUID,
@@ -50,11 +79,15 @@ class PostgresDeliveryRepository(private val jdbc: JdbcTemplate) :
     now: OffsetDateTime,
     lockedUntil: OffsetDateTime,
   ): List<ClaimedEventDelivery> =
-    claimWhere(outboxId, consumerName, Int.MAX_VALUE, now, lockedUntil)
+    claimWhere(
+      ClaimSelection(outboxId, consumerName, transportOnly = true),
+      Int.MAX_VALUE,
+      now,
+      lockedUntil,
+    )
 
   private fun claimWhere(
-    outboxId: UUID?,
-    consumerName: String?,
+    selection: ClaimSelection,
     limit: Int,
     now: OffsetDateTime,
     lockedUntil: OffsetDateTime,
@@ -66,6 +99,7 @@ class PostgresDeliveryRepository(private val jdbc: JdbcTemplate) :
         FROM domain_event_deliveries d
         JOIN domain_outbox o ON o.id = d.outbox_id
         WHERE d.status IN ('PENDING', 'RETRY', 'PROCESSING')
+          AND (NOT ? OR d.transport_notified_at IS NOT NULL)
           AND (CAST(? AS uuid) IS NULL OR d.outbox_id = ?)
           AND (CAST(? AS text) IS NULL OR d.consumer_name = ?)
           AND d.next_attempt_at <= ?
@@ -101,16 +135,23 @@ class PostgresDeliveryRepository(private val jdbc: JdbcTemplate) :
           attempts = rs.getInt("attempts"),
         )
       },
-      outboxId,
-      outboxId,
-      consumerName,
-      consumerName,
+      selection.transportOnly,
+      selection.outboxId,
+      selection.outboxId,
+      selection.consumerName,
+      selection.consumerName,
       now,
       now,
       limit,
       lockedUntil,
       now,
     )
+
+  private data class ClaimSelection(
+    val outboxId: UUID? = null,
+    val consumerName: String? = null,
+    val transportOnly: Boolean = false,
+  )
 
   override fun markSucceeded(outboxId: UUID, consumerName: String, now: OffsetDateTime) {
     jdbc.update(

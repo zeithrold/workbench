@@ -37,6 +37,15 @@ WORKBENCH_MESSAGING_TRANSPORT=kafka \
 ./gradlew :workbench-worker:bootRun --args='--spring.profiles.active=local,worker'
 ```
 
+The distributed profile starts Redpanda, Debezium Connect, and an idempotent connector
+initializer. Debezium is the only publisher from the transactional `domain_outbox` table to
+Kafka; the Worker consumes the resulting events and never publishes Outbox rows itself. Before
+starting the Worker, verify that both the connector and its task report `RUNNING`:
+
+```bash
+curl http://localhost:8083/connectors/workbench-outbox/status
+```
+
 Select embedded Redis Streams explicitly with
 `WORKBENCH_MESSAGING_TRANSPORT=redis-streams`; it does not require the standalone worker.
 
