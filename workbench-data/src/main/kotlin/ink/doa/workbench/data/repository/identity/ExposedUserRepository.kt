@@ -1,10 +1,12 @@
 package ink.doa.workbench.data.repository.identity
 
 import ink.doa.workbench.data.persistence.postgres.identity.UsersTable
+import ink.doa.workbench.identity.UserPreferenceRepository
 import ink.doa.workbench.identity.UserRepository
 import ink.doa.workbench.identity.model.CreateUserCommand
 import ink.doa.workbench.identity.model.UserRecord
 import ink.doa.workbench.kernel.common.ids.PublicId
+import java.time.OffsetDateTime
 import java.util.UUID
 import kotlin.uuid.toKotlinUuid
 import org.jetbrains.exposed.v1.core.and
@@ -14,10 +16,12 @@ import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.springframework.stereotype.Repository
 
 @Repository
-class ExposedUserRepository(private val database: Database) : UserRepository {
+class ExposedUserRepository(private val database: Database) :
+  UserRepository, UserPreferenceRepository {
   override suspend fun create(command: CreateUserCommand): UserRecord =
     suspendTransaction(db = database) {
       val id = UUID.randomUUID()
@@ -62,5 +66,27 @@ class ExposedUserRepository(private val database: Database) : UserRepository {
         .where { (UsersTable.deletedAt.isNull()) and (UsersTable.primaryEmail eq primaryEmail) }
         .singleOrNull()
         ?.toUserRecord()
+    }
+
+  override suspend fun updateLocale(
+    userId: UUID,
+    locale: String?,
+    updatedAt: OffsetDateTime,
+  ): UserRecord? =
+    suspendTransaction(db = database) {
+      val id = userId.toKotlinUuid()
+      val updated =
+        UsersTable.update({ (UsersTable.deletedAt.isNull()) and (UsersTable.id eq id) }) {
+          it[UsersTable.locale] = locale
+          it[UsersTable.updatedAt] = updatedAt
+        }
+      if (updated == 0) {
+        null
+      } else {
+        UsersTable.selectAll()
+          .where { (UsersTable.deletedAt.isNull()) and (UsersTable.id eq id) }
+          .single()
+          .toUserRecord()
+      }
     }
 }

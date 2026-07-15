@@ -1,5 +1,7 @@
 package ink.doa.workbench.web.api
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.json.JsonMapper
 import ink.doa.workbench.data.storage.blob.InMemoryBlobStorage
 import ink.doa.workbench.kernel.port.locking.DistributedLockService
 import ink.doa.workbench.kernel.storage.BlobStorage
@@ -8,6 +10,8 @@ import ink.doa.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import ink.doa.workbench.testsupport.postgres.registerWorkbenchDataSource
 import io.mockk.mockk
 import java.time.Duration
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.redisson.api.RedissonClient
 import org.springframework.beans.factory.annotation.Autowired
@@ -48,6 +52,45 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
     mockMvc.perform(get("/scalar")).andExpect(status().isUnauthorized())
   }
 
+  @Test
+  fun `openapi documents every path template parameter`() {
+    val response =
+      mockMvc.perform(get("/api/openapi")).andExpect(status().isOk()).andReturn().response
+    val document = JsonMapper.builder().build().readTree(response.contentAsByteArray)
+
+    document.path("paths").properties().forEach { (path, pathItem) ->
+      val templateParameters = PathParameterPattern.findAll(path).map { it.groupValues[1] }.toSet()
+      pathItem
+        .properties()
+        .filter { it.key in HttpMethods }
+        .forEach { (method, operation) ->
+          val documentedParameters =
+            (pathItem.path("parameters").toList() + operation.path("parameters").toList())
+              .filter { it.path("in").asText() == "path" && it.path("required").asBoolean() }
+              .map { it.path("name").asText() }
+              .toSet()
+          assertTrue(
+            documentedParameters.containsAll(templateParameters),
+            "$method $path is missing required path parameters: " +
+              (templateParameters - documentedParameters).joinToString(),
+          )
+        }
+    }
+
+    assertEquals(
+      setOf("id", "sprintId"),
+      requiredPathParameters(document, "/api/projects/{id}/sprints/{sprintId}", "get"),
+    )
+    assertEquals(
+      setOf("id", "userId", "bindingId"),
+      requiredPathParameters(
+        document,
+        "/api/projects/{id}/members/{userId}/policies/{bindingId}",
+        "delete",
+      ),
+    )
+  }
+
   @TestConfiguration
   class TestBeans {
     @Bean
@@ -68,6 +111,9 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
   }
 
   companion object {
+    private val PathParameterPattern = Regex("\\{([^{}]+)}")
+    private val HttpMethods =
+      setOf("get", "put", "post", "delete", "options", "head", "patch", "trace")
     private val postgresLease = WorkbenchPostgresTestSupport.moduleDatabase(MigrationSpec.Full)
 
     @JvmStatic
@@ -76,4 +122,16 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
       registry.registerWorkbenchDataSource(postgresLease)
     }
   }
+}
+
+private fun requiredPathParameters(
+  document: JsonNode,
+  path: String,
+  method: String,
+): Set<String> {
+  val pathItem = document.path("paths").path(path)
+  return (pathItem.path("parameters").toList() + pathItem.path(method).path("parameters").toList())
+    .filter { it.path("in").asText() == "path" && it.path("required").asBoolean() }
+    .map { it.path("name").asText() }
+    .toSet()
 }

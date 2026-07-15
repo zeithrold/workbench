@@ -4,9 +4,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --emit-ts-declarations",
+    "predev": "pnpm paraglide",
     "dev": "vite dev",
+    "prebuild": "pnpm paraglide",
     "build": "vite build && node scripts/check-bundle-size.mjs",
     "preview": "vite preview",
+    "precheck": "pnpm paraglide",
     "check": "node scripts/ensure-env.mjs && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint . && pnpm check",
     "test:unit": "vitest --project unit --run",
@@ -26,6 +30,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
+    "@inlang/paraglide-js": "2.22.0",
     "@lucide/svelte": "1.24.0",
     "@sveltejs/adapter-auto": "7.0.1",
     "@sveltejs/kit": "2.69.2",

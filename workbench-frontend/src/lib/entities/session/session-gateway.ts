@@ -22,11 +22,15 @@ export class DemoSessionGateway implements SessionGateway {
   async signIn({ email }: LoginCredentials): Promise<Session> {
     this.#session = {
       user: {
-        name: email.split('@')[0] || 'Demo user',
-        email,
+        id: 'usr_demo',
+        displayName: email.split('@')[0] || 'Demo user',
+        primaryEmail: email,
       },
       activeTenant: tenants[0],
       tenants,
+      sessionExpiresAt: '2099-01-01T00:00:00Z',
+      adminScopes: [],
+      localeContext: { userPreference: null, tenantDefault: 'en-US' },
     }
     return this.#session
   }

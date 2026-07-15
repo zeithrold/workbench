@@ -82,6 +82,8 @@ class SessionServiceTest :
 
       view.user shouldBe UserSummary.from(user)
       view.activeTenant shouldBe TenantSummary.from(tenant)
+      view.localeContext.userPreference shouldBe user.locale
+      view.localeContext.tenantDefault shouldBe tenant.locale
     }
 
     "switchTenant rejects inactive membership" {
@@ -416,6 +418,7 @@ private fun sampleUser(): UserRecord =
     apiId = PublicId.new("usr"),
     displayName = "Ada",
     primaryEmail = "ada@example.test",
+    locale = "en-US",
   )
 
 private fun sampleTenant(): TenantRecord =
@@ -425,6 +428,7 @@ private fun sampleTenant(): TenantRecord =
     slug = "acme",
     name = "Acme",
     status = TenantStatus.ACTIVE,
+    locale = "en-US",
     createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
     updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
   )

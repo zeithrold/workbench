@@ -1,57 +1,9 @@
-import type { LoginCredentials, Session, Tenant } from './model.js'
+import type { LoginResponse, MembershipResponse, SessionResponse } from './api-model.js'
+import type { LoginCredentials, Session } from './model.js'
 import type { SessionGateway } from './session-gateway.js'
 import { apiFetch } from '$lib/api/http.js'
-
-interface TenantSummary {
-  id: string
-  name: string
-  slug: string
-}
-
-interface UserSummary {
-  id: string
-  name: string
-  email: string
-}
-
-interface LoginResponse {
-  user: UserSummary
-  activeTenant: TenantSummary | null
-  eligibleTenants: TenantSummary[]
-}
-
-interface SessionResponse {
-  user: UserSummary
-  activeTenant: TenantSummary | null
-}
-
-function toTenant(summary: TenantSummary): Tenant {
-  return {
-    id: summary.id,
-    name: summary.name,
-    slug: summary.slug,
-  }
-}
-
-function toSession(
-  user: UserSummary,
-  activeTenant: TenantSummary | null,
-  tenants: TenantSummary[],
-): Session {
-  const mappedTenants = tenants.map(toTenant)
-  const active = activeTenant
-    ? toTenant(activeTenant)
-    : mappedTenants[0] ?? { id: 'unknown', name: 'Unknown', slug: 'unknown' }
-
-  return {
-    user: {
-      name: user.name,
-      email: user.email,
-    },
-    activeTenant: active,
-    tenants: mappedTenants.length > 0 ? mappedTenants : [active],
-  }
-}
+import { problemFromResponse } from '$lib/api/problem.js'
+import { sessionFromCurrent, sessionFromLogin, toTenant, toUser } from './api-model.js'
 
 export class ApiSessionGateway implements SessionGateway {
   async current(): Promise<Session | null> {
@@ -59,43 +11,39 @@ export class ApiSessionGateway implements SessionGateway {
     if (response.status === 401)
       return null
     if (!response.ok)
-      throw new Error(`Failed to load session (${response.status})`)
+      throw await problemFromResponse(response)
 
     const body = await response.json() as SessionResponse
-    return toSession(body.user, body.activeTenant, body.activeTenant ? [body.activeTenant] : [])
+    const membershipsResponse = await apiFetch('/api/auth/memberships')
+    if (!membershipsResponse.ok)
+      throw await problemFromResponse(membershipsResponse)
+    const memberships = await membershipsResponse.json() as MembershipResponse[]
+    return sessionFromCurrent(body, memberships)
   }
 
   async signIn(credentials: LoginCredentials): Promise<Session> {
-    const loginMethodId = credentials.loginMethodId ?? import.meta.env.PUBLIC_E2E_LOGIN_METHOD_ID
-    const tenantId = credentials.tenantId ?? import.meta.env.PUBLIC_E2E_TENANT_ID
-    const password = credentials.password ?? import.meta.env.PUBLIC_E2E_PASSWORD
-
-    if (!loginMethodId || !tenantId || !password)
-      throw new Error('API session sign-in requires login method, tenant, and password configuration.')
-
     const response = await apiFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         method: 'PASSWORD',
-        loginMethodId,
-        tenantId,
+        loginMethodId: credentials.loginMethodId,
+        tenantId: credentials.tenantId,
         subject: credentials.email,
-        password,
+        password: credentials.password,
       }),
     })
 
     if (!response.ok)
-      throw new Error(`Login failed (${response.status})`)
+      throw await problemFromResponse(response)
 
-    const body = await response.json() as LoginResponse
-    return toSession(body.user, body.activeTenant, body.eligibleTenants)
+    return sessionFromLogin(await response.json() as LoginResponse)
   }
 
   async signOut(): Promise<void> {
     const response = await apiFetch('/api/auth/logout', { method: 'POST' })
     if (!response.ok && response.status !== 401)
-      throw new Error(`Logout failed (${response.status})`)
+      throw await problemFromResponse(response)
   }
 
   async switchTenant(tenantId: string): Promise<Session> {
@@ -106,16 +54,23 @@ export class ApiSessionGateway implements SessionGateway {
     })
 
     if (!response.ok)
-      throw new Error(`Tenant switch failed (${response.status})`)
+      throw await problemFromResponse(response)
 
     const body = await response.json() as SessionResponse
     const current = await this.current()
-    const tenantSummaries = current?.tenants.map(tenant => ({
-      id: tenant.id,
-      name: tenant.name,
-      slug: tenant.slug,
-    })) ?? (body.activeTenant ? [body.activeTenant] : [])
+    if (!current)
+      throw new Error('The session ended while switching tenants.')
 
-    return toSession(body.user, body.activeTenant, tenantSummaries)
+    return {
+      ...current,
+      user: toUser(body.user),
+      activeTenant: body.activeTenant ? toTenant(body.activeTenant) : null,
+      sessionExpiresAt: body.sessionExpiresAt,
+      adminScopes: body.adminScopes,
+      localeContext: {
+        userPreference: body.localeContext?.userPreference ?? null,
+        tenantDefault: body.localeContext?.tenantDefault ?? null,
+      },
+    }
   }
 }

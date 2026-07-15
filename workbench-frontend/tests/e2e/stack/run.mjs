@@ -189,7 +189,7 @@ async function main() {
       cwd: frontendRoot,
       env: {
         ...process.env,
-        PUBLIC_SESSION_GATEWAY: 'demo',
+        PUBLIC_SESSION_GATEWAY: 'api',
       },
     })
 

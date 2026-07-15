@@ -46,7 +46,24 @@ class InstanceSetupApplicationServiceTest :
       coEvery { adminUserQueries.existsActiveInstanceAdmin() } returns false
       val service = service(InstanceSetupServiceFixtures(adminUserQueries = adminUserQueries))
 
-      runBlocking { service.setupStatus().initialized } shouldBe false
+      runBlocking { service.setupStatus() } shouldBe
+        InstanceSetupStatusView(initialized = false, setupTokenRequired = false)
+    }
+
+    "setup status reports when a setup token is required" {
+      val adminUserQueries = mockk<AdminUserQueryRepository>()
+      coEvery { adminUserQueries.existsActiveInstanceAdmin() } returns false
+      val service =
+        service(
+          InstanceSetupServiceFixtures(
+            adminUserQueries = adminUserQueries,
+            instanceProperties =
+              InstanceProperties(setupToken = "expected-token", id = null, name = null),
+          )
+        )
+
+      runBlocking { service.setupStatus() } shouldBe
+        InstanceSetupStatusView(initialized = false, setupTokenRequired = true)
     }
 
     "bootstrap rejects when instance is already initialized" {

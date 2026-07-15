@@ -1,5 +1,6 @@
 <script lang='ts'>
   import type { WorkItemPropertyDefinition, WorkItemScalarValue } from './selector-types.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { Input } from '$lib/shared/ui'
   import DatePropertyPicker from './date-property-picker.svelte'
   import { numberConstraint, stringConstraint, validateScalarValue } from './property-value.js'
@@ -38,7 +39,7 @@
     {disabled}
     onclick={() => onValueChange(value !== true)}
   >
-    <span>{value === true ? 'Yes' : 'No'}</span>
+    <span>{value === true ? m.yes() : m.no()}</span>
     <span class='relative h-5 w-9 rounded-full bg-muted transition-colors data-[checked=true]:bg-primary' data-checked={value === true}>
       <span class='absolute left-0.5 top-0.5 size-4 rounded-full bg-background shadow transition-transform data-[checked=true]:translate-x-4' data-checked={value === true}></span>
     </span>

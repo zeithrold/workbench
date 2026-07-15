@@ -9,12 +9,15 @@
   import { session } from '$lib/entities/session/session.svelte.js'
 
   session.current = {
-    user: { name: 'Alex', email: 'alex@example.com' },
+    user: { id: 'usr_demo', displayName: 'Alex', primaryEmail: 'alex@example.com' },
     activeTenant: { id: 'northstar', name: 'Northstar Studio', slug: 'northstar' },
     tenants: [
       { id: 'northstar', name: 'Northstar Studio', slug: 'northstar' },
       { id: 'workbench', name: 'Workbench Labs', slug: 'workbench' },
     ],
+    sessionExpiresAt: '2099-01-01T00:00:00Z',
+    adminScopes: [],
+    localeContext: { userPreference: null, tenantDefault: 'en-US' },
   }
 </script>
 

@@ -2,6 +2,7 @@
   import type { SvelteMap } from 'svelte/reactivity'
   import { Button } from '$lib/components/ui/button'
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu'
+  import { m } from '$lib/paraglide/messages.js'
   import { Check, ChevronDown } from '@lucide/svelte'
   import { CODE_LANGUAGES } from './code-languages.js'
 
@@ -11,7 +12,7 @@
   } = $props()
 
   const language = $derived(state.get('language') ?? 'plaintext')
-  const label = $derived(CODE_LANGUAGES.find(([value]) => value === language)?.[1] ?? 'Plain Text')
+  const label = $derived(CODE_LANGUAGES.find(([value]) => value === language)?.[1] ?? m.plain_text())
 </script>
 
 <DropdownMenu.Root>
@@ -22,7 +23,7 @@
         variant='ghost'
         size='xs'
         class='h-7 bg-background/85 px-2 text-xs font-normal text-muted-foreground shadow-xs backdrop-blur-sm hover:text-foreground'
-        aria-label='Code language'
+        aria-label={m.code_language()}
       >
         {label}
         <ChevronDown class='size-3' />

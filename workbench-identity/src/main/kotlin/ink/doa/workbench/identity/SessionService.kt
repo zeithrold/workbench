@@ -40,6 +40,11 @@ class SessionService(
       activeTenant = activeTenant?.let { TenantSummary.from(it) },
       sessionExpiresAt = session.expiresAt,
       adminScopes = loginCompletionService.adminScopes(principal.user.id),
+      localeContext =
+        LocaleContextView(
+          userPreference = principal.user.locale,
+          tenantDefault = activeTenant?.locale,
+        ),
     )
   }
 

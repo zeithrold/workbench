@@ -1,5 +1,6 @@
 package ink.doa.workbench.web.identity
 
+import ink.doa.workbench.identity.LocaleContextView
 import ink.doa.workbench.identity.SessionService
 import ink.doa.workbench.identity.SessionView
 import ink.doa.workbench.identity.common.summary.UserSummary
@@ -62,6 +63,7 @@ class SessionControllerHappyPathTest(@Autowired private val mockMvc: MockMvc) {
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.activeTenant.slug").value("acme"))
+      .andExpect(jsonPath("$.localeContext.tenantDefault").value("en-US"))
   }
 
   @TestConfiguration
@@ -106,6 +108,7 @@ class SessionControllerHappyPathTest(@Autowired private val mockMvc: MockMvc) {
               name = "Acme",
             ),
           sessionExpiresAt = OffsetDateTime.parse("2026-07-04T12:00:00Z"),
+          localeContext = LocaleContextView(tenantDefault = "en-US"),
         )
     }
   }

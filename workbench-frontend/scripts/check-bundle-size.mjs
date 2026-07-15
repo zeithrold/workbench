@@ -9,6 +9,14 @@ export function oversizedChunks(chunks, maxBytes = DEFAULT_MAX_CHUNK_BYTES) {
   return chunks.filter(chunk => chunk.bytes > maxBytes)
 }
 
+export function summarizeChunks(chunks, limit = 10) {
+  return {
+    largest: chunks[0] ?? null,
+    totalBytes: chunks.reduce((total, chunk) => total + chunk.bytes, 0),
+    top: chunks.slice(0, limit),
+  }
+}
+
 async function javascriptChunks(directory) {
   async function visit(currentDirectory) {
     const entries = await readdir(currentDirectory, { withFileTypes: true })
@@ -50,11 +58,17 @@ if (isCli) {
   const directory = process.argv[2]
   checkBundleSize(directory ? { directory } : undefined)
     .then((chunks) => {
-      const largest = chunks[0]
+      const { largest, totalBytes, top } = summarizeChunks(chunks)
       const summary = largest
         ? `${largest.file} (${(largest.bytes / 1024).toFixed(2)} KiB)`
         : 'no JavaScript chunks'
       console.log(`Bundle size check passed: largest client chunk is ${summary}.`)
+      console.log(`Total JavaScript chunk size: ${(totalBytes / 1024).toFixed(2)} KiB.`)
+      if (top.length > 0) {
+        console.log('Largest JavaScript chunks:')
+        for (const chunk of top)
+          console.log(`  - ${chunk.file}: ${(chunk.bytes / 1024).toFixed(2)} KiB`)
+      }
     })
     .catch((error) => {
       console.error(error instanceof Error ? error.message : error)

@@ -2,6 +2,7 @@
   import type { EditorCommand } from './editor-commands.js'
   import * as Command from '$lib/components/ui/command'
   import { ScrollArea } from '$lib/components/ui/scroll-area'
+  import { m } from '$lib/paraglide/messages.js'
   import { tick, untrack } from 'svelte'
 
   interface MenuState {
@@ -53,11 +54,11 @@
 </script>
 
 <div bind:this={menu}>
-  <Command.Root bind:value={selected} shouldFilter={false} loop class='w-76 rounded-md border p-1 shadow-lg' label='Editor commands'>
+  <Command.Root bind:value={selected} shouldFilter={false} loop class='w-76 rounded-md border p-1 shadow-lg' label={m.editor_commands()}>
     <ScrollArea class='h-[min(22rem,60vh)]'>
-      <Command.List class='max-h-none overflow-visible' aria-label='Editor commands'>
+      <Command.List class='max-h-none overflow-visible' aria-label={m.editor_commands()}>
         {#if items.length === 0}
-          <Command.Empty>No matching commands</Command.Empty>
+          <Command.Empty>{m.no_matching_commands()}</Command.Empty>
         {:else}
           <Command.Group>
             {#each items as item (item.id)}

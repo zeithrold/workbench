@@ -4,21 +4,29 @@ export interface Tenant {
   slug: string
 }
 
+export interface User {
+  id: string
+  displayName: string
+  primaryEmail: string
+}
+
+export interface LocaleContext {
+  userPreference: string | null
+  tenantDefault: string | null
+}
+
 export interface Session {
-  user: {
-    name: string
-    email: string
-  }
-  activeTenant: Tenant
+  user: User
+  activeTenant: Tenant | null
   tenants: Tenant[]
+  sessionExpiresAt: string
+  adminScopes: string[]
+  localeContext: LocaleContext
 }
 
 export interface LoginCredentials {
   email: string
-  password?: string
-  loginMethodId?: string
+  password: string
+  loginMethodId: string
   tenantId?: string
 }
-
-/** @deprecated Use {@link LoginCredentials} */
-export type DemoCredentials = LoginCredentials

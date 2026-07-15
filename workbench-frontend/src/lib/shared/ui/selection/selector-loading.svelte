@@ -1,4 +1,8 @@
-<div class='grid gap-1 p-1' role='status' aria-label='Loading options'>
+<script lang='ts'>
+  import { m } from '$lib/paraglide/messages.js'
+</script>
+
+<div class='grid gap-1 p-1' role='status' aria-label={m.loading_options()}>
   {#each [0, 1, 2] as row (row)}
     <div class='flex animate-pulse items-center gap-2 rounded-sm px-1 py-2 motion-reduce:animate-none'>
       <span class='size-5 shrink-0 rounded-full bg-muted'></span>

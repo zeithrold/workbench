@@ -2,7 +2,8 @@
   import type { Editor } from '@tiptap/core'
   import { Button } from '$lib/components/ui/button'
   import { Separator } from '$lib/components/ui/separator'
-  import { EDITOR_COMMANDS } from './editor-commands.js'
+  import { m } from '$lib/paraglide/messages.js'
+  import { createEditorCommands } from './editor-commands.js'
   import LinkEditor from './link-editor.svelte'
 
   let { editor, revision, ref = $bindable() }: {
@@ -11,7 +12,7 @@
     ref?: HTMLDivElement
   } = $props()
 
-  const commands = EDITOR_COMMANDS.filter(command => command.group === 'Formatting')
+  const commands = $derived(createEditorCommands().filter(command => command.group === 'Formatting'))
 
   function isActive(id: string) {
     void revision
@@ -23,7 +24,7 @@
   bind:this={ref}
   class='flex items-center gap-0.5 rounded-md bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10'
   role='toolbar'
-  aria-label='Selection formatting'
+  aria-label={m.selection_formatting()}
 >
   {#if editor}
     {#each commands as command (command.id)}

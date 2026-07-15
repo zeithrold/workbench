@@ -78,6 +78,18 @@ tasks.register<PnpmTask>("pnpmStorybookTest") {
     args.set(listOf("storybook:test"))
 }
 
+tasks.named("pnpmTest") {
+    mustRunAfter("pnpmLint")
+}
+
+tasks.named("pnpmStorybookBuild") {
+    mustRunAfter("pnpmTest")
+}
+
+tasks.named("pnpmStorybookTest") {
+    mustRunAfter("pnpmStorybookBuild")
+}
+
 tasks.register<PnpmTask>("pnpmE2e") {
     dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("test:e2e"))

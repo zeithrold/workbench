@@ -1,6 +1,7 @@
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { paraglideVitePlugin } from '@inlang/paraglide-js'
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 import { sveltekit } from '@sveltejs/kit/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -15,9 +16,20 @@ const coverageExclude = [
   'src/**/*.svelte',
   'src/**/*.stories.svelte',
   'src/lib/api/generated/**',
+  'src/lib/paraglide/**',
 ]
 
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': 'http://127.0.0.1:8080',
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': 'http://127.0.0.1:8080',
+    },
+  },
   build: {
     sourcemap: true,
   },
@@ -26,6 +38,8 @@ export default defineConfig({
       '@lucide/svelte',
       '@lucide/svelte/icons/check',
       '@lucide/svelte/icons/chevron-right',
+      '@lucide/svelte/icons/eye',
+      '@lucide/svelte/icons/eye-off',
       '@lucide/svelte/icons/minus',
       '@lucide/svelte/icons/search',
       '@lucide/svelte/icons/x',
@@ -50,7 +64,15 @@ export default defineConfig({
       'lowlight',
     ],
   },
-  plugins: [tailwindcss(), sveltekit()],
+  plugins: [
+    paraglideVitePlugin({
+      project: './project.inlang',
+      outdir: './src/lib/paraglide',
+      emitTsDeclarations: true,
+    }),
+    tailwindcss(),
+    sveltekit(),
+  ],
   resolve: {
     conditions: process.env.VITEST ? ['browser'] : undefined,
   },

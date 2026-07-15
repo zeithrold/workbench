@@ -7,12 +7,16 @@ describe('demoSessionGateway', () => {
 
     expect(await gateway.current()).toBeNull()
 
-    const session = await gateway.signIn({ email: 'alex@example.com' })
-    expect(session.user.name).toBe('alex')
-    expect(session.activeTenant.id).toBe('northstar')
+    const session = await gateway.signIn({
+      email: 'alex@example.com',
+      password: 'unused-password',
+      loginMethodId: 'lmg_demo',
+    })
+    expect(session.user.displayName).toBe('alex')
+    expect(session.activeTenant?.id).toBe('northstar')
 
     const switched = await gateway.switchTenant('workbench')
-    expect(switched.activeTenant.name).toBe('Workbench Labs')
+    expect(switched.activeTenant?.name).toBe('Workbench Labs')
 
     await gateway.signOut()
     expect(await gateway.current()).toBeNull()

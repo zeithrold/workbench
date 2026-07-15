@@ -28,6 +28,8 @@ data class LoginResponse(
   val activeTenant: TenantSummary? = null,
   @field:Schema(description = "Tenants the user may select when multiple are eligible.")
   val eligibleTenants: List<TenantSummary> = emptyList(),
+  @field:Schema(description = "Locale preferences used to resolve the client language.")
+  val localeContext: LocaleContextResponse = LocaleContextResponse(),
 ) {
   companion object {
     fun from(view: LoginView): LoginResponse =
@@ -45,6 +47,7 @@ data class LoginResponse(
         loginContext = view.loginContext.name,
         activeTenant = view.activeTenant,
         eligibleTenants = view.eligibleTenants,
+        localeContext = LocaleContextResponse.from(view.localeContext),
       )
   }
 }

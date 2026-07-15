@@ -4,7 +4,7 @@ import { ApiSessionGateway } from './api-session-gateway.js'
 import { DemoSessionGateway } from './session-gateway.js'
 
 export function createSessionGateway(): SessionGateway {
-  return PUBLIC_SESSION_GATEWAY === 'api'
-    ? new ApiSessionGateway()
-    : new DemoSessionGateway()
+  return PUBLIC_SESSION_GATEWAY === 'demo'
+    ? new DemoSessionGateway()
+    : new ApiSessionGateway()
 }

@@ -55,6 +55,7 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.initialized").value(false))
+      .andExpect(jsonPath("$.setupTokenRequired").value(true))
   }
 
   @Test
@@ -112,7 +113,8 @@ class InstanceSetupControllerTest(@Autowired private val mockMvc: MockMvc) {
 
     @Bean
     fun instanceSetupService(): InstanceSetupApplicationService = mockk {
-      coEvery { setupStatus() } returns InstanceSetupStatusView(initialized = false)
+      coEvery { setupStatus() } returns
+        InstanceSetupStatusView(initialized = false, setupTokenRequired = true)
       coEvery { bootstrap(any()) } returns
         InstanceBootstrapView(
           user =

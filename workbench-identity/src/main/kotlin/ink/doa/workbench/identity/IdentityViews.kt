@@ -6,11 +6,17 @@ import ink.doa.workbench.identity.model.TenantLoginOption
 import ink.doa.workbench.tenant.common.summary.TenantSummary
 import java.time.OffsetDateTime
 
+data class LocaleContextView(
+  val userPreference: String? = null,
+  val tenantDefault: String? = null,
+)
+
 data class SessionView(
   val user: UserSummary,
   val activeTenant: TenantSummary?,
   val sessionExpiresAt: OffsetDateTime,
   val adminScopes: List<String> = emptyList(),
+  val localeContext: LocaleContextView = LocaleContextView(),
 )
 
 data class TenantMembershipView(
@@ -43,7 +49,10 @@ data class LoginView(
   val loginContext: LoginContext = LoginContext.TENANT,
   val activeTenant: TenantSummary? = null,
   val eligibleTenants: List<TenantSummary> = emptyList(),
+  val localeContext: LocaleContextView = LocaleContextView(),
 )
+
+data class UserPreferencesView(val locale: String?)
 
 data class FederatedAuthorizeView(
   val authorizationUrl: String,

@@ -2,6 +2,7 @@
   import type { SelectorOption } from './selector-model.js'
   import * as Command from '$lib/components/ui/command'
   import { ScrollArea } from '$lib/components/ui/scroll-area'
+  import { m } from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils.js'
   import { ChevronDown, X } from '@lucide/svelte'
   import { tick } from 'svelte'
@@ -14,7 +15,7 @@
     values,
     options,
     onValuesChange,
-    placeholder = 'Select…',
+    placeholder = m.select(),
     disabled = false,
     required = false,
     clearable = true,
@@ -104,25 +105,25 @@
     {#each selected.slice(0, maxVisible) as option (option.id)}
       <span class='flex max-w-40 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-xs'>
         <SelectorOptionView {option} compact />
-        <span aria-label={`Remove ${option.label}`} aria-hidden='true' onclick={event => removeValue(event, option.id)}><X class='size-3' /></span>
+        <span aria-label={m.remove_option({ label: option.label })} aria-hidden='true' onclick={event => removeValue(event, option.id)}><X class='size-3' /></span>
       </span>
     {/each}
     {#if selected.length > maxVisible}<span class='text-xs text-muted-foreground'>+{selected.length - maxVisible}</span>{/if}
     <span class='ml-auto flex items-center'>
-      {#if selected.length && clearable && !required}<span aria-label='Clear all selections' aria-hidden='true' class='p-0.5' onclick={clearValues}><X class='size-3.5' /></span>{/if}
+      {#if selected.length && clearable && !required}<span aria-label={m.clear_all_selections()} aria-hidden='true' class='p-0.5' onclick={clearValues}><X class='size-3.5' /></span>{/if}
       <ChevronDown class='size-4 text-muted-foreground' />
     </span>
   </button>
   {#if open}
     <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
-      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label='Options'>
-        <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder='Search…' />
+      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label={m.options()}>
+        <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder={m.search()} />
         <ScrollArea class='h-52'>
           <Command.List class='max-h-none overflow-visible' aria-busy={loading}>
             {#if loading}
               <SelectorLoading />
             {:else if filtered.length === 0}
-              <Command.Empty>No options found</Command.Empty>
+              <Command.Empty>{m.no_options_found()}</Command.Empty>
             {:else}
               <Command.Group>
                 {#each filtered as option (option.id)}

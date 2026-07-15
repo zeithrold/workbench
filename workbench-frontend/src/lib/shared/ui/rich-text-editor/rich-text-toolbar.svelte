@@ -3,6 +3,7 @@
   import type { EditorCommand } from './editor-commands.js'
   import { Button } from '$lib/components/ui/button'
   import { Separator } from '$lib/components/ui/separator'
+  import { m } from '$lib/paraglide/messages.js'
   import { Redo2, Undo2 } from '@lucide/svelte'
   import LinkEditor from './link-editor.svelte'
 
@@ -35,7 +36,7 @@
     ? 'flex items-center gap-x-2 overflow-x-auto border-b border-border/60 bg-muted/15 px-2 py-1.5'
     : 'flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border/60 bg-muted/15 px-2 py-1.5'}
   role='toolbar'
-  aria-label='Text formatting'
+  aria-label={m.text_formatting()}
   data-revision={revision}
 >
   {#each commandGroups as group, index (index)}
@@ -67,8 +68,8 @@
         variant='ghost'
         size='icon-sm'
         class='text-muted-foreground hover:text-foreground'
-        aria-label='Undo'
-        title='Undo'
+        aria-label={m.undo()}
+        title={m.undo()}
         disabled={disabled || !canUndo()}
         onmousedown={event => event.preventDefault()}
         onclick={() => editor.chain().focus().undo().run()}
@@ -77,8 +78,8 @@
         variant='ghost'
         size='icon-sm'
         class='text-muted-foreground hover:text-foreground'
-        aria-label='Redo'
-        title='Redo'
+        aria-label={m.redo()}
+        title={m.redo()}
         disabled={disabled || !canRedo()}
         onmousedown={event => event.preventDefault()}
         onclick={() => editor.chain().focus().redo().run()}

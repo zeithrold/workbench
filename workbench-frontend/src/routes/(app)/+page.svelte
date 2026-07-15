@@ -1,11 +1,15 @@
 <script lang='ts'>
   import { session } from '$lib/entities/session/session.svelte.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { EmptyState, PageHeader } from '$lib/shared/ui'
 </script>
 
-<svelte:head><title>Workbench</title></svelte:head>
+<svelte:head><title>{m.app_name()}</title></svelte:head>
 
 <div class='space-y-8'>
-  <PageHeader title='Overview' description='Your workspace is ready for its first project.' />
-  <EmptyState title='No projects yet' description='Create a project when you are ready to organize work for {session.current?.activeTenant.name}.' />
+  <PageHeader title={m.overview()} description={m.workspace_ready()} />
+  <EmptyState
+    title={m.no_projects_yet()}
+    description={m.create_project_for_tenant({ tenantName: session.current?.activeTenant?.name ?? '' })}
+  />
 </div>

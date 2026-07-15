@@ -38,6 +38,19 @@ import org.jetbrains.exposed.v1.jdbc.update
 
 class ExposedIdentityRepositoriesIntegrationTest :
   StringSpec({
+    "user locale preference can be set and cleared" {
+      withCorePostgresDatabase { database ->
+        val users = ExposedUserRepository(database)
+        val user = users.create(CreateUserCommand("Ada", "ada@example.test"))
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+
+        users.updateLocale(user.id, "en-US", now)?.locale shouldBe "en-US"
+        users.findById(user.id)?.locale shouldBe "en-US"
+        users.updateLocale(user.id, null, now.plusSeconds(1))?.locale.shouldBeNull()
+        users.findById(user.id)?.locale.shouldBeNull()
+      }
+    }
+
     "login account binding can resolve a user and stops resolving after unlink or disable" {
       withCorePostgresDatabase { database ->
         val tenantId = seedTenant(database)

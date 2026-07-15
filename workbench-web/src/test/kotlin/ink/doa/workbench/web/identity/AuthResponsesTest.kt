@@ -2,6 +2,7 @@ package ink.doa.workbench.web.identity
 
 import ink.doa.workbench.identity.FederatedAuthorizeView
 import ink.doa.workbench.identity.IssuedTokenView
+import ink.doa.workbench.identity.LocaleContextView
 import ink.doa.workbench.identity.LoginDiscoveryView
 import ink.doa.workbench.identity.LoginFlow
 import ink.doa.workbench.identity.LoginMethodChoiceView
@@ -35,11 +36,13 @@ class AuthResponsesTest :
             loginContext = ink.doa.workbench.identity.LoginContext.TENANT,
             activeTenant = tenant,
             eligibleTenants = listOf(tenant),
+            localeContext = LocaleContextView(userPreference = null, tenantDefault = "en-US"),
           )
         )
 
       response.user.displayName shouldBe "Ada"
       response.bearerToken?.token shouldBe "secret"
+      response.localeContext.tenantDefault shouldBe "en-US"
     }
 
     "membership response maps tenant membership view" {

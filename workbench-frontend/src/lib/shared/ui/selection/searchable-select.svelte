@@ -2,6 +2,7 @@
   import type { SelectorOption } from './selector-model.js'
   import * as Command from '$lib/components/ui/command'
   import { ScrollArea } from '$lib/components/ui/scroll-area'
+  import { m } from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils.js'
   import { ChevronDown, X } from '@lucide/svelte'
   import { tick } from 'svelte'
@@ -14,9 +15,9 @@
     value,
     options,
     onValueChange,
-    placeholder = 'Select…',
-    searchPlaceholder = 'Search…',
-    emptyText = 'No options found',
+    placeholder = m.select(),
+    searchPlaceholder = m.search(),
+    emptyText = m.no_options_found(),
     disabled = false,
     required = false,
     clearable = true,
@@ -107,7 +108,7 @@
     <span class='ml-auto flex shrink-0 items-center'>
       {#if selected && clearable && !required}
         <span
-          aria-label='Clear selection'
+          aria-label={m.clear_selection()}
           aria-hidden='true'
           class='rounded p-0.5 hover:bg-muted'
           onclick={clearSelection}
@@ -119,7 +120,7 @@
 
   {#if open}
     <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 text-popover-foreground shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
-      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label='Options'>
+      <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label={m.options()}>
         <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder={searchPlaceholder} />
         <ScrollArea class='h-52'>
           <Command.List class='max-h-none overflow-visible' aria-busy={loading}>

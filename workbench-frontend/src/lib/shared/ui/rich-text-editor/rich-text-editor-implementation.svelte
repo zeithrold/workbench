@@ -1,5 +1,6 @@
 <script lang='ts'>
   import type { RichTextDocument, RichTextEditorProps } from './types.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils.js'
   import { Editor } from '@tiptap/core'
   import { BubbleMenu } from '@tiptap/extension-bubble-menu'
@@ -19,8 +20,8 @@
     onChange,
     preset = DEFAULT_RICH_TEXT_EDITOR_PRESET,
     editable = true,
-    placeholder = 'Start writing…',
-    ariaLabel = 'Rich text editor',
+    placeholder = m.start_writing(),
+    ariaLabel = m.rich_text_editor(),
     contentWidth = 'full',
     onSubmit,
     submitting = false,
@@ -120,7 +121,7 @@
   {#if editor && editable}
     <RichTextToolbar {editor} {revision} {commandGroups} compact={presetConfig.compact} disabled={submitting} />
     {#if preset === 'comment'}
-      <div class='border-b border-border/60 px-3 py-1 text-right text-[11px] text-muted-foreground'>Press Ctrl/⌘+Enter to submit</div>
+      <div class='border-b border-border/60 px-3 py-1 text-right text-[11px] text-muted-foreground'>{m.press_submit_shortcut()}</div>
     {/if}
   {/if}
   {#if preset === 'document'}

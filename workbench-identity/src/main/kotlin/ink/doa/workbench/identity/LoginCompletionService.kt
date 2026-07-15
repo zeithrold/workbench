@@ -23,6 +23,7 @@ data class LoginCompletion(
   val activeTenantId: UUID?,
   val activeTenant: TenantSummary?,
   val eligibleTenants: List<TenantSummary>,
+  val tenantDefaultLocale: String? = null,
 )
 
 @Service
@@ -45,6 +46,7 @@ class LoginCompletionService(
         activeTenantId = null,
         activeTenant = null,
         eligibleTenants = emptyList(),
+        tenantDefaultLocale = null,
       )
     }
 
@@ -73,6 +75,7 @@ class LoginCompletionService(
           activeTenantId = tenant.id,
           activeTenant = tenantSummary,
           eligibleTenants = emptyList(),
+          tenantDefaultLocale = tenant.locale,
         )
       }
       else ->
@@ -81,6 +84,7 @@ class LoginCompletionService(
           activeTenantId = null,
           activeTenant = null,
           eligibleTenants = eligible,
+          tenantDefaultLocale = null,
         )
     }
   }

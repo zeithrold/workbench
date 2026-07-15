@@ -2,6 +2,7 @@
   import type { Editor } from '@tiptap/core'
   import { Button } from '$lib/components/ui/button'
   import { Input } from '$lib/components/ui/input'
+  import { m } from '$lib/paraglide/messages.js'
   import { Link, Link2Off } from '@lucide/svelte'
 
   const { editor, revision, disabled = false }: { editor: Editor, revision: number, disabled?: boolean } = $props()
@@ -67,10 +68,10 @@
   bind:ref={trigger}
   variant='ghost'
   size='icon-sm'
-  aria-label='Edit link'
+  aria-label={m.edit_link()}
   aria-pressed={isLinkActive()}
   aria-expanded={open}
-  title='Edit link'
+  title={m.edit_link()}
   {disabled}
   onmousedown={event => event.preventDefault()}
   onclick={openEditor}
@@ -87,17 +88,17 @@
 >
   <form class='space-y-3' onsubmit={saveLink}>
     <label class='space-y-1.5 text-sm font-medium'>
-      Link URL
-      <Input bind:value={href} type='url' placeholder='https://example.com' aria-label='Link URL' />
+      {m.link_url()}
+      <Input bind:value={href} type='url' placeholder='https://example.com' aria-label={m.link_url()} />
     </label>
     <div class='flex justify-end gap-2'>
       {#if isLinkActive() || hasManagedLink}
         <Button type='button' variant='ghost' size='sm' onclick={removeLink}>
           <Link2Off class='size-3.5' />
-          Remove
+          {m.remove()}
         </Button>
       {/if}
-      <Button type='submit' size='sm' disabled={!href.trim()}>Apply</Button>
+      <Button type='submit' size='sm' disabled={!href.trim()}>{m.apply()}</Button>
     </div>
   </form>
 </div>

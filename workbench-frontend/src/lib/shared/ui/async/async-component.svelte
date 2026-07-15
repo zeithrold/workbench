@@ -2,6 +2,7 @@
   import type { Component, Snippet } from 'svelte'
   import { Button } from '$lib/components/ui/button'
   import { Skeleton } from '$lib/components/ui/skeleton'
+  import { m } from '$lib/paraglide/messages.js'
 
   type ComponentModule = { default: Component<Props> }
 
@@ -52,8 +53,8 @@
     {@render error(loadError, retry)}
   {:else}
     <div class='flex items-center justify-between gap-4 rounded-md border border-destructive/30 bg-destructive/5 p-4' role='alert'>
-      <span class='text-sm text-destructive'>The component could not be loaded.</span>
-      <Button variant='outline' size='sm' onclick={retry}>Retry</Button>
+      <span class='text-sm text-destructive'>{m.component_load_failed()}</span>
+      <Button variant='outline' size='sm' onclick={retry}>{m.retry()}</Button>
     </div>
   {/if}
 {/await}

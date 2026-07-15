@@ -19,7 +19,10 @@ class InstanceSetupApplicationService(
   private val authApplicationService: AuthApplicationService,
 ) {
   suspend fun setupStatus(): InstanceSetupStatusView =
-    InstanceSetupStatusView(initialized = instanceBootstrapService.isInitialized())
+    InstanceSetupStatusView(
+      initialized = instanceBootstrapService.isInitialized(),
+      setupTokenRequired = !instanceProperties.setupToken.isNullOrBlank(),
+    )
 
   suspend fun bootstrap(command: BootstrapInstanceAdminCommand): InstanceBootstrapView {
     validateSetupToken(command.setupToken)
@@ -54,7 +57,10 @@ class InstanceSetupApplicationService(
   }
 }
 
-data class InstanceSetupStatusView(val initialized: Boolean)
+data class InstanceSetupStatusView(
+  val initialized: Boolean,
+  val setupTokenRequired: Boolean,
+)
 
 data class InstanceBootstrapView(
   val user: UserSummary,

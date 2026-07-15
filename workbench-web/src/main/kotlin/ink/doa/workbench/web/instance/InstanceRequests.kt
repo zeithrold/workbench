@@ -45,7 +45,9 @@ data class InstanceSetupRequest(
 @Schema(description = "Instance initialization status.")
 data class InstanceSetupStatusResponse(
   @field:Schema(description = "Whether a system administrator already exists.")
-  val initialized: Boolean
+  val initialized: Boolean,
+  @field:Schema(description = "Whether instance setup requires the configured setup token.")
+  val setupTokenRequired: Boolean,
 )
 
 @Schema(

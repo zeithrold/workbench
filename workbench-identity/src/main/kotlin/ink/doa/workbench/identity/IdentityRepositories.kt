@@ -6,6 +6,7 @@ import ink.doa.workbench.identity.model.CreateTenantMemberCommand
 import ink.doa.workbench.identity.model.CreateUserCommand
 import ink.doa.workbench.identity.model.TenantMemberRecord
 import ink.doa.workbench.identity.model.UserRecord
+import java.time.OffsetDateTime
 import java.util.UUID
 
 interface UserRepository {
@@ -16,6 +17,10 @@ interface UserRepository {
   suspend fun findByApiId(apiId: String): UserRecord?
 
   suspend fun findByPrimaryEmail(primaryEmail: String): UserRecord?
+}
+
+interface UserPreferenceRepository {
+  suspend fun updateLocale(userId: UUID, locale: String?, updatedAt: OffsetDateTime): UserRecord?
 }
 
 interface TenantMemberRepository {

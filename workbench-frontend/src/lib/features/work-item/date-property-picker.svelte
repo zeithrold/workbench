@@ -4,6 +4,8 @@
   import { Button } from '$lib/components/ui/button'
   import { Calendar } from '$lib/components/ui/calendar'
   import * as Popover from '$lib/components/ui/popover'
+  import { localeState } from '$lib/i18n/locale.svelte.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { cn } from '$lib/utils.js'
   import { CalendarDateTime, DateFormatter, getLocalTimeZone, parseAbsoluteToLocal, parseDate } from '@internationalized/date'
   import { CalendarIcon, ChevronDown, X } from '@lucide/svelte'
@@ -25,7 +27,7 @@
   })
   const hour = $derived(includeTime && dateValue && 'hour' in dateValue ? dateValue.hour : 9)
   const minute = $derived(includeTime && dateValue && 'minute' in dateValue ? dateValue.minute : 0)
-  const formatter = $derived(new DateFormatter('en-US', includeTime
+  const formatter = $derived(new DateFormatter(localeState.current, includeTime
     ? { dateStyle: 'medium', timeStyle: 'short' }
     : { dateStyle: 'medium' }))
   const hours = Array.from({ length: 24 }, (_, index) => index)
@@ -75,7 +77,7 @@
     {#snippet child({ props })}
       <Button {...props} variant='outline' class={cn('w-full justify-start font-normal', !displayValue && 'text-muted-foreground')} {disabled} aria-label={label}>
         <CalendarIcon class='size-4' />
-        <span class='truncate'>{displayValue ?? (includeTime ? 'Select date and time' : 'Select date')}</span>
+        <span class='truncate'>{displayValue ?? (includeTime ? m.select_date_and_time() : m.select_date())}</span>
         <span class='ml-auto flex items-center gap-1'>
           {#if displayValue && !required}
             <span aria-hidden='true' class='rounded p-0.5 hover:bg-muted' onclick={clear}><X class='size-3.5' /></span>
@@ -89,15 +91,15 @@
     <Calendar type='single' value={dateValue} onValueChange={selectDate} captionLayout='dropdown' />
     {#if includeTime}
       <div class='flex items-center gap-2 border-t p-3'>
-        <span class='text-xs font-medium text-muted-foreground'>Time</span>
-        <select aria-label='Hour' class='h-8 rounded-md border bg-background px-2 text-sm' value={hour} onchange={event => selectTime(Number(event.currentTarget.value), minute)} disabled={!dateValue}>
+        <span class='text-xs font-medium text-muted-foreground'>{m.time()}</span>
+        <select aria-label={m.hour()} class='h-8 rounded-md border bg-background px-2 text-sm' value={hour} onchange={event => selectTime(Number(event.currentTarget.value), minute)} disabled={!dateValue}>
           {#each hours as option (option)}<option value={option}>{String(option).padStart(2, '0')}</option>{/each}
         </select>
         <span>:</span>
-        <select aria-label='Minute' class='h-8 rounded-md border bg-background px-2 text-sm' value={minute} onchange={event => selectTime(hour, Number(event.currentTarget.value))} disabled={!dateValue}>
+        <select aria-label={m.minute()} class='h-8 rounded-md border bg-background px-2 text-sm' value={minute} onchange={event => selectTime(hour, Number(event.currentTarget.value))} disabled={!dateValue}>
           {#each minutes as option (option)}<option value={option}>{String(option).padStart(2, '0')}</option>{/each}
         </select>
-        <Button size='sm' class='ml-auto' disabled={!dateValue} onclick={() => open = false}>Done</Button>
+        <Button size='sm' class='ml-auto' disabled={!dateValue} onclick={() => open = false}>{m.done()}</Button>
       </div>
     {/if}
   </Popover.Content>

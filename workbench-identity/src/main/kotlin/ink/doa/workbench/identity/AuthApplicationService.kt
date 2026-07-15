@@ -111,6 +111,11 @@ class AuthApplicationService(
       loginContext = completion.loginContext,
       activeTenant = completion.activeTenant,
       eligibleTenants = completion.eligibleTenants,
+      localeContext =
+        LocaleContextView(
+          userPreference = result.principal.user.locale,
+          tenantDefault = completion.tenantDefaultLocale,
+        ),
     )
 
   private fun requireBearerTokenApiId(token: IssuedCredential): String =

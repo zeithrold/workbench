@@ -53,7 +53,10 @@ class InstanceSetupController(
   )
   suspend fun setupStatus(): InstanceSetupStatusResponse {
     val view = service.setupStatus()
-    return InstanceSetupStatusResponse(initialized = view.initialized)
+    return InstanceSetupStatusResponse(
+      initialized = view.initialized,
+      setupTokenRequired = view.setupTokenRequired,
+    )
   }
 
   @PostMapping("/setup")

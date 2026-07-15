@@ -22,6 +22,8 @@ data class SessionResponse(
   val sessionExpiresAt: java.time.OffsetDateTime,
   @field:Schema(description = "Administrator scopes available to the user.")
   val adminScopes: List<String> = emptyList(),
+  @field:Schema(description = "Locale preferences used to resolve the client language.")
+  val localeContext: LocaleContextResponse = LocaleContextResponse(),
 ) {
   companion object {
     fun from(view: ink.doa.workbench.identity.SessionView): SessionResponse =
@@ -30,6 +32,29 @@ data class SessionResponse(
         activeTenant = view.activeTenant,
         sessionExpiresAt = view.sessionExpiresAt,
         adminScopes = view.adminScopes,
+        localeContext = LocaleContextResponse.from(view.localeContext),
+      )
+  }
+}
+
+@Schema(description = "Locale preference context for the current user and active tenant.")
+data class LocaleContextResponse(
+  @field:Schema(
+    description = "User override, or null to follow the tenant default.",
+    types = ["string", "null"],
+  )
+  val userPreference: String? = null,
+  @field:Schema(
+    description = "Default locale of the active tenant, if one is selected.",
+    types = ["string", "null"],
+  )
+  val tenantDefault: String? = null,
+) {
+  companion object {
+    fun from(view: ink.doa.workbench.identity.LocaleContextView): LocaleContextResponse =
+      LocaleContextResponse(
+        userPreference = view.userPreference,
+        tenantDefault = view.tenantDefault,
       )
   }
 }
