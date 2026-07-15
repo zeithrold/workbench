@@ -58,6 +58,23 @@ class ExposedInvitationRepositoryIntegrationTest :
           )
         pending.id shouldBe pending.id
 
+        repository.listPendingByTenant(tenantId, now).map { it.id } shouldBe listOf(pending.id)
+        repository.cancelPending(tenantId, pending.apiId.value, now) shouldBe true
+        repository.cancelPending(tenantId, pending.apiId.value, now) shouldBe false
+
+        repository.create(
+          CreateInvitationCommand(
+            type = InvitationType.TENANT_MEMBER,
+            tenantId = tenantId,
+            email = "second@example.test",
+            normalizedEmail = "second@example.test",
+            displayName = null,
+            tokenHash = "second-token-hash",
+            invitedBy = inviterId,
+            expiresAt = expiresAt,
+          )
+        )
+
         repository.cancelPendingByTenant(tenantId, now) shouldBe 1
         repository.findActiveByHash("admin-token-hash", now).shouldBeNull()
       }

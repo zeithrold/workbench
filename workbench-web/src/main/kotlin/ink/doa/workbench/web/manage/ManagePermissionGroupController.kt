@@ -32,7 +32,7 @@ class ManagePermissionGroupController(
   private val permissionGroupManagementService: PermissionGroupManagementService
 ) {
   @GetMapping("/groups")
-  @Authorize(action = "permission.group.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List permission groups")
   suspend fun listGroups(tenantContext: TenantRequestContext): List<PermissionGroupResponse> =
     permissionGroupManagementService.listGroups(tenantContext.tenant.id).map {
@@ -57,7 +57,7 @@ class ManagePermissionGroupController(
     )
 
   @GetMapping("/groups/{id}")
-  @Authorize(action = "permission.group.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "Get permission group")
   suspend fun getGroup(
     @PathVariable id: String,
@@ -96,7 +96,7 @@ class ManagePermissionGroupController(
   }
 
   @GetMapping("/groups/{id}/members")
-  @Authorize(action = "permission.group.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List group members")
   suspend fun listGroupMembers(
     @PathVariable id: String,

@@ -37,7 +37,7 @@ class ManagePermissionPolicyController(
   private val objectMapper = ObjectMapper()
 
   @GetMapping("/permission-policies")
-  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List permission policies")
   suspend fun listPolicies(tenantContext: TenantRequestContext): List<PermissionPolicyResponse> =
     permissionPolicyManagementService.listPolicies(tenantContext.tenant.id).map {
@@ -45,7 +45,7 @@ class ManagePermissionPolicyController(
     }
 
   @GetMapping("/permission-policies/{id}")
-  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "Get permission policy")
   suspend fun getPolicy(
     @PathVariable id: String,

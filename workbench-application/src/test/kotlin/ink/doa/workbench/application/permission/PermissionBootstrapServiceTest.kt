@@ -77,6 +77,17 @@ class PermissionBootstrapServiceTest :
       bindingCommand.captured.principalUserId shouldBe userId
       bindingCommand.captured.policyId shouldBe policy.id
     }
+
+    "revokeTenantAdmin removes membership from the built-in group" {
+      val tenantId = UUID.randomUUID()
+      val userId = UUID.randomUUID()
+      val group = sampleGroup(tenantId)
+      coEvery { groups.findByCode(tenantId, "tenant-admin") } returns group
+      coEvery { groups.removeMember(group.id, userId, any()) } returns true
+
+      runBlocking { service.revokeTenantAdmin(tenantId, userId) } shouldBe true
+      coVerify { groups.removeMember(group.id, userId, any()) }
+    }
   })
 
 private fun sampleGroup(tenantId: UUID): PermissionGroupRecord {

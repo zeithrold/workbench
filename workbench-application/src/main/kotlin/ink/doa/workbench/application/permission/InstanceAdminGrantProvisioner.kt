@@ -29,8 +29,15 @@ class InstanceAdminGrantProvisioner(private val accessGrants: AccessGrantReposit
   companion object {
     private val INSTANCE_GRANTS =
       listOf(
-        AuthorizationAction("outbox.read") to "outbox",
-        AuthorizationAction("outbox.manage") to "outbox",
+        AuthorizationAction("instance.read") to "instance:*",
+        AuthorizationAction("instance.admin.manage") to "instance-admin:*",
+        AuthorizationAction("tenant.create") to "tenant:*",
+        AuthorizationAction("tenant.read") to "tenant:*",
+        AuthorizationAction("tenant.update") to "tenant:*",
+        AuthorizationAction("tenant.delete") to "tenant:*",
+        AuthorizationAction("operations.read") to "operations:*",
+        AuthorizationAction("outbox.read") to "outbox:*",
+        AuthorizationAction("outbox.manage") to "outbox:*",
       )
   }
 }

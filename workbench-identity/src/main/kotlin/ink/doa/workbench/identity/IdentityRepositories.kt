@@ -28,7 +28,17 @@ interface TenantMemberRepository {
 
   suspend fun findByTenantAndUser(tenantId: UUID, userId: UUID): TenantMemberRecord?
 
+  suspend fun findByApiId(tenantId: UUID, apiId: String): TenantMemberRecord?
+
+  suspend fun listByTenant(tenantId: UUID): List<TenantMemberRecord>
+
   suspend fun listByUser(userId: UUID): List<TenantMemberRecord>
+
+  suspend fun updateStatus(
+    id: UUID,
+    status: ink.doa.workbench.identity.model.TenantMemberStatus,
+    updatedAt: OffsetDateTime,
+  ): TenantMemberRecord?
 }
 
 interface AuthEventRepository {

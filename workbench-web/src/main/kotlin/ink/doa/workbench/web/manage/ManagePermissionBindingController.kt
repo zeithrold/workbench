@@ -32,7 +32,7 @@ class ManagePermissionBindingController(
   private val permissionBindingManagementService: PermissionBindingManagementService
 ) {
   @GetMapping("/permission-bindings")
-  @Authorize(action = "permission.assignment.manage", resource = "permission")
+  @Authorize(action = "tenant.read", resource = "tenant")
   @Operation(summary = "List permission bindings")
   suspend fun listBindings(tenantContext: TenantRequestContext): List<PermissionBindingResponse> =
     permissionBindingManagementService.listBindings(tenantContext.tenant.id).map {

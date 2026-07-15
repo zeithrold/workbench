@@ -123,7 +123,7 @@ class InstanceBootstrapServiceTest :
 
       result.user shouldBe user
       result.loginMethod shouldBe loginMethod
-      coVerify(exactly = 2) { accessGrants.create(any()) }
+      coVerify(exactly = 9) { accessGrants.create(any()) }
     }
   })
 

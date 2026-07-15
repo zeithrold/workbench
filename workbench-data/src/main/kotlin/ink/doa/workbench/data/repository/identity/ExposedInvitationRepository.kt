@@ -64,6 +64,35 @@ class ExposedInvitationRepository(private val database: Database) : InvitationRe
       } > 0
     }
 
+  override suspend fun listPendingByTenant(
+    tenantId: UUID,
+    now: OffsetDateTime,
+  ): List<InvitationRecord> =
+    suspendTransaction(db = database) {
+      InvitationsTable.selectAll()
+        .where {
+          (InvitationsTable.tenantId eq tenantId.toKotlinUuid()) and
+            InvitationsTable.consumedAt.isNull()
+        }
+        .map { it.toInvitationRecord() }
+        .filter { it.expiresAt.isAfter(now) }
+    }
+
+  override suspend fun cancelPending(
+    tenantId: UUID,
+    apiId: String,
+    cancelledAt: OffsetDateTime,
+  ): Boolean =
+    suspendTransaction(db = database) {
+      InvitationsTable.update({
+        (InvitationsTable.tenantId eq tenantId.toKotlinUuid()) and
+          (InvitationsTable.apiId eq apiId) and
+          InvitationsTable.consumedAt.isNull()
+      }) {
+        it[InvitationsTable.consumedAt] = cancelledAt
+      } > 0
+    }
+
   override suspend fun cancelPendingByTenant(tenantId: UUID, cancelledAt: OffsetDateTime): Int =
     suspendTransaction(db = database) {
       InvitationsTable.update({

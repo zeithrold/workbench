@@ -18,6 +18,7 @@ import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
@@ -32,7 +33,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping
 @Authenticated
 @SessionSecured
 @StandardErrorResponses
@@ -42,20 +43,40 @@ class AdminUserController(
   private val accessGrantService: AccessGrantManagementService,
   private val permissionActionService: PermissionActionService,
 ) {
-  @GetMapping("/instance-admins")
+  @GetMapping("/api/admin/instance-admins")
   @InstanceScoped
-  @Authorize(action = "tenant.read", resource = "tenant")
-  @Operation(summary = "List instance administrators")
+  @Authorize(action = "instance.read", resource = "instance")
+  @Operation(
+    summary = "List instance administrators",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Instance administrators",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun listInstanceAdmins(
     @Suppress("UnusedParameter") instanceContext: InstanceRequestContext
   ): List<AdminUserResponse> =
     adminUserService.listInstanceAdmins().map { AdminUserResponse.from(it) }
 
-  @PostMapping("/instance-admins")
+  @PostMapping("/api/admin/instance-admins")
   @InstanceScoped
-  @Authorize(action = "tenant.update", resource = "tenant")
+  @Authorize(action = "instance.admin.manage", resource = "instance-admin")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Grant instance administrator")
+  @Operation(
+    summary = "Grant instance administrator",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "201",
+          description = "Instance administrator granted",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun grantInstanceAdmin(
     @Valid @RequestBody request: GrantAdminRequest,
     instanceContext: InstanceRequestContext,
@@ -64,18 +85,38 @@ class AdminUserController(
       adminUserService.grantInstanceAdmin(request.userId, instanceContext.actor?.id)
     )
 
-  @GetMapping("/tenant-admins")
+  @GetMapping("/api/manage/tenant-admins")
   @TenantScoped
-  @Authorize(action = "permission.assignment.manage", resource = "permission")
-  @Operation(summary = "List tenant administrators")
+  @Authorize(action = "tenant.read", resource = "tenant")
+  @Operation(
+    summary = "List tenant administrators",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Tenant administrators",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun listTenantAdmins(tenantContext: TenantRequestContext): List<AdminUserResponse> =
     adminUserService.listTenantAdmins(tenantContext.tenant.id).map { AdminUserResponse.from(it) }
 
-  @PostMapping("/tenant-admins")
+  @PostMapping("/api/manage/tenant-admins")
   @TenantScoped
   @Authorize(action = "permission.assignment.manage", resource = "permission")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Grant tenant administrator")
+  @Operation(
+    summary = "Grant tenant administrator",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "201",
+          description = "Tenant administrator granted",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun grantTenantAdmin(
     @Valid @RequestBody request: GrantAdminRequest,
     tenantContext: TenantRequestContext,
@@ -88,19 +129,37 @@ class AdminUserController(
       )
     )
 
-  @DeleteMapping("/{id}")
+  @DeleteMapping("/api/admin/instance-admins/{id}")
   @InstanceScoped
-  @Authorize(action = "tenant.update", resource = "tenant")
+  @Authorize(action = "instance.admin.manage", resource = "instance-admin")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @Operation(summary = "Revoke administrator")
-  suspend fun revokeAdmin(
+  @Operation(
+    summary = "Revoke instance administrator",
+    responses = [ApiResponse(responseCode = "204", description = "Instance administrator revoked")],
+  )
+  suspend fun revokeInstanceAdmin(
     @Parameter(example = OpenApiExamples.USER_ID) @PathVariable id: String,
     @Suppress("UnusedParameter") instanceContext: InstanceRequestContext,
   ) {
-    adminUserService.revokeAdmin(id)
+    adminUserService.revokeInstanceAdmin(id)
   }
 
-  @GetMapping("/grants")
+  @DeleteMapping("/api/manage/tenant-admins/{id}")
+  @TenantScoped
+  @Authorize(action = "permission.assignment.manage", resource = "permission")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Operation(
+    summary = "Revoke tenant administrator",
+    responses = [ApiResponse(responseCode = "204", description = "Tenant administrator revoked")],
+  )
+  suspend fun revokeTenantAdmin(
+    @PathVariable id: String,
+    tenantContext: TenantRequestContext,
+  ) {
+    adminUserService.revokeTenantAdmin(tenantContext.tenant.id, id)
+  }
+
+  @GetMapping("/api/manage/grants")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List access grants for active tenant")
@@ -109,7 +168,7 @@ class AdminUserController(
       .listGrants(scope = null, tenantId = tenantContext.tenant.id, subjectUserId = null)
       .map { AccessGrantResponse.from(it) }
 
-  @PostMapping("/grants")
+  @PostMapping("/api/manage/grants")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @ResponseStatus(HttpStatus.CREATED)
@@ -133,7 +192,7 @@ class AdminUserController(
       )
     )
 
-  @DeleteMapping("/grants/{id}")
+  @DeleteMapping("/api/manage/grants/{id}")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -145,7 +204,7 @@ class AdminUserController(
     accessGrantService.expireGrant(id)
   }
 
-  @GetMapping("/actions")
+  @GetMapping("/api/manage/actions")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @Operation(summary = "List permission actions")
@@ -153,7 +212,7 @@ class AdminUserController(
     @Suppress("UnusedParameter") tenantContext: TenantRequestContext
   ): List<ActionResponse> = permissionActionService.listActions().map { ActionResponse.from(it) }
 
-  @PostMapping("/actions")
+  @PostMapping("/api/manage/actions")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
   @ResponseStatus(HttpStatus.CREATED)

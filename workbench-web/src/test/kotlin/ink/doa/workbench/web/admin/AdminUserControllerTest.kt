@@ -64,7 +64,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
   fun `list instance admins rejects unauthenticated requests`() {
-    mockMvc.perform(get("/api/admin/users/instance-admins")).andExpect(status().isUnauthorized())
+    mockMvc.perform(get("/api/admin/instance-admins")).andExpect(status().isUnauthorized())
   }
 
   @Test
@@ -72,7 +72,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/admin/users/tenant-admins")
+          post("/api/manage/tenant-admins")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"userId":"usr_01JABCDEFGHJKMNPQRSTVWXYZ2"}""")
@@ -91,7 +91,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          delete("/api/admin/users/adm_01JABCDEFGHJKMNPQRSTVWXYZ0")
+          delete("/api/admin/instance-admins/adm_01JABCDEFGHJKMNPQRSTVWXYZ0")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -105,7 +105,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/admin/users/grants")
+          post("/api/manage/grants")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content(
@@ -135,7 +135,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          delete("/api/admin/users/grants/grt_01JABCDEFGHJKMNPQRSTVWXYZ0")
+          delete("/api/manage/grants/grt_01JABCDEFGHJKMNPQRSTVWXYZ0")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -149,7 +149,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/admin/users/actions")
+          get("/api/manage/actions")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -166,7 +166,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/admin/users/actions")
+          post("/api/manage/actions")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"code":"project.archive","description":"Archive projects"}""")
@@ -185,7 +185,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/admin/users/instance-admins")
+          get("/api/admin/instance-admins")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -202,7 +202,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/admin/users/tenant-admins")
+          get("/api/manage/tenant-admins")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -219,7 +219,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          get("/api/admin/users/grants")
+          get("/api/manage/grants")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
         )
         .andExpect(request().asyncStarted())
@@ -236,7 +236,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     val result =
       mockMvc
         .perform(
-          post("/api/admin/users/instance-admins")
+          post("/api/admin/instance-admins")
             .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, ADMIN_SESSION))
             .contentType(MediaType.APPLICATION_JSON)
             .content("""{"userId":"usr_01JABCDEFGHJKMNPQRSTVWXYZ1"}""")
@@ -367,7 +367,7 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
           validFrom = java.time.OffsetDateTime.parse("2026-07-04T00:00:00Z"),
           validTo = null,
         )
-      coEvery { service.revokeAdmin("adm_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns true
+      coEvery { service.revokeInstanceAdmin("adm_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns true
       return true
     }
 

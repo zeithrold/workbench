@@ -233,6 +233,15 @@ data class CreateInvitationResult(
   val invitationLink: String,
 )
 
+data class ManagedInvitationView(
+  val id: String,
+  val type: InvitationType,
+  val email: String,
+  val displayName: String?,
+  val expiresAt: OffsetDateTime,
+  val createdAt: OffsetDateTime?,
+)
+
 data class InvitationPreviewView(
   val type: InvitationType,
   val tenant: TenantSummary,

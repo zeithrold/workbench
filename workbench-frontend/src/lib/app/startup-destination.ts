@@ -6,7 +6,7 @@ export interface StartupContext {
   pathname: string
 }
 
-export type StartupDestination = '/' | '/login' | '/setup' | '/setup/complete' | null
+export type StartupDestination = '/' | '/login' | '/manage/instance' | '/setup' | '/setup/complete' | null
 
 export function startupDestination({ initialized, session, pathname }: StartupContext): StartupDestination {
   if (!initialized)
@@ -15,8 +15,11 @@ export function startupDestination({ initialized, session, pathname }: StartupCo
   if (!session)
     return pathname === '/login' ? null : '/login'
 
-  if (!session.activeTenant)
+  if (!session.activeTenant) {
+    if (session.adminScopes.includes('INSTANCE'))
+      return pathname.startsWith('/manage') ? null : '/manage/instance'
     return pathname === '/setup/complete' ? null : '/setup/complete'
+  }
 
   return pathname === '/setup' || pathname === '/setup/complete' || pathname === '/login'
     ? '/'

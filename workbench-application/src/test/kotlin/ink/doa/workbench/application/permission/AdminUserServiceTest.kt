@@ -10,12 +10,15 @@ import ink.doa.workbench.identity.permission.AdminUserCommandRepository
 import ink.doa.workbench.identity.permission.AdminUserQueryRepository
 import ink.doa.workbench.identity.permission.AdminUserRecord
 import ink.doa.workbench.identity.permission.AdminUserStatus
+import ink.doa.workbench.identity.permission.GrantScope
 import ink.doa.workbench.kernel.common.ids.PublicId
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -63,16 +66,30 @@ class AdminUserServiceTest :
     "revokeAdmin returns false when admin is missing" {
       coEvery { adminUserQueries.findByApiId("adm_missing") } returns null
 
-      runBlocking { service.revokeAdmin("adm_missing") } shouldBe false
+      runBlocking { service.revokeInstanceAdmin("adm_missing") } shouldBe false
     }
 
     "revokeAdmin delegates to command repository" {
-      val record = sampleAdminRecord(UUID.randomUUID(), AdminScope.TENANT, UUID.randomUUID())
+      val record = sampleAdminRecord(UUID.randomUUID(), AdminScope.INSTANCE, null)
       coEvery { adminUserQueries.findByApiId(record.apiId.value) } returns record
+      coEvery { adminUserQueries.listInstanceAdmins() } returns
+        listOf(record, sampleAdminRecord(UUID.randomUUID(), AdminScope.INSTANCE, null))
+      coEvery { accessGrants.listBySubject(record.userId, GrantScope.INSTANCE, null, null) } returns
+        emptyList()
       coEvery { adminUserCommands.revoke(record.id, any()) } returns true
 
-      runBlocking { service.revokeAdmin(record.apiId.value) } shouldBe true
+      runBlocking { service.revokeInstanceAdmin(record.apiId.value) } shouldBe true
       coVerify { adminUserCommands.revoke(record.id, OffsetDateTime.parse("2026-07-04T00:00:00Z")) }
+    }
+
+    "revokeInstanceAdmin protects the last active administrator" {
+      val record = sampleAdminRecord(UUID.randomUUID(), AdminScope.INSTANCE, null)
+      coEvery { adminUserQueries.findByApiId(record.apiId.value) } returns record
+      coEvery { adminUserQueries.listInstanceAdmins() } returns listOf(record)
+
+      shouldThrow<ink.doa.workbench.kernel.common.errors.ResourceConflictException> {
+        runBlocking { service.revokeInstanceAdmin(record.apiId.value) }
+      }
     }
 
     "listInstanceAdmins maps records with user details" {
@@ -97,6 +114,46 @@ class AdminUserServiceTest :
 
       result.scope shouldBe AdminScope.TENANT
       result.tenantId shouldBe tenantId.toString()
+    }
+
+    "grantTenantAdmin restores existing membership and provisions permission binding" {
+      val user = sampleUser()
+      val tenantId = UUID.randomUUID()
+      val member = mockk<ink.doa.workbench.identity.model.TenantMemberRecord>()
+      val memberId = UUID.randomUUID()
+      val bootstrap = mockk<PermissionBootstrapService>()
+      val record = sampleAdminRecord(user.id, AdminScope.TENANT, tenantId)
+      coEvery { publicIds.resolveUser(user.apiId.value) } returns user
+      every { member.id } returns memberId
+      every { member.status } returns ink.doa.workbench.identity.model.TenantMemberStatus.SUSPENDED
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, user.id) } returns member
+      coEvery { tenantMembers.updateStatus(any(), any(), any()) } returns member
+      coEvery { adminUserCommands.create(any()) } returns record
+      coEvery { bootstrap.provisionTenantAdmin(tenantId, user.id, null) } returns Unit
+      val configured =
+        AdminUserService(
+          AdminUserPersistenceSupport(
+            adminUserCommands,
+            adminUserQueries,
+            accessGrants,
+            userRepository,
+            tenantMembers,
+          ),
+          publicIds,
+          clock,
+          bootstrap,
+        )
+
+      runBlocking { configured.grantTenantAdmin(tenantId, user.apiId.value, null) }
+
+      coVerify {
+        tenantMembers.updateStatus(
+          memberId,
+          ink.doa.workbench.identity.model.TenantMemberStatus.ACTIVE,
+          any(),
+        )
+      }
+      coVerify { bootstrap.provisionTenantAdmin(tenantId, user.id, null) }
     }
 
     "listTenantAdmins maps tenant admin records" {
@@ -126,6 +183,52 @@ class AdminUserServiceTest :
 
       result.userId shouldBe user.apiId.value
       coVerify(exactly = 7) { accessGrants.create(any()) }
+    }
+
+    "revokeTenantAdmin removes binding grants and administrator identity" {
+      val tenantId = UUID.randomUUID()
+      val record = sampleAdminRecord(UUID.randomUUID(), AdminScope.TENANT, tenantId)
+      val other = sampleAdminRecord(UUID.randomUUID(), AdminScope.TENANT, tenantId)
+      val grant = mockk<ink.doa.workbench.identity.permission.AccessGrantRecord>()
+      val bootstrap = mockk<PermissionBootstrapService>()
+      every { grant.id } returns UUID.randomUUID()
+      every { grant.validTo } returns null
+      coEvery { adminUserQueries.findByApiId(record.apiId.value) } returns record
+      coEvery { adminUserQueries.listTenantAdmins(tenantId) } returns listOf(record, other)
+      coEvery { bootstrap.revokeTenantAdmin(tenantId, record.userId) } returns true
+      coEvery {
+        accessGrants.listBySubject(record.userId, GrantScope.TENANT, tenantId, null)
+      } returns listOf(grant)
+      coEvery { accessGrants.expire(grant.id, any()) } returns true
+      coEvery { adminUserCommands.revoke(record.id, any()) } returns true
+      val configured =
+        AdminUserService(
+          AdminUserPersistenceSupport(
+            adminUserCommands,
+            adminUserQueries,
+            accessGrants,
+            userRepository,
+            tenantMembers,
+          ),
+          publicIds,
+          clock,
+          bootstrap,
+        )
+
+      runBlocking { configured.revokeTenantAdmin(tenantId, record.apiId.value) } shouldBe true
+      coVerify { bootstrap.revokeTenantAdmin(tenantId, record.userId) }
+      coVerify { accessGrants.expire(grant.id, any()) }
+    }
+
+    "revokeTenantAdmin protects the last active tenant administrator" {
+      val tenantId = UUID.randomUUID()
+      val record = sampleAdminRecord(UUID.randomUUID(), AdminScope.TENANT, tenantId)
+      coEvery { adminUserQueries.findByApiId(record.apiId.value) } returns record
+      coEvery { adminUserQueries.listTenantAdmins(tenantId) } returns listOf(record)
+
+      shouldThrow<ink.doa.workbench.kernel.common.errors.ResourceConflictException> {
+        runBlocking { service.revokeTenantAdmin(tenantId, record.apiId.value) }
+      }
     }
   })
 

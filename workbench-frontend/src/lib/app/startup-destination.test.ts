@@ -28,6 +28,12 @@ describe('startupDestination', () => {
     expect(startupDestination({ initialized: true, session, pathname: '/setup/complete' })).toBeNull()
   })
 
+  it('routes a tenantless instance administrator to management', () => {
+    const session: Session = { ...tenantSession, activeTenant: null, adminScopes: ['INSTANCE'] }
+    expect(startupDestination({ initialized: true, session, pathname: '/' })).toBe('/manage/instance')
+    expect(startupDestination({ initialized: true, session, pathname: '/manage/instance' })).toBeNull()
+  })
+
   it('keeps tenant sessions in the app and leaves app routes unchanged', () => {
     expect(startupDestination({ initialized: true, session: tenantSession, pathname: '/login' })).toBe('/')
     expect(startupDestination({ initialized: true, session: tenantSession, pathname: '/' })).toBeNull()

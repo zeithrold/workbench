@@ -114,6 +114,11 @@ class PermissionBootstrapService(
   private val bindings: PermissionBindingRepository,
   private val clock: Clock,
 ) {
+  suspend fun revokeTenantAdmin(tenantId: UUID, userId: UUID): Boolean {
+    val adminGroup = groups.findByCode(tenantId, TENANT_ADMIN_GROUP) ?: return false
+    return groups.removeMember(adminGroup.id, userId, OffsetDateTime.now(clock))
+  }
+
   suspend fun provisionTenantAdmin(
     tenantId: UUID,
     userId: UUID,

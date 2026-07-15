@@ -167,7 +167,17 @@ class SessionControllerSecurityTest(@Autowired private val mockMvc: MockMvc) {
     override suspend fun findByTenantAndUser(tenantId: UUID, userId: UUID): TenantMemberRecord? =
       null
 
+    override suspend fun findByApiId(tenantId: UUID, apiId: String): TenantMemberRecord? = null
+
+    override suspend fun listByTenant(tenantId: UUID): List<TenantMemberRecord> = emptyList()
+
     override suspend fun listByUser(userId: UUID): List<TenantMemberRecord> = emptyList()
+
+    override suspend fun updateStatus(
+      id: UUID,
+      status: ink.doa.workbench.identity.model.TenantMemberStatus,
+      updatedAt: OffsetDateTime,
+    ): TenantMemberRecord? = null
   }
 
   private object TestTenants : TenantRepository {

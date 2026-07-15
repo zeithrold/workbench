@@ -9,6 +9,7 @@ import ink.doa.workbench.identity.permission.CreateAccessGrantCommand
 import ink.doa.workbench.identity.permission.CreateAdminUserCommand
 import ink.doa.workbench.identity.permission.GrantScope
 import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.kernel.common.errors.ResourceConflictException
 import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
 import ink.doa.workbench.kernel.common.errors.WorkbenchErrorCode
 import java.time.Clock
@@ -69,6 +70,20 @@ class AdminUserService(
   ): AdminUserView {
     val user = publicIds.resolveUser(userPublicId)
     val now = now()
+    val membership = persistence.tenantMembers.findByTenantAndUser(tenantId, user.id)
+    if (membership == null) {
+      persistence.tenantMembers.create(
+        CreateTenantMemberCommand(
+          tenantId = tenantId,
+          userId = user.id,
+          status = TenantMemberStatus.ACTIVE,
+          joinedAt = now,
+          invitedBy = actorUserId,
+        )
+      )
+    } else if (membership.status != TenantMemberStatus.ACTIVE) {
+      persistence.tenantMembers.updateStatus(membership.id, TenantMemberStatus.ACTIVE, now)
+    }
     val record =
       persistence.adminUserCommands.create(
         CreateAdminUserCommand(
@@ -79,6 +94,7 @@ class AdminUserService(
           validFrom = now,
         )
       )
+    permissionBootstrapService?.provisionTenantAdmin(tenantId, user.id, actorUserId)
     return AdminUserView.from(record, user)
   }
 
@@ -130,9 +146,33 @@ class AdminUserService(
     return AdminUserView.from(record, user)
   }
 
-  suspend fun revokeAdmin(publicId: String): Boolean {
+  suspend fun revokeInstanceAdmin(publicId: String): Boolean {
     val admin = persistence.adminUserQueries.findByApiId(publicId) ?: return false
-    return persistence.adminUserCommands.revoke(admin.id, now())
+    if (admin.scope != AdminScope.INSTANCE) return false
+    if (persistence.adminUserQueries.listInstanceAdmins().size <= 1) {
+      throw ResourceConflictException(WorkbenchErrorCode.INSTANCE_LAST_ADMIN_REQUIRED)
+    }
+    val revokedAt = now()
+    persistence.accessGrants
+      .listBySubject(admin.userId, GrantScope.INSTANCE, null, null)
+      .filter { it.validTo == null }
+      .forEach { persistence.accessGrants.expire(it.id, revokedAt) }
+    return persistence.adminUserCommands.revoke(admin.id, revokedAt)
+  }
+
+  suspend fun revokeTenantAdmin(tenantId: UUID, publicId: String): Boolean {
+    val admin = persistence.adminUserQueries.findByApiId(publicId) ?: return false
+    if (admin.scope != AdminScope.TENANT || admin.tenantId != tenantId) return false
+    if (persistence.adminUserQueries.listTenantAdmins(tenantId).size <= 1) {
+      throw ResourceConflictException(WorkbenchErrorCode.TENANT_LAST_ADMIN_REQUIRED)
+    }
+    val revokedAt = now()
+    permissionBootstrapService?.revokeTenantAdmin(tenantId, admin.userId)
+    persistence.accessGrants
+      .listBySubject(admin.userId, GrantScope.TENANT, tenantId, null)
+      .filter { it.validTo == null }
+      .forEach { persistence.accessGrants.expire(it.id, revokedAt) }
+    return persistence.adminUserCommands.revoke(admin.id, revokedAt)
   }
 
   private suspend fun requireUser(userId: UUID): UserRecord =

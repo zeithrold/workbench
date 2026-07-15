@@ -10,6 +10,8 @@ enum class WorkbenchErrorCode(
   RESOURCE_PROJECT_NOT_FOUND("resource.project.not_found", "Project not found."),
   RESOURCE_USER_NOT_FOUND("resource.user.not_found", "User not found."),
   RESOURCE_ADMIN_USER_NOT_FOUND("resource.admin_user.not_found", "Admin user not found."),
+  RESOURCE_TENANT_MEMBER_NOT_FOUND("resource.tenant_member.not_found", "Tenant member not found."),
+  RESOURCE_INVITATION_NOT_FOUND("resource.invitation.not_found", "Invitation not found."),
   RESOURCE_LOGIN_METHOD_NOT_FOUND("resource.login_method.not_found", "Login method not found."),
   RESOURCE_PASSWORD_LOGIN_METHOD_NOT_FOUND(
     "resource.login_method.password.not_found",
@@ -96,6 +98,14 @@ enum class WorkbenchErrorCode(
   AUTH_PERMISSION_NO_MATCHING_BINDING(
     "auth.permission.no_matching_binding",
     "No active policy binding allows the request.",
+  ),
+  INSTANCE_LAST_ADMIN_REQUIRED(
+    "instance.last_admin.required",
+    "The last active instance administrator cannot be removed.",
+  ),
+  TENANT_LAST_ADMIN_REQUIRED(
+    "tenant.last_admin.required",
+    "The last active tenant administrator cannot be removed.",
   ),
   SESSION_ACTIVE_NOT_FOUND("session.active.not_found", "Active session not found."),
   SESSION_TENANT_UPDATE_FAILED("session.tenant.update_failed", "Unable to update session tenant."),

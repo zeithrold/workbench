@@ -12,7 +12,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "flattened baseline creates the complete PostgreSQL schema" {
       withMigratedPostgres { jdbc, result, _ ->
-        result.migrationsExecuted shouldBe 4
+        result.migrationsExecuted shouldBe 5
 
         jdbc.queryForObject(
           """
@@ -51,7 +51,7 @@ class PostgresMigrationIntegrationTest :
 
         val actionCodes =
           jdbc.queryForList("SELECT code FROM permission_actions", String::class.java)
-        actionCodes.size shouldBe 43
+        actionCodes.size shouldBe 46
         actionCodes shouldContainAll
           listOf(
             "tenant.access",
@@ -60,6 +60,9 @@ class PostgresMigrationIntegrationTest :
             "sprint.workitem.disposition",
             "notification.manage",
             "outbox.manage",
+            "instance.read",
+            "instance.admin.manage",
+            "operations.read",
           )
       }
     }
@@ -67,7 +70,7 @@ class PostgresMigrationIntegrationTest :
     "flattened baseline is idempotent through Flyway history" {
       withMigratedPostgres { _, _, flyway ->
         flyway.migrate().migrationsExecuted shouldBe 0
-        flyway.info().applied().size shouldBe 4
+        flyway.info().applied().size shouldBe 5
       }
     }
   })

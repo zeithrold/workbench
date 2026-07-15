@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Workbench API
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
- * OpenAPI spec version: 2026-07-13
+ * OpenAPI spec version: 2026-07-15
  */
 
 export * from './acceptExistingInvitationRequest';
@@ -44,6 +44,7 @@ export * from './createWorkItemRequest';
 export * from './createWorkItemViewRequest';
 export * from './deleteSprintRequest';
 export * from './deleteWorkItemRequest';
+export * from './deliveryTrendPoint';
 export * from './destroyProjectRequest';
 export * from './destroyTenantRequest';
 export * from './ensureActionRequest';
@@ -51,8 +52,14 @@ export * from './federatedAuthorizeRequest';
 export * from './federatedAuthorizeResponse';
 export * from './grantAdminRequest';
 export * from './groupMemberResponse';
+export * from './infrastructureComponentResponse';
 export * from './initiateWorkItemAttachmentUploadRequest';
 export * from './instanceBootstrapResponse';
+export * from './instanceCapabilityResponse';
+export * from './instanceContextSummary';
+export * from './instanceOperationsResponse';
+export * from './instanceOperationsResponseDeliveries';
+export * from './instanceOperationsResponseMetrics';
 export * from './instanceSetupRequest';
 export * from './instanceSetupStatusResponse';
 export * from './invitationAcceptResponse';
@@ -94,6 +101,7 @@ export * from './loginRequest';
 export * from './loginRequestMethod';
 export * from './loginResponse';
 export * from './magicLinkRequest';
+export * from './managedInvitationResponse';
 export * from './membershipResponse';
 export * from './oauthCallbackParams';
 export * from './outboxDeliveryQuery';
@@ -129,6 +137,8 @@ export * from './sprintResponse';
 export * from './switchTenantRequest';
 export * from './tenantAdminAssignmentRequest';
 export * from './tenantAdminAssignmentRequestMode';
+export * from './tenantCapabilityResponse';
+export * from './tenantMemberResponse';
 export * from './tenantResponse';
 export * from './tenantSummary';
 export * from './transitionWorkItemRequest';

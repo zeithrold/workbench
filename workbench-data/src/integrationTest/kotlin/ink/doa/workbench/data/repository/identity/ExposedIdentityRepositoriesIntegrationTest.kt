@@ -64,6 +64,7 @@ class ExposedIdentityRepositoriesIntegrationTest :
           ExposedLoginDiscoveryRepository(database, loginAccounts, userLoginAccounts)
 
         val user = users.create(CreateUserCommand("Ada", "ada@example.test"))
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
         val member =
           members.create(
             CreateTenantMemberCommand(
@@ -73,6 +74,12 @@ class ExposedIdentityRepositoriesIntegrationTest :
               joinedAt = OffsetDateTime.now(ZoneOffset.UTC),
             )
           )
+        members.findByApiId(tenantId, member.apiId.value)?.id shouldBe member.id
+        members.listByTenant(tenantId).map { it.id } shouldBe listOf(member.id)
+        members.updateStatus(member.id, TenantMemberStatus.SUSPENDED, now)?.status shouldBe
+          TenantMemberStatus.SUSPENDED
+        members.updateStatus(member.id, TenantMemberStatus.ACTIVE, now)?.status shouldBe
+          TenantMemberStatus.ACTIVE
         val method = loginMethods.findLoginMethodByCode("password").shouldNotBeNull()
         tenantLoginSettings.createTenantSetting(
           CreateTenantLoginMethodSettingCommand(tenantId = tenantId, loginMethodId = method.id)
