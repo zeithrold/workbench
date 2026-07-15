@@ -42,13 +42,17 @@ jobs:
       max-parallel: 4
       matrix:
         include:
-          - module: core
+          - module: kernel
             timeout: 30
-          - module: service
+          - module: application
             timeout: 30
           - module: agile
             timeout: 30
           - module: tenant
+            timeout: 30
+          - module: identity
+            timeout: 30
+          - module: notification
             timeout: 30
           - module: data
             timeout: 45
