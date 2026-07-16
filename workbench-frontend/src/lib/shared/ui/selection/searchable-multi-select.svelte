@@ -6,7 +6,7 @@
   import { cn } from '$lib/utils.js'
   import { ChevronDown, X } from '@lucide/svelte'
   import { tick } from 'svelte'
-  import { dropdownInTransition, dropdownOutTransition } from './dropdown-transition.js'
+  import { dropdownInTransition } from './dropdown-transition.js'
   import SelectorLoading from './selector-loading.svelte'
   import { filterSelectorOptions, prioritizeSelectedOptions, selectedOptions, toggleSelectorValue } from './selector-model.js'
   import SelectorOptionView from './selector-option.svelte'
@@ -115,7 +115,7 @@
     </span>
   </button>
   {#if open}
-    <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
+    <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 shadow-lg' in:dropdownInTransition>
       <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label={m.options()}>
         <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder={m.search()} />
         <ScrollArea class='h-52'>

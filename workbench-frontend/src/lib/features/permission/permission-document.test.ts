@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clonePermissionCondition,
   emptyPermissionPolicyDocument,
   parsePermissionDocument,
   serializePermissionDocument,
+  withPermissionUiIds,
 } from './permission-document.js'
 
 describe('permission policy document', () => {
@@ -66,5 +68,21 @@ describe('permission policy document', () => {
     expect(parsePermissionDocument('{')).toEqual({
       errors: ['Document must be valid JSON.'],
     })
+  })
+
+  it('keeps UI node IDs out of serialized backend documents', () => {
+    const condition = withPermissionUiIds({ field: 'issue.reporter', op: 'eq', value: { var: 'user.currentUser' } })
+    const document = { ...emptyPermissionPolicyDocument(), code: 'ui-ids', name: 'UI IDs', rules: [{ action: 'issue.view', resourcePattern: 'issue:*', effect: 'ALLOW' as const, condition }] }
+
+    expect(condition.uiId).toBeTruthy()
+    expect(serializePermissionDocument(document)).not.toContain('uiId')
+  })
+
+  it('allocates fresh IDs when cloning a condition tree', () => {
+    const condition = withPermissionUiIds({ op: 'and', args: [{ field: 'issue.reporter', op: 'eq', value: { var: 'user.currentUser' } }] })
+    const clone = clonePermissionCondition(condition)
+
+    expect(clone.uiId).not.toBe(condition.uiId)
+    expect('args' in clone && 'args' in condition && clone.args[0]?.uiId).not.toBe('args' in condition ? condition.args[0]?.uiId : undefined)
   })
 })

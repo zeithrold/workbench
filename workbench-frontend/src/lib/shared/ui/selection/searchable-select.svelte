@@ -1,4 +1,5 @@
 <script lang='ts'>
+  import type { Snippet } from 'svelte'
   import type { SelectorOption } from './selector-model.js'
   import * as Command from '$lib/components/ui/command'
   import { ScrollArea } from '$lib/components/ui/scroll-area'
@@ -6,7 +7,7 @@
   import { cn } from '$lib/utils.js'
   import { ChevronDown, X } from '@lucide/svelte'
   import { tick } from 'svelte'
-  import { dropdownInTransition, dropdownOutTransition } from './dropdown-transition.js'
+  import { dropdownInTransition } from './dropdown-transition.js'
   import SelectorLoading from './selector-loading.svelte'
   import { filterSelectorOptions, prioritizeSelectedOptions } from './selector-model.js'
   import SelectorOptionView from './selector-option.svelte'
@@ -24,6 +25,8 @@
     loading = false,
     onSearchChange,
     class: className,
+    triggerContent,
+    optionContent,
   }: {
     value?: string | null
     options: SelectorOption[]
@@ -37,6 +40,8 @@
     loading?: boolean
     onSearchChange?: (query: string) => void
     class?: string
+    triggerContent?: Snippet<[SelectorOption]>
+    optionContent?: Snippet<[SelectorOption]>
   } = $props()
 
   let open = $state(false)
@@ -46,6 +51,18 @@
   let root: HTMLDivElement | null = $state(null)
   const selected = $derived(options.find(option => option.id === value))
   const filtered = $derived(prioritizeSelectedOptions(filterSelectorOptions(options, query), value ? [value] : []))
+  const groups = $derived.by(() => {
+    const result: Array<[string, SelectorOption[]]> = []
+    for (const option of filtered) {
+      const group = option.group ?? ''
+      const existing = result.find(([name]) => name === group)
+      if (existing)
+        existing[1].push(option)
+      else
+        result.push([group, [option]])
+    }
+    return result
+  })
 
   async function show() {
     if (disabled)
@@ -59,12 +76,17 @@
   function close() {
     open = false
     query = ''
+    commandValue = ''
     onSearchChange?.('')
   }
 
   function choose(id: string) {
-    onValueChange(id)
+    if (id === value) {
+      close()
+      return
+    }
     close()
+    onValueChange(id)
   }
 
   function clearSelection(event: MouseEvent) {
@@ -73,21 +95,25 @@
   }
 
   function handleTriggerKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      close()
+      return
+    }
     if ((event.key === 'Delete' || event.key === 'Backspace') && selected && clearable && !required) {
       event.preventDefault()
       onValueChange(null)
     }
   }
 
-  function handleWindowClick(event: MouseEvent) {
-    if (open && root && !root.contains(event.target as Node))
-      close()
-  }
-
   function updateQuery(event: Event) {
     query = (event.currentTarget as HTMLInputElement).value
     commandValue = filtered[0]?.id ?? ''
     onSearchChange?.(query)
+  }
+
+  function handleWindowClick(event: MouseEvent) {
+    if (open && root && !root.contains(event.target as Node))
+      close()
   }
 </script>
 
@@ -104,7 +130,9 @@
     onclick={() => open ? close() : void show()}
     onkeydown={handleTriggerKeydown}
   >
-    {#if selected}<SelectorOptionView option={selected} compact />{:else}<span class='truncate text-muted-foreground'>{placeholder}</span>{/if}
+    {#if selected}
+      {#if triggerContent}{@render triggerContent(selected)}{:else}<SelectorOptionView option={selected} compact />{/if}
+    {:else}<span class='truncate text-muted-foreground'>{placeholder}</span>{/if}
     <span class='ml-auto flex shrink-0 items-center'>
       {#if selected && clearable && !required}
         <span
@@ -119,7 +147,7 @@
   </button>
 
   {#if open}
-    <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 text-popover-foreground shadow-lg' in:dropdownInTransition out:dropdownOutTransition>
+    <div class='absolute z-50 mt-1 w-full min-w-64 origin-top rounded-md border bg-popover p-1 text-popover-foreground shadow-lg' in:dropdownInTransition>
       <Command.Root bind:value={commandValue} shouldFilter={false} loop class='rounded-md p-0' label={m.options()}>
         <Command.Input bind:ref={searchInput} value={query} oninput={updateQuery} placeholder={searchPlaceholder} />
         <ScrollArea class='h-52'>
@@ -129,13 +157,15 @@
             {:else if filtered.length === 0}
               <Command.Empty>{emptyText}</Command.Empty>
             {:else}
-              <Command.Group>
-                {#each filtered as option (option.id)}
-                  <Command.Item value={option.id} onSelect={() => choose(option.id)} class='w-full py-2' data-checked={option.id === value}>
-                    <SelectorOptionView {option} />
-                  </Command.Item>
-                {/each}
-              </Command.Group>
+              {#each groups as [group, groupOptions] (group)}
+                <Command.Group heading={group || undefined}>
+                  {#each groupOptions as option (option.id)}
+                    <Command.Item value={option.id} onSelect={() => choose(option.id)} class='w-full py-2' data-checked={option.id === value}>
+                      {#if optionContent}{@render optionContent(option)}{:else}<SelectorOptionView {option} />{/if}
+                    </Command.Item>
+                  {/each}
+                </Command.Group>
+              {/each}
             {/if}
           </Command.List>
         </ScrollArea>

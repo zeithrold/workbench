@@ -18,10 +18,19 @@ export type PermissionConditionValue
       var: 'user.currentUser' | 'issue.reporter' | 'issue.assignee'
     }
 
+export function clonePermissionConditionValue(value: PermissionConditionValue): PermissionConditionValue {
+  if (Array.isArray(value))
+    return value.map(clonePermissionConditionValue)
+  if (typeof value === 'object' && value !== null)
+    return { var: value.var }
+  return value
+}
+
 export type PermissionCondition
-  = | { op: 'and' | 'or', args: PermissionCondition[] }
-    | { op: 'not', arg: PermissionCondition }
+  = | { uiId?: string, op: 'and' | 'or', args: PermissionCondition[] }
+    | { uiId?: string, op: 'not', arg: PermissionCondition }
     | {
+      uiId?: string
       field: PermissionConditionField
       op: PermissionConditionOperator
       value?: PermissionConditionValue
@@ -125,7 +134,56 @@ export function emptyPermissionPredicate(): PermissionCondition {
 export function serializePermissionDocument(
   document: PermissionPolicyDocument,
 ): string {
-  return `${JSON.stringify(document, null, 2)}\n`
+  return `${JSON.stringify(stripPermissionUiIds(document), null, 2)}\n`
+}
+
+let nextPermissionNodeId = 0
+
+function createPermissionNodeId(): string {
+  nextPermissionNodeId += 1
+  return `permission-node-${nextPermissionNodeId}`
+}
+
+export function withPermissionUiIds(condition: PermissionCondition): PermissionCondition {
+  if ('field' in condition)
+    return { ...condition, uiId: condition.uiId ?? createPermissionNodeId() }
+  if (condition.op === 'not')
+    return { ...condition, uiId: condition.uiId ?? createPermissionNodeId(), arg: withPermissionUiIds(condition.arg) }
+  return { ...condition, uiId: condition.uiId ?? createPermissionNodeId(), args: condition.args.map(withPermissionUiIds) }
+}
+
+export function clonePermissionCondition(condition: PermissionCondition): PermissionCondition {
+  const clone = JSON.parse(JSON.stringify(condition)) as PermissionCondition
+  function refresh(node: PermissionCondition): PermissionCondition {
+    if ('field' in node)
+      return { ...node, uiId: createPermissionNodeId() }
+    if (node.op === 'not')
+      return { ...node, uiId: createPermissionNodeId(), arg: refresh(node.arg) }
+    return { ...node, uiId: createPermissionNodeId(), args: node.args.map(refresh) }
+  }
+  return refresh(clone)
+}
+
+export function stripPermissionUiIds(document: PermissionPolicyDocument): PermissionPolicyDocument {
+  function stripCondition(condition: PermissionCondition): PermissionCondition {
+    if ('field' in condition) {
+      const { uiId: _, ...predicate } = condition
+      return predicate
+    }
+    if (condition.op === 'not') {
+      const { uiId: _, ...logical } = condition
+      return { ...logical, arg: stripCondition(condition.arg) }
+    }
+    const { uiId: _, ...logical } = condition
+    return { ...logical, args: condition.args.map(stripCondition) }
+  }
+  return {
+    ...document,
+    rules: document.rules.map(rule => ({
+      ...rule,
+      condition: rule.condition ? stripCondition(rule.condition) : rule.condition,
+    })),
+  }
 }
 
 export function parsePermissionDocument(
