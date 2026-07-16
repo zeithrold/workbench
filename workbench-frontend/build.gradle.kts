@@ -47,6 +47,7 @@ tasks.register<PnpmTask>("pnpmTest") {
 tasks.register<PnpmTask>("pnpmBuild") {
     dependsOn("prepareFrontendEnv", "pnpmInstall")
     args.set(listOf("build"))
+    environment.put("PUBLIC_SESSION_GATEWAY", "api")
 }
 
 tasks.register<PnpmTask>("pnpmCoverageUnit") {

@@ -90,7 +90,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.{test,spec}.{ts,js}'],
+          include: ['src/**/*.{test,spec}.{ts,js}', 'scripts/**/*.{test,spec}.{ts,js}'],
           environment: 'jsdom',
           setupFiles: ['src/test-setup.ts'],
         },

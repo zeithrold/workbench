@@ -15,6 +15,7 @@ export const nextcov: NextcovConfig = {
     'src/**/*.spec.{ts,js}',
     'src/**/*.stories.{ts,js}',
     'src/**/*.svelte',
+    'src/lib/paraglide/**',
   ],
   reporters: ['html', 'lcov', 'json', 'text-summary'],
 }

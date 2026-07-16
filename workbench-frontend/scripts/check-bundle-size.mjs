@@ -1,12 +1,27 @@
-import { readdir, stat } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 export const DEFAULT_MAX_CHUNK_BYTES = 500 * 1024
+const MONACO_WORKER_PATTERN = /^workers\/(?:css|editor|html|json|ts)\.worker-[^.]+\.js$/
 
-export function oversizedChunks(chunks, maxBytes = DEFAULT_MAX_CHUNK_BYTES) {
-  return chunks.filter(chunk => chunk.bytes > maxBytes)
+export function monacoBundleFiles(chunks, manifest) {
+  const files = Object.values(manifest)
+    .filter(entry => entry.name === 'json-editor-implementation'
+      || entry.name?.startsWith('editor.api')
+      || entry.name?.startsWith('monaco.')
+      || entry.src?.includes('/monaco-editor/'))
+    .map(entry => entry.file.replace(/^_app\/immutable\//, ''))
+
+  return new Set([
+    ...files,
+    ...chunks.filter(chunk => MONACO_WORKER_PATTERN.test(chunk.file)).map(chunk => chunk.file),
+  ])
+}
+
+export function oversizedChunks(chunks, maxBytes = DEFAULT_MAX_CHUNK_BYTES, ignoredFiles = new Set()) {
+  return chunks.filter(chunk => !ignoredFiles.has(chunk.file) && chunk.bytes > maxBytes)
 }
 
 export function summarizeChunks(chunks, limit = 10) {
@@ -40,12 +55,15 @@ async function javascriptChunks(directory) {
 
 export async function checkBundleSize({
   directory = '.svelte-kit/output/client/_app/immutable',
+  manifestFile = '.svelte-kit/output/client/.vite/manifest.json',
   maxBytes = DEFAULT_MAX_CHUNK_BYTES,
 } = {}) {
   const chunks = await javascriptChunks(directory)
-  const oversized = oversizedChunks(chunks, maxBytes)
+  const manifest = JSON.parse(await readFile(manifestFile, 'utf8'))
+  const ignoredFiles = monacoBundleFiles(chunks, manifest)
+  const oversized = oversizedChunks(chunks, maxBytes, ignoredFiles)
   if (oversized.length === 0)
-    return chunks
+    return chunks.filter(chunk => !ignoredFiles.has(chunk.file))
 
   const details = oversized
     .map(chunk => `  - ${chunk.file}: ${(chunk.bytes / 1024).toFixed(2)} KiB`)

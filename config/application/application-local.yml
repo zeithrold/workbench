@@ -10,6 +10,8 @@ spring:
   kafka:
     bootstrap-servers: localhost:19092
 workbench:
+  session-cookie:
+    secure: false
   elasticsearch:
     url: http://localhost:9200
   storage:

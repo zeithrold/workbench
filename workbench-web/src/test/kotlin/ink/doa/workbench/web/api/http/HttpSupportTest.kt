@@ -6,6 +6,7 @@ import ink.doa.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import ink.doa.workbench.web.identity.LoginResponse
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import jakarta.servlet.http.Cookie
 import java.time.Clock
 import java.time.Instant
@@ -61,6 +62,13 @@ class SessionCookieWriterTest {
 
     entity.statusCode.value() shouldBe 201
     entity.headers.getFirst(HttpHeaders.SET_COOKIE).shouldContain("bootstrap-secret")
+  }
+
+  @Test
+  fun `session cookie can be non-secure for local http profiles`() {
+    val response = SessionCookieWriter(clock, secure = false).logoutResponse()
+
+    response.headers.getFirst(HttpHeaders.SET_COOKIE).shouldNotContain("Secure")
   }
 }
 

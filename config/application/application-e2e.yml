@@ -11,6 +11,8 @@ spring:
     bootstrap-servers: ${E2E_KAFKA_BOOTSTRAP:localhost:19092}
 
 workbench:
+  session-cookie:
+    secure: false
   elasticsearch:
     url: ${E2E_ELASTICSEARCH_URL:http://localhost:9200}
   storage:

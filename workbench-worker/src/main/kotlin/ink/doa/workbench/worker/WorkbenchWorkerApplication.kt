@@ -1,6 +1,6 @@
 package ink.doa.workbench.worker
 
-import ink.doa.workbench.application.ApplicationModuleConfiguration
+import ink.doa.workbench.application.WorkerApplicationModuleConfiguration
 import ink.doa.workbench.data.DataModuleConfiguration
 import ink.doa.workbench.worker.messaging.DebeziumProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -15,7 +15,10 @@ import org.springframework.scheduling.annotation.EnableScheduling
 @EnableScheduling
 @EnableKafka
 @EnableConfigurationProperties(DebeziumProperties::class)
-@Import(ApplicationModuleConfiguration::class, DataModuleConfiguration::class)
+@Import(
+  WorkerApplicationModuleConfiguration::class,
+  DataModuleConfiguration::class,
+)
 @SpringBootApplication
 class WorkbenchWorkerApplication
 
