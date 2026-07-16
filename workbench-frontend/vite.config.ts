@@ -9,6 +9,7 @@ import { playwright } from '@vitest/browser-playwright'
 import { defineConfig } from 'vitest/config'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
+const backendOrigin = process.env.WORKBENCH_BACKEND_ORIGIN ?? 'http://127.0.0.1:8080'
 
 const coverageInclude = ['src/**/*.{ts,js}']
 const coverageExclude = [
@@ -22,12 +23,12 @@ const coverageExclude = [
 export default defineConfig({
   server: {
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
+      '/api': backendOrigin,
     },
   },
   preview: {
     proxy: {
-      '/api': 'http://127.0.0.1:8080',
+      '/api': backendOrigin,
     },
   },
   build: {

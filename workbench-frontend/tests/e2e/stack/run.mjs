@@ -3,7 +3,6 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
-import { DockerComposeEnvironment, Wait } from 'testcontainers'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
 const frontendRoot = path.join(repoRoot, 'workbench-frontend')
@@ -11,6 +10,7 @@ const playwrightConfigPath = path.join(frontendRoot, 'playwright.config.ts')
 const koverE2eDir = path.join(repoRoot, 'build/kover-e2e')
 const webJar = path.join(repoRoot, 'workbench-web/build/libs/workbench-web.jar')
 const workerJar = path.join(repoRoot, 'workbench-worker/build/libs/workbench-worker.jar')
+const infraCli = path.join(repoRoot, 'scripts/dev/ephemeral-infra')
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -32,6 +32,35 @@ async function waitForHttp(url, timeoutMs = 180_000) {
   throw new Error(`Timed out waiting for ${url}`)
 }
 
+async function waitForConnector(url, timeoutMs = 180_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) {
+        const status = await response.json()
+        const connectorRunning = status.connector?.state === 'RUNNING'
+        const tasksRunning = status.tasks?.length > 0 && status.tasks.every(task => task.state === 'RUNNING')
+        if (connectorRunning && tasksRunning)
+          return
+      }
+    }
+    catch {
+      // retry until timeout
+    }
+    await sleep(2_000)
+  }
+  throw new Error(`Timed out waiting for a RUNNING Debezium connector at ${url}`)
+}
+
+async function restartConnector(url) {
+  const response = await fetch(`${url}/restart?includeTasks=true&onlyFailed=false`, {
+    method: 'POST',
+  })
+  if (!response.ok)
+    throw new Error(`Failed to restart Debezium connector at ${url}: HTTP ${response.status}`)
+}
+
 function runProcess(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -44,6 +73,30 @@ function runProcess(command, args, options = {}) {
         resolve(child)
       else
         reject(new Error(`${command} ${args.join(' ')} exited with ${code}`))
+    })
+  })
+}
+
+function captureProcess(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      ...options,
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk
+    })
+    child.on('error', reject)
+    child.on('exit', (code) => {
+      if (code === 0)
+        resolve(stdout)
+      else
+        reject(new Error(`${command} ${args.join(' ')} exited with ${code}: ${stderr.trim()}`))
     })
   })
 }
@@ -132,41 +185,25 @@ async function finalizeFrontendCoverage() {
 }
 
 async function main() {
-  let compose
+  let infraLease
   let webProcess
   let workerProcess
   let previewProcess
 
   try {
     const { agentJar, webArgs, workerArgs } = await readKoverAgentPaths()
-
-    compose = await new DockerComposeEnvironment(repoRoot, 'docker-compose.e2e.yaml')
-      .withStartupTimeout(180_000)
-      .withWaitStrategy('postgres-1', Wait.forHealthCheck())
-      .withWaitStrategy('valkey-1', Wait.forHealthCheck())
-      .withWaitStrategy('redpanda-1', Wait.forHealthCheck())
-      .withWaitStrategy('minio-1', Wait.forHealthCheck())
-      .up()
-
-    const postgres = compose.getContainer('postgres-1')
-    const valkey = compose.getContainer('valkey-1')
-    const redpanda = compose.getContainer('redpanda-1')
-    const minio = compose.getContainer('minio-1')
-
-    const postgresPort = postgres.getMappedPort(5432)
-    const valkeyPort = valkey.getMappedPort(6379)
-    const kafkaPort = redpanda.getMappedPort(19092)
-    const minioPort = minio.getMappedPort(9000)
+    infraLease = JSON.parse(await captureProcess(
+      infraCli,
+      ['up', '--profile', 'distributed', '--ttl', '2h', '--json'],
+      { cwd: repoRoot },
+    ))
+    const manifest = infraLease
+    const connectorUrl = `${manifest.endpoints.debezium}/connectors/workbench-outbox`
 
     const springEnv = {
       ...process.env,
+      ...manifest.environment,
       SPRING_PROFILES_ACTIVE: 'local,e2e',
-      E2E_POSTGRES_HOST: 'localhost',
-      E2E_POSTGRES_PORT: String(postgresPort),
-      E2E_VALKEY_HOST: 'localhost',
-      E2E_VALKEY_PORT: String(valkeyPort),
-      E2E_KAFKA_BOOTSTRAP: `localhost:${kafkaPort}`,
-      E2E_MINIO_ENDPOINT: `http://localhost:${minioPort}`,
     }
 
     await mkdir(koverE2eDir, { recursive: true })
@@ -183,17 +220,26 @@ async function main() {
       { cwd: repoRoot, env: springEnv },
     )
 
-    await waitForHttp('http://127.0.0.1:8080/api/actuator/health')
+    await waitForHttp(`${manifest.endpoints.web}/api/actuator/health`)
+    await restartConnector(connectorUrl)
+    await waitForConnector(`${connectorUrl}/status`)
 
-    previewProcess = startProcess('pnpm', ['preview', '--host', '127.0.0.1', '--port', '4173'], {
+    previewProcess = startProcess('pnpm', [
+      'preview',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(manifest.ports.frontend),
+    ], {
       cwd: frontendRoot,
       env: {
         ...process.env,
+        ...manifest.environment,
         PUBLIC_SESSION_GATEWAY: 'api',
       },
     })
 
-    await waitForHttp('http://127.0.0.1:4173')
+    await waitForHttp(manifest.endpoints.frontend)
 
     await prepareFrontendCoverage()
 
@@ -201,7 +247,7 @@ async function main() {
       cwd: frontendRoot,
       env: {
         ...process.env,
-        E2E_BASE_URL: 'http://127.0.0.1:4173',
+        E2E_BASE_URL: manifest.endpoints.frontend,
         E2E_COLLECT_COVERAGE: 'true',
         E2E_STACK: 'true',
       },
@@ -213,8 +259,8 @@ async function main() {
     await stopProcess(previewProcess, 'frontend preview')
     await stopProcess(webProcess, 'workbench-web')
     await stopProcess(workerProcess, 'workbench-worker')
-    if (compose)
-      await compose.down()
+    if (infraLease)
+      await runProcess(infraCli, ['down', infraLease.leaseId], { cwd: repoRoot })
   }
 }
 

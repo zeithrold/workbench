@@ -10,8 +10,16 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 
 ### Infrastructure (Docker)
 - The Docker daemon is not started automatically. Start it once per VM with `sudo dockerd` (it's configured for `fuse-overlayfs` with the containerd snapshotter disabled in `/etc/docker/daemon.json`; the user is in the `docker` group). 
-- Start backing services with `docker compose up -d postgres valkey redpanda minio` for the minimal backend stack, or `docker compose up -d` for the full local stack including Debezium and Elasticsearch.
+- Start the compact local stack with `docker compose up -d`. Use `docker compose --profile distributed up -d` only when Redpanda, Debezium, and the standalone Worker are required.
 - Postgres/Valkey/Redpanda must be up before the backend/worker start (Flyway migrates Postgres at boot; Redisson connects to Valkey at startup).
+
+### Agent-owned ephemeral Infra
+- Agents must not start, stop, migrate, repair, or clean the developer-owned default Compose project unless the user explicitly asks for that environment to be diagnosed.
+- Code inspection, `quickCheck`, unit tests, builds, and ordinary integration tests do not start Compose. Integration tests use Testcontainers and only require the Docker daemon.
+- When a real application stack is required for OpenAPI generation, browser verification, or runtime debugging, use `./scripts/dev/ephemeral-infra`. The default `compact` lease starts PostgreSQL, Valkey, Elasticsearch, and MinIO; use `distributed` only for Redpanda/Debezium behavior.
+- The dependency-free Python CLI is `./scripts/dev/ephemeral-infra`. Prefer `run -- <command>` so cleanup happens on exit. For multi-step work, use `up --json`, run commands through `exec <lease-id> -- ...`, and call `down <lease-id>` when finished; a TTL reaper and `gc` provide crash recovery.
+- The tool only operates on manifests under `.gradle/agent-infra` and Compose projects named `workbench-agent-*`. Local leases bind dynamic loopback ports and always start a fresh PostgreSQL database.
+- Local Unix/npipe Docker endpoints may be used autonomously when the task requires Infra. SSH/TCP contexts are rejected; `--allow-remote` may be used only after explicit user approval because it publishes the allocated ports on the remote host. Keep an approved remote lease's TTL as short as practical.
 
 ### Services
 - Backend API (`workbench-web`, port 8080), worker (`workbench-worker`, no web server), and frontend (`workbench-frontend`, Vite port 5173). Run commands are in `README.md`. Prefix backend/worker Gradle runs with the JDK-25 `JAVA_HOME` if it is not already active.
@@ -25,6 +33,9 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 | **Quick** (local loop) | `./gradlew quickCheck` | Spotless + Detekt + **unit tests**; frontend lint + unit tests |
 | **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
 | **Extended** (large local changes) | `./gradlew extendedCheck` | Full + `fuzzTest` + `mutationTest` |
+
+Infra-tool checks: `./gradlew agentInfraCheck` is non-Docker and part of `quickCheck`;
+`./gradlew agentInfraSmokeTest` creates and destroys one isolated compact lease.
 
 Backend test tasks: `test` runs unit tests from `src/test`; `integrationTest` runs integration tests from `src/integrationTest`; `check` runs both. Fuzz tests remain tagged under `src/test`; integration tests need Docker.
 

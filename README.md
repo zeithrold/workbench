@@ -55,6 +55,29 @@ Start the frontend:
 ./gradlew :workbench-frontend:pnpmDev
 ```
 
+### Ephemeral Infra for agents and isolated verification
+
+Automated agents and disposable full-stack checks must not reuse the developer Compose project.
+Use the dependency-free Python lease CLI instead:
+
+```bash
+# One command; always destroys its containers, network, and volumes on exit.
+./scripts/dev/ephemeral-infra run --profile compact -- \
+  ./gradlew :workbench-web:bootRun
+
+# Multi-step session; expires after two hours unless stopped sooner.
+./scripts/dev/ephemeral-infra up --profile compact --ttl 2h --json
+./scripts/dev/ephemeral-infra exec <lease-id> -- ./gradlew :workbench-web:bootRun
+./scripts/dev/ephemeral-infra down <lease-id>
+```
+
+The CLI uses only the Python standard library. `compact` starts PostgreSQL, Valkey,
+Elasticsearch, and MinIO. Use `distributed` only when
+Redpanda and Debezium are required. Local leases bind dynamic ports on `127.0.0.1`, create a
+fresh database, and use a unique `workbench-agent-*` Compose project. Non-local Docker contexts
+are rejected unless the user explicitly authorizes `--allow-remote`; approved remote leases bind
+their allocated ports on the remote host and should use the shortest practical TTL.
+
 OpenAPI is available at `http://localhost:8080/api/openapi`. Scalar is available at `http://localhost:8080/api/scalar`.
 
 ## Verification
@@ -67,6 +90,8 @@ Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 ./gradlew extendedCheck                   # full + fuzz + mutation verification
 ./gradlew :workbench-application:ciNightlyCheck  # internal per-module Nightly task
 ./gradlew koverUnitXmlReport              # unit-only coverage report (soft warnings)
+./gradlew agentInfraCheck                 # lease-tool unit tests; does not start Docker resources
+./gradlew agentInfraSmokeTest             # isolated local-Docker lifecycle smoke test
 ```
 
 Focused verification and reporting:

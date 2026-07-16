@@ -105,6 +105,18 @@ class RootConventionsPlugin : Plugin<Project> {
                         }
                 }
             }
+        val agentInfraCheck =
+            tasks.register("agentInfraCheck") {
+                group = "verification"
+                description = "Validates the local-only ephemeral Infra lease tooling without starting containers."
+                dependsOn(":workbench-frontend:pythonInfraTest")
+            }
+
+        tasks.register("agentInfraSmokeTest") {
+            group = "verification"
+            description = "Starts and destroys an isolated compact Infra lease using local Docker."
+            dependsOn(":workbench-frontend:pythonInfraSmokeTest")
+        }
 
         tasks.register("quickCheck") {
             group = "verification"
@@ -112,6 +124,7 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn(testArchitectureCheck)
             dependsOn(moduleArchitectureCheck)
             dependsOn(detektSuppressionCheck)
+            dependsOn(agentInfraCheck)
             dependsOn(backendQuickTasks)
             dependsOn(":workbench-test-support:quickCheck")
             dependsOn(":workbench-frontend:quickCheck")
@@ -168,7 +181,7 @@ class RootConventionsPlugin : Plugin<Project> {
 
         tasks.register("e2eCheck") {
             group = "verification"
-            description = "Full-stack frontend E2E via Testcontainers and Playwright."
+            description = "Full-stack frontend E2E via isolated ephemeral Infra and Playwright."
             dependsOn(":workbench-frontend:e2eCheck")
         }
 

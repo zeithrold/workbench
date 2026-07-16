@@ -24,7 +24,7 @@ Orchestrator for the Spring Boot 4 + SvelteKit monolith. Domain details live in 
 Copy and track progress:
 
 ```
-- [ ] Infrastructure up (Docker: postgres, valkey, redpanda)
+- [ ] Infrastructure requirement classified (none, Testcontainers, or ephemeral lease)
 - [ ] Change type identified (see decision tree)
 - [ ] Code in correct modules with tests
 - [ ] API changes: OpenAPI annotated + `pnpm openapi` (backend running)
@@ -90,6 +90,26 @@ Run in separate terminals:
 
 `./gradlew dev` prints the same commands. OpenAPI: `http://localhost:8080/api/openapi`; Scalar: `/api/scalar`.
 
+### Agent ephemeral Infra
+
+Agents do not reuse the developer Compose project. Code analysis, unit tests, `quickCheck`, and
+ordinary builds require no Compose resources; integration tests use Testcontainers. When a real
+application stack is necessary, use the lease tool:
+
+```bash
+./scripts/dev/ephemeral-infra run --profile compact -- <command>
+./scripts/dev/ephemeral-infra up --profile compact --ttl 2h --json
+./scripts/dev/ephemeral-infra exec <lease-id> -- <command>
+./scripts/dev/ephemeral-infra down <lease-id>
+```
+
+The lease manager is a dependency-free Python CLI. `compact` is the default and contains
+PostgreSQL, Valkey, Elasticsearch, and MinIO. Select
+`distributed` only for Redpanda/Debezium behavior. Local leases use dynamic loopback ports, a
+fresh database, a unique `workbench-agent-*` Compose project, and automatic expiry. Non-local
+Docker contexts require explicit user approval before passing `--allow-remote`; remote mode
+publishes the allocated ports on that host and should use the shortest practical TTL.
+
 **Cursor Cloud VM:** JDK 25 `JAVA_HOME`, Docker daemon, and Orval caveats — see [AGENTS.md](../../../AGENTS.md).
 
 ## Verification
@@ -101,6 +121,9 @@ Run in separate terminals:
 | **Quick** | `./gradlew quickCheck` | Local edit loop | Spotless, Detekt, backend `test`, frontend lint + unit tests |
 | **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
 | **Extended** | `./gradlew extendedCheck` | Large local verification | Full + `fuzzTest` + `mutationTest` |
+
+Lease tooling: `./gradlew agentInfraCheck` runs non-Docker unit tests and is included in
+`quickCheck`; `./gradlew agentInfraSmokeTest` performs an isolated local-Docker lifecycle check.
 
 Module tasks: `test` runs unit tests from `src/test`; `integrationTest` runs integration tests from `src/integrationTest`; `check` runs both. Integration tests require Docker.
 

@@ -1,4 +1,5 @@
 import com.github.gradle.node.pnpm.task.PnpmTask
+import org.gradle.api.tasks.Exec
 
 plugins {
     base
@@ -95,6 +96,17 @@ tasks.register<PnpmTask>("pnpmE2e") {
     args.set(listOf("test:e2e"))
 }
 
+tasks.register<Exec>("pythonInfraTest") {
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "scripts/dev/test_ephemeral_infra.py")
+}
+
+tasks.register<Exec>("pythonInfraSmokeTest") {
+    dependsOn(":workbench-web:bootJar")
+    workingDir(rootProject.projectDir)
+    commandLine("python3", "scripts/dev/test_ephemeral_infra_smoke.py")
+}
+
 tasks.register<PnpmTask>("pnpmE2eStack") {
     dependsOn(
         "prepareFrontendEnv",
@@ -109,7 +121,7 @@ tasks.register<PnpmTask>("pnpmE2eStack") {
 
 tasks.register("e2eCheck") {
     group = "verification"
-    description = "Full-stack E2E via Testcontainers Compose, Spring Boot API, and Playwright."
+    description = "Full-stack E2E via an isolated distributed lease, Spring Boot API, and Playwright."
     dependsOn("pnpmE2eStack", ":ciGenerateKoverE2eReport")
 }
 
@@ -122,7 +134,7 @@ gradle.projectsEvaluated {
 tasks.register("quickCheck") {
     group = "verification"
     description = "Fast frontend verification: lint and unit tests."
-    dependsOn("pnpmLint", "pnpmTest")
+    dependsOn("pythonInfraTest", "pnpmLint", "pnpmTest")
 }
 
 tasks.named("check") {
