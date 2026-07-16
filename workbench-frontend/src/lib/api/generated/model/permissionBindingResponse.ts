@@ -17,4 +17,6 @@ export interface PermissionBindingResponse {
   group?: PermissionGroupResponse;
   policy?: PermissionPolicySummaryResponse;
   project?: ProjectSummary;
+  validFrom?: string;
+  validTo?: string;
 }

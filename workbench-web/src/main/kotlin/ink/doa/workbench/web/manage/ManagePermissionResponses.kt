@@ -12,6 +12,7 @@ import ink.doa.workbench.application.permission.PermissionPolicyView
 import ink.doa.workbench.identity.common.summary.UserSummary
 import ink.doa.workbench.identity.permission.PermissionPrincipalType
 import jakarta.validation.constraints.NotBlank
+import java.time.OffsetDateTime
 
 data class CreatePermissionGroupRequest(
   @field:NotBlank val code: String,
@@ -25,9 +26,11 @@ data class UpdatePermissionGroupRequest(
 )
 
 data class CreatePermissionPolicyRequest(
+  val schemaVersion: Int = 1,
   @field:NotBlank val code: String,
   @field:NotBlank val name: String,
   val description: String?,
+  val rules: List<PermissionPolicyRuleRequest> = emptyList(),
 )
 
 data class UpdatePermissionPolicyRequest(
@@ -42,6 +45,23 @@ data class CreatePermissionPolicyRuleRequest(
   val condition: Map<String, Any>? = null,
 )
 
+data class PermissionPolicyRuleRequest(
+  val id: String? = null,
+  @field:NotBlank val action: String,
+  @field:NotBlank val resourcePattern: String,
+  val effect: String = "ALLOW",
+  val condition: Map<String, Any>? = null,
+)
+
+data class ReplacePermissionPolicyRequest(
+  val schemaVersion: Int = 1,
+  @field:NotBlank val revision: String,
+  @field:NotBlank val code: String,
+  @field:NotBlank val name: String,
+  val description: String?,
+  val rules: List<PermissionPolicyRuleRequest>,
+)
+
 data class AddGroupMemberRequest(@field:NotBlank val userId: String)
 
 data class CreatePermissionBindingRequest(
@@ -50,6 +70,7 @@ data class CreatePermissionBindingRequest(
   val groupId: String?,
   @field:NotBlank val policyId: String,
   val projectId: String?,
+  val validTo: OffsetDateTime? = null,
 )
 
 data class PermissionGroupResponse(
@@ -79,10 +100,12 @@ data class GroupMemberResponse(val id: String, val user: UserSummary) {
 
 data class PermissionPolicyResponse(
   val id: String,
+  val schemaVersion: Int = 1,
   val code: String,
   val name: String,
   val description: String?,
   val builtin: Boolean,
+  val revision: String,
   val rules: List<PermissionPolicyRuleResponse>,
 ) {
   companion object {
@@ -93,22 +116,26 @@ data class PermissionPolicyResponse(
         name = view.name,
         description = view.description,
         builtin = view.builtin,
+        revision = view.revision,
         rules = view.rules.map { PermissionPolicyRuleResponse.from(it) },
       )
   }
 }
 
 data class PermissionPolicyRuleResponse(
+  val id: String,
   val action: String,
   val resourcePattern: String,
   val effect: String,
   val condition: Map<String, Any>? = null,
+  val position: Int,
 ) {
   companion object {
     private val objectMapper = ObjectMapper()
 
     fun from(view: PermissionPolicyRuleView) =
       PermissionPolicyRuleResponse(
+        id = view.id,
         action = view.action,
         resourcePattern = view.resourcePattern,
         effect = view.effect,
@@ -116,6 +143,7 @@ data class PermissionPolicyRuleResponse(
           view.condition?.let {
             objectMapper.readValue(it, object : TypeReference<Map<String, Any>>() {})
           },
+        position = view.position,
       )
   }
 }
@@ -138,6 +166,8 @@ data class PermissionBindingResponse(
   val group: PermissionGroupResponse?,
   val policy: PermissionPolicySummaryResponse,
   val project: ProjectSummary?,
+  val validFrom: OffsetDateTime? = null,
+  val validTo: OffsetDateTime? = null,
 ) {
   companion object {
     fun from(view: PermissionBindingView) =
@@ -148,6 +178,8 @@ data class PermissionBindingResponse(
         group = view.group?.let { PermissionGroupResponse.from(it) },
         policy = PermissionPolicySummaryResponse.from(view.policy),
         project = view.project,
+        validFrom = view.validFrom,
+        validTo = view.validTo,
       )
   }
 }

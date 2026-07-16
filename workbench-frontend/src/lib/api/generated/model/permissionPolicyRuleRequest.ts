@@ -5,13 +5,14 @@
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
  * OpenAPI spec version: 2026-07-15
  */
-import type { PermissionPolicyRuleResponseCondition } from './permissionPolicyRuleResponseCondition';
+import type { PermissionPolicyRuleRequestCondition } from './permissionPolicyRuleRequestCondition';
 
-export interface PermissionPolicyRuleResponse {
+export interface PermissionPolicyRuleRequest {
   id?: string;
-  action?: string;
-  resourcePattern?: string;
+  /** @minLength 1 */
+  action: string;
+  /** @minLength 1 */
+  resourcePattern: string;
   effect?: string;
-  condition?: PermissionPolicyRuleResponseCondition;
-  position?: number;
+  condition?: PermissionPolicyRuleRequestCondition;
 }

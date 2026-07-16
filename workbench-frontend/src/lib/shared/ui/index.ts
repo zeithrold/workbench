@@ -20,6 +20,8 @@ export { default as EmptyState } from './feedback/empty-state.svelte'
 export { default as LoadingState } from './feedback/loading-state.svelte'
 export { default as FormField } from './form/form-field.svelte'
 export { default as PasswordInput } from './form/password-input.svelte'
+export { JsonEditor } from './json-editor/index.js'
+export type { JsonEditorProps } from './json-editor/index.js'
 export { default as PageHeader } from './layout/page-header.svelte'
 // Keep heavy implementations behind lightweight facades so this shared barrel stays eager-load safe.
 export { EMPTY_RICH_TEXT_DOCUMENT, RichTextEditor } from './rich-text-editor/index.js'

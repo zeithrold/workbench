@@ -5,6 +5,7 @@ import ink.doa.workbench.identity.common.summary.UserSummary
 import ink.doa.workbench.identity.permission.PermissionGroupRecord
 import ink.doa.workbench.identity.permission.PermissionPolicyRecord
 import ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord
+import java.time.OffsetDateTime
 
 data class PermissionGroupView(
   val id: String,
@@ -44,6 +45,7 @@ data class PermissionPolicyView(
   val name: String,
   val description: String?,
   val builtin: Boolean,
+  val revision: String = "",
   val rules: List<PermissionPolicyRuleView>,
 ) {
   companion object {
@@ -57,24 +59,29 @@ data class PermissionPolicyView(
         name = record.name,
         description = record.description,
         builtin = record.builtin,
+        revision = record.updatedAt.toString(),
         rules = rules.map { PermissionPolicyRuleView.from(it) },
       )
   }
 }
 
 data class PermissionPolicyRuleView(
+  val id: String = "",
   val action: String,
   val resourcePattern: String,
   val effect: String,
   val condition: String? = null,
+  val position: Int = 0,
 ) {
   companion object {
     fun from(record: PermissionPolicyRuleRecord) =
       PermissionPolicyRuleView(
+        id = record.apiId.value,
         action = record.action.code,
         resourcePattern = record.resourcePattern,
         effect = record.effect.name,
         condition = record.conditionJson,
+        position = record.position,
       )
   }
 }
@@ -86,4 +93,6 @@ data class PermissionBindingView(
   val group: PermissionGroupView?,
   val policy: PermissionPolicySummary,
   val project: ProjectSummary?,
+  val validFrom: OffsetDateTime? = null,
+  val validTo: OffsetDateTime? = null,
 )

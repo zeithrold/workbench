@@ -20,6 +20,7 @@ import ink.doa.workbench.identity.permission.PermissionPolicyRecord
 import ink.doa.workbench.identity.permission.PermissionPolicyRepository
 import ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord
 import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.permission.ReplacePermissionPolicyCommand
 import ink.doa.workbench.identity.permission.ResolvedPermissionRule
 import ink.doa.workbench.identity.permission.UpdatePermissionGroupCommand
 import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
@@ -37,8 +38,10 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -212,6 +215,19 @@ class ExposedPermissionPolicyRepository(private val database: Database) :
         it[createdAt] = now
         it[updatedAt] = now
       }
+      command.rules.forEach { rule ->
+        PermissionPolicyRulesTable.insert {
+          it[PermissionPolicyRulesTable.id] = UUID.randomUUID().toKotlinUuid()
+          it[PermissionPolicyRulesTable.apiId] = PublicId.new("prl").value
+          it[policyId] = id.toKotlinUuid()
+          it[action] = rule.action.code
+          it[resourcePattern] = rule.resourcePattern
+          it[effect] = rule.effect.dbValue
+          it[conditionJson] = rule.conditionJson
+          it[position] = rule.position
+          it[createdAt] = now
+        }
+      }
       PermissionPoliciesTable.selectAll()
         .where { PermissionPoliciesTable.id eq id.toKotlinUuid() }
         .single()
@@ -268,6 +284,7 @@ class ExposedPermissionPolicyRepository(private val database: Database) :
         it[resourcePattern] = command.resourcePattern
         it[effect] = command.effect.dbValue
         it[conditionJson] = command.conditionJson
+        it[position] = command.position
         it[createdAt] = now
       }
       PermissionPolicyRulesTable.selectAll()
@@ -280,8 +297,63 @@ class ExposedPermissionPolicyRepository(private val database: Database) :
     suspendTransaction(db = database) {
       PermissionPolicyRulesTable.selectAll()
         .where { PermissionPolicyRulesTable.policyId eq policyId.toKotlinUuid() }
-        .orderBy(PermissionPolicyRulesTable.createdAt to SortOrder.ASC)
+        .orderBy(PermissionPolicyRulesTable.position to SortOrder.ASC)
         .map { it.toPermissionPolicyRuleRecord() }
+    }
+
+  override suspend fun replace(command: ReplacePermissionPolicyCommand): PermissionPolicyRecord? =
+    suspendTransaction(db = database) {
+      val now = AdminRepositoryMappers.nowUtc()
+      val updated =
+        PermissionPoliciesTable.update({
+          (PermissionPoliciesTable.id eq command.policyId.toKotlinUuid()) and
+            (PermissionPoliciesTable.updatedAt eq command.expectedUpdatedAt)
+        }) {
+          it[name] = command.name
+          it[description] = command.description
+          it[updatedAt] = now
+        }
+      if (updated == 0) return@suspendTransaction null
+
+      val existing =
+        PermissionPolicyRulesTable.selectAll()
+          .where { PermissionPolicyRulesTable.policyId eq command.policyId.toKotlinUuid() }
+          .associateBy { it[PermissionPolicyRulesTable.apiId] }
+      val retainedIds = command.rules.mapNotNull { it.apiId }.toSet()
+      PermissionPolicyRulesTable.deleteWhere {
+        (policyId eq command.policyId.toKotlinUuid()) and
+          if (retainedIds.isEmpty()) apiId neq "" else apiId notInList retainedIds
+      }
+      command.rules.forEach { rule ->
+        val existingRule = rule.apiId?.let(existing::get)
+        if (existingRule == null) {
+          PermissionPolicyRulesTable.insert {
+            it[id] = UUID.randomUUID().toKotlinUuid()
+            it[apiId] = PublicId.new("prl").value
+            it[policyId] = command.policyId.toKotlinUuid()
+            it[action] = rule.action.code
+            it[resourcePattern] = rule.resourcePattern
+            it[effect] = rule.effect.dbValue
+            it[conditionJson] = rule.conditionJson
+            it[position] = rule.position
+            it[createdAt] = now
+          }
+        } else {
+          PermissionPolicyRulesTable.update({
+            PermissionPolicyRulesTable.id eq existingRule[PermissionPolicyRulesTable.id]
+          }) {
+            it[action] = rule.action.code
+            it[resourcePattern] = rule.resourcePattern
+            it[effect] = rule.effect.dbValue
+            it[conditionJson] = rule.conditionJson
+            it[position] = rule.position
+          }
+        }
+      }
+      PermissionPoliciesTable.selectAll()
+        .where { PermissionPoliciesTable.id eq command.policyId.toKotlinUuid() }
+        .single()
+        .toPermissionPolicyRecord()
     }
 
   override suspend fun update(command: UpdatePermissionPolicyCommand): PermissionPolicyRecord =

@@ -59,6 +59,7 @@ data class PermissionPolicyRuleRecord(
   val resourcePattern: String,
   val effect: PermissionEffect,
   val conditionJson: String?,
+  val position: Int = 0,
   val createdAt: OffsetDateTime,
 )
 
@@ -110,6 +111,7 @@ data class CreatePermissionPolicyCommand(
   val name: String,
   val description: String?,
   val builtin: Boolean = false,
+  val rules: List<CreatePermissionPolicyRuleCommand> = emptyList(),
 )
 
 data class UpdatePermissionPolicyCommand(
@@ -124,6 +126,24 @@ data class CreatePermissionPolicyRuleCommand(
   val resourcePattern: String,
   val effect: PermissionEffect = PermissionEffect.ALLOW,
   val conditionJson: String? = null,
+  val position: Int = 0,
+)
+
+data class ReplacePermissionPolicyRuleCommand(
+  val apiId: String?,
+  val action: AuthorizationAction,
+  val resourcePattern: String,
+  val effect: PermissionEffect,
+  val conditionJson: String?,
+  val position: Int,
+)
+
+data class ReplacePermissionPolicyCommand(
+  val policyId: UUID,
+  val expectedUpdatedAt: OffsetDateTime,
+  val name: String,
+  val description: String?,
+  val rules: List<ReplacePermissionPolicyRuleCommand>,
 )
 
 data class CreatePermissionBindingCommand(
@@ -178,6 +198,9 @@ interface PermissionPolicyRepository {
   suspend fun delete(tenantId: UUID, id: UUID): Boolean
 
   suspend fun addRule(command: CreatePermissionPolicyRuleCommand): PermissionPolicyRuleRecord
+
+  /** Returns null when the optimistic revision no longer matches. */
+  suspend fun replace(command: ReplacePermissionPolicyCommand): PermissionPolicyRecord?
 
   suspend fun listRules(policyId: UUID): List<PermissionPolicyRuleRecord>
 

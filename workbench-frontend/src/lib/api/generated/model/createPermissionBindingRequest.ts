@@ -14,4 +14,5 @@ export interface CreatePermissionBindingRequest {
   /** @minLength 1 */
   policyId: string;
   projectId?: string;
+  validTo?: string;
 }

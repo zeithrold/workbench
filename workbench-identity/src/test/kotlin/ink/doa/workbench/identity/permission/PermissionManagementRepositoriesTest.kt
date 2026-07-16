@@ -66,4 +66,43 @@ class PermissionManagementRepositoriesTest :
       rule.resourcePattern shouldBe "project:*"
       rule.effect shouldBe PermissionEffect.ALLOW
     }
+
+    "policy document commands carry ordered replacement rules" {
+      val policyId = UUID.randomUUID()
+      val createRule =
+        CreatePermissionPolicyRuleCommand(
+          policyId = policyId,
+          action = AuthorizationAction("issue.update"),
+          resourcePattern = "issue:*",
+          position = 1,
+        )
+      val create =
+        CreatePermissionPolicyCommand(
+          tenantId = tenantId,
+          code = "editor",
+          name = "Editor",
+          description = null,
+          rules = listOf(createRule),
+        )
+      val replacementRule =
+        ReplacePermissionPolicyRuleCommand(
+          apiId = "prl_existing",
+          action = createRule.action,
+          resourcePattern = createRule.resourcePattern,
+          effect = PermissionEffect.DENY,
+          conditionJson = null,
+          position = 0,
+        )
+      val replacement =
+        ReplacePermissionPolicyCommand(
+          policyId = policyId,
+          expectedUpdatedAt = now,
+          name = "Restricted editor",
+          description = null,
+          rules = listOf(replacementRule),
+        )
+
+      create.rules.single().position shouldBe 1
+      replacement.rules.single().effect shouldBe PermissionEffect.DENY
+    }
   })

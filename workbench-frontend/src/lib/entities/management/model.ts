@@ -126,16 +126,32 @@ export interface PermissionGroup {
 }
 export interface PermissionPolicy {
   id: string
+  schemaVersion: 1
   code: string
   name: string
   description?: string | null
   builtin: boolean
-  rules: unknown[]
+  revision: string
+  rules: PermissionPolicyRule[]
 }
+export interface PermissionPolicyRule {
+  id: string
+  action: string
+  resourcePattern: string
+  effect: 'ALLOW' | 'DENY'
+  condition?: Record<string, unknown> | null
+  position: number
+}
+export interface PermissionAction { code: string, description?: string | null }
+export interface GroupMember { id: string, user: UserSummary }
+export interface ProjectSummary { id: string, identifier: string, name: string }
 export interface PermissionBinding {
   id: string
   principalType: string
   user?: UserSummary | null
   group?: PermissionGroup | null
   policy: { id: string, code: string, name: string }
+  project?: ProjectSummary | null
+  validFrom?: string | null
+  validTo?: string | null
 }

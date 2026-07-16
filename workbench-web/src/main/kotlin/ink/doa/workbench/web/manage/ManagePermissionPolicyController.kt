@@ -2,7 +2,10 @@ package ink.doa.workbench.web.manage
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import ink.doa.workbench.application.permission.AddPolicyRuleCommand
+import ink.doa.workbench.application.permission.CreatePermissionPolicyDocumentCommand
+import ink.doa.workbench.application.permission.PermissionPolicyDocumentRuleCommand
 import ink.doa.workbench.application.permission.PermissionPolicyManagementService
+import ink.doa.workbench.application.permission.ReplacePermissionPolicyDocumentCommand
 import ink.doa.workbench.identity.permission.model.PermissionEffect
 import ink.doa.workbench.web.api.Authenticated
 import ink.doa.workbench.web.api.Authorize
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -64,11 +68,38 @@ class ManagePermissionPolicyController(
     tenantContext: TenantRequestContext,
   ): PermissionPolicyResponse =
     PermissionPolicyResponse.from(
-      permissionPolicyManagementService.createPolicy(
-        tenantId = tenantContext.tenant.id,
-        code = request.code,
-        name = request.name,
-        description = request.description,
+      permissionPolicyManagementService.createDocument(
+        CreatePermissionPolicyDocumentCommand(
+          tenantId = tenantContext.tenant.id,
+          schemaVersion = request.schemaVersion,
+          code = request.code,
+          name = request.name,
+          description = request.description,
+          rules = request.rules.map(::toRuleCommand),
+        )
+      )
+    )
+
+  @PutMapping("/permission-policies/{id}")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @Operation(summary = "Replace custom permission policy document")
+  suspend fun replacePolicy(
+    @PathVariable id: String,
+    @Valid @RequestBody request: ReplacePermissionPolicyRequest,
+    tenantContext: TenantRequestContext,
+  ): PermissionPolicyResponse =
+    PermissionPolicyResponse.from(
+      permissionPolicyManagementService.replaceDocument(
+        ReplacePermissionPolicyDocumentCommand(
+          tenantId = tenantContext.tenant.id,
+          policyPublicId = id,
+          schemaVersion = request.schemaVersion,
+          revision = request.revision,
+          code = request.code,
+          name = request.name,
+          description = request.description,
+          rules = request.rules.map(::toRuleCommand),
+        )
       )
     )
 
@@ -122,5 +153,14 @@ class ManagePermissionPolicyController(
           conditionJson = request.condition?.let { objectMapper.writeValueAsString(it) },
         )
       )
+    )
+
+  private fun toRuleCommand(request: PermissionPolicyRuleRequest) =
+    PermissionPolicyDocumentRuleCommand(
+      id = request.id,
+      action = request.action,
+      resourcePattern = request.resourcePattern,
+      effect = PermissionEffect.valueOf(request.effect.uppercase()),
+      conditionJson = request.condition?.let { objectMapper.writeValueAsString(it) },
     )
 }

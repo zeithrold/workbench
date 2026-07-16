@@ -34,6 +34,8 @@ class PermissionBindingViewAssembler(
       group = group,
       policy = PermissionPolicySummary.from(policy),
       project = project,
+      validFrom = binding.validFrom,
+      validTo = binding.validTo,
     )
   }
 

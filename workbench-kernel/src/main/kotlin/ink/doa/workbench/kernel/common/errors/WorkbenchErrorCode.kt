@@ -321,6 +321,22 @@ enum class WorkbenchErrorCode(
     "permission.policy.rule_condition_invalid",
     "Policy rule condition must be valid JSON condition AST.",
   ),
+  PERMISSION_POLICY_REVISION_CONFLICT(
+    "permission.policy.revision_conflict",
+    "Permission policy was changed by another editor.",
+  ),
+  PERMISSION_POLICY_RULE_ID_INVALID(
+    "permission.policy.rule_id_invalid",
+    "Policy rule id does not belong to this policy.",
+  ),
+  PERMISSION_POLICY_RULE_ACTION_UNKNOWN(
+    "permission.policy.rule_action_unknown",
+    "Policy rule action is not registered.",
+  ),
+  PERMISSION_POLICY_RULE_RESOURCE_PATTERN_INVALID(
+    "permission.policy.rule_resource_pattern_invalid",
+    "Resource pattern must be '*', an exact resource, or a prefix ending in ':*'.",
+  ),
   PERMISSION_BINDING_EFFECT_OVERRIDE_UNSUPPORTED(
     "permission.binding.effect_override_unsupported",
     "Binding effect overrides are not supported; use policy rules.",
@@ -336,6 +352,10 @@ enum class WorkbenchErrorCode(
   PERMISSION_BINDING_TENANT_MEMBER_TARGET_INVALID(
     "permission.binding.tenant_member_target_invalid",
     "TENANT_MEMBER binding must not include userId or groupId.",
+  ),
+  PERMISSION_BINDING_EXPIRATION_INVALID(
+    "permission.binding.expiration_invalid",
+    "Permission binding expiration must be in the future.",
   ),
   WORK_ITEM_QUERY_INVALID_JSON(
     "work_item.query.parse.invalid_json",

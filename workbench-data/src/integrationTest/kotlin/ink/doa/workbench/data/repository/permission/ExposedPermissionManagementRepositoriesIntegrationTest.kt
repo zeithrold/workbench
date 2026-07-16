@@ -12,9 +12,12 @@ import ink.doa.workbench.identity.permission.CreatePermissionGroupCommand
 import ink.doa.workbench.identity.permission.CreatePermissionPolicyCommand
 import ink.doa.workbench.identity.permission.CreatePermissionPolicyRuleCommand
 import ink.doa.workbench.identity.permission.PermissionPrincipalType
+import ink.doa.workbench.identity.permission.ReplacePermissionPolicyCommand
+import ink.doa.workbench.identity.permission.ReplacePermissionPolicyRuleCommand
 import ink.doa.workbench.identity.permission.UpdatePermissionGroupCommand
 import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -368,6 +371,85 @@ class ExposedPermissionManagementRepositoriesIntegrationTest :
             at = OffsetDateTime.now(ZoneOffset.UTC),
           )
           .shouldBeEmpty()
+      }
+    }
+
+    "policy document replacement preserves rule ids and rejects stale revisions" {
+      withCorePostgresDatabase { database ->
+        val tenantId = seedTenant(database)
+        val policies = ExposedPermissionPolicyRepository(database)
+        val policy =
+          policies.create(
+            CreatePermissionPolicyCommand(
+              tenantId = tenantId,
+              code = "project-editor",
+              name = "Project editor",
+              description = null,
+              rules =
+                listOf(
+                  CreatePermissionPolicyRuleCommand(
+                    policyId = UUID(0, 0),
+                    action = AuthorizationAction("project.read"),
+                    resourcePattern = "project:*",
+                    position = 0,
+                  ),
+                  CreatePermissionPolicyRuleCommand(
+                    policyId = UUID(0, 0),
+                    action = AuthorizationAction("issue.update"),
+                    resourcePattern = "issue:*",
+                    position = 1,
+                  ),
+                ),
+            )
+          )
+        val originalRules = policies.listRules(policy.id)
+
+        val replaced =
+          policies.replace(
+            ReplacePermissionPolicyCommand(
+              policyId = policy.id,
+              expectedUpdatedAt = policy.updatedAt,
+              name = "Project maintainer",
+              description = "Can maintain project issues",
+              rules =
+                listOf(
+                  ReplacePermissionPolicyRuleCommand(
+                    apiId = originalRules[1].apiId.value,
+                    action = AuthorizationAction("issue.update"),
+                    resourcePattern = "issue:*",
+                    effect = PermissionEffect.DENY,
+                    conditionJson = null,
+                    position = 0,
+                  ),
+                  ReplacePermissionPolicyRuleCommand(
+                    apiId = null,
+                    action = AuthorizationAction("project.read"),
+                    resourcePattern = "project:*",
+                    effect = PermissionEffect.ALLOW,
+                    conditionJson = null,
+                    position = 1,
+                  ),
+                ),
+            )
+          )
+
+        replaced?.name shouldBe "Project maintainer"
+        val replacedRules = policies.listRules(policy.id)
+        replacedRules.map { it.position } shouldBe listOf(0, 1)
+        replacedRules.first().apiId shouldBe originalRules[1].apiId
+        replacedRules.first().effect shouldBe PermissionEffect.DENY
+        policies.findByApiId(tenantId, policy.apiId.value)?.description shouldBe
+          "Can maintain project issues"
+
+        policies.replace(
+          ReplacePermissionPolicyCommand(
+            policyId = policy.id,
+            expectedUpdatedAt = policy.updatedAt,
+            name = "Stale update",
+            description = null,
+            rules = emptyList(),
+          )
+        ) shouldBe null
       }
     }
   })

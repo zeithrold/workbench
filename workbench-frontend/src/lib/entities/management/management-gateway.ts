@@ -1,14 +1,17 @@
 import type {
   AccessGrant,
   AdminUser,
+  GroupMember,
   InstanceCapabilities,
   InstanceOperations,
   ManagedInvitation,
   OutboxDelivery,
   OutboxMessage,
+  PermissionAction,
   PermissionBinding,
   PermissionGroup,
   PermissionPolicy,
+  ProjectSummary,
   TenantCapabilities,
   TenantMember,
   TenantResource,
@@ -92,9 +95,22 @@ export const managementGateway = {
     request<PermissionGroup>(`/api/manage/groups/${id}`, json('PATCH', body)),
   deleteGroup: (id: string) =>
     request<void>(`/api/manage/groups/${id}`, { method: 'DELETE' }),
+  groupMembers: (id: string) =>
+    request<GroupMember[]>(`/api/manage/groups/${id}/members`),
+  addGroupMember: (id: string, userId: string) =>
+    request<GroupMember>(
+      `/api/manage/groups/${id}/members`,
+      json('POST', { userId }),
+    ),
+  removeGroupMember: (id: string, userId: string) =>
+    request<void>(`/api/manage/groups/${id}/members/${userId}`, {
+      method: 'DELETE',
+    }),
+  actions: () => request<PermissionAction[]>('/api/manage/actions'),
+  projects: () => request<ProjectSummary[]>('/api/projects'),
   policies: () =>
     request<PermissionPolicy[]>('/api/manage/permission-policies'),
-  createPolicy: (body: { code: string, name: string, description?: string }) =>
+  createPolicy: (body: unknown) =>
     request<PermissionPolicy>(
       '/api/manage/permission-policies',
       json('POST', body),
@@ -103,6 +119,11 @@ export const managementGateway = {
     request<PermissionPolicy>(
       `/api/manage/permission-policies/${id}`,
       json('PATCH', body),
+    ),
+  replacePolicy: (id: string, body: unknown) =>
+    request<PermissionPolicy>(
+      `/api/manage/permission-policies/${id}`,
+      json('PUT', body),
     ),
   deletePolicy: (id: string) =>
     request<void>(`/api/manage/permission-policies/${id}`, {
@@ -123,6 +144,8 @@ export const managementGateway = {
     userId?: string
     groupId?: string
     policyId: string
+    projectId?: string
+    validTo?: string
   }) =>
     request<PermissionBinding>(
       '/api/manage/permission-bindings',

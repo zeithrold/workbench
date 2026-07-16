@@ -4,6 +4,7 @@ import ink.doa.workbench.identity.permission.PermissionPolicyRecord
 import ink.doa.workbench.identity.permission.PermissionPolicyRepository
 import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.kernel.common.errors.InvalidRequestException
+import ink.doa.workbench.kernel.common.errors.ResourceConflictException
 import ink.doa.workbench.kernel.common.ids.PublicId
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
@@ -41,6 +42,107 @@ class PermissionPolicyManagementServiceTest :
 
       result.code shouldBe "custom"
       result.rules shouldBe emptyList()
+    }
+
+    "createDocument stores canonical rules with stable positions" {
+      val policy = samplePolicy(tenantId, "conditional", builtin = false)
+      val storedRule =
+        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("prl"),
+          policyId = policy.id,
+          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.view"),
+          resourcePattern = "issue:*",
+          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
+          conditionJson =
+            """{"field":"issue.reporter","op":"eq","value":{"var":"user.currentUser"}}""",
+          position = 0,
+          createdAt = policy.createdAt,
+        )
+      coEvery { policies.findByCode(tenantId, "conditional") } returns null
+      coEvery { policies.create(any()) } returns policy
+      coEvery { policies.listRules(policy.id) } returns listOf(storedRule)
+
+      val result = runBlocking {
+        service.createDocument(
+          CreatePermissionPolicyDocumentCommand(
+            tenantId = tenantId,
+            schemaVersion = 1,
+            code = "conditional",
+            name = "Conditional",
+            description = null,
+            rules =
+              listOf(
+                PermissionPolicyDocumentRuleCommand(
+                  id = null,
+                  action = "issue.view",
+                  resourcePattern = "issue:*",
+                  effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
+                  conditionJson =
+                    """{"op":"eq","value":{"var":"user.currentUser"},"field":"issue.reporter"}""",
+                )
+              ),
+          )
+        )
+      }
+
+      result.rules.single().position shouldBe 0
+    }
+
+    "replaceDocument rejects rule ids from another policy" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns emptyList()
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking {
+          service.replaceDocument(
+            ReplacePermissionPolicyDocumentCommand(
+              tenantId = tenantId,
+              policyPublicId = policy.apiId.value,
+              schemaVersion = 1,
+              revision = policy.updatedAt.toString(),
+              code = policy.code,
+              name = policy.name,
+              description = null,
+              rules =
+                listOf(
+                  PermissionPolicyDocumentRuleCommand(
+                    id = "prl_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                    action = "issue.view",
+                    resourcePattern = "issue:*",
+                    effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
+                    conditionJson = null,
+                  )
+                ),
+            )
+          )
+        }
+      }
+    }
+
+    "replaceDocument reports optimistic revision conflicts" {
+      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns emptyList()
+      coEvery { policies.replace(any()) } returns null
+
+      shouldThrow<ResourceConflictException> {
+        runBlocking {
+          service.replaceDocument(
+            ReplacePermissionPolicyDocumentCommand(
+              tenantId = tenantId,
+              policyPublicId = policy.apiId.value,
+              schemaVersion = 1,
+              revision = policy.updatedAt.toString(),
+              code = policy.code,
+              name = "Changed",
+              description = null,
+              rules = emptyList(),
+            )
+          )
+        }
+      }
     }
 
     "updatePolicy rejects builtin policy changes" {

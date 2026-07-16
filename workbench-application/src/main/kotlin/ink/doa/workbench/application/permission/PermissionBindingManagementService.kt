@@ -38,6 +38,10 @@ class PermissionBindingManagementService(
     val projectId =
       command.projectPublicId?.let { publicIds.resolveProject(command.tenantId, it).id }
     validatePrincipal(command.principalType, userId, groupId)
+    val now = OffsetDateTime.now(clock)
+    if (command.validTo != null && !command.validTo.isAfter(now)) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_BINDING_EXPIRATION_INVALID)
+    }
     val binding =
       bindings.create(
         CreatePermissionBindingCommand(
@@ -47,7 +51,8 @@ class PermissionBindingManagementService(
           principalUserId = userId,
           principalGroupId = groupId,
           policyId = policy.id,
-          validFrom = OffsetDateTime.now(clock),
+          validFrom = now,
+          validTo = command.validTo,
           createdBy = command.actorUserId,
         )
       )

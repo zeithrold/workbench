@@ -12,7 +12,7 @@ class PostgresMigrationIntegrationTest :
   StringSpec({
     "flattened baseline creates the complete PostgreSQL schema" {
       withMigratedPostgres { jdbc, result, _ ->
-        result.migrationsExecuted shouldBe 5
+        result.migrationsExecuted shouldBe 6
 
         jdbc.queryForObject(
           """
@@ -70,7 +70,7 @@ class PostgresMigrationIntegrationTest :
     "flattened baseline is idempotent through Flyway history" {
       withMigratedPostgres { _, _, flyway ->
         flyway.migrate().migrationsExecuted shouldBe 0
-        flyway.info().applied().size shouldBe 5
+        flyway.info().applied().size shouldBe 6
       }
     }
   })

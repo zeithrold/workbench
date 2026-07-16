@@ -58,6 +58,7 @@ class ManagePermissionBindingController(
           projectPublicId = request.projectId,
           effect = null,
           actorUserId = tenantContext.actor?.id,
+          validTo = request.validTo,
         )
       )
     )

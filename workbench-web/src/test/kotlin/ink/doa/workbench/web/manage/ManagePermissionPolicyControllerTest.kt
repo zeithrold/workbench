@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -74,6 +75,24 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
   }
 
   @Test
+  fun `get permission policy returns a complete document`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/manage/permission-policies/pol_01JABCDEFGHJKMNPQRSTVWXYZ0")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.code").value("admin"))
+      .andExpect(jsonPath("$.revision").value("2026-07-04T00:00Z"))
+  }
+
+  @Test
   fun `create permission policy returns created policy for authenticated tenant user`() {
     val result =
       mockMvc
@@ -99,6 +118,50 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
       .andExpect(jsonPath("$.code").value("editor"))
+  }
+
+  @Test
+  fun `replace permission policy accepts a complete policy document`() {
+    val result =
+      mockMvc
+        .perform(
+          put("/api/manage/permission-policies/pol_01JABCDEFGHJKMNPQRSTVWXYZ0")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+              """
+              {
+                "schemaVersion": 1,
+                "revision": "2026-07-04T00:00Z",
+                "code": "admin",
+                "name": "Tenant admin",
+                "description": "Complete tenant access",
+                "rules": [
+                  {
+                    "id": null,
+                    "action": "issue.update",
+                    "resourcePattern": "issue:*",
+                    "effect": "deny",
+                    "condition": {
+                      "field": "issue.statusGroup",
+                      "op": "eq",
+                      "value": "done"
+                    }
+                  }
+                ]
+              }
+              """
+                .trimIndent()
+            )
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.name").value("Tenant admin"))
+      .andExpect(jsonPath("$.rules").isEmpty())
   }
 
   @Test
@@ -265,8 +328,18 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       coEvery { policies.list(tenantId) } returns listOf(adminPolicy)
       coEvery { policies.findByCode(tenantId, "editor") } returns null
       coEvery { policies.create(any()) } returns editorPolicy
+      coEvery { policies.listRules(editorPolicy.id) } returns emptyList()
       coEvery { policies.findByApiId(tenantId, "pol_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns
         adminPolicy
+      coEvery { policies.replace(any()) } answers
+        {
+          rules = emptyList()
+          adminPolicy.copy(
+            name = "Tenant admin",
+            description = "Complete tenant access",
+            updatedAt = now.plusSeconds(1),
+          )
+        }
       coEvery { policies.addRule(any()) } answers
         {
           val command =

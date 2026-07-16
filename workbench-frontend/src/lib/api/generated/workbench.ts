@@ -91,6 +91,7 @@ import type {
   ProjectMemberResponse,
   ProjectResponse,
   PropertyDefinitionResponse,
+  ReplacePermissionPolicyRequest,
   SamlAcsParams,
   SessionResponse,
   SprintCloseOperationResponse,
@@ -242,6 +243,260 @@ export const updatePreference = async (updateNotificationPreferenceRequest: Upda
 
   const data: updatePreferenceResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as updatePreferenceResponse
+}
+
+
+
+export type getPolicyResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type getPolicyResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type getPolicyResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type getPolicyResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type getPolicyResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+;
+export type getPolicyResponseError = (getPolicyResponse400 | getPolicyResponse401 | getPolicyResponse403 | getPolicyResponse404 | getPolicyResponse409) & {
+  headers: Headers;
+};
+
+export type getPolicyResponse = (getPolicyResponseError)
+
+export const getGetPolicyUrl = (id: string,) => {
+
+
+
+
+  return `/api/manage/permission-policies/${id}`
+}
+
+/**
+ * @summary Get permission policy
+ */
+export const getPolicy = async (id: string, options?: RequestInit): Promise<getPolicyResponse> => {
+
+  const res = await fetch(getGetPolicyUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getPolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getPolicyResponse
+}
+
+
+
+export type replacePolicyResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type replacePolicyResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type replacePolicyResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type replacePolicyResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type replacePolicyResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+;
+export type replacePolicyResponseError = (replacePolicyResponse400 | replacePolicyResponse401 | replacePolicyResponse403 | replacePolicyResponse404 | replacePolicyResponse409) & {
+  headers: Headers;
+};
+
+export type replacePolicyResponse = (replacePolicyResponseError)
+
+export const getReplacePolicyUrl = (id: string,) => {
+
+
+
+
+  return `/api/manage/permission-policies/${id}`
+}
+
+/**
+ * @summary Replace custom permission policy document
+ */
+export const replacePolicy = async (id: string,
+    replacePermissionPolicyRequest: ReplacePermissionPolicyRequest, options?: RequestInit): Promise<replacePolicyResponse> => {
+
+  const res = await fetch(getReplacePolicyUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(replacePermissionPolicyRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: replacePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as replacePolicyResponse
+}
+
+
+
+export type deletePolicyResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type deletePolicyResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type deletePolicyResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type deletePolicyResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type deletePolicyResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+;
+export type deletePolicyResponseError = (deletePolicyResponse400 | deletePolicyResponse401 | deletePolicyResponse403 | deletePolicyResponse404 | deletePolicyResponse409) & {
+  headers: Headers;
+};
+
+export type deletePolicyResponse = (deletePolicyResponseError)
+
+export const getDeletePolicyUrl = (id: string,) => {
+
+
+
+
+  return `/api/manage/permission-policies/${id}`
+}
+
+/**
+ * @summary Delete custom permission policy
+ */
+export const deletePolicy = async (id: string, options?: RequestInit): Promise<deletePolicyResponse> => {
+
+  const res = await fetch(getDeletePolicyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deletePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deletePolicyResponse
+}
+
+
+
+export type updatePolicyResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type updatePolicyResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type updatePolicyResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type updatePolicyResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type updatePolicyResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+;
+export type updatePolicyResponseError = (updatePolicyResponse400 | updatePolicyResponse401 | updatePolicyResponse403 | updatePolicyResponse404 | updatePolicyResponse409) & {
+  headers: Headers;
+};
+
+export type updatePolicyResponse = (updatePolicyResponseError)
+
+export const getUpdatePolicyUrl = (id: string,) => {
+
+
+
+
+  return `/api/manage/permission-policies/${id}`
+}
+
+/**
+ * @summary Update custom permission policy
+ */
+export const updatePolicy = async (id: string,
+    updatePermissionPolicyRequest: UpdatePermissionPolicyRequest, options?: RequestInit): Promise<updatePolicyResponse> => {
+
+  const res = await fetch(getUpdatePolicyUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePermissionPolicyRequest)
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: updatePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as updatePolicyResponse
 }
 
 
@@ -7545,196 +7800,6 @@ export const patch1 = async (patchTenantRequest: PatchTenantRequest, options?: R
 
   const data: patch1Response['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as patch1Response
-}
-
-
-
-export type getPolicyResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type getPolicyResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type getPolicyResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type getPolicyResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type getPolicyResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type getPolicyResponseError = (getPolicyResponse400 | getPolicyResponse401 | getPolicyResponse403 | getPolicyResponse404 | getPolicyResponse409) & {
-  headers: Headers;
-};
-
-export type getPolicyResponse = (getPolicyResponseError)
-
-export const getGetPolicyUrl = (id: string,) => {
-
-
-
-
-  return `/api/manage/permission-policies/${id}`
-}
-
-/**
- * @summary Get permission policy
- */
-export const getPolicy = async (id: string, options?: RequestInit): Promise<getPolicyResponse> => {
-
-  const res = await fetch(getGetPolicyUrl(id),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: getPolicyResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as getPolicyResponse
-}
-
-
-
-export type deletePolicyResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type deletePolicyResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type deletePolicyResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type deletePolicyResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type deletePolicyResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type deletePolicyResponseError = (deletePolicyResponse400 | deletePolicyResponse401 | deletePolicyResponse403 | deletePolicyResponse404 | deletePolicyResponse409) & {
-  headers: Headers;
-};
-
-export type deletePolicyResponse = (deletePolicyResponseError)
-
-export const getDeletePolicyUrl = (id: string,) => {
-
-
-
-
-  return `/api/manage/permission-policies/${id}`
-}
-
-/**
- * @summary Delete custom permission policy
- */
-export const deletePolicy = async (id: string, options?: RequestInit): Promise<deletePolicyResponse> => {
-
-  const res = await fetch(getDeletePolicyUrl(id),
-  {
-    ...options,
-    method: 'DELETE'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: deletePolicyResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as deletePolicyResponse
-}
-
-
-
-export type updatePolicyResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type updatePolicyResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type updatePolicyResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type updatePolicyResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type updatePolicyResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type updatePolicyResponseError = (updatePolicyResponse400 | updatePolicyResponse401 | updatePolicyResponse403 | updatePolicyResponse404 | updatePolicyResponse409) & {
-  headers: Headers;
-};
-
-export type updatePolicyResponse = (updatePolicyResponseError)
-
-export const getUpdatePolicyUrl = (id: string,) => {
-
-
-
-
-  return `/api/manage/permission-policies/${id}`
-}
-
-/**
- * @summary Update custom permission policy
- */
-export const updatePolicy = async (id: string,
-    updatePermissionPolicyRequest: UpdatePermissionPolicyRequest, options?: RequestInit): Promise<updatePolicyResponse> => {
-
-  const res = await fetch(getUpdatePolicyUrl(id),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(updatePermissionPolicyRequest)
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: updatePolicyResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as updatePolicyResponse
 }
 
 

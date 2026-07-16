@@ -93,6 +93,7 @@ object PermissionPolicyRulesTable : Table("permission_policy_rules") {
   val resourcePattern = text("resource_pattern")
   val effect = text("effect")
   val conditionJson = text("condition_json").nullable()
+  val position = integer("position")
   val createdAt = timestampWithTimeZone("created_at")
   override val primaryKey = PrimaryKey(id)
 }

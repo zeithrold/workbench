@@ -107,6 +107,7 @@ internal fun ResultRow.toPermissionPolicyRuleRecord() =
     resourcePattern = this[PermissionPolicyRulesTable.resourcePattern],
     effect = permissionEffectOf(this[PermissionPolicyRulesTable.effect]),
     conditionJson = this[PermissionPolicyRulesTable.conditionJson],
+    position = this[PermissionPolicyRulesTable.position],
     createdAt = this[PermissionPolicyRulesTable.createdAt],
   )
 
