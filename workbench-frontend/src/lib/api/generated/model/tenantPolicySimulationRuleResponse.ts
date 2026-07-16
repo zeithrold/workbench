@@ -6,9 +6,10 @@
  * OpenAPI spec version: 2026-07-15
  */
 
-export interface ActionResponse {
-  code?: string;
-  description?: string;
-  name?: string;
-  resourcePattern?: string;
+export interface TenantPolicySimulationRuleResponse {
+  index?: number;
+  action?: string;
+  effect?: string;
+  matches?: boolean;
+  contributes?: boolean;
 }

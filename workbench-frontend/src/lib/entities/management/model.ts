@@ -142,7 +142,24 @@ export interface PermissionPolicyRule {
   condition?: Record<string, unknown> | null
   position: number
 }
-export interface PermissionAction { code: string, description?: string | null }
+export interface PermissionAction {
+  code: string
+  name?: string | null
+  description?: string | null
+  resourcePattern?: string | null
+}
+export interface TenantPolicySimulationRule {
+  index: number
+  action: string
+  effect: 'ALLOW' | 'DENY'
+  matches: boolean
+  contributes: boolean
+}
+export interface TenantPolicySimulation {
+  decision: 'ALLOW' | 'DENY'
+  reason: string
+  rules: TenantPolicySimulationRule[]
+}
 export interface GroupMember { id: string, user: UserSummary }
 export interface ProjectSummary { id: string, identifier: string, name: string }
 export interface PermissionBinding {

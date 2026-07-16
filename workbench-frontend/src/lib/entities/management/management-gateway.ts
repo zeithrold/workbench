@@ -14,6 +14,7 @@ import type {
   ProjectSummary,
   TenantCapabilities,
   TenantMember,
+  TenantPolicySimulation,
   TenantResource,
 } from './model.js'
 import { apiFetch } from '$lib/api/http.js'
@@ -129,6 +130,21 @@ export const managementGateway = {
     request<void>(`/api/manage/permission-policies/${id}`, {
       method: 'DELETE',
     }),
+  simulatePolicy: (body: {
+    schemaVersion: 1
+    rules: Array<{
+      id?: string
+      action: string
+      resourcePattern: string
+      effect: 'ALLOW' | 'DENY'
+      condition?: Record<string, unknown> | null
+    }>
+    action: string
+  }) =>
+    request<TenantPolicySimulation>(
+      '/api/manage/permission-policies/simulate',
+      json('POST', body),
+    ),
   addPolicyRule: (
     id: string,
     body: { action: string, resourcePattern: string, effect: 'allow' | 'deny' },
@@ -144,7 +160,6 @@ export const managementGateway = {
     userId?: string
     groupId?: string
     policyId: string
-    projectId?: string
     validTo?: string
   }) =>
     request<PermissionBinding>(

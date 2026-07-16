@@ -41,7 +41,6 @@ import type {
   DeleteWorkItemRequest,
   DestroyProjectRequest,
   DestroyTenantRequest,
-  EnsureActionRequest,
   FederatedAuthorizeRequest,
   FederatedAuthorizeResponse,
   GrantAdminRequest,
@@ -94,11 +93,13 @@ import type {
   ReplacePermissionPolicyRequest,
   SamlAcsParams,
   SessionResponse,
+  SimulateTenantPermissionPolicyRequest,
   SprintCloseOperationResponse,
   SprintResponse,
   SwitchTenantRequest,
   TenantCapabilityResponse,
   TenantMemberResponse,
+  TenantPolicySimulationResponse,
   TenantResponse,
   TransitionWorkItemRequest,
   UpdateNotificationPreferenceRequest,
@@ -125,7 +126,6 @@ export type preferencesResponse400 = {
   data: ProblemDetail
   status: 400
 }
-
 export type preferencesResponse401 = {
   data: ProblemDetail
   status: 401
@@ -181,9 +181,6 @@ export const preferences = async ( options?: RequestInit): Promise<preferencesRe
   const data: preferencesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as preferencesResponse
 }
-
-
-
 export type updatePreferenceResponse400 = {
   data: ProblemDetail
   status: 400
@@ -245,7 +242,10 @@ export const updatePreference = async (updateNotificationPreferenceRequest: Upda
   return { data, status: res.status, headers: res.headers } as updatePreferenceResponse
 }
 
-
+export type getPolicyResponse200 = {
+  data: PermissionPolicyResponse
+  status: 200
+}
 
 export type getPolicyResponse400 = {
   data: ProblemDetail
@@ -272,12 +272,14 @@ export type getPolicyResponse409 = {
   status: 409
 }
 
-;
+export type getPolicyResponseSuccess = (getPolicyResponse200) & {
+  headers: Headers;
+};
 export type getPolicyResponseError = (getPolicyResponse400 | getPolicyResponse401 | getPolicyResponse403 | getPolicyResponse404 | getPolicyResponse409) & {
   headers: Headers;
 };
 
-export type getPolicyResponse = (getPolicyResponseError)
+export type getPolicyResponse = (getPolicyResponseSuccess | getPolicyResponseError)
 
 export const getGetPolicyUrl = (id: string,) => {
 
@@ -301,14 +303,19 @@ export const getPolicy = async (id: string, options?: RequestInit): Promise<getP
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: getPolicyResponse['data'] = body ? JSON.parse(body) : {}
+  const data: getPolicyResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as getPolicyResponse
 }
 
 
+
+export type replacePolicyResponse200 = {
+  data: PermissionPolicyResponse
+  status: 200
+}
 
 export type replacePolicyResponse400 = {
   data: ProblemDetail
@@ -335,12 +342,14 @@ export type replacePolicyResponse409 = {
   status: 409
 }
 
-;
+export type replacePolicyResponseSuccess = (replacePolicyResponse200) & {
+  headers: Headers;
+};
 export type replacePolicyResponseError = (replacePolicyResponse400 | replacePolicyResponse401 | replacePolicyResponse403 | replacePolicyResponse404 | replacePolicyResponse409) & {
   headers: Headers;
 };
 
-export type replacePolicyResponse = (replacePolicyResponseError)
+export type replacePolicyResponse = (replacePolicyResponseSuccess | replacePolicyResponseError)
 
 export const getReplacePolicyUrl = (id: string,) => {
 
@@ -365,10 +374,10 @@ export const replacePolicy = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: replacePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  const data: replacePolicyResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as replacePolicyResponse
 }
 
@@ -437,6 +446,11 @@ export const deletePolicy = async (id: string, options?: RequestInit): Promise<d
 
 
 
+export type updatePolicyResponse200 = {
+  data: PermissionPolicyResponse
+  status: 200
+}
+
 export type updatePolicyResponse400 = {
   data: ProblemDetail
   status: 400
@@ -462,12 +476,14 @@ export type updatePolicyResponse409 = {
   status: 409
 }
 
-;
+export type updatePolicyResponseSuccess = (updatePolicyResponse200) & {
+  headers: Headers;
+};
 export type updatePolicyResponseError = (updatePolicyResponse400 | updatePolicyResponse401 | updatePolicyResponse403 | updatePolicyResponse404 | updatePolicyResponse409) & {
   headers: Headers;
 };
 
-export type updatePolicyResponse = (updatePolicyResponseError)
+export type updatePolicyResponse = (updatePolicyResponseSuccess | updatePolicyResponseError)
 
 export const getUpdatePolicyUrl = (id: string,) => {
 
@@ -492,10 +508,10 @@ export const updatePolicy = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: updatePolicyResponse['data'] = body ? JSON.parse(body) : {}
+  const data: updatePolicyResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as updatePolicyResponse
 }
 
@@ -3748,6 +3764,11 @@ export const grantTenantAdmin = async (grantAdminRequest: GrantAdminRequest, opt
 
 
 
+export type listPoliciesResponse200 = {
+  data: PermissionPolicyResponse[]
+  status: 200
+}
+
 export type listPoliciesResponse400 = {
   data: ProblemDetail
   status: 400
@@ -3773,12 +3794,14 @@ export type listPoliciesResponse409 = {
   status: 409
 }
 
-;
+export type listPoliciesResponseSuccess = (listPoliciesResponse200) & {
+  headers: Headers;
+};
 export type listPoliciesResponseError = (listPoliciesResponse400 | listPoliciesResponse401 | listPoliciesResponse403 | listPoliciesResponse404 | listPoliciesResponse409) & {
   headers: Headers;
 };
 
-export type listPoliciesResponse = (listPoliciesResponseError)
+export type listPoliciesResponse = (listPoliciesResponseSuccess | listPoliciesResponseError)
 
 export const getListPoliciesUrl = () => {
 
@@ -3802,10 +3825,10 @@ export const listPolicies = async ( options?: RequestInit): Promise<listPolicies
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: listPoliciesResponse['data'] = body ? JSON.parse(body) : {}
+  const data: listPoliciesResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as listPoliciesResponse
 }
 
@@ -3952,6 +3975,81 @@ export const addPolicyRule = async (id: string,
 
 
 
+export type simulatePolicyResponse200 = {
+  data: TenantPolicySimulationResponse
+  status: 200
+}
+
+export type simulatePolicyResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type simulatePolicyResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type simulatePolicyResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type simulatePolicyResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type simulatePolicyResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type simulatePolicyResponseSuccess = (simulatePolicyResponse200) & {
+  headers: Headers;
+};
+export type simulatePolicyResponseError = (simulatePolicyResponse400 | simulatePolicyResponse401 | simulatePolicyResponse403 | simulatePolicyResponse404 | simulatePolicyResponse409) & {
+  headers: Headers;
+};
+
+export type simulatePolicyResponse = (simulatePolicyResponseSuccess | simulatePolicyResponseError)
+
+export const getSimulatePolicyUrl = () => {
+
+
+
+
+  return `/api/manage/permission-policies/simulate`
+}
+
+/**
+ * @summary Simulate a tenant permission policy draft
+ */
+export const simulatePolicy = async (simulateTenantPermissionPolicyRequest: SimulateTenantPermissionPolicyRequest, options?: RequestInit): Promise<simulatePolicyResponse> => {
+
+  const res = await fetch(getSimulatePolicyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(simulateTenantPermissionPolicyRequest)
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: simulatePolicyResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as simulatePolicyResponse
+}
+
+
+
+export type listBindingsResponse200 = {
+  data: PermissionBindingResponse[]
+  status: 200
+}
+
 export type listBindingsResponse400 = {
   data: ProblemDetail
   status: 400
@@ -3977,12 +4075,14 @@ export type listBindingsResponse409 = {
   status: 409
 }
 
-;
+export type listBindingsResponseSuccess = (listBindingsResponse200) & {
+  headers: Headers;
+};
 export type listBindingsResponseError = (listBindingsResponse400 | listBindingsResponse401 | listBindingsResponse403 | listBindingsResponse404 | listBindingsResponse409) & {
   headers: Headers;
 };
 
-export type listBindingsResponse = (listBindingsResponseError)
+export type listBindingsResponse = (listBindingsResponseSuccess | listBindingsResponseError)
 
 export const getListBindingsUrl = () => {
 
@@ -4006,10 +4106,10 @@ export const listBindings = async ( options?: RequestInit): Promise<listBindings
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: listBindingsResponse['data'] = body ? JSON.parse(body) : {}
+  const data: listBindingsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as listBindingsResponse
 }
 
@@ -4761,139 +4861,6 @@ export const createGrant = async (createAccessGrantRequest: CreateAccessGrantReq
 
   const data: createGrantResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as createGrantResponse
-}
-
-
-
-export type listActionsResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type listActionsResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type listActionsResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type listActionsResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type listActionsResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type listActionsResponseError = (listActionsResponse400 | listActionsResponse401 | listActionsResponse403 | listActionsResponse404 | listActionsResponse409) & {
-  headers: Headers;
-};
-
-export type listActionsResponse = (listActionsResponseError)
-
-export const getListActionsUrl = () => {
-
-
-
-
-  return `/api/manage/actions`
-}
-
-/**
- * @summary List permission actions
- */
-export const listActions = async ( options?: RequestInit): Promise<listActionsResponse> => {
-
-  const res = await fetch(getListActionsUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: listActionsResponse['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as listActionsResponse
-}
-
-
-
-export type ensureActionResponse201 = {
-  data: ActionResponse
-  status: 201
-}
-
-export type ensureActionResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type ensureActionResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type ensureActionResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type ensureActionResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type ensureActionResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-export type ensureActionResponseSuccess = (ensureActionResponse201) & {
-  headers: Headers;
-};
-export type ensureActionResponseError = (ensureActionResponse400 | ensureActionResponse401 | ensureActionResponse403 | ensureActionResponse404 | ensureActionResponse409) & {
-  headers: Headers;
-};
-
-export type ensureActionResponse = (ensureActionResponseSuccess | ensureActionResponseError)
-
-export const getEnsureActionUrl = () => {
-
-
-
-
-  return `/api/manage/actions`
-}
-
-/**
- * @summary Ensure permission action
- */
-export const ensureAction = async (ensureActionRequest: EnsureActionRequest, options?: RequestInit): Promise<ensureActionResponse> => {
-
-  const res = await fetch(getEnsureActionUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(ensureActionRequest)
-  }
-)
-
-  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ensureActionResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
-  return { data, status: res.status, headers: res.headers } as ensureActionResponse
 }
 
 
@@ -9102,6 +9069,76 @@ export const tenant = async ( options?: RequestInit): Promise<tenantResponse> =>
 
   const data: tenantResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as tenantResponse
+}
+
+
+
+export type listActionsResponse200 = {
+  data: ActionResponse[]
+  status: 200
+}
+
+export type listActionsResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type listActionsResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type listActionsResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type listActionsResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type listActionsResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type listActionsResponseSuccess = (listActionsResponse200) & {
+  headers: Headers;
+};
+export type listActionsResponseError = (listActionsResponse400 | listActionsResponse401 | listActionsResponse403 | listActionsResponse404 | listActionsResponse409) & {
+  headers: Headers;
+};
+
+export type listActionsResponse = (listActionsResponseSuccess | listActionsResponseError)
+
+export const getListActionsUrl = () => {
+
+
+
+
+  return `/api/manage/actions`
+}
+
+/**
+ * @summary List permission actions
+ */
+export const listActions = async ( options?: RequestInit): Promise<listActionsResponse> => {
+
+  const res = await fetch(getListActionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listActionsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as listActionsResponse
 }
 
 

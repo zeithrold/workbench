@@ -1,2 +1,5 @@
 export * from './permission-document.js'
 export { default as PermissionEditor } from './permission-editor.svelte'
+export * from './tenant-permission-document.js'
+export { default as TenantPermissionEditor } from './tenant-permission-editor.svelte'
+export { default as TenantPolicySimulator } from './tenant-policy-simulator.svelte'
