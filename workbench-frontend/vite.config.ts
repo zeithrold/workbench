@@ -63,6 +63,7 @@ export default defineConfig({
       'highlight.js/lib/languages/xml',
       'highlight.js/lib/languages/yaml',
       'lowlight',
+      'monaco-editor',
     ],
   },
   plugins: [

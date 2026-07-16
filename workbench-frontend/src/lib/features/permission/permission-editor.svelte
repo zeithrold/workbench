@@ -22,6 +22,10 @@
   let mode = $state<'visual' | 'source'>('visual')
   let errors = $state<string[]>([])
 
+  function cloneJson<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value)) as T
+  }
+
   function commit(next: PermissionPolicyDocument) {
     document = next
     source = serializePermissionDocument(next)
@@ -63,7 +67,7 @@
   $effect(() => {
     const incoming = serializePermissionDocument(value)
     if (incoming !== serializePermissionDocument(document)) {
-      document = structuredClone(value)
+      document = cloneJson(value)
       source = incoming
       errors = []
     }
@@ -97,7 +101,7 @@
       {#if document.rules.length === 0}<div class='rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground'>This policy has no rules.</div>{/if}
       {#each document.rules as rule, index (rule.id ?? index)}
         <Card>
-          <CardHeader class='flex-row items-center justify-between'><CardTitle class='text-base'>Rule {index + 1}</CardTitle>{#if editable}<div class='flex gap-1'><Button type='button' variant='ghost' size='sm' onclick={() => commit({ ...document, rules: [...document.rules.slice(0, index + 1), { ...structuredClone(rule), id: undefined }, ...document.rules.slice(index + 1)] })}>Duplicate</Button><Button type='button' variant='ghost' size='sm' onclick={() => commit({ ...document, rules: document.rules.filter((_, ruleIndex) => ruleIndex !== index) })}>Delete</Button></div>{/if}</CardHeader>
+          <CardHeader class='flex-row items-center justify-between'><CardTitle class='text-base'>Rule {index + 1}</CardTitle>{#if editable}<div class='flex gap-1'><Button type='button' variant='ghost' size='sm' onclick={() => commit({ ...document, rules: [...document.rules.slice(0, index + 1), { ...cloneJson(rule), id: undefined }, ...document.rules.slice(index + 1)] })}>Duplicate</Button><Button type='button' variant='ghost' size='sm' onclick={() => commit({ ...document, rules: document.rules.filter((_, ruleIndex) => ruleIndex !== index) })}>Delete</Button></div>{/if}</CardHeader>
           <CardContent class='space-y-4'>
             <div class='grid gap-3 md:grid-cols-3'>
               <div class='space-y-1'><Label>Action</Label><Input list='permission-actions' value={rule.action} disabled={!editable} oninput={event => updateRule(index, { ...rule, action: event.currentTarget.value })} /><datalist id='permission-actions'>{#each actions as action (action.code)}<option value={action.code}>{action.description}</option>{/each}</datalist></div>
