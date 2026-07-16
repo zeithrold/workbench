@@ -9,6 +9,7 @@ import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
 import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -33,7 +34,17 @@ class ManagePermissionBindingController(
 ) {
   @GetMapping("/permission-bindings")
   @Authorize(action = "tenant.read", resource = "tenant")
-  @Operation(summary = "List permission bindings")
+  @Operation(
+    summary = "List permission bindings",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Tenant bindings",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun listBindings(tenantContext: TenantRequestContext): List<PermissionBindingResponse> =
     permissionBindingManagementService.listBindings(tenantContext.tenant.id).map {
       PermissionBindingResponse.from(it)
@@ -55,7 +66,6 @@ class ManagePermissionBindingController(
           userPublicId = request.userId,
           groupPublicId = request.groupId,
           policyPublicId = request.policyId,
-          projectPublicId = request.projectId,
           effect = null,
           actorUserId = tenantContext.actor?.id,
           validTo = request.validTo,

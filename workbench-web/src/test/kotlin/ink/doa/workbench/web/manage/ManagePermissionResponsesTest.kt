@@ -86,11 +86,9 @@ class ManagePermissionResponsesTest :
           userId = "usr_abc",
           groupId = null,
           policyId = "pol_abc",
-          projectId = "prj_abc",
         )
 
       request.policyId shouldBe "pol_abc"
-      request.projectId shouldBe "prj_abc"
     }
 
     "add group member request stores user id" {

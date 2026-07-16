@@ -62,6 +62,44 @@ data class ReplacePermissionPolicyRequest(
   val rules: List<PermissionPolicyRuleRequest>,
 )
 
+data class SimulateTenantPermissionPolicyRequest(
+  val schemaVersion: Int = 1,
+  val rules: List<PermissionPolicyRuleRequest>,
+  @field:NotBlank val action: String,
+)
+
+data class TenantPolicySimulationRuleResponse(
+  val index: Int,
+  val action: String,
+  val effect: String,
+  val matches: Boolean,
+  val contributes: Boolean,
+)
+
+data class TenantPolicySimulationResponse(
+  val decision: String,
+  val reason: String,
+  val rules: List<TenantPolicySimulationRuleResponse>,
+) {
+  companion object {
+    fun from(view: ink.doa.workbench.application.permission.TenantPolicySimulation) =
+      TenantPolicySimulationResponse(
+        decision = view.decision.name,
+        reason = view.reason,
+        rules =
+          view.rules.map {
+            TenantPolicySimulationRuleResponse(
+              index = it.index,
+              action = it.action,
+              effect = it.effect.name,
+              matches = it.matches,
+              contributes = it.contributes,
+            )
+          },
+      )
+  }
+}
+
 data class AddGroupMemberRequest(@field:NotBlank val userId: String)
 
 data class CreatePermissionBindingRequest(
@@ -69,7 +107,6 @@ data class CreatePermissionBindingRequest(
   val userId: String?,
   val groupId: String?,
   @field:NotBlank val policyId: String,
-  val projectId: String?,
   val validTo: OffsetDateTime? = null,
 )
 

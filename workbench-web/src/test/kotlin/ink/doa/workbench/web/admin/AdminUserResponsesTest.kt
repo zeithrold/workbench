@@ -1,8 +1,8 @@
 package ink.doa.workbench.web.admin
 
 import ink.doa.workbench.application.permission.AccessGrantView
-import ink.doa.workbench.application.permission.ActionView
 import ink.doa.workbench.application.permission.AdminUserView
+import ink.doa.workbench.application.permission.TenantPermissionCapability
 import ink.doa.workbench.identity.permission.AdminScope
 import ink.doa.workbench.identity.permission.GrantScope
 import ink.doa.workbench.identity.permission.model.PermissionEffect
@@ -50,8 +50,15 @@ class AdminUserResponsesTest :
     }
 
     "action response maps view fields" {
-      ActionResponse.from(ActionView(code = "project.read", description = "Read projects"))
-        .code shouldBe "project.read"
+      ActionResponse.from(
+          TenantPermissionCapability(
+            action = "tenant.read",
+            resourcePattern = "tenant:*",
+            name = "View tenant settings",
+            description = "Read tenant settings",
+          )
+        )
+        .code shouldBe "tenant.read"
     }
 
     "problem detail support attaches error code" {

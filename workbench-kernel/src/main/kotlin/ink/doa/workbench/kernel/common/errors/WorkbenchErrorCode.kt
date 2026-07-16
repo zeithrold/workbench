@@ -337,6 +337,26 @@ enum class WorkbenchErrorCode(
     "permission.policy.rule_resource_pattern_invalid",
     "Resource pattern must be '*', an exact resource, or a prefix ending in ':*'.",
   ),
+  PERMISSION_POLICY_TENANT_RULE_REQUIRED(
+    "permission.policy.tenant_rule_required",
+    "Tenant permission policies require at least one rule.",
+  ),
+  PERMISSION_POLICY_TENANT_ACTION_FORBIDDEN(
+    "permission.policy.tenant_action_forbidden",
+    "Action is not available to tenant permission policies.",
+  ),
+  PERMISSION_POLICY_TENANT_RESOURCE_MISMATCH(
+    "permission.policy.tenant_resource_mismatch",
+    "Resource pattern does not match the selected tenant capability.",
+  ),
+  PERMISSION_POLICY_TENANT_CONDITION_FORBIDDEN(
+    "permission.policy.tenant_condition_forbidden",
+    "Tenant permission policies do not support conditions.",
+  ),
+  PERMISSION_POLICY_NOT_TENANT_POLICY(
+    "permission.policy.not_tenant_policy",
+    "Policy is not a tenant management policy.",
+  ),
   PERMISSION_BINDING_EFFECT_OVERRIDE_UNSUPPORTED(
     "permission.binding.effect_override_unsupported",
     "Binding effect overrides are not supported; use policy rules.",

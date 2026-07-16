@@ -105,7 +105,14 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
               {
                 "code": "editor",
                 "name": "Editor",
-                "description": "Can edit issues"
+                "description": "Can manage members",
+                "rules": [
+                  {
+                    "action": "tenant.member.manage",
+                    "resourcePattern": "tenant:*",
+                    "effect": "allow"
+                  }
+                ]
               }
               """
                 .trimIndent()
@@ -139,14 +146,10 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
                 "rules": [
                   {
                     "id": null,
-                    "action": "issue.update",
-                    "resourcePattern": "issue:*",
+                    "action": "tenant.update",
+                    "resourcePattern": "tenant:*",
                     "effect": "deny",
-                    "condition": {
-                      "field": "issue.statusGroup",
-                      "op": "eq",
-                      "value": "done"
-                    }
+                    "condition": null
                   }
                 ]
               }
@@ -161,7 +164,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.name").value("Tenant admin"))
-      .andExpect(jsonPath("$.rules").isEmpty())
+      .andExpect(jsonPath("$.rules[0].action").value("tenant.update"))
   }
 
   @Test
@@ -175,8 +178,8 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
             .content(
               """
               {
-                "action": "issue.update",
-                "resourcePattern": "issue:*"
+                "action": "tenant.update",
+                "resourcePattern": "tenant:*"
               }
               """
                 .trimIndent()
@@ -188,11 +191,11 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.rules[0].action").value("issue.update"))
+      .andExpect(jsonPath("$.rules[0].action").value("tenant.update"))
   }
 
   @Test
-  fun `add policy rule accepts optional condition`() {
+  fun `add policy rule rejects conditions`() {
     val result =
       mockMvc
         .perform(
@@ -202,9 +205,9 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
             .content(
               """
               {
-                "action": "issue.view",
-                "resourcePattern": "issue:*",
-                "condition": {"field":"issue.statusGroup","op":"eq","value":"todo"}
+                "action": "tenant.read",
+                "resourcePattern": "tenant:*",
+                "condition": {"field":"tenant.slug","op":"eq","value":"demo"}
               }
               """
                 .trimIndent()
@@ -215,12 +218,12 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
 
     mockMvc
       .perform(asyncDispatch(result))
-      .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.rules[0].condition.field").value("issue.statusGroup"))
+      .andExpect(status().isBadRequest())
+      .andExpect(jsonPath("$.code").value("permission.policy.tenant_condition_forbidden"))
   }
 
   @Test
-  fun `add policy rule rejects invalid condition with permission error code`() {
+  fun `add policy rule rejects Agile action with tenant boundary error code`() {
     val result =
       mockMvc
         .perform(
@@ -232,7 +235,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
               {
                 "action": "issue.view",
                 "resourcePattern": "issue:*",
-                "condition": {}
+                "condition": null
               }
               """
                 .trimIndent()
@@ -244,7 +247,33 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isBadRequest)
-      .andExpect(jsonPath("$.code").value("permission.policy.rule_condition_invalid"))
+      .andExpect(jsonPath("$.code").value("permission.policy.tenant_action_forbidden"))
+  }
+
+  @Test
+  fun `simulate permission policy applies tenant deny precedence`() {
+    mockMvc
+      .perform(
+        post("/api/manage/permission-policies/simulate")
+          .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(
+            """
+            {
+              "schemaVersion": 1,
+              "action": "tenant.read",
+              "rules": [
+                {"action":"tenant.read","resourcePattern":"tenant:*","effect":"allow"},
+                {"action":"tenant.read","resourcePattern":"tenant:*","effect":"deny"}
+              ]
+            }
+            """
+              .trimIndent()
+          )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.decision").value("DENY"))
+      .andExpect(jsonPath("$.reason").value("matching_deny"))
   }
 
   @TestConfiguration
@@ -299,41 +328,42 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
           tenantId = tenantId,
           code = "editor",
           name = "Editor",
-          description = "Can edit issues",
+          description = "Can manage members",
           builtin = false,
           createdAt = now,
           updatedAt = now,
         )
-      val issueUpdateRule =
+      val tenantReadRule =
         ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
           id = UUID.randomUUID(),
           apiId = PublicId.new("prr"),
           policyId = customPolicyId,
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.update"),
-          resourcePattern = "issue:*",
+          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("tenant.read"),
+          resourcePattern = "tenant:*",
           effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
           conditionJson = null,
           createdAt = now,
         )
-      val issueViewRule =
-        issueUpdateRule.copy(
+      val tenantUpdateRule =
+        tenantReadRule.copy(
           id = UUID.randomUUID(),
           apiId = PublicId.new("prr"),
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.view"),
-          conditionJson = """{"field":"issue.statusGroup","op":"eq","value":"todo"}""",
+          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("tenant.update"),
+          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.DENY,
         )
       var rules: List<ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord> =
-        emptyList()
+        listOf(tenantReadRule)
 
       coEvery { policies.list(tenantId) } returns listOf(adminPolicy)
       coEvery { policies.findByCode(tenantId, "editor") } returns null
       coEvery { policies.create(any()) } returns editorPolicy
-      coEvery { policies.listRules(editorPolicy.id) } returns emptyList()
+      coEvery { policies.listRules(editorPolicy.id) } returns
+        listOf(tenantReadRule.copy(policyId = editorPolicy.id))
       coEvery { policies.findByApiId(tenantId, "pol_01JABCDEFGHJKMNPQRSTVWXYZ0") } returns
         adminPolicy
       coEvery { policies.replace(any()) } answers
         {
-          rules = emptyList()
+          rules = listOf(tenantUpdateRule)
           adminPolicy.copy(
             name = "Tenant admin",
             description = "Complete tenant access",
@@ -346,8 +376,7 @@ class ManagePermissionPolicyControllerTest(@Autowired private val mockMvc: MockM
             firstArg<ink.doa.workbench.identity.permission.CreatePermissionPolicyRuleCommand>()
           val rule =
             when (command.action.code) {
-              "issue.update" -> issueUpdateRule
-              "issue.view" -> issueViewRule
+              "tenant.update" -> tenantUpdateRule
               else -> error("unexpected action ${command.action.code}")
             }
           rules = listOf(rule)

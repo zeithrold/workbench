@@ -11,7 +11,6 @@ data class CreateManagedPermissionBindingCommand(
   val userPublicId: String?,
   val groupPublicId: String?,
   val policyPublicId: String,
-  val projectPublicId: String?,
   val effect: PermissionEffect?,
   val actorUserId: UUID?,
   val validTo: OffsetDateTime? = null,

@@ -30,7 +30,7 @@ class PermissionBindingManagementServiceTest :
     val bindings = mockk<PermissionBindingRepository>()
     val bindingViews = mockk<PermissionBindingViewAssembler>()
     val groupManagement = mockk<PermissionGroupManagementService>(relaxed = true)
-    val policyManagement = mockk<PermissionPolicyManagementService>()
+    val tenantPolicies = mockk<TenantPermissionPolicyGuard>()
     val publicIds = mockk<PublicIdResolver>()
     val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
     val service =
@@ -38,7 +38,7 @@ class PermissionBindingManagementServiceTest :
         bindings,
         bindingViews,
         groupManagement,
-        policyManagement,
+        tenantPolicies,
         publicIds,
         clock,
       )
@@ -48,6 +48,7 @@ class PermissionBindingManagementServiceTest :
       val binding = sampleBinding(tenantId)
       val view = sampleBindingView(binding)
       coEvery { bindings.listByTenant(tenantId) } returns listOf(binding)
+      coEvery { tenantPolicies.contains(tenantId, binding.policyId) } returns true
       coEvery { bindingViews.assemble(tenantId, binding) } returns view
 
       val result = runBlocking { service.listBindings(tenantId) }
@@ -61,7 +62,7 @@ class PermissionBindingManagementServiceTest :
       val binding = sampleBinding(tenantId, userId = user.id, policyId = policy.id)
       val view = sampleBindingView(binding, user = user)
       coEvery { publicIds.resolveUser(user.apiId.value) } returns user
-      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { tenantPolicies.requirePolicy(tenantId, policy.apiId.value) } returns policy
       coEvery { bindings.create(any()) } returns binding
       coEvery { bindingViews.assemble(tenantId, binding) } returns view
 
@@ -73,7 +74,6 @@ class PermissionBindingManagementServiceTest :
             userPublicId = user.apiId.value,
             groupPublicId = null,
             policyPublicId = policy.apiId.value,
-            projectPublicId = null,
             effect = null,
             actorUserId = UUID.randomUUID(),
           )
@@ -97,7 +97,6 @@ class PermissionBindingManagementServiceTest :
               userPublicId = "usr_test",
               groupPublicId = null,
               policyPublicId = "pol_test",
-              projectPublicId = null,
               effect = PermissionEffect.DENY,
               actorUserId = null,
             )
@@ -125,7 +124,7 @@ class PermissionBindingManagementServiceTest :
           )
       val view = sampleBindingView(binding)
       coEvery { groupManagement.requireGroup(tenantId, group.apiId.value) } returns group
-      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { tenantPolicies.requirePolicy(tenantId, policy.apiId.value) } returns policy
       coEvery { bindings.create(any()) } returns binding
       coEvery { bindingViews.assemble(tenantId, binding) } returns view
 
@@ -137,7 +136,6 @@ class PermissionBindingManagementServiceTest :
             userPublicId = null,
             groupPublicId = group.apiId.value,
             policyPublicId = policy.apiId.value,
-            projectPublicId = null,
             effect = null,
             actorUserId = UUID.randomUUID(),
           )
@@ -153,7 +151,7 @@ class PermissionBindingManagementServiceTest :
         sampleBinding(tenantId, userId = null, policyId = policy.id)
           .copy(principalType = PermissionPrincipalType.TENANT_MEMBER)
       val view = sampleBindingView(binding)
-      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { tenantPolicies.requirePolicy(tenantId, policy.apiId.value) } returns policy
       coEvery { bindings.create(any()) } returns binding
       coEvery { bindingViews.assemble(tenantId, binding) } returns view
 
@@ -165,7 +163,6 @@ class PermissionBindingManagementServiceTest :
             userPublicId = null,
             groupPublicId = null,
             policyPublicId = policy.apiId.value,
-            projectPublicId = null,
             effect = null,
             actorUserId = null,
           )
@@ -179,7 +176,7 @@ class PermissionBindingManagementServiceTest :
       val group = sampleGroup(tenantId)
       val policy = samplePolicy(tenantId)
       coEvery { groupManagement.requireGroup(tenantId, group.apiId.value) } returns group
-      coEvery { policyManagement.requirePolicy(tenantId, policy.apiId.value) } returns policy
+      coEvery { tenantPolicies.requirePolicy(tenantId, policy.apiId.value) } returns policy
 
       shouldThrow<InvalidRequestException> {
         runBlocking {
@@ -190,7 +187,6 @@ class PermissionBindingManagementServiceTest :
               userPublicId = null,
               groupPublicId = group.apiId.value,
               policyPublicId = policy.apiId.value,
-              projectPublicId = null,
               effect = null,
               actorUserId = null,
             )
@@ -202,9 +198,26 @@ class PermissionBindingManagementServiceTest :
     "expireBinding delegates to repository" {
       val binding = sampleBinding(tenantId)
       coEvery { bindings.findByApiId(tenantId, binding.apiId.value) } returns binding
+      coEvery { tenantPolicies.contains(tenantId, binding.policyId) } returns true
       coEvery { bindings.expire(tenantId, binding.id, any()) } returns true
 
       runBlocking { service.expireBinding(tenantId, binding.apiId.value) } shouldBe true
+    }
+
+    "listBindings hides project-scoped bindings" {
+      val binding = sampleBinding(tenantId).copy(projectId = UUID.randomUUID())
+      coEvery { bindings.listByTenant(tenantId) } returns listOf(binding)
+
+      runBlocking { service.listBindings(tenantId) } shouldBe emptyList()
+    }
+
+    "expireBinding rejects project-scoped bindings" {
+      val binding = sampleBinding(tenantId).copy(projectId = UUID.randomUUID())
+      coEvery { bindings.findByApiId(tenantId, binding.apiId.value) } returns binding
+
+      shouldThrow<ResourceNotFoundException> {
+        runBlocking { service.expireBinding(tenantId, binding.apiId.value) }
+      }
     }
   })
 

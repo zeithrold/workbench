@@ -14,6 +14,7 @@ import ink.doa.workbench.web.api.StandardErrorResponses
 import ink.doa.workbench.web.api.TenantScoped
 import ink.doa.workbench.web.api.context.TenantRequestContext
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -42,7 +43,17 @@ class ManagePermissionPolicyController(
 
   @GetMapping("/permission-policies")
   @Authorize(action = "tenant.read", resource = "tenant")
-  @Operation(summary = "List permission policies")
+  @Operation(
+    summary = "List permission policies",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Tenant policies",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun listPolicies(tenantContext: TenantRequestContext): List<PermissionPolicyResponse> =
     permissionPolicyManagementService.listPolicies(tenantContext.tenant.id).map {
       PermissionPolicyResponse.from(it)
@@ -50,7 +61,13 @@ class ManagePermissionPolicyController(
 
   @GetMapping("/permission-policies/{id}")
   @Authorize(action = "tenant.read", resource = "tenant")
-  @Operation(summary = "Get permission policy")
+  @Operation(
+    summary = "Get permission policy",
+    responses =
+      [
+        ApiResponse(responseCode = "200", description = "Tenant policy", useReturnTypeSchema = true)
+      ],
+  )
   suspend fun getPolicy(
     @PathVariable id: String,
     tenantContext: TenantRequestContext,
@@ -80,9 +97,45 @@ class ManagePermissionPolicyController(
       )
     )
 
+  @PostMapping("/permission-policies/simulate")
+  @Authorize(action = "permission.policy.manage", resource = "permission")
+  @Operation(
+    summary = "Simulate a tenant permission policy draft",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Draft decision",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
+  fun simulatePolicy(
+    @Valid @RequestBody request: SimulateTenantPermissionPolicyRequest,
+    tenantContext: TenantRequestContext,
+  ): TenantPolicySimulationResponse =
+    TenantPolicySimulationResponse.from(
+      permissionPolicyManagementService.simulate(
+        tenantContext.tenant.id,
+        request.schemaVersion,
+        request.rules.map(::toRuleCommand),
+        request.action,
+      )
+    )
+
   @PutMapping("/permission-policies/{id}")
   @Authorize(action = "permission.policy.manage", resource = "permission")
-  @Operation(summary = "Replace custom permission policy document")
+  @Operation(
+    summary = "Replace custom permission policy document",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Updated tenant policy",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun replacePolicy(
     @PathVariable id: String,
     @Valid @RequestBody request: ReplacePermissionPolicyRequest,
@@ -105,7 +158,17 @@ class ManagePermissionPolicyController(
 
   @PatchMapping("/permission-policies/{id}")
   @Authorize(action = "permission.policy.manage", resource = "permission")
-  @Operation(summary = "Update custom permission policy")
+  @Operation(
+    summary = "Update custom permission policy",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Updated tenant policy",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun updatePolicy(
     @PathVariable id: String,
     @Valid @RequestBody request: UpdatePermissionPolicyRequest,

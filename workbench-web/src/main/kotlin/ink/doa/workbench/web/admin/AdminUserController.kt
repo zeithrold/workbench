@@ -207,21 +207,21 @@ class AdminUserController(
   @GetMapping("/api/manage/actions")
   @TenantScoped
   @Authorize(action = "permission.policy.manage", resource = "permission")
-  @Operation(summary = "List permission actions")
+  @Operation(
+    summary = "List permission actions",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Tenant capabilities",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
   suspend fun listActions(
     @Suppress("UnusedParameter") tenantContext: TenantRequestContext
-  ): List<ActionResponse> = permissionActionService.listActions().map { ActionResponse.from(it) }
-
-  @PostMapping("/api/manage/actions")
-  @TenantScoped
-  @Authorize(action = "permission.policy.manage", resource = "permission")
-  @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Ensure permission action")
-  suspend fun ensureAction(
-    @Valid @RequestBody request: EnsureActionRequest,
-    @Suppress("UnusedParameter") tenantContext: TenantRequestContext,
-  ): ActionResponse =
-    ActionResponse.from(permissionActionService.ensureAction(request.code, request.description))
+  ): List<ActionResponse> =
+    permissionActionService.listTenantCapabilities().map { ActionResponse.from(it) }
 }
 
 data class GrantAdminRequest(
@@ -236,11 +236,6 @@ data class CreateAccessGrantRequest(
   @field:NotBlank @field:Schema(example = "project:*") val resourcePattern: String,
   @field:Schema(example = "ALLOW") val effect: PermissionEffect = PermissionEffect.ALLOW,
   @field:Schema(example = OpenApiExamples.PROJECT_ID) val projectId: String? = null,
-)
-
-data class EnsureActionRequest(
-  @field:NotBlank val code: String,
-  val description: String? = null,
 )
 
 data class AdminUserResponse(
@@ -283,9 +278,19 @@ data class AccessGrantResponse(
   }
 }
 
-data class ActionResponse(val code: String, val description: String?) {
+data class ActionResponse(
+  val code: String,
+  val description: String?,
+  val name: String? = null,
+  val resourcePattern: String? = null,
+) {
   companion object {
-    fun from(view: ink.doa.workbench.application.permission.ActionView) =
-      ActionResponse(code = view.code, description = view.description)
+    fun from(capability: ink.doa.workbench.application.permission.TenantPermissionCapability) =
+      ActionResponse(
+        code = capability.action,
+        description = capability.description,
+        name = capability.name,
+        resourcePattern = capability.resourcePattern,
+      )
   }
 }

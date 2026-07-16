@@ -18,12 +18,17 @@ class PermissionBindingManagementService(
   private val bindings: PermissionBindingRepository,
   private val bindingViews: PermissionBindingViewAssembler,
   private val groupManagement: PermissionGroupManagementService,
-  private val policyManagement: PermissionPolicyManagementService,
+  private val tenantPolicies: TenantPermissionPolicyGuard,
   private val publicIds: PublicIdResolver,
   private val clock: Clock,
 ) {
   suspend fun listBindings(tenantId: UUID): List<PermissionBindingView> =
-    bindings.listByTenant(tenantId).map { bindingViews.assemble(tenantId, it) }
+    bindings
+      .listByTenant(tenantId)
+      .filter { binding ->
+        binding.projectId == null && tenantPolicies.contains(tenantId, binding.policyId)
+      }
+      .map { bindingViews.assemble(tenantId, it) }
 
   suspend fun createBinding(command: CreateManagedPermissionBindingCommand): PermissionBindingView {
     if (command.effect != null && command.effect != PermissionEffect.ALLOW) {
@@ -34,9 +39,7 @@ class PermissionBindingManagementService(
     val userId = command.userPublicId?.let { publicIds.resolveUser(it).id }
     val groupId =
       command.groupPublicId?.let { groupManagement.requireGroup(command.tenantId, it).id }
-    val policy = policyManagement.requirePolicy(command.tenantId, command.policyPublicId)
-    val projectId =
-      command.projectPublicId?.let { publicIds.resolveProject(command.tenantId, it).id }
+    val policy = tenantPolicies.requirePolicy(command.tenantId, command.policyPublicId)
     validatePrincipal(command.principalType, userId, groupId)
     val now = OffsetDateTime.now(clock)
     if (command.validTo != null && !command.validTo.isAfter(now)) {
@@ -46,7 +49,7 @@ class PermissionBindingManagementService(
       bindings.create(
         CreatePermissionBindingCommand(
           tenantId = command.tenantId,
-          projectId = projectId,
+          projectId = null,
           principalType = command.principalType,
           principalUserId = userId,
           principalGroupId = groupId,
@@ -63,6 +66,9 @@ class PermissionBindingManagementService(
     val binding =
       bindings.findByApiId(tenantId, publicId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
+    if (binding.projectId != null || !tenantPolicies.contains(tenantId, binding.policyId)) {
+      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
+    }
     return bindings.expire(tenantId, binding.id, OffsetDateTime.now(clock))
   }
 

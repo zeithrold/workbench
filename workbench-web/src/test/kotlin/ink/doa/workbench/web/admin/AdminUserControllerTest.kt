@@ -3,7 +3,6 @@ package ink.doa.workbench.web.admin
 import ink.doa.workbench.application.identity.PublicIdResolver
 import ink.doa.workbench.application.permission.AccessGrantManagementService
 import ink.doa.workbench.application.permission.AccessGrantView
-import ink.doa.workbench.application.permission.ActionView
 import ink.doa.workbench.application.permission.AdminUserService
 import ink.doa.workbench.application.permission.AdminUserView
 import ink.doa.workbench.application.permission.CreateManagedAccessGrantCommand
@@ -158,26 +157,20 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].code").value("project.read"))
+      .andExpect(jsonPath("$[0].code").value("tenant.read"))
+      .andExpect(jsonPath("$[0].resourcePattern").value("tenant:*"))
   }
 
   @Test
-  fun `ensure action returns created action for authenticated tenant user`() {
-    val result =
-      mockMvc
-        .perform(
-          post("/api/manage/actions")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("""{"code":"project.archive","description":"Archive projects"}""")
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
+  fun `manage actions does not allow creating custom capabilities`() {
     mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isCreated())
-      .andExpect(jsonPath("$.code").value("project.archive"))
+      .perform(
+        post("/api/manage/actions")
+          .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("""{"code":"project.archive","description":"Archive projects"}""")
+      )
+      .andExpect(status().isMethodNotAllowed())
   }
 
   @Test
@@ -373,17 +366,14 @@ class AdminUserControllerTest(@Autowired private val mockMvc: MockMvc) {
 
     @Bean
     fun permissionActionServiceSetup(service: PermissionActionService): Boolean {
-      coEvery { service.listActions() } returns
+      coEvery { service.listTenantCapabilities() } returns
         listOf(
-          ink.doa.workbench.application.permission.ActionView(
-            code = "project.read",
-            description = "Read projects",
+          ink.doa.workbench.application.permission.TenantPermissionCapability(
+            action = "tenant.read",
+            resourcePattern = "tenant:*",
+            name = "View tenant settings",
+            description = "View tenant metadata and management information.",
           )
-        )
-      coEvery { service.ensureAction("project.archive", "Archive projects") } returns
-        ink.doa.workbench.application.permission.ActionView(
-          code = "project.archive",
-          description = "Archive projects",
         )
       return true
     }

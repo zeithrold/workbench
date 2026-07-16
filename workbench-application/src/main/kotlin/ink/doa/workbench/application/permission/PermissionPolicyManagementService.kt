@@ -9,6 +9,7 @@ import ink.doa.workbench.identity.permission.ReplacePermissionPolicyCommand
 import ink.doa.workbench.identity.permission.ReplacePermissionPolicyRuleCommand
 import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
 import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import ink.doa.workbench.kernel.common.errors.InvalidRequestException
 import ink.doa.workbench.kernel.common.errors.ResourceConflictException
 import ink.doa.workbench.kernel.common.errors.ResourceNotFoundException
@@ -27,13 +28,20 @@ class PermissionPolicyManagementService(
   private val documentValidator = PermissionPolicyDocumentValidator(actions)
 
   suspend fun listPolicies(tenantId: UUID): List<PermissionPolicyView> =
-    policies.list(tenantId).map { policy ->
-      PermissionPolicyView.from(policy, policies.listRules(policy.id))
+    policies.list(tenantId).mapNotNull { policy ->
+      val rules = policies.listRules(policy.id)
+      if (TenantPermissionCapabilities.isTenantPolicy(rules)) {
+        PermissionPolicyView.from(policy, rules)
+      } else {
+        null
+      }
     }
 
   suspend fun getPolicy(tenantId: UUID, publicId: String): PermissionPolicyView {
     val policy = requirePolicy(tenantId, publicId)
-    return PermissionPolicyView.from(policy, policies.listRules(policy.id))
+    val rules = policies.listRules(policy.id)
+    requireTenantPolicy(rules)
+    return PermissionPolicyView.from(policy, rules)
   }
 
   suspend fun createPolicy(
@@ -60,6 +68,7 @@ class PermissionPolicyManagementService(
 
   suspend fun createDocument(command: CreatePermissionPolicyDocumentCommand): PermissionPolicyView {
     documentValidator.requireSchemaVersion(command.schemaVersion)
+    documentValidator.requireTenantRules(command.rules)
     if (policies.findByCode(command.tenantId, command.code) != null) {
       throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_CODE_IN_USE)
     }
@@ -95,6 +104,8 @@ class PermissionPolicyManagementService(
     documentValidator.requireMutablePolicy(policy)
     documentValidator.requireUnchangedCode(policy, command.code)
     val existingRules = policies.listRules(policy.id).associateBy { it.apiId.value }
+    requireTenantPolicy(existingRules.values.toList())
+    documentValidator.requireTenantRules(command.rules)
     val rules = documentValidator.validateRules(command.rules, existingRules)
     val expectedRevision = documentValidator.parseRevision(command.revision)
     val updated =
@@ -117,6 +128,7 @@ class PermissionPolicyManagementService(
     description: String?,
   ): PermissionPolicyView {
     val policy = requirePolicy(tenantId, publicId)
+    requireTenantPolicy(policies.listRules(policy.id))
     if (policy.builtin) {
       throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_BUILTIN_UPDATE_FORBIDDEN)
     }
@@ -128,6 +140,7 @@ class PermissionPolicyManagementService(
 
   suspend fun deletePolicy(tenantId: UUID, publicId: String): Boolean {
     val policy = requirePolicy(tenantId, publicId)
+    requireTenantPolicy(policies.listRules(policy.id))
     if (policy.builtin) {
       throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_BUILTIN_DELETE_FORBIDDEN)
     }
@@ -139,11 +152,21 @@ class PermissionPolicyManagementService(
 
   suspend fun addPolicyRule(command: AddPolicyRuleCommand): PermissionPolicyView {
     val policy = requirePolicy(command.tenantId, command.policyPublicId)
+    requireTenantPolicy(policies.listRules(policy.id))
     if (policy.builtin) {
       throw InvalidRequestException(
         WorkbenchErrorCode.PERMISSION_POLICY_RULES_BUILTIN_CHANGE_FORBIDDEN
       )
     }
+    documentValidator.requireTenantRule(
+      PermissionPolicyDocumentRuleCommand(
+        id = null,
+        action = command.action,
+        resourcePattern = command.resourcePattern,
+        effect = command.effect,
+        conditionJson = command.conditionJson,
+      )
+    )
     val canonicalCondition = PermissionConditionJson.validateAndCanonicalize(command.conditionJson)
     policies.addRule(
       CreatePermissionPolicyRuleCommand(
@@ -161,9 +184,71 @@ class PermissionPolicyManagementService(
   suspend fun requirePolicy(tenantId: UUID, publicId: String): PermissionPolicyRecord =
     policies.findByApiId(tenantId, publicId)
       ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_POLICY_NOT_FOUND)
+
+  fun simulate(
+    tenantId: UUID,
+    schemaVersion: Int,
+    rules: List<PermissionPolicyDocumentRuleCommand>,
+    action: String,
+  ): TenantPolicySimulation {
+    documentValidator.requireSchemaVersion(schemaVersion)
+    documentValidator.requireTenantRules(rules)
+    val capability =
+      TenantPermissionCapabilities.find(action)
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.PERMISSION_POLICY_TENANT_ACTION_FORBIDDEN
+        )
+    val traces = rules.mapIndexed { index, rule ->
+      val matches =
+        rule.action == capability.action && rule.resourcePattern == capability.resourcePattern
+      TenantPolicySimulationRule(
+        index = index,
+        action = rule.action,
+        effect = rule.effect,
+        matches = matches,
+        contributes = matches,
+      )
+    }
+    return when {
+      traces.any { it.contributes && it.effect == PermissionEffect.DENY } ->
+        TenantPolicySimulation(tenantId, PermissionEffect.DENY, "matching_deny", traces)
+      traces.any { it.contributes && it.effect == PermissionEffect.ALLOW } ->
+        TenantPolicySimulation(tenantId, PermissionEffect.ALLOW, "matching_allow", traces)
+      else -> TenantPolicySimulation(tenantId, PermissionEffect.DENY, "no_matching_allow", traces)
+    }
+  }
+
+  private fun requireTenantPolicy(
+    rules: List<ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord>
+  ) {
+    if (!TenantPermissionCapabilities.isTenantPolicy(rules)) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_NOT_TENANT_POLICY)
+    }
+  }
 }
 
 private class PermissionPolicyDocumentValidator(private val actions: PermissionActionRepository?) {
+  fun requireTenantRules(rules: List<PermissionPolicyDocumentRuleCommand>) {
+    if (rules.isEmpty()) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_TENANT_RULE_REQUIRED)
+    }
+    rules.forEach(::requireTenantRule)
+  }
+
+  fun requireTenantRule(rule: PermissionPolicyDocumentRuleCommand) {
+    val capability =
+      TenantPermissionCapabilities.find(rule.action)
+        ?: throw InvalidRequestException(
+          WorkbenchErrorCode.PERMISSION_POLICY_TENANT_ACTION_FORBIDDEN
+        )
+    if (rule.resourcePattern != capability.resourcePattern) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_TENANT_RESOURCE_MISMATCH)
+    }
+    if (!rule.conditionJson.isNullOrBlank()) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_TENANT_CONDITION_FORBIDDEN)
+    }
+  }
+
   suspend fun validateRules(
     rules: List<PermissionPolicyDocumentRuleCommand>,
     existingRules: Map<String, ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord>,
@@ -176,6 +261,7 @@ private class PermissionPolicyDocumentValidator(private val actions: PermissionA
     rule: PermissionPolicyDocumentRuleCommand,
     position: Int,
   ): ReplacePermissionPolicyRuleCommand {
+    requireTenantRule(rule)
     val action = AuthorizationAction(rule.action)
     if (actions != null && actions.findByCode(action) == null) {
       throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_POLICY_RULE_ACTION_UNKNOWN)

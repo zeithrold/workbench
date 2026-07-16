@@ -2,7 +2,10 @@ package ink.doa.workbench.application.permission
 
 import ink.doa.workbench.identity.permission.PermissionPolicyRecord
 import ink.doa.workbench.identity.permission.PermissionPolicyRepository
+import ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord
 import ink.doa.workbench.identity.permission.UpdatePermissionPolicyCommand
+import ink.doa.workbench.identity.permission.model.AuthorizationAction
+import ink.doa.workbench.identity.permission.model.PermissionEffect
 import ink.doa.workbench.kernel.common.errors.InvalidRequestException
 import ink.doa.workbench.kernel.common.errors.ResourceConflictException
 import ink.doa.workbench.kernel.common.ids.PublicId
@@ -25,63 +28,22 @@ class PermissionPolicyManagementServiceTest :
     val service = PermissionPolicyManagementService(policies, clock)
     val tenantId = UUID.randomUUID()
 
-    "createPolicy rejects duplicate code" {
-      coEvery { policies.findByCode(tenantId, "custom") } returns samplePolicy(tenantId, "custom")
-
-      shouldThrow<InvalidRequestException> {
-        runBlocking { service.createPolicy(tenantId, "custom", "Custom", null) }
-      }
-    }
-
-    "createPolicy returns view for new policy" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      coEvery { policies.findByCode(tenantId, "custom") } returns null
+    "createDocument stores tenant rules with stable positions" {
+      val policy = samplePolicy(tenantId, "member-manager")
+      val rule = sampleTenantRule(policy, "tenant.member.manage")
+      coEvery { policies.findByCode(tenantId, policy.code) } returns null
       coEvery { policies.create(any()) } returns policy
-
-      val result = runBlocking { service.createPolicy(tenantId, "custom", "Custom", null) }
-
-      result.code shouldBe "custom"
-      result.rules shouldBe emptyList()
-    }
-
-    "createDocument stores canonical rules with stable positions" {
-      val policy = samplePolicy(tenantId, "conditional", builtin = false)
-      val storedRule =
-        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("prl"),
-          policyId = policy.id,
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.view"),
-          resourcePattern = "issue:*",
-          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-          conditionJson =
-            """{"field":"issue.reporter","op":"eq","value":{"var":"user.currentUser"}}""",
-          position = 0,
-          createdAt = policy.createdAt,
-        )
-      coEvery { policies.findByCode(tenantId, "conditional") } returns null
-      coEvery { policies.create(any()) } returns policy
-      coEvery { policies.listRules(policy.id) } returns listOf(storedRule)
+      coEvery { policies.listRules(policy.id) } returns listOf(rule)
 
       val result = runBlocking {
         service.createDocument(
           CreatePermissionPolicyDocumentCommand(
-            tenantId = tenantId,
-            schemaVersion = 1,
-            code = "conditional",
-            name = "Conditional",
-            description = null,
-            rules =
-              listOf(
-                PermissionPolicyDocumentRuleCommand(
-                  id = null,
-                  action = "issue.view",
-                  resourcePattern = "issue:*",
-                  effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-                  conditionJson =
-                    """{"op":"eq","value":{"var":"user.currentUser"},"field":"issue.reporter"}""",
-                )
-              ),
+            tenantId,
+            1,
+            policy.code,
+            policy.name,
+            null,
+            listOf(tenantRule("tenant.member.manage")),
           )
         )
       }
@@ -89,78 +51,124 @@ class PermissionPolicyManagementServiceTest :
       result.rules.single().position shouldBe 0
     }
 
-    "replaceDocument rejects rule ids from another policy" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.listRules(policy.id) } returns emptyList()
+    "createDocument rejects Agile actions" {
+      coEvery { policies.findByCode(tenantId, any()) } returns null
 
       shouldThrow<InvalidRequestException> {
         runBlocking {
-          service.replaceDocument(
-            ReplacePermissionPolicyDocumentCommand(
-              tenantId = tenantId,
-              policyPublicId = policy.apiId.value,
-              schemaVersion = 1,
-              revision = policy.updatedAt.toString(),
-              code = policy.code,
-              name = policy.name,
-              description = null,
-              rules =
-                listOf(
-                  PermissionPolicyDocumentRuleCommand(
-                    id = "prl_01JABCDEFGHJKMNPQRSTVWXYZ0",
-                    action = "issue.view",
-                    resourcePattern = "issue:*",
-                    effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-                    conditionJson = null,
-                  )
-                ),
+          service.createDocument(
+            CreatePermissionPolicyDocumentCommand(
+              tenantId,
+              1,
+              "agile",
+              "Agile",
+              null,
+              listOf(tenantRule("issue.view", "issue:*")),
             )
           )
         }
       }
     }
 
-    "replaceDocument reports optimistic revision conflicts" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
+    "createDocument rejects conditions" {
+      shouldThrow<InvalidRequestException> {
+        runBlocking {
+          service.createDocument(
+            CreatePermissionPolicyDocumentCommand(
+              tenantId,
+              1,
+              "conditional",
+              "Conditional",
+              null,
+              listOf(tenantRule("tenant.read").copy(conditionJson = "{}")),
+            )
+          )
+        }
+      }
+    }
+
+    "listPolicies hides non-tenant policies" {
+      val tenantPolicy = samplePolicy(tenantId, "tenant-reader")
+      val agilePolicy = samplePolicy(tenantId, "issue-reader")
+      coEvery { policies.list(tenantId) } returns listOf(tenantPolicy, agilePolicy)
+      coEvery { policies.listRules(tenantPolicy.id) } returns
+        listOf(sampleTenantRule(tenantPolicy, "tenant.read"))
+      coEvery { policies.listRules(agilePolicy.id) } returns
+        listOf(sampleRule(agilePolicy, "issue.view", "issue:*"))
+
+      val result = runBlocking { service.listPolicies(tenantId) }
+
+      result.map { it.code } shouldBe listOf("tenant-reader")
+    }
+
+    "getPolicy rejects non-tenant policy" {
+      val policy = samplePolicy(tenantId, "issue-reader")
       coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.listRules(policy.id) } returns emptyList()
+      coEvery { policies.listRules(policy.id) } returns
+        listOf(sampleRule(policy, "issue.view", "issue:*"))
+
+      shouldThrow<InvalidRequestException> {
+        runBlocking { service.getPolicy(tenantId, policy.apiId.value) }
+      }
+    }
+
+    "replaceDocument reports optimistic revision conflicts" {
+      val policy = samplePolicy(tenantId, "custom")
+      val existing = sampleTenantRule(policy, "tenant.read")
+      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns listOf(existing)
       coEvery { policies.replace(any()) } returns null
 
       shouldThrow<ResourceConflictException> {
         runBlocking {
           service.replaceDocument(
             ReplacePermissionPolicyDocumentCommand(
-              tenantId = tenantId,
-              policyPublicId = policy.apiId.value,
-              schemaVersion = 1,
-              revision = policy.updatedAt.toString(),
-              code = policy.code,
-              name = "Changed",
-              description = null,
-              rules = emptyList(),
+              tenantId,
+              policy.apiId.value,
+              1,
+              policy.updatedAt.toString(),
+              policy.code,
+              "Changed",
+              null,
+              listOf(tenantRule("tenant.read").copy(id = existing.apiId.value)),
             )
           )
         }
       }
     }
 
-    "updatePolicy rejects builtin policy changes" {
-      val policy = samplePolicy(tenantId, "tenant-admin", builtin = true)
+    "replaceDocument cannot convert an Agile policy" {
+      val policy = samplePolicy(tenantId, "issue-reader")
       coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns
+        listOf(sampleRule(policy, "issue.view", "issue:*"))
 
       shouldThrow<InvalidRequestException> {
-        runBlocking { service.updatePolicy(tenantId, policy.apiId.value, "Renamed", null) }
+        runBlocking {
+          service.replaceDocument(
+            ReplacePermissionPolicyDocumentCommand(
+              tenantId,
+              policy.apiId.value,
+              1,
+              policy.updatedAt.toString(),
+              policy.code,
+              policy.name,
+              null,
+              listOf(tenantRule("tenant.read")),
+            )
+          )
+        }
       }
     }
 
-    "updatePolicy delegates to repository for custom policy" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
+    "updatePolicy delegates for tenant custom policy" {
+      val policy = samplePolicy(tenantId, "custom")
       val updated = policy.copy(name = "Renamed")
       coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns
+        listOf(sampleTenantRule(policy, "tenant.read"))
       coEvery { policies.update(UpdatePermissionPolicyCommand(policy.id, "Renamed", null)) } returns
         updated
-      coEvery { policies.listRules(policy.id) } returns emptyList()
 
       val result = runBlocking {
         service.updatePolicy(tenantId, policy.apiId.value, "Renamed", null)
@@ -169,49 +177,11 @@ class PermissionPolicyManagementServiceTest :
       result.name shouldBe "Renamed"
     }
 
-    "listPolicies returns policies with rules" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      val rule =
-        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("prr"),
-          policyId = policy.id,
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("project.read"),
-          resourcePattern = "project:*",
-          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-          conditionJson = null,
-          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        )
-      coEvery { policies.list(tenantId) } returns listOf(policy)
-      coEvery { policies.listRules(policy.id) } returns listOf(rule)
-
-      val result = runBlocking { service.listPolicies(tenantId) }
-
-      result.single().rules.single().action shouldBe "project.read"
-    }
-
-    "getPolicy returns policy view" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.listRules(policy.id) } returns emptyList()
-
-      val result = runBlocking { service.getPolicy(tenantId, policy.apiId.value) }
-
-      result.code shouldBe "custom"
-    }
-
-    "deletePolicy rejects builtin policy" {
-      val policy = samplePolicy(tenantId, "tenant-admin", builtin = true)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-
-      shouldThrow<InvalidRequestException> {
-        runBlocking { service.deletePolicy(tenantId, policy.apiId.value) }
-      }
-    }
-
     "deletePolicy rejects policy with active bindings" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
+      val policy = samplePolicy(tenantId, "custom")
       coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+      coEvery { policies.listRules(policy.id) } returns
+        listOf(sampleTenantRule(policy, "tenant.read"))
       coEvery { policies.hasActiveBindings(policy.id, any()) } returns true
 
       shouldThrow<InvalidRequestException> {
@@ -219,129 +189,70 @@ class PermissionPolicyManagementServiceTest :
       }
     }
 
-    "deletePolicy delegates to repository for custom policy" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.hasActiveBindings(policy.id, any()) } returns false
-      coEvery { policies.delete(tenantId, policy.id) } returns true
+    "simulate applies deny precedence" {
+      val result =
+        service.simulate(
+          tenantId,
+          1,
+          listOf(
+            tenantRule("tenant.read"),
+            tenantRule("tenant.read").copy(effect = PermissionEffect.DENY),
+          ),
+          "tenant.read",
+        )
 
-      runBlocking { service.deletePolicy(tenantId, policy.apiId.value) } shouldBe true
+      result.decision shouldBe PermissionEffect.DENY
+      result.reason shouldBe "matching_deny"
     }
 
-    "addPolicyRule rejects builtin policy changes" {
-      val policy = samplePolicy(tenantId, "tenant-admin", builtin = true)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
+    "simulate denies when no allow rule matches" {
+      val result = service.simulate(tenantId, 1, listOf(tenantRule("tenant.read")), "tenant.update")
 
-      shouldThrow<InvalidRequestException> {
-        runBlocking {
-          service.addPolicyRule(
-            AddPolicyRuleCommand(
-              tenantId = tenantId,
-              policyPublicId = policy.apiId.value,
-              action = "project.read",
-              resourcePattern = "project:*",
-              effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-            )
-          )
-        }
-      }
-    }
-
-    "addPolicyRule appends rule to custom policy" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      val rule =
-        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("prr"),
-          policyId = policy.id,
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("project.read"),
-          resourcePattern = "project:*",
-          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-          conditionJson = null,
-          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        )
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.addRule(any()) } returns rule
-      coEvery { policies.listRules(policy.id) } returns listOf(rule)
-
-      val result = runBlocking {
-        service.addPolicyRule(
-          AddPolicyRuleCommand(
-            tenantId = tenantId,
-            policyPublicId = policy.apiId.value,
-            action = "project.read",
-            resourcePattern = "project:*",
-            effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-          )
-        )
-      }
-
-      result.rules.single().action shouldBe "project.read"
-    }
-
-    "addPolicyRule validates condition json" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-
-      shouldThrow<InvalidRequestException> {
-        runBlocking {
-          service.addPolicyRule(
-            AddPolicyRuleCommand(
-              tenantId = tenantId,
-              policyPublicId = policy.apiId.value,
-              action = "project.read",
-              resourcePattern = "project:*",
-              effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-              conditionJson = "{invalid",
-            )
-          )
-        }
-      }
-    }
-
-    "addPolicyRule stores canonical condition json" {
-      val policy = samplePolicy(tenantId, "custom", builtin = false)
-      val conditionJson =
-        """
-        {"field":"issue.statusGroup","op":"eq","value":"todo"}
-        """
-          .trimIndent()
-      val rule =
-        ink.doa.workbench.identity.permission.PermissionPolicyRuleRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("prr"),
-          policyId = policy.id,
-          action = ink.doa.workbench.identity.permission.model.AuthorizationAction("issue.view"),
-          resourcePattern = "issue:*",
-          effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-          conditionJson = conditionJson,
-          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-        )
-      coEvery { policies.findByApiId(tenantId, policy.apiId.value) } returns policy
-      coEvery { policies.addRule(any()) } returns rule
-      coEvery { policies.listRules(policy.id) } returns listOf(rule)
-
-      val result = runBlocking {
-        service.addPolicyRule(
-          AddPolicyRuleCommand(
-            tenantId = tenantId,
-            policyPublicId = policy.apiId.value,
-            action = "issue.view",
-            resourcePattern = "issue:*",
-            effect = ink.doa.workbench.identity.permission.model.PermissionEffect.ALLOW,
-            conditionJson = conditionJson,
-          )
-        )
-      }
-
-      result.rules.single().condition shouldBe conditionJson
+      result.decision shouldBe PermissionEffect.DENY
+      result.reason shouldBe "no_matching_allow"
     }
   })
+
+private fun tenantRule(
+  action: String,
+  resourcePattern: String = if (action.startsWith("tenant.")) "tenant:*" else "permission:*",
+) =
+  PermissionPolicyDocumentRuleCommand(
+    id = null,
+    action = action,
+    resourcePattern = resourcePattern,
+    effect = PermissionEffect.ALLOW,
+    conditionJson = null,
+  )
+
+private fun sampleTenantRule(policy: PermissionPolicyRecord, action: String) =
+  sampleRule(
+    policy,
+    action,
+    if (action.startsWith("tenant.")) "tenant:*" else "permission:*",
+  )
+
+private fun sampleRule(
+  policy: PermissionPolicyRecord,
+  action: String,
+  resourcePattern: String,
+) =
+  PermissionPolicyRuleRecord(
+    id = UUID.randomUUID(),
+    apiId = PublicId.new("prr"),
+    policyId = policy.id,
+    action = AuthorizationAction(action),
+    resourcePattern = resourcePattern,
+    effect = PermissionEffect.ALLOW,
+    conditionJson = null,
+    position = 0,
+    createdAt = policy.createdAt,
+  )
 
 private fun samplePolicy(
   tenantId: UUID,
   code: String,
-  builtin: Boolean = true,
+  builtin: Boolean = false,
 ): PermissionPolicyRecord {
   val now = OffsetDateTime.parse("2026-07-04T00:00:00Z")
   return PermissionPolicyRecord(

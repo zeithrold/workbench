@@ -54,4 +54,24 @@ class PermissionActionServiceTest :
         )
       }
     }
+
+    "listTenantCapabilities excludes Agile actions" {
+      coEvery { actions.list() } returns
+        listOf(
+          PermissionActionRecord(
+            id = UUID.randomUUID(),
+            code = AuthorizationAction("issue.view"),
+            description = "View issues",
+            createdAt = now,
+          ),
+          PermissionActionRecord(
+            id = UUID.randomUUID(),
+            code = AuthorizationAction("tenant.read"),
+            description = "Read tenants",
+            createdAt = now,
+          ),
+        )
+
+      service.listTenantCapabilities().map { it.action } shouldBe listOf("tenant.read")
+    }
   })
