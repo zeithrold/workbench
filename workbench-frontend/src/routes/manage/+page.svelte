@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation'
   import { resolve } from '$app/paths'
   import { management } from '$lib/entities/management/management.svelte.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { EmptyState } from '$lib/shared/ui'
 
   $effect(() => {
@@ -16,5 +17,5 @@
 </script>
 
 {#if !management.loading && !management.instance && !management.tenant}
-  <EmptyState title='Management access required' description='No effective management capability is available for this account.' />
+  <EmptyState title={m.management_access_required()} description={m.management_access_required_description()} />
 {/if}

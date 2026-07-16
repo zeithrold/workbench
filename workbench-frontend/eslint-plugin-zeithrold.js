@@ -14,6 +14,13 @@ const visibleNames = new Set([
   'title',
 ])
 
+const nonTranslatableLiterals = new Set([
+  'API',
+  'W',
+  'Workbench',
+  'usr_…',
+])
+
 export const productionSvelteFiles = ['src/**/*.svelte']
 
 export const ignoredSvelteFiles = [
@@ -67,7 +74,8 @@ function isTranslatableText(value) {
     return false
 
   const text = value.trim()
-  return !/^(?:[a-z][a-z\d+.-]*:)?\/\//iu.test(text)
+  return !nonTranslatableLiterals.has(text)
+    && !/^(?:[a-z][a-z\d+.-]*:)?\/\//iu.test(text)
     && !(text.includes('@') && !/\s/u.test(text))
 }
 

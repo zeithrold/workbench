@@ -77,6 +77,22 @@ describe('zeithrold/no-untranslated-literal', () => {
     expect(warnings(results)).toHaveLength(0)
   })
 
+  it('ignores exact non-translatable product and technical literals only', async () => {
+    const results = await lint(`
+      <p>Workbench</p>
+      <span>W</span>
+      <span>API</span>
+      <input placeholder="usr_…" />
+      <p>Workbench settings</p>
+      <p>API status</p>
+    `)
+
+    expect(warnings(results).map(message => message.message)).toEqual([
+      expect.stringContaining('Workbench settings'),
+      expect.stringContaining('API status'),
+    ])
+  })
+
   it('does not inspect conditions while checking rendered branches', async () => {
     const results = await lint(`
       <p>{status === 'ACTIVE' ? 'Enabled' : 'Disabled'}</p>

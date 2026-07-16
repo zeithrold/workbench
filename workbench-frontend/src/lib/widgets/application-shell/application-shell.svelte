@@ -17,7 +17,7 @@
       <nav aria-label={m.primary_navigation()}>
         <a class='block rounded-md bg-muted px-3 py-2 text-sm font-medium' href={resolve('/')}>{m.overview()}</a>
         {#if session.current?.adminScopes.length}
-          <a class='mt-1 block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted' href={resolve('/manage')}>Management</a>
+          <a class='mt-1 block rounded-md px-3 py-2 text-sm font-medium hover:bg-muted' href={resolve('/manage')}>{m.management()}</a>
         {/if}
       </nav>
       <Separator />

@@ -53,7 +53,7 @@
     step={definition.dataType === 'number' ? numberConstraint(definition.validationSchema, 'multipleOf') : undefined}
     minlength={stringConstraint(definition.validationSchema, 'minLength')}
     maxlength={stringConstraint(definition.validationSchema, 'maxLength')}
-    placeholder={definition.dataType === 'url' ? 'https://example.com' : `Enter ${definition.name.toLowerCase()}`}
+    placeholder={definition.dataType === 'url' ? 'https://example.com' : m.work_item_enter_property({ property: definition.name.toLowerCase() })}
     aria-label={definition.name}
     aria-invalid={error ? 'true' : undefined}
     aria-describedby={error ? errorId : undefined}

@@ -3,6 +3,7 @@
   import type { OutboxDelivery, OutboxMessage } from '$lib/entities/management/model.js'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { management } from '$lib/entities/management/management.svelte.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { Badge, Button, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
 
   let messages = $state<OutboxMessage[]>([])
@@ -20,18 +21,18 @@
 </script>
 
 <div class='space-y-8'>
-  <PageHeader title='Outbox' description='Domain messages, consumer deliveries, and dead-letter replay.' />
+  <PageHeader title={m.management_outbox()} description={m.management_outbox_description()} />
   {#if error}<p class='text-sm text-destructive'>{error.message}</p>{/if}
-  {#if loading}<LoadingState label='Loading outbox' />{:else}
-    <Card><CardHeader><CardTitle>Deliveries</CardTitle></CardHeader><CardContent class='overflow-x-auto'>
-      <table class='w-full text-left text-sm'><thead><tr class='border-b text-muted-foreground'><th class='py-3'>Consumer</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead><tbody>
+  {#if loading}<LoadingState label={m.management_loading_outbox()} />{:else}
+    <Card><CardHeader><CardTitle>{m.management_deliveries()}</CardTitle></CardHeader><CardContent class='overflow-x-auto'>
+      <table class='w-full text-left text-sm'><thead><tr class='border-b text-muted-foreground'><th class='py-3'>{m.management_consumer()}</th><th>{m.management_status()}</th><th>{m.management_attempts()}</th><th>{m.management_error()}</th><th></th></tr></thead><tbody>
         {#each deliveries as delivery (`${delivery.outboxId}:${delivery.consumerName}`)}
-          <tr class='border-b'><td class='py-3'>{delivery.consumerName}</td><td><Badge variant={delivery.status === 'DEAD' ? 'destructive' : 'secondary'}>{delivery.status}</Badge></td><td>{delivery.attempts}</td><td class='max-w-sm truncate'>{delivery.lastError ?? '—'}</td><td class='text-right'>{#if delivery.status === 'DEAD' && management.has('INSTANCE', 'outbox.manage')}<Button size='sm' variant='outline' onclick={async () => { await managementGateway.replayDelivery(delivery.outboxId, delivery.consumerName); await load() }}>Replay</Button>{/if}</td></tr>
+          <tr class='border-b'><td class='py-3'>{delivery.consumerName}</td><td><Badge variant={delivery.status === 'DEAD' ? 'destructive' : 'secondary'}>{delivery.status}</Badge></td><td>{delivery.attempts}</td><td class='max-w-sm truncate'>{delivery.lastError ?? '—'}</td><td class='text-right'>{#if delivery.status === 'DEAD' && management.has('INSTANCE', 'outbox.manage')}<Button size='sm' variant='outline' onclick={async () => { await managementGateway.replayDelivery(delivery.outboxId, delivery.consumerName); await load() }}>{m.management_replay()}</Button>{/if}</td></tr>
         {/each}
       </tbody></table>
     </CardContent></Card>
-    <Card><CardHeader><CardTitle>Messages</CardTitle></CardHeader><CardContent class='overflow-x-auto'>
-      <table class='w-full text-left text-sm'><thead><tr class='border-b text-muted-foreground'><th class='py-3'>Event</th><th>Topic</th><th>Tenant</th><th>Created</th></tr></thead><tbody>{#each messages as message (message.id)}<tr class='border-b'><td class='py-3'><p class='font-medium'>{message.eventType}</p><p class='text-xs text-muted-foreground'>{message.eventId}</p></td><td>{message.topic}</td><td>{message.tenantId ?? 'Instance'}</td><td>{new Date(message.createdAt).toLocaleString()}</td></tr>{/each}</tbody></table>
+    <Card><CardHeader><CardTitle>{m.management_messages()}</CardTitle></CardHeader><CardContent class='overflow-x-auto'>
+      <table class='w-full text-left text-sm'><thead><tr class='border-b text-muted-foreground'><th class='py-3'>{m.management_event()}</th><th>{m.management_topic()}</th><th>{m.management_tenant()}</th><th>{m.management_created()}</th></tr></thead><tbody>{#each messages as message (message.id)}<tr class='border-b'><td class='py-3'><p class='font-medium'>{message.eventType}</p><p class='text-xs text-muted-foreground'>{message.eventId}</p></td><td>{message.topic}</td><td>{message.tenantId ?? m.management_instance()}</td><td>{new Date(message.createdAt).toLocaleString()}</td></tr>{/each}</tbody></table>
     </CardContent></Card>
   {/if}
 </div>

@@ -7,6 +7,7 @@
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { management } from '$lib/entities/management/management.svelte.js'
   import { emptyPermissionPolicyDocument, TenantPermissionEditor, TenantPolicySimulator } from '$lib/features/permission'
+  import { m } from '$lib/paraglide/messages.js'
   import { Alert, Button, LoadingState } from '$lib/shared/ui'
 
   const policyId = $derived(page.params.id!)
@@ -113,9 +114,9 @@
   if (dirty)
     event.preventDefault()
 }} />
-{#if loading}<LoadingState label='Loading policy editor' />{:else if error && !policy && !creating}<Alert variant='destructive'>{error.message}</Alert>{:else}
+{#if loading}<LoadingState label={m.management_loading_policy_editor()} />{:else if error && !policy && !creating}<Alert variant='destructive'>{error.message}</Alert>{:else}
   <div class='space-y-5'>
-    <div class='flex flex-wrap items-center justify-between gap-3'><div><a href={resolve('/manage/tenant/access')} class='text-sm text-muted-foreground hover:text-foreground'>← Policies</a><h1 class='mt-1 text-2xl font-semibold'>{creating ? 'New policy' : policy?.name}</h1></div><div class='flex gap-2'>{#if policy?.builtin && canManage}<Button variant='outline' href={resolve(`/manage/tenant/access/policies/new?clone=${policy.id}`)}>Copy policy</Button>{/if}{#if editable}<Button disabled={!valid || saving || !document.code || !document.name} onclick={save}>{saving ? 'Saving...' : 'Save policy'}</Button>{/if}</div></div>
+    <div class='flex flex-wrap items-center justify-between gap-3'><div><a href={resolve('/manage/tenant/access')} class='text-sm text-muted-foreground hover:text-foreground'>{m.management_back_to_policies()}</a><h1 class='mt-1 text-2xl font-semibold'>{creating ? m.management_new_policy() : policy?.name}</h1></div><div class='flex gap-2'>{#if policy?.builtin && canManage}<Button variant='outline' href={resolve(`/manage/tenant/access/policies/new?clone=${policy.id}`)}>{m.management_copy_policy()}</Button>{/if}{#if editable}<Button disabled={!valid || saving || !document.code || !document.name} onclick={save}>{saving ? m.management_saving() : m.management_save_policy()}</Button>{/if}</div></div>
     {#if error}<Alert variant='destructive'>{error.message}</Alert>{/if}
     <TenantPermissionEditor value={document} {actions} {editable} codeEditable={creating} modelId={`tenant-permission-policy-${policyId}`} onChange={updateDocument} onValidityChange={value => valid = value} />
     {#if editable}<TenantPolicySimulator {document} {actions} />{/if}

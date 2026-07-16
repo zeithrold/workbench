@@ -1,5 +1,6 @@
 <script lang='ts'>
   import type { WorkItemPropertyDefinition, WorkItemScalarValue, WorkItemSelectorData } from './selector-types.js'
+  import { m } from '$lib/paraglide/messages.js'
   import { SearchableMultiSelect, SearchableSelect } from '$lib/shared/ui'
   import ScalarPropertyEditor from './scalar-property-editor.svelte'
   import WorkItemField from './work-item-field.svelte'
@@ -27,11 +28,11 @@
     <ScalarPropertyEditor {definition} value={scalarValue} onValueChange={onScalarValueChange} {disabled} {required} />
   {:else if !selector}
     <div class='rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground' data-slot='unsupported-property'>
-      {definition.dataType.replace('_', ' ')} editor is not available yet.
+      {m.work_item_editor_unavailable({ type: definition.dataType.replace('_', ' ') })}
     </div>
   {:else if multi}
-    <SearchableMultiSelect {values} options={data.options} {onValuesChange} {disabled} {required} loading={data.loading} onSearchChange={data.onSearchChange} placeholder={`Select ${definition.name.toLowerCase()}`} />
+    <SearchableMultiSelect {values} options={data.options} {onValuesChange} {disabled} {required} loading={data.loading} onSearchChange={data.onSearchChange} placeholder={m.work_item_select_property({ property: definition.name.toLowerCase() })} />
   {:else}
-    <SearchableSelect {value} options={data.options} {onValueChange} {disabled} {required} loading={data.loading} onSearchChange={data.onSearchChange} placeholder={`Select ${definition.name.toLowerCase()}`} />
+    <SearchableSelect {value} options={data.options} {onValueChange} {disabled} {required} loading={data.loading} onSearchChange={data.onSearchChange} placeholder={m.work_item_select_property({ property: definition.name.toLowerCase() })} />
   {/if}
 </WorkItemField>
