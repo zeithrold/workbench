@@ -332,6 +332,37 @@ suspend fun create(
 - OpenAPI `info.version` stays in sync
 - Breaking changes: new date version + migration notes (not `/v2` in URL)
 
+### Controller source discipline
+
+The current contract always owns the stable controller name. A resource has exactly one current
+controller source file, with one `@RestController` whose class name matches the file name:
+
+```text
+project/
+├── ProjectController.kt                    # class ProjectController (current)
+└── legacy/
+    └── ProjectV20260703Controller.kt        # class ProjectV20260703Controller (deprecated)
+```
+
+- Current controllers stay in the domain package as `{Resource}Controller.kt`; never add a date or
+  version suffix to the current class.
+- A still-supported older contract moves to the domain's `legacy` subpackage and uses
+  `{Resource}VyyyyMMddController.kt`, where the date is the API contract version it serves.
+- Legacy controller classes are annotated with `@Deprecated`. "Legacy" means still supported for
+  compatibility; after sunset, delete the runtime code and retain only migration notes and Git
+  history.
+- A controller source file declares exactly one `@RestController`. Never mix current and legacy
+  handler methods in one class or file.
+- Version-specific `*Request` and `*Response` types stay with their controller boundary (co-located
+  or in that version's package). Reuse Service and domain models; do not fork business logic merely
+  to preserve an HTTP representation.
+
+For a breaking change, freeze the old HTTP adapter in `legacy`, keep the new adapter at the stable
+current name, bump the date version, and write migration notes in the same change. The first change
+that introduces an actual legacy controller must also enable Spring's header-based mapping version
+strategy. File separation alone does not route `X-Workbench-API-Version` to an older controller;
+the current `ApiVersionFilter` only validates and propagates the header.
+
 ## Validation & request types
 
 - `@Valid @RequestBody` on all request bodies

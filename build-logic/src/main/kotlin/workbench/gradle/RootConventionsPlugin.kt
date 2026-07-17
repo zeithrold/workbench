@@ -91,6 +91,15 @@ class RootConventionsPlugin : Plugin<Project> {
                     )
                 }
             }
+        val apiControllerVersionCheck =
+            tasks.register("apiControllerVersionCheck", ApiControllerVersionCheckTask::class.java) {
+                rootDirectory.set(layout.projectDirectory)
+                controllerSources.from(
+                    project(":workbench-web").fileTree("src/main/kotlin") {
+                        include("**/*.kt")
+                    }
+                )
+            }
         val detektSuppressionCheck =
             tasks.register("detektSuppressionCheck", DetektSuppressionCheckTask::class.java) {
                 rootDirectory.set(layout.projectDirectory)
@@ -123,6 +132,7 @@ class RootConventionsPlugin : Plugin<Project> {
             description = "Fast local verification: Spotless, Detekt, and unit tests."
             dependsOn(testArchitectureCheck)
             dependsOn(moduleArchitectureCheck)
+            dependsOn(apiControllerVersionCheck)
             dependsOn(detektSuppressionCheck)
             dependsOn(agentInfraCheck)
             dependsOn(backendQuickTasks)
@@ -133,6 +143,7 @@ class RootConventionsPlugin : Plugin<Project> {
         tasks.named("check") {
             dependsOn(testArchitectureCheck)
             dependsOn(moduleArchitectureCheck)
+            dependsOn(apiControllerVersionCheck)
             dependsOn(detektSuppressionCheck)
             dependsOn(subprojects.map { subproject -> subproject.tasks.named("check") })
             dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
