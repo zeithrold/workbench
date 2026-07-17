@@ -246,18 +246,24 @@
   async function deeplyNestedPlay({ canvasElement }: { canvasElement: HTMLElement }) {
     const canvas = within(canvasElement)
     const page = within(canvasElement.ownerDocument.body)
-    await expect(canvasElement.querySelectorAll('[data-slot="permission-condition-group"]')).toHaveLength(1)
+    await waitFor(() => expect(canvasElement.querySelectorAll('[data-slot="permission-condition-group"]')).toHaveLength(1))
     await expect(canvasElement.querySelector('[data-depth="1"]')).toBeVisible()
     await expect(canvasElement.querySelectorAll('[data-slot="permission-logic-rail"]').length).toBeGreaterThan(0)
     await expect(canvas.getByTestId('permission-document-json')).not.toHaveTextContent('uiId')
     canvas.getByRole('button', { name: 'Edit nested condition group' }).focus()
     await userEvent.keyboard('{Enter}')
-    const firstDrawer = page.getAllByRole('dialog').at(-1) as HTMLElement
-    await expect(firstDrawer.querySelector('[data-depth="2"]')).toBeVisible()
+    const firstDrawer = await waitFor(() => {
+      const drawer = page.getAllByRole('dialog').at(-1) as HTMLElement
+      expect(drawer.querySelector('[data-depth="2"]')).toBeVisible()
+      return drawer
+    })
     within(firstDrawer).getByRole('button', { name: 'Edit nested condition group' }).focus()
     await userEvent.keyboard('{Enter}')
-    const nestedDrawer = page.getAllByRole('dialog').at(-1) as HTMLElement
-    await expect(nestedDrawer.querySelector('[data-depth="3"]')).toBeVisible()
+    const nestedDrawer = await waitFor(() => {
+      const drawer = page.getAllByRole('dialog').at(-1) as HTMLElement
+      expect(drawer.querySelector('[data-depth="3"]')).toBeVisible()
+      return drawer
+    })
     await expect(nestedDrawer.querySelector('[data-slot="permission-not-condition"]')).toBeVisible()
     const editor = canvasElement.querySelector('[data-slot="permission-policy-editor-core"]') as HTMLElement
     await expect(editor.scrollWidth).toBeLessThanOrEqual(editor.clientWidth)
