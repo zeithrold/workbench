@@ -31,4 +31,9 @@ data class PermissionRule(
 
 interface PermissionService {
   suspend fun decide(request: AuthorizationRequest): AuthorizationDecision
+
+  suspend fun decideAll(requests: List<AuthorizationRequest>): List<AuthorizationDecision> =
+    requests.map {
+      decide(it)
+    }
 }

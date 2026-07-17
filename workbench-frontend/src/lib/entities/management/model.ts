@@ -1,4 +1,5 @@
-export type ManagementScope = 'INSTANCE' | 'TENANT'
+import type { ManagementNavigationResponseTenantContextStatus } from '$lib/api/generated/model/managementNavigationResponseTenantContextStatus.js'
+import type { NavigationItemResponseId } from '$lib/api/generated/model/navigationItemResponseId.js'
 
 export interface InstanceSummary {
   id: string
@@ -8,18 +9,6 @@ export interface TenantSummary {
   id: string
   name: string
   slug: string
-}
-
-export interface InstanceCapabilities {
-  scope: 'INSTANCE'
-  instance: InstanceSummary
-  actions: string[]
-}
-
-export interface TenantCapabilities {
-  scope: 'TENANT'
-  tenant: TenantSummary
-  actions: string[]
 }
 
 export interface TenantResource extends TenantSummary {
@@ -122,6 +111,13 @@ export interface OutboxDelivery {
   attempts: number
   lastError?: string | null
   updatedAt: string
+}
+
+export type ManagementNavigationItemId = NavigationItemResponseId
+
+export interface ManagementNavigation {
+  items: Array<{ id: ManagementNavigationItemId }>
+  tenantContextStatus: ManagementNavigationResponseTenantContextStatus
 }
 
 export interface PermissionGroup {

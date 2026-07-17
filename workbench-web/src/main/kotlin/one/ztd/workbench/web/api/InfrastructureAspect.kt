@@ -145,16 +145,7 @@ class InfrastructureAspect(
     val resourcePublicId = resourceId ?: projectContext?.project?.publicId?.value
     return AuthorizationRequest(
       scope = scope,
-      subject =
-        AuthorizationSubject(
-          userId = principal.user.id,
-          userApiId = principal.user.apiId.value,
-          loginAccountId = principal.loginAccountId,
-          credentialType = principal.credentialType,
-          credentialId = principal.bearerTokenId ?: principal.sessionId,
-          credentialTenantId = principal.tenantId ?: tenantId,
-          credentialScopes = principal.credentialScopes,
-        ),
+      subject = AuthorizationSubject.from(principal, tenantId),
       tenantId = tenantId,
       action = AuthorizationAction(action),
       resource =

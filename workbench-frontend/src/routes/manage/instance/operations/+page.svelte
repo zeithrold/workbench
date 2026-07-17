@@ -1,9 +1,10 @@
 <script lang='ts'>
   /* eslint-disable style/max-statements-per-line */
   import type { InstanceOperations } from '$lib/entities/management/model.js'
+  import { isApiProblemStatus } from '$lib/api/problem.js'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { m } from '$lib/paraglide/messages.js'
-  import { Badge, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
+  import { AccessDeniedState, Alert, Badge, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
 
   let snapshot = $state<InstanceOperations | null>(null)
   let error = $state<Error | null>(null)
@@ -13,7 +14,8 @@
 
 <div class='space-y-8'>
   <PageHeader title={m.management_operations()} description={m.management_operations_description()} />
-  {#if error}<p class='text-sm text-destructive'>{error.message}</p>
+  {#if error && isApiProblemStatus(error, 403)}<AccessDeniedState description={error.message} />
+  {:else if error}<Alert variant='destructive'>{error.message}</Alert>
   {:else if !snapshot}<LoadingState label={m.management_loading_operations()} />
   {:else}
     <section class='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>

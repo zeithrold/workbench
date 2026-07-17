@@ -3,13 +3,7 @@ package one.ztd.workbench.web.project
 import io.swagger.v3.oas.annotations.media.Schema
 import one.ztd.workbench.application.project.ProjectView
 import one.ztd.workbench.identity.common.summary.UserSummary
-import one.ztd.workbench.tenant.common.summary.TenantSummary
 import one.ztd.workbench.web.api.OpenApiExamples
-
-data class ProjectCapabilityResponse(
-  val tenant: TenantSummary,
-  val actions: List<String>,
-)
 
 @Schema(description = "Tenant-scoped project resource.")
 data class ProjectResponse(

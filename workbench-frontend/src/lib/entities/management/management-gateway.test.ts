@@ -5,15 +5,13 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('managementGateway', () => {
   it('routes every management operation through the shared API boundary', async () => {
-    const fetch = vi.fn(async () => new Response('{}', {
+    const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response('{}', {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     }))
     vi.stubGlobal('fetch', fetch)
 
     await Promise.all([
-      managementGateway.instanceCapabilities(),
-      managementGateway.tenantCapabilities(),
       managementGateway.listTenants(),
       managementGateway.createTenant({ name: 'Acme' }),
       managementGateway.updateTenant('ten_1', { name: 'Acme 2' }),
@@ -60,7 +58,8 @@ describe('managementGateway', () => {
       managementGateway.deleteBinding('pbd_1'),
     ])
 
-    expect(fetch).toHaveBeenCalledTimes(38)
+    expect(fetch).toHaveBeenCalledTimes(36)
+    expect(fetch.mock.calls.map(([path]) => path)).not.toContainEqual(expect.stringContaining('/capabilities'))
     expect(fetch).toHaveBeenCalledWith(
       '/api/admin/outbox/deliveries/out_1/consumers/worker%2Fone/replay',
       expect.objectContaining({ method: 'POST', credentials: 'include' }),

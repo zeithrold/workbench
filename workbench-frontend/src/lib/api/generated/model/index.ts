@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Workbench API
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
- * OpenAPI spec version: 2026-07-15
+ * OpenAPI spec version: 2026-07-17
  */
 
 export * from './acceptExistingInvitationRequest';
@@ -54,7 +54,6 @@ export * from './groupMemberResponse';
 export * from './infrastructureComponentResponse';
 export * from './initiateWorkItemAttachmentUploadRequest';
 export * from './instanceBootstrapResponse';
-export * from './instanceCapabilityResponse';
 export * from './instanceContextSummary';
 export * from './instanceOperationsResponse';
 export * from './instanceOperationsResponseDeliveries';
@@ -101,7 +100,11 @@ export * from './loginRequestMethod';
 export * from './loginResponse';
 export * from './magicLinkRequest';
 export * from './managedInvitationResponse';
+export * from './managementNavigationResponse';
+export * from './managementNavigationResponseTenantContextStatus';
 export * from './membershipResponse';
+export * from './navigationItemResponse';
+export * from './navigationItemResponseId';
 export * from './oauthCallbackParams';
 export * from './outboxDeliveryQuery';
 export * from './outboxMessageQuery';
@@ -120,7 +123,6 @@ export * from './permissionPolicySummaryResponse';
 export * from './previewParams';
 export * from './problemDetail';
 export * from './problemDetailProperties';
-export * from './projectCapabilityResponse';
 export * from './projectDestroyScheduledMetaSchema';
 export * from './projectMemberPolicyResponse';
 export * from './projectMemberResponse';
@@ -141,7 +143,6 @@ export * from './sprintResponse';
 export * from './switchTenantRequest';
 export * from './tenantAdminAssignmentRequest';
 export * from './tenantAdminAssignmentRequestMode';
-export * from './tenantCapabilityResponse';
 export * from './tenantMemberResponse';
 export * from './tenantPolicySimulationResponse';
 export * from './tenantPolicySimulationRuleResponse';

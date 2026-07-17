@@ -1,8 +1,9 @@
 <script lang='ts'>
   import type { InstanceOperations } from '$lib/entities/management/model.js'
+  import { isApiProblemStatus } from '$lib/api/problem.js'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { m } from '$lib/paraglide/messages.js'
-  import { Badge, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
+  import { AccessDeniedState, Alert, Badge, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
 
   let snapshot = $state<InstanceOperations | null>(null)
   let error = $state<Error | null>(null)
@@ -15,7 +16,8 @@
 <svelte:head><title>{m.management_instance_title()}</title></svelte:head>
 <div class='space-y-8'>
   <PageHeader title={m.management_instance_overview()} description={m.management_instance_overview_description()} />
-  {#if error}<p class='text-sm text-destructive'>{error.message}</p>
+  {#if error && isApiProblemStatus(error, 403)}<AccessDeniedState description={error.message} />
+  {:else if error}<Alert variant='destructive'>{error.message}</Alert>
   {:else if !snapshot}<LoadingState label={m.management_loading_instance_overview()} />
   {:else}
     <div class='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>

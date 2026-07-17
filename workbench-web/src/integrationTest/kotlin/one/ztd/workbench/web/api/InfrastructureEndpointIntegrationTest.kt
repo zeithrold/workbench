@@ -11,6 +11,7 @@ import one.ztd.workbench.testsupport.postgres.MigrationSpec
 import one.ztd.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
 import one.ztd.workbench.testsupport.postgres.registerWorkbenchDataSource
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.redisson.api.RedissonClient
@@ -89,6 +90,22 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
         "delete",
       ),
     )
+  }
+
+  @Test
+  fun `openapi exposes navigation without capability contracts`() {
+    val response =
+      mockMvc.perform(get("/api/openapi")).andExpect(status().isOk()).andReturn().response
+    val document = JsonMapper.builder().build().readTree(response.contentAsByteArray)
+    val paths = document.path("paths")
+    val schemas = document.path("components").path("schemas")
+
+    assertTrue(paths.has("/api/session/navigation"))
+    assertFalse(paths.has("/api/admin/capabilities"))
+    assertFalse(paths.has("/api/manage/capabilities"))
+    assertFalse(paths.has("/api/projects/capabilities"))
+    assertTrue(schemas.has("ManagementNavigationResponse"))
+    assertFalse(schemas.properties().asSequence().any { (name) -> name.contains("Capability") })
   }
 
   @TestConfiguration

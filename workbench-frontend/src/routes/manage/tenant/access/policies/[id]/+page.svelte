@@ -4,11 +4,11 @@
   import { goto } from '$app/navigation'
   import { resolve } from '$app/paths'
   import { page } from '$app/state'
+  import { isApiProblemStatus } from '$lib/api/problem.js'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
-  import { management } from '$lib/entities/management/management.svelte.js'
   import { emptyPermissionPolicyDocument, TenantPermissionEditor, TenantPolicySimulator } from '$lib/features/permission'
   import { m } from '$lib/paraglide/messages.js'
-  import { Alert, Button, LoadingState } from '$lib/shared/ui'
+  import { AccessDeniedState, Alert, Button, LoadingState } from '$lib/shared/ui'
 
   const policyId = $derived(page.params.id!)
   const creating = $derived(policyId === 'new')
@@ -16,12 +16,12 @@
   let document = $state<PermissionPolicyDocument>(emptyPermissionPolicyDocument())
   let actions = $state<TenantPermissionActionOption[]>([])
   let loading = $state(true)
+  let loaded = $state(false)
   let saving = $state(false)
   let valid = $state(true)
   let dirty = $state(false)
   let error = $state<Error | null>(null)
-  const canManage = $derived(management.has('TENANT', 'permission.policy.manage'))
-  const editable = $derived(canManage && (creating || !policy?.builtin))
+  const editable = $derived(creating || !policy?.builtin)
 
   function toDocument(value: PermissionPolicy, clone = false): PermissionPolicyDocument {
     return {
@@ -68,6 +68,7 @@
           throw new Error('Permission policy not found.')
         document = toDocument(policy)
       }
+      loaded = true
     }
     catch (reason) {
       error = reason as Error
@@ -114,9 +115,11 @@
   if (dirty)
     event.preventDefault()
 }} />
-{#if loading}<LoadingState label={m.management_loading_policy_editor()} />{:else if error && !policy && !creating}<Alert variant='destructive'>{error.message}</Alert>{:else}
+{#if loading}<LoadingState label={m.management_loading_policy_editor()} />
+{:else if !loaded && error && isApiProblemStatus(error, 403)}<AccessDeniedState description={error.message} />
+{:else if error && !policy && !creating}<Alert variant='destructive'>{error.message}</Alert>{:else}
   <div class='space-y-5'>
-    <div class='flex flex-wrap items-center justify-between gap-3'><div><a href={resolve('/manage/tenant/access')} class='text-sm text-muted-foreground hover:text-foreground'>{m.management_back_to_policies()}</a><h1 class='mt-1 text-2xl font-semibold'>{creating ? m.management_new_policy() : policy?.name}</h1></div><div class='flex gap-2'>{#if policy?.builtin && canManage}<Button variant='outline' href={resolve(`/manage/tenant/access/policies/new?clone=${policy.id}`)}>{m.management_copy_policy()}</Button>{/if}{#if editable}<Button disabled={!valid || saving || !document.code || !document.name} onclick={save}>{saving ? m.management_saving() : m.management_save_policy()}</Button>{/if}</div></div>
+    <div class='flex flex-wrap items-center justify-between gap-3'><div><a href={resolve('/manage/tenant/access')} class='text-sm text-muted-foreground hover:text-foreground'>{m.management_back_to_policies()}</a><h1 class='mt-1 text-2xl font-semibold'>{creating ? m.management_new_policy() : policy?.name}</h1></div><div class='flex gap-2'>{#if policy?.builtin}<Button variant='outline' href={resolve(`/manage/tenant/access/policies/new?clone=${policy.id}`)}>{m.management_copy_policy()}</Button>{/if}{#if editable}<Button disabled={!valid || saving || !document.code || !document.name} onclick={save}>{saving ? m.management_saving() : m.management_save_policy()}</Button>{/if}</div></div>
     {#if error}<Alert variant='destructive'>{error.message}</Alert>{/if}
     <TenantPermissionEditor value={document} {actions} {editable} codeEditable={creating} modelId={`tenant-permission-policy-${policyId}`} onChange={updateDocument} onValidityChange={value => valid = value} />
     {#if editable}<TenantPolicySimulator {document} {actions} />{/if}

@@ -8,12 +8,11 @@ describe('projectGateway', () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify([]), { status: 200 }))
     vi.stubGlobal('fetch', fetch)
 
-    await projectGateway.capabilities()
     await projectGateway.list()
     await projectGateway.create({ identifier: 'CORE', name: 'Core', description: 'Platform' })
 
     expect(fetch).toHaveBeenNthCalledWith(
-      3,
+      2,
       '/api/projects',
       expect.objectContaining({
         method: 'POST',
@@ -21,10 +20,6 @@ describe('projectGateway', () => {
         body: JSON.stringify({ identifier: 'CORE', name: 'Core', description: 'Platform' }),
       }),
     )
-    expect(fetch).toHaveBeenNthCalledWith(
-      1,
-      '/api/projects/capabilities',
-      expect.objectContaining({ credentials: 'include' }),
-    )
+    expect(fetch).toHaveBeenNthCalledWith(1, '/api/projects', expect.objectContaining({ credentials: 'include' }))
   })
 })

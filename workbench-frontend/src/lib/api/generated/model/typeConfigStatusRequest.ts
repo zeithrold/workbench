@@ -3,13 +3,13 @@
  * Do not edit manually.
  * Workbench API
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
- * OpenAPI spec version: 2026-07-15
+ * OpenAPI spec version: 2026-07-17
  */
 
 export interface TypeConfigStatusRequest {
   /** @minLength 1 */
   statusId: string;
   rank?: number;
-  initial?: boolean;
   terminal?: boolean;
+  initial?: boolean;
 }

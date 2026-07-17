@@ -318,6 +318,47 @@ class SessionServiceTest :
         .errorCode shouldBe WorkbenchErrorCode.SESSION_TENANT_UPDATE_FAILED
     }
 
+    "activeTenantId returns credential tenant without loading a session" {
+      val tenantId = UUID.randomUUID()
+      val principal =
+        AuthenticatedPrincipal(
+          user = sampleUser(),
+          loginAccountId = UUID.randomUUID(),
+          sessionId = null,
+          bearerTokenId = "token",
+          tenantId = tenantId,
+        )
+
+      runBlocking { service.activeTenantId(principal) } shouldBe tenantId
+    }
+
+    "activeTenantId returns null when the session has no selected tenant" {
+      val user = sampleUser()
+      val sessionId = UUID.randomUUID()
+      val principal =
+        AuthenticatedPrincipal(
+          user = user,
+          loginAccountId = UUID.randomUUID(),
+          sessionId = sessionId.toString(),
+          bearerTokenId = null,
+        )
+      coEvery { sessions.findById(sessionId) } returns
+        AuthSessionRecord(
+          id = sessionId,
+          sessionHash = "hash",
+          userId = user.id,
+          loginAccountId = UUID.randomUUID(),
+          activeTenantId = null,
+          expiresAt = OffsetDateTime.parse("2026-07-05T00:00:00Z"),
+          revokedAt = null,
+          lastUsedAt = null,
+          createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+          updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+        )
+
+      runBlocking { service.activeTenantId(principal) }.shouldBeNull()
+    }
+
     "requireActiveTenantId uses principal tenant when membership is active" {
       val user = sampleUser()
       val tenant = sampleTenant()

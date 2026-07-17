@@ -3,6 +3,7 @@ package one.ztd.workbench.application.permission
 import java.time.Clock
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.UUID
 import one.ztd.workbench.identity.TenantMemberRepository
 import one.ztd.workbench.identity.model.CredentialType
 import one.ztd.workbench.identity.model.TenantMemberStatus
@@ -17,6 +18,7 @@ import one.ztd.workbench.identity.permission.ResolvedPermissionRule
 import one.ztd.workbench.identity.permission.model.AuthorizationDecision
 import one.ztd.workbench.identity.permission.model.AuthorizationRequest
 import one.ztd.workbench.identity.permission.model.AuthorizationScope
+import one.ztd.workbench.identity.permission.model.AuthorizationSubject
 import one.ztd.workbench.identity.permission.model.DecisionReason
 import one.ztd.workbench.identity.permission.model.PermissionEffect
 import one.ztd.workbench.identity.permission.model.PermissionService
@@ -31,61 +33,114 @@ class ScopePermissionService(
   private val clock: Clock,
   private val conditionEvaluator: PermissionConditionEvaluator = PermissionConditionEvaluator(),
 ) : PermissionService {
-  override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision {
+  override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision =
+    decideAll(listOf(request)).single()
+
+  override suspend fun decideAll(
+    requests: List<AuthorizationRequest>
+  ): List<AuthorizationDecision> {
+    if (requests.isEmpty()) return emptyList()
     val at = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)
-    return when (request.scope) {
-      AuthorizationScope.INSTANCE -> decideInstance(request, at)
-      AuthorizationScope.TENANT -> decideTenant(request, at)
-    }
+    val decisions = arrayOfNulls<AuthorizationDecision>(requests.size)
+    requests
+      .withIndex()
+      .groupBy { batchKey(it.value) }
+      .values
+      .forEach { indexedRequests ->
+        val groupRequests = indexedRequests.map { it.value }
+        val groupDecisions =
+          when (groupRequests.first().scope) {
+            AuthorizationScope.INSTANCE -> decideInstanceGroup(groupRequests, at)
+            AuthorizationScope.TENANT -> decideTenantGroup(groupRequests, at)
+          }
+        indexedRequests.zip(groupDecisions).forEach { (indexed, decision) ->
+          decisions[indexed.index] = decision
+        }
+      }
+    return decisions.map { requireNotNull(it) }
   }
 
-  private suspend fun decideInstance(
-    request: AuthorizationRequest,
+  private suspend fun decideInstanceGroup(
+    requests: List<AuthorizationRequest>,
     at: OffsetDateTime,
-  ): AuthorizationDecision {
-    if (!adminUserQueries.isActiveInstanceAdmin(request.subject.userId, at)) {
-      return deny("missing_instance_admin", "Instance administrator access is required.")
+  ): List<AuthorizationDecision> {
+    val userId = requests.first().subject.userId
+    if (!adminUserQueries.isActiveInstanceAdmin(userId, at)) {
+      return requests.map {
+        deny("missing_instance_admin", "Instance administrator access is required.")
+      }
     }
-    if (!credentialAllows(request)) {
-      return deny("token_scope_denied", "The credential does not allow this action.")
-    }
+    val allowedByCredential = requests.filter(::credentialAllows)
     val grants =
-      accessGrants.listActiveForSubject(
-        subjectUserId = request.subject.userId,
-        scope = GrantScope.INSTANCE,
-        tenantId = null,
-        projectId = null,
-        at = at,
-      )
-    return decideFromGrants(grants, request)
+      if (allowedByCredential.isEmpty()) {
+        emptyList()
+      } else {
+        accessGrants.listActiveForSubject(
+          subjectUserId = userId,
+          scope = GrantScope.INSTANCE,
+          tenantId = null,
+          projectId = null,
+          at = at,
+        )
+      }
+    return requests.map { request ->
+      if (credentialAllows(request)) {
+        decideFromGrants(grants, request)
+      } else {
+        deny("token_scope_denied", "The credential does not allow this action.")
+      }
+    }
   }
 
-  private suspend fun decideTenant(
-    request: AuthorizationRequest,
+  private suspend fun decideTenantGroup(
+    requests: List<AuthorizationRequest>,
     at: OffsetDateTime,
-  ): AuthorizationDecision {
-    val tenantId =
-      request.tenantId
-        ?: return deny("missing_tenant", "Tenant context is required for authorization.")
+  ): List<AuthorizationDecision> {
+    val first = requests.first()
+    val tenantId = first.tenantId
+    if (tenantId == null) {
+      return requests.map {
+        deny("missing_tenant", "Tenant context is required for authorization.")
+      }
+    }
     val membership =
-      tenantMembers.findByTenantAndUser(tenantId, request.subject.userId)
-        ?: return deny("missing_membership", "The subject is not a member of this tenant.")
+      tenantMembers.findByTenantAndUser(tenantId, first.subject.userId)
+        ?: return requests.map {
+          deny("missing_membership", "The subject is not a member of this tenant.")
+        }
     if (membership.status != TenantMemberStatus.ACTIVE) {
-      return deny("inactive_membership", "The subject is not an active member of this tenant.")
+      return requests.map {
+        deny("inactive_membership", "The subject is not an active member of this tenant.")
+      }
     }
-    if (!credentialAllows(request)) {
-      return deny("token_scope_denied", "The credential does not allow this action.")
-    }
-
+    val allowedByCredential = requests.filter(::credentialAllows)
     val rules =
-      permissionBindings.listActiveRulesForSubject(
-        subjectUserId = request.subject.userId,
-        tenantId = tenantId,
-        projectId = request.resource.projectId,
-        at = at,
-      )
-    return decideFromRules(rules, request)
+      if (allowedByCredential.isEmpty()) {
+        emptyList()
+      } else {
+        permissionBindings.listActiveRulesForSubject(
+          subjectUserId = first.subject.userId,
+          tenantId = tenantId,
+          projectId = first.resource.projectId,
+          at = at,
+        )
+      }
+    return requests.map { request ->
+      if (credentialAllows(request)) {
+        decideFromRules(rules, request)
+      } else {
+        deny("token_scope_denied", "The credential does not allow this action.")
+      }
+    }
   }
+
+  private fun batchKey(request: AuthorizationRequest): BatchKey =
+    BatchKey(
+      scope = request.scope,
+      subject = request.subject,
+      tenantId = request.tenantId,
+      projectId = request.resource.projectId.takeIf { request.scope == AuthorizationScope.TENANT },
+    )
 
   private fun decideFromGrants(
     grants: List<AccessGrantRecord>,
@@ -211,4 +266,11 @@ class ScopePermissionService(
       rule.effect == PermissionEffect.DENY &&
         conditionResult in setOf(PermissionConditionResult.MATCH, PermissionConditionResult.INVALID)
   }
+
+  private data class BatchKey(
+    val scope: AuthorizationScope,
+    val subject: AuthorizationSubject,
+    val tenantId: UUID?,
+    val projectId: UUID?,
+  )
 }

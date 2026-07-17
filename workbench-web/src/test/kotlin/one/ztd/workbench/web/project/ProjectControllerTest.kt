@@ -4,7 +4,6 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import one.ztd.workbench.agile.project.ProjectRepository
-import one.ztd.workbench.application.project.ProjectCapabilityService
 import one.ztd.workbench.application.project.ProjectManagementApplicationService
 import one.ztd.workbench.application.project.ProjectView
 import one.ztd.workbench.identity.SessionService
@@ -78,24 +77,6 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(status().isOk())
       .andExpect(jsonPath("$[0].identifier").value("CORE"))
       .andExpect(jsonPath("$[0].name").value("Core Platform"))
-  }
-
-  @Test
-  fun `project capabilities expose project domain actions`() {
-    val result =
-      mockMvc
-        .perform(
-          get("/api/projects/capabilities")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
-    mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$.tenant.id").value(TenantWebMvcFixtures.TENANT_RECORD.apiId.value))
-      .andExpect(jsonPath("$.actions[0]").value("project.create"))
   }
 
   @Test
@@ -231,12 +212,6 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean
     fun sessionService(): SessionService = mockk {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
-    }
-
-    @Bean
-    fun projectCapabilityService(): ProjectCapabilityService = mockk {
-      coEvery { capabilities(any(), TenantWebMvcFixtures.TENANT_ID) } returns
-        listOf("project.create")
     }
 
     @Bean

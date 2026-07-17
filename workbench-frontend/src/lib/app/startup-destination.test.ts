@@ -39,7 +39,7 @@ describe('startupDestination', () => {
 
   it('routes a tenantless instance administrator to management', () => {
     const session: Session = { ...tenantSession, activeTenant: null, adminScopes: ['INSTANCE'] }
-    expect(startupDestination({ initialized: true, session, pathname: '/' })).toBe('/manage/instance')
+    expect(startupDestination({ initialized: true, session, pathname: '/' })).toBe('/manage')
     expect(startupDestination({ initialized: true, session, pathname: '/manage/instance' })).toBeNull()
   })
 

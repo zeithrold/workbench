@@ -2,7 +2,6 @@ import type {
   AccessGrant,
   AdminUser,
   GroupMember,
-  InstanceCapabilities,
   InstanceOperations,
   InvitationCreated,
   ManagedInvitation,
@@ -13,7 +12,6 @@ import type {
   PermissionGroup,
   PermissionPolicy,
   ProjectSummary,
-  TenantCapabilities,
   TenantMember,
   TenantPolicySimulation,
   TenantResource,
@@ -39,10 +37,6 @@ function json(method: string, body: unknown): RequestInit {
 }
 
 export const managementGateway = {
-  instanceCapabilities: () =>
-    request<InstanceCapabilities>('/api/admin/capabilities'),
-  tenantCapabilities: () =>
-    request<TenantCapabilities>('/api/manage/capabilities'),
   listTenants: () => request<TenantResource[]>('/api/admin/tenants'),
   createTenant: (body: unknown) =>
     request<TenantResource>('/api/admin/tenants', json('POST', body)),

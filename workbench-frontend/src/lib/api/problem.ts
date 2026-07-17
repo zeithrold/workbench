@@ -16,6 +16,10 @@ export class ApiProblemError extends Error {
   }
 }
 
+export function isApiProblemStatus(error: unknown, status: number): error is ApiProblemError {
+  return error instanceof ApiProblemError && error.status === status
+}
+
 export async function problemFromResponse(response: Response): Promise<ApiProblemError> {
   let problem: ProblemDetail = {}
   try {

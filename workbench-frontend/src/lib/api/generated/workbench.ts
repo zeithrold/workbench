@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Workbench API
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
- * OpenAPI spec version: 2026-07-15
+ * OpenAPI spec version: 2026-07-17
  */
 import type {
   AcceptExistingInvitationRequest,
@@ -47,7 +47,6 @@ import type {
   GroupMemberResponse,
   InitiateWorkItemAttachmentUploadRequest,
   InstanceBootstrapResponse,
-  InstanceCapabilityResponse,
   InstanceOperationsResponse,
   InstanceSetupRequest,
   InstanceSetupStatusResponse,
@@ -76,6 +75,7 @@ import type {
   LoginResponse,
   MagicLinkRequest,
   ManagedInvitationResponse,
+  ManagementNavigationResponse,
   MembershipResponse,
   OauthCallbackParams,
   PatchProjectRequest,
@@ -87,7 +87,6 @@ import type {
   PermissionPolicyResponse,
   PreviewParams,
   ProblemDetail,
-  ProjectCapabilityResponse,
   ProjectMemberResponse,
   ProjectResponse,
   PropertyDefinitionResponse,
@@ -98,7 +97,6 @@ import type {
   SprintCloseOperationResponse,
   SprintResponse,
   SwitchTenantRequest,
-  TenantCapabilityResponse,
   TenantMemberResponse,
   TenantPolicySimulationResponse,
   TenantResponse,
@@ -183,6 +181,7 @@ export const preferences = async ( options?: RequestInit): Promise<preferencesRe
   const data: preferencesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as preferencesResponse
 }
+
 
 
 export type updatePreferenceResponse400 = {
@@ -8173,6 +8172,77 @@ export const patch2 = async (id: string,
 
 
 
+export type getManagementNavigationResponse200 = {
+  data: ManagementNavigationResponse
+  status: 200
+}
+
+export type getManagementNavigationResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type getManagementNavigationResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type getManagementNavigationResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type getManagementNavigationResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type getManagementNavigationResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type getManagementNavigationResponseSuccess = (getManagementNavigationResponse200) & {
+  headers: Headers;
+};
+export type getManagementNavigationResponseError = (getManagementNavigationResponse400 | getManagementNavigationResponse401 | getManagementNavigationResponse403 | getManagementNavigationResponse404 | getManagementNavigationResponse409) & {
+  headers: Headers;
+};
+
+export type getManagementNavigationResponse = (getManagementNavigationResponseSuccess | getManagementNavigationResponseError)
+
+export const getGetManagementNavigationUrl = () => {
+
+
+
+
+  return `/api/session/navigation`
+}
+
+/**
+ * Returns stable navigation identifiers without exposing roles, permissions, or routes.
+ * @summary Get management navigation
+ */
+export const getManagementNavigation = async ( options?: RequestInit): Promise<getManagementNavigationResponse> => {
+
+  const res = await fetch(getGetManagementNavigationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getManagementNavigationResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as getManagementNavigationResponse
+}
+
+
+
 export type getDocsResponse200 = {
   data: string
   status: 200
@@ -8806,76 +8876,6 @@ export const closeOperation = async (id: string,
 
 
 
-export type capabilitiesResponse200 = {
-  data: ProjectCapabilityResponse
-  status: 200
-}
-
-export type capabilitiesResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type capabilitiesResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type capabilitiesResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type capabilitiesResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type capabilitiesResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-export type capabilitiesResponseSuccess = (capabilitiesResponse200) & {
-  headers: Headers;
-};
-export type capabilitiesResponseError = (capabilitiesResponse400 | capabilitiesResponse401 | capabilitiesResponse403 | capabilitiesResponse404 | capabilitiesResponse409) & {
-  headers: Headers;
-};
-
-export type capabilitiesResponse = (capabilitiesResponseSuccess | capabilitiesResponseError)
-
-export const getCapabilitiesUrl = () => {
-
-
-
-
-  return `/api/projects/capabilities`
-}
-
-/**
- * @summary Get effective project capabilities
- */
-export const capabilities = async ( options?: RequestInit): Promise<capabilitiesResponse> => {
-
-  const res = await fetch(getCapabilitiesUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: capabilitiesResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
-  return { data, status: res.status, headers: res.headers } as capabilitiesResponse
-}
-
-
-
 export type list14Response400 = {
   data: ProblemDetail
   status: 400
@@ -9075,76 +9075,6 @@ export const listMembers1 = async ( options?: RequestInit): Promise<listMembers1
 
   const data: listMembers1Response['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as listMembers1Response
-}
-
-
-
-export type tenantResponse200 = {
-  data: TenantCapabilityResponse
-  status: 200
-}
-
-export type tenantResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type tenantResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type tenantResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type tenantResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type tenantResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-export type tenantResponseSuccess = (tenantResponse200) & {
-  headers: Headers;
-};
-export type tenantResponseError = (tenantResponse400 | tenantResponse401 | tenantResponse403 | tenantResponse404 | tenantResponse409) & {
-  headers: Headers;
-};
-
-export type tenantResponse = (tenantResponseSuccess | tenantResponseError)
-
-export const getTenantUrl = () => {
-
-
-
-
-  return `/api/manage/capabilities`
-}
-
-/**
- * @summary Get effective tenant management capabilities
- */
-export const tenant = async ( options?: RequestInit): Promise<tenantResponse> => {
-
-  const res = await fetch(getTenantUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: tenantResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
-  return { data, status: res.status, headers: res.headers } as tenantResponse
 }
 
 
@@ -10083,76 +10013,6 @@ export const listInstanceGrants = async ( options?: RequestInit): Promise<listIn
 
   const data: listInstanceGrantsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as listInstanceGrantsResponse
-}
-
-
-
-export type instanceResponse200 = {
-  data: InstanceCapabilityResponse
-  status: 200
-}
-
-export type instanceResponse400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type instanceResponse401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type instanceResponse403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type instanceResponse404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type instanceResponse409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-export type instanceResponseSuccess = (instanceResponse200) & {
-  headers: Headers;
-};
-export type instanceResponseError = (instanceResponse400 | instanceResponse401 | instanceResponse403 | instanceResponse404 | instanceResponse409) & {
-  headers: Headers;
-};
-
-export type instanceResponse = (instanceResponseSuccess | instanceResponseError)
-
-export const getInstanceUrl = () => {
-
-
-
-
-  return `/api/admin/capabilities`
-}
-
-/**
- * @summary Get effective instance management capabilities
- */
-export const instance = async ( options?: RequestInit): Promise<instanceResponse> => {
-
-  const res = await fetch(getInstanceUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: instanceResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
-  return { data, status: res.status, headers: res.headers } as instanceResponse
 }
 
 

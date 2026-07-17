@@ -35,7 +35,7 @@ class RequestContextTest :
 
     "api version accepts yyyy-MM-dd format" {
       ApiVersion("2026-07-03").value shouldBe "2026-07-03"
-      ApiVersion.Default.value shouldBe "2026-07-15"
+      ApiVersion.Default.value shouldBe "2026-07-17"
     }
 
     "api version rejects invalid format" {

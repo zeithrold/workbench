@@ -3,7 +3,9 @@ package one.ztd.workbench.application.permission
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import io.mockk.clearMocks
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -97,6 +99,36 @@ class ScopePermissionServiceTest :
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
     }
 
+    test("batch instance decisions preserve order and reuse grant queries") {
+      coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns true
+      coEvery {
+        accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
+      } returns
+        listOf(
+          grant(
+            scope = GrantScope.INSTANCE,
+            action = "project.read",
+            pattern = "project:*",
+            effect = PermissionEffect.ALLOW,
+          )
+        )
+      val requests =
+        listOf(
+          request(AuthorizationScope.INSTANCE),
+          request(AuthorizationScope.INSTANCE).copy(action = AuthorizationAction("project.update")),
+        )
+      clearMocks(adminUserQueries, accessGrants, answers = false, recordedCalls = true)
+
+      val decisions = service.decideAll(requests)
+
+      decisions[0].shouldBeInstanceOf<AuthorizationDecision.Allow>()
+      decisions[1].shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      coVerify(exactly = 1) { adminUserQueries.isActiveInstanceAdmin(userId, now) }
+      coVerify(exactly = 1) {
+        accessGrants.listActiveForSubject(userId, GrantScope.INSTANCE, null, null, now)
+      }
+    }
+
     test("instance scope denies without active instance admin") {
       coEvery { adminUserQueries.isActiveInstanceAdmin(userId, now) } returns false
 
@@ -128,6 +160,37 @@ class ScopePermissionServiceTest :
 
       val decision = service.decide(request(AuthorizationScope.TENANT, projectId))
       decision.shouldBeInstanceOf<AuthorizationDecision.Allow>()
+    }
+
+    test("batch tenant decisions reuse membership and binding queries") {
+      coEvery { tenantMembers.findByTenantAndUser(tenantId, userId) } returns
+        membership(TenantMemberStatus.ACTIVE)
+      coEvery {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      } returns
+        listOf(
+          rule(
+            action = "project.read",
+            pattern = "project:*",
+            effect = PermissionEffect.ALLOW,
+          )
+        )
+      val requests =
+        listOf(
+          request(AuthorizationScope.TENANT, projectId),
+          request(AuthorizationScope.TENANT, projectId)
+            .copy(action = AuthorizationAction("project.update")),
+        )
+      clearMocks(tenantMembers, permissionBindings, answers = false, recordedCalls = true)
+
+      val decisions = service.decideAll(requests)
+
+      decisions[0].shouldBeInstanceOf<AuthorizationDecision.Allow>()
+      decisions[1].shouldBeInstanceOf<AuthorizationDecision.Deny>()
+      coVerify(exactly = 1) { tenantMembers.findByTenantAndUser(tenantId, userId) }
+      coVerify(exactly = 1) {
+        permissionBindings.listActiveRulesForSubject(userId, tenantId, projectId, now)
+      }
     }
 
     test("instance scope denies matching deny grant") {

@@ -1,4 +1,4 @@
-import type { CreateProjectInput, Project, ProjectCapabilities } from './model.js'
+import type { CreateProjectInput, Project } from './model.js'
 import { apiFetch } from '$lib/api/http.js'
 import { problemFromResponse } from '$lib/api/problem.js'
 
@@ -10,7 +10,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const projectGateway = {
-  capabilities: () => request<ProjectCapabilities>('/api/projects/capabilities'),
   list: () => request<Project[]>('/api/projects'),
   create: (input: CreateProjectInput) =>
     request<Project>('/api/projects', {

@@ -12,8 +12,3 @@ export interface CreateProjectInput {
   name: string
   description?: string
 }
-
-export interface ProjectCapabilities {
-  tenant: { id: string, name: string, slug: string }
-  actions: string[]
-}

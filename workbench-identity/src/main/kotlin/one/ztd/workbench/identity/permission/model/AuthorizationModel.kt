@@ -2,6 +2,7 @@ package one.ztd.workbench.identity.permission.model
 
 import java.time.Instant
 import java.util.UUID
+import one.ztd.workbench.identity.model.AuthenticatedPrincipal
 import one.ztd.workbench.identity.model.CredentialType
 
 enum class AuthorizationScope {
@@ -26,7 +27,20 @@ data class AuthorizationSubject(
   val credentialId: String?,
   val credentialTenantId: UUID?,
   val credentialScopes: Set<String>,
-)
+) {
+  companion object {
+    fun from(principal: AuthenticatedPrincipal, tenantId: UUID? = null): AuthorizationSubject =
+      AuthorizationSubject(
+        userId = principal.user.id,
+        userApiId = principal.user.apiId.value,
+        loginAccountId = principal.loginAccountId,
+        credentialType = principal.credentialType,
+        credentialId = principal.bearerTokenId ?: principal.sessionId,
+        credentialTenantId = principal.tenantId ?: tenantId,
+        credentialScopes = principal.credentialScopes,
+      )
+  }
+}
 
 @JvmInline
 value class AuthorizationAction(val code: String) {

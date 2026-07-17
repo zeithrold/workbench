@@ -51,6 +51,16 @@ class SessionService(
   suspend fun tenantSummary(tenantId: UUID): TenantSummary? =
     tenants.findById(tenantId)?.let { TenantSummary.from(it) }
 
+  suspend fun activeTenantId(principal: AuthenticatedPrincipal): UUID? {
+    principal.tenantId?.let {
+      return it
+    }
+    val session =
+      sessions.findById(sessionUuid(principal))
+        ?: throw InvalidRequestException(WorkbenchErrorCode.SESSION_ACTIVE_NOT_FOUND)
+    return session.activeTenantId
+  }
+
   suspend fun switchTenant(principal: AuthenticatedPrincipal, tenantId: String?): SessionView {
     val sessionId = sessionUuid(principal)
     val now = OffsetDateTime.now(clock)

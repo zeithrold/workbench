@@ -121,4 +121,34 @@ class ProjectVisibilityPermissionDecoratorTest :
 
       decorator.decide(request("project.read")) shouldBe deny
     }
+
+    "batch decisions apply project visibility to each request" {
+      val requests = listOf(request("project.read"), request("issue.view"))
+      coEvery { delegate.decideAll(requests) } returns
+        requests.map {
+          AuthorizationDecision.Deny(
+            DecisionReason("no_matching_binding", "No active policy binding allows the request.")
+          )
+        }
+      coEvery {
+        projectAccess.allowsVisibilityAction(
+          userId,
+          tenantId,
+          projectId,
+          AuthorizationAction("project.read"),
+        )
+      } returns true
+      coEvery {
+        projectAccess.allowsVisibilityAction(
+          userId,
+          tenantId,
+          projectId,
+          AuthorizationAction("issue.view"),
+        )
+      } returns true
+
+      decorator.decideAll(requests).forEach {
+        it.shouldBeInstanceOf<AuthorizationDecision.Allow>()
+      }
+    }
   })

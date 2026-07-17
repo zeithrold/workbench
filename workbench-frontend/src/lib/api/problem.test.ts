@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { problemFromResponse } from './problem.js'
+import { isApiProblemStatus, problemFromResponse } from './problem.js'
 
 describe('problemFromResponse', () => {
   it('preserves problem details and status', async () => {
@@ -12,6 +12,9 @@ describe('problemFromResponse', () => {
     expect(error.status).toBe(403)
     expect(error.message).toBe('The setup token is invalid.')
     expect(error.problem.code).toBe('instance.setup_token_invalid')
+    expect(isApiProblemStatus(error, 403)).toBe(true)
+    expect(isApiProblemStatus(error, 401)).toBe(false)
+    expect(isApiProblemStatus(new Error('denied'), 403)).toBe(false)
   })
 
   it('falls back for a non-JSON failure', async () => {

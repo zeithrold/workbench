@@ -17,6 +17,20 @@ class ProjectVisibilityPermissionDecorator(
 ) : PermissionService {
   override suspend fun decide(request: AuthorizationRequest): AuthorizationDecision {
     val decision = delegate.decide(request)
+    return applyProjectVisibility(request, decision)
+  }
+
+  override suspend fun decideAll(
+    requests: List<AuthorizationRequest>
+  ): List<AuthorizationDecision> =
+    requests.zip(delegate.decideAll(requests)).map { (request, decision) ->
+      applyProjectVisibility(request, decision)
+    }
+
+  private suspend fun applyProjectVisibility(
+    request: AuthorizationRequest,
+    decision: AuthorizationDecision,
+  ): AuthorizationDecision {
     val projectId = request.resource.projectId
     val tenantId = request.tenantId
     return when {
