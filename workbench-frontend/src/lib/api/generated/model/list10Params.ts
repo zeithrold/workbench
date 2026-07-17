@@ -7,5 +7,8 @@
  */
 
 export type List10Params = {
-status?: string;
+/**
+ * Filter by exact tenant slug.
+ */
+slug?: string;
 };

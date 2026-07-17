@@ -208,7 +208,7 @@ class WorkItemTransitionServiceTest :
               )
             )
 
-        result.eventType shouldBe "work_item.transitioned"
+        result.apiId shouldBe issue.apiId.value
       }
     }
 

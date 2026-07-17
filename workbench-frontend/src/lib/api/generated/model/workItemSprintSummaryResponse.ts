@@ -6,7 +6,10 @@
  * OpenAPI spec version: 2026-07-17
  */
 
-export type List11Params = {
-limit?: number;
-cursor?: string;
-};
+export interface WorkItemSprintSummaryResponse {
+  id?: string;
+  name?: string;
+  status?: string;
+  startAt?: string;
+  endAt?: string;
+}

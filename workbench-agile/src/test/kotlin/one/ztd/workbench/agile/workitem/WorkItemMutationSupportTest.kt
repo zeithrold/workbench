@@ -27,7 +27,7 @@ class WorkItemMutationSupportTest :
     "publish emits created updated and transitioned events" {
       val events = mockk<DomainEventPublisher>()
       justRun { events.publish<Any>(any(), any(), any(), any()) }
-      val support = WorkItemMutationSupport(mockk(), mockk(), events)
+      val support = WorkItemMutationSupport(mockk(), mockk(), events, mockk())
       val record = workItemRecord(tenantId, projectId)
 
       support.publish(WorkItemMutationResult(record, WorkItemDomainEvents.Created.type))
@@ -41,7 +41,7 @@ class WorkItemMutationSupportTest :
     "requireConfig throws when config is missing" {
       val configs = mockk<IssueTypeConfigRepository>()
       coEvery { configs.findConfig(tenantId, "missing") } returns null
-      val support = WorkItemMutationSupport(mockk(), configs, mockk(relaxed = true))
+      val support = WorkItemMutationSupport(mockk(), configs, mockk(relaxed = true), mockk())
 
       shouldThrow<ResourceNotFoundException> { support.requireConfig(tenantId, "missing") }
     }
@@ -52,7 +52,7 @@ class WorkItemMutationSupportTest :
       val projectApiId = PublicId.new("prj")
       coEvery { repository.resolveUserApiId(actorId) } returns userApiId
       coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns projectApiId
-      val support = WorkItemMutationSupport(repository, mockk(), mockk(relaxed = true))
+      val support = WorkItemMutationSupport(repository, mockk(), mockk(relaxed = true), mockk())
 
       val context =
         support.templateContext(
@@ -70,7 +70,7 @@ class WorkItemMutationSupportTest :
     "templateContext throws when user is missing" {
       val repository = mockk<WorkItemRepository>()
       coEvery { repository.resolveUserApiId(actorId) } returns null
-      val support = WorkItemMutationSupport(repository, mockk(), mockk(relaxed = true))
+      val support = WorkItemMutationSupport(repository, mockk(), mockk(relaxed = true), mockk())
 
       shouldThrow<ResourceNotFoundException> {
         support.templateContext(

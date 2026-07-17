@@ -8,6 +8,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.serialization.json.JsonObject
+import one.ztd.workbench.agile.testfixtures.AgileWorkItemFixtures
 import one.ztd.workbench.agile.workitem.model.WorkItemRecord
 import one.ztd.workbench.agile.workitem.model.WorkItemStatusGroup
 import one.ztd.workbench.identity.UserRepository
@@ -18,7 +19,7 @@ class WorkItemServiceQueryTest :
     val tenantId = UUID.randomUUID()
     val projectId = UUID.randomUUID()
 
-    "get and list delegate to repository" {
+    "get delegates to the read model service" {
       val repository = mockk<WorkItemRepository>()
       val createParentGuard = mockk<WorkItemCreateParentGuard>(relaxed = true)
       val configs = mockk<IssueTypeConfigRepository>(relaxed = true)
@@ -49,8 +50,8 @@ class WorkItemServiceQueryTest :
           createdAt = now,
           updatedAt = now,
         )
-      coEvery { repository.findByApiId(tenantId, projectId, "WB-1") } returns record
-      coEvery { repository.listByProject(tenantId, projectId, 50, 0L) } returns listOf(record)
+      val hit = AgileWorkItemFixtures.searchHit(record)
+      coEvery { mutationSupport.read(tenantId, projectId, "WB-1") } returns hit
       val users = mockk<UserRepository>(relaxed = true)
       val service =
         WorkItemService(
@@ -62,7 +63,6 @@ class WorkItemServiceQueryTest :
           fieldPipeline,
         )
 
-      service.get(tenantId, projectId, "WB-1") shouldBe record
-      service.list(tenantId, projectId).single().key shouldBe "WB-1"
+      service.get(tenantId, projectId, "WB-1") shouldBe hit
     }
   })

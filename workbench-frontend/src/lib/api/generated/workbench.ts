@@ -64,10 +64,9 @@ import type {
   List13Params,
   List14Params,
   List15Params,
-  List16Params,
   List3Params,
   List7Params,
-  List8Params,
+  List9Params,
   LoginDiscoveryParams,
   LoginOptionResponse,
   LoginOptionsParams,
@@ -1931,78 +1930,6 @@ export const create7 = async (createProjectRequest: CreateProjectRequest, option
 
 
 
-export type list8Response400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type list8Response401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type list8Response403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type list8Response404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type list8Response409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type list8ResponseError = (list8Response400 | list8Response401 | list8Response403 | list8Response404 | list8Response409) & {
-  headers: Headers;
-};
-
-export type list8Response = (list8ResponseError)
-
-export const getList8Url = (id: string,
-    params?: List8Params,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/projects/${id}/work-items?${stringifiedParams}` : `/api/projects/${id}/work-items`
-}
-
-/**
- * @summary List project work items
- */
-export const list8 = async (id: string,
-    params?: List8Params, options?: RequestInit): Promise<list8Response> => {
-
-  const res = await fetch(getList8Url(id,params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: list8Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list8Response
-}
-
-
-
 export type create8Response201 = {
   data: WorkItemResponse
   status: 201
@@ -2546,39 +2473,39 @@ export const searchGroups = async (id: string,
 
 
 
-export type list9Response400 = {
+export type list8Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list9Response401 = {
+export type list8Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list9Response403 = {
+export type list8Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list9Response404 = {
+export type list8Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list9Response409 = {
+export type list8Response409 = {
   data: ProblemDetail
   status: 409
 }
 
 ;
-export type list9ResponseError = (list9Response400 | list9Response401 | list9Response403 | list9Response404 | list9Response409) & {
+export type list8ResponseError = (list8Response400 | list8Response401 | list8Response403 | list8Response404 | list8Response409) & {
   headers: Headers;
 };
 
-export type list9Response = (list9ResponseError)
+export type list8Response = (list8ResponseError)
 
-export const getList9Url = (id: string,) => {
+export const getList8Url = (id: string,) => {
 
 
 
@@ -2589,9 +2516,9 @@ export const getList9Url = (id: string,) => {
 /**
  * @summary List project work item views
  */
-export const list9 = async (id: string, options?: RequestInit): Promise<list9Response> => {
+export const list8 = async (id: string, options?: RequestInit): Promise<list8Response> => {
 
-  const res = await fetch(getList9Url(id),
+  const res = await fetch(getList8Url(id),
   {
     ...options,
     method: 'GET'
@@ -2603,8 +2530,8 @@ export const list9 = async (id: string, options?: RequestInit): Promise<list9Res
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list9Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list9Response
+  const data: list8Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list8Response
 }
 
 
@@ -2743,40 +2670,40 @@ export const unarchive = async (id: string, options?: RequestInit): Promise<unar
 
 
 
-export type list10Response400 = {
+export type list9Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list10Response401 = {
+export type list9Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list10Response403 = {
+export type list9Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list10Response404 = {
+export type list9Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list10Response409 = {
+export type list9Response409 = {
   data: ProblemDetail
   status: 409
 }
 
 ;
-export type list10ResponseError = (list10Response400 | list10Response401 | list10Response403 | list10Response404 | list10Response409) & {
+export type list9ResponseError = (list9Response400 | list9Response401 | list9Response403 | list9Response404 | list9Response409) & {
   headers: Headers;
 };
 
-export type list10Response = (list10ResponseError)
+export type list9Response = (list9ResponseError)
 
-export const getList10Url = (id: string,
-    params?: List10Params,) => {
+export const getList9Url = (id: string,
+    params?: List9Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -2794,10 +2721,10 @@ export const getList10Url = (id: string,
 /**
  * @summary List project sprints
  */
-export const list10 = async (id: string,
-    params?: List10Params, options?: RequestInit): Promise<list10Response> => {
+export const list9 = async (id: string,
+    params?: List9Params, options?: RequestInit): Promise<list9Response> => {
 
-  const res = await fetch(getList10Url(id,params),
+  const res = await fetch(getList9Url(id,params),
   {
     ...options,
     method: 'GET'
@@ -2809,8 +2736,8 @@ export const list10 = async (id: string,
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list10Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list10Response
+  const data: list9Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list9Response
 }
 
 
@@ -5571,46 +5498,46 @@ export const federatedAuthorize = async (federatedAuthorizeRequest: FederatedAut
 
 
 
-export type list11Response200 = {
+export type list10Response200 = {
   data: TenantResponse
   status: 200
 }
 
-export type list11Response400 = {
+export type list10Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list11Response401 = {
+export type list10Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list11Response403 = {
+export type list10Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list11Response404 = {
+export type list10Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list11Response409 = {
+export type list10Response409 = {
   data: ProblemDetail
   status: 409
 }
 
-export type list11ResponseSuccess = (list11Response200) & {
+export type list10ResponseSuccess = (list10Response200) & {
   headers: Headers;
 };
-export type list11ResponseError = (list11Response400 | list11Response401 | list11Response403 | list11Response404 | list11Response409) & {
+export type list10ResponseError = (list10Response400 | list10Response401 | list10Response403 | list10Response404 | list10Response409) & {
   headers: Headers;
 };
 
-export type list11Response = (list11ResponseSuccess | list11ResponseError)
+export type list10Response = (list10ResponseSuccess | list10ResponseError)
 
-export const getList11Url = (params?: List11Params,) => {
+export const getList10Url = (params?: List10Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -5629,9 +5556,9 @@ export const getList11Url = (params?: List11Params,) => {
  * Returns all tenants. Optionally filter by slug.
  * @summary List tenants
  */
-export const list11 = async (params?: List11Params, options?: RequestInit): Promise<list11Response> => {
+export const list10 = async (params?: List10Params, options?: RequestInit): Promise<list10Response> => {
 
-  const res = await fetch(getList11Url(params),
+  const res = await fetch(getList10Url(params),
   {
     ...options,
     method: 'GET'
@@ -5643,8 +5570,8 @@ export const list11 = async (params?: List11Params, options?: RequestInit): Prom
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list11Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list11Response
+  const data: list10Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list10Response
 }
 
 
@@ -8323,6 +8250,80 @@ export const getScalarJs = async ( options?: RequestInit): Promise<getScalarJsRe
 
 
 
+export type list11Response400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type list11Response401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type list11Response403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type list11Response404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type list11Response409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+;
+export type list11ResponseError = (list11Response400 | list11Response401 | list11Response403 | list11Response404 | list11Response409) & {
+  headers: Headers;
+};
+
+export type list11Response = (list11ResponseError)
+
+export const getList11Url = (id: string,
+    workItemId: string,
+    params?: List11Params,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/projects/${id}/work-items/${workItemId}/timeline?${stringifiedParams}` : `/api/projects/${id}/work-items/${workItemId}/timeline`
+}
+
+/**
+ * @summary List work item timeline entries
+ */
+export const list11 = async (id: string,
+    workItemId: string,
+    params?: List11Params, options?: RequestInit): Promise<list11Response> => {
+
+  const res = await fetch(getList11Url(id,workItemId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: list11Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list11Response
+}
+
+
+
 export type list12Response400 = {
   data: ProblemDetail
   status: 400
@@ -8357,81 +8358,7 @@ export type list12Response = (list12ResponseError)
 
 export const getList12Url = (id: string,
     workItemId: string,
-    params?: List12Params,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/projects/${id}/work-items/${workItemId}/timeline?${stringifiedParams}` : `/api/projects/${id}/work-items/${workItemId}/timeline`
-}
-
-/**
- * @summary List work item timeline entries
- */
-export const list12 = async (id: string,
-    workItemId: string,
-    params?: List12Params, options?: RequestInit): Promise<list12Response> => {
-
-  const res = await fetch(getList12Url(id,workItemId,params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-)
-
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: list12Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list12Response
-}
-
-
-
-export type list13Response400 = {
-  data: ProblemDetail
-  status: 400
-}
-
-export type list13Response401 = {
-  data: ProblemDetail
-  status: 401
-}
-
-export type list13Response403 = {
-  data: ProblemDetail
-  status: 403
-}
-
-export type list13Response404 = {
-  data: ProblemDetail
-  status: 404
-}
-
-export type list13Response409 = {
-  data: ProblemDetail
-  status: 409
-}
-
-;
-export type list13ResponseError = (list13Response400 | list13Response401 | list13Response403 | list13Response404 | list13Response409) & {
-  headers: Headers;
-};
-
-export type list13Response = (list13ResponseError)
-
-export const getList13Url = (id: string,
-    workItemId: string,
-    params: List13Params,) => {
+    params: List12Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -8449,11 +8376,11 @@ export const getList13Url = (id: string,
 /**
  * @summary List work item attachments
  */
-export const list13 = async (id: string,
+export const list12 = async (id: string,
     workItemId: string,
-    params: List13Params, options?: RequestInit): Promise<list13Response> => {
+    params: List12Params, options?: RequestInit): Promise<list12Response> => {
 
-  const res = await fetch(getList13Url(id,workItemId,params),
+  const res = await fetch(getList12Url(id,workItemId,params),
   {
     ...options,
     method: 'GET'
@@ -8465,8 +8392,8 @@ export const list13 = async (id: string,
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list13Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list13Response
+  const data: list12Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list12Response
 }
 
 
@@ -8876,39 +8803,39 @@ export const closeOperation = async (id: string,
 
 
 
-export type list14Response400 = {
+export type list13Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list14Response401 = {
+export type list13Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list14Response403 = {
+export type list13Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list14Response404 = {
+export type list13Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list14Response409 = {
+export type list13Response409 = {
   data: ProblemDetail
   status: 409
 }
 
 ;
-export type list14ResponseError = (list14Response400 | list14Response401 | list14Response403 | list14Response404 | list14Response409) & {
+export type list13ResponseError = (list13Response400 | list13Response401 | list13Response403 | list13Response404 | list13Response409) & {
   headers: Headers;
 };
 
-export type list14Response = (list14ResponseError)
+export type list13Response = (list13ResponseError)
 
-export const getList14Url = (params?: List14Params,) => {
+export const getList13Url = (params?: List13Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -8926,9 +8853,9 @@ export const getList14Url = (params?: List14Params,) => {
 /**
  * @summary List notifications
  */
-export const list14 = async (params?: List14Params, options?: RequestInit): Promise<list14Response> => {
+export const list13 = async (params?: List13Params, options?: RequestInit): Promise<list13Response> => {
 
-  const res = await fetch(getList14Url(params),
+  const res = await fetch(getList13Url(params),
   {
     ...options,
     method: 'GET'
@@ -8940,8 +8867,8 @@ export const list14 = async (params?: List14Params, options?: RequestInit): Prom
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list14Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list14Response
+  const data: list13Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list13Response
 }
 
 
@@ -9674,39 +9601,39 @@ export const loginDiscovery = async (params: LoginDiscoveryParams, options?: Req
 
 
 
-export type list15Response400 = {
+export type list14Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list15Response401 = {
+export type list14Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list15Response403 = {
+export type list14Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list15Response404 = {
+export type list14Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list15Response409 = {
+export type list14Response409 = {
   data: ProblemDetail
   status: 409
 }
 
 ;
-export type list15ResponseError = (list15Response400 | list15Response401 | list15Response403 | list15Response404 | list15Response409) & {
+export type list14ResponseError = (list14Response400 | list14Response401 | list14Response403 | list14Response404 | list14Response409) & {
   headers: Headers;
 };
 
-export type list15Response = (list15ResponseError)
+export type list14Response = (list14ResponseError)
 
-export const getList15Url = (params: List15Params,) => {
+export const getList14Url = (params: List14Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -9724,9 +9651,9 @@ export const getList15Url = (params: List15Params,) => {
 /**
  * @summary List outbox messages
  */
-export const list15 = async (params: List15Params, options?: RequestInit): Promise<list15Response> => {
+export const list14 = async (params: List14Params, options?: RequestInit): Promise<list14Response> => {
 
-  const res = await fetch(getList15Url(params),
+  const res = await fetch(getList14Url(params),
   {
     ...options,
     method: 'GET'
@@ -9738,8 +9665,8 @@ export const list15 = async (params: List15Params, options?: RequestInit): Promi
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list15Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list15Response
+  const data: list14Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list14Response
 }
 
 
@@ -9807,39 +9734,39 @@ export const get8 = async (id: string, options?: RequestInit): Promise<get8Respo
 
 
 
-export type list16Response400 = {
+export type list15Response400 = {
   data: ProblemDetail
   status: 400
 }
 
-export type list16Response401 = {
+export type list15Response401 = {
   data: ProblemDetail
   status: 401
 }
 
-export type list16Response403 = {
+export type list15Response403 = {
   data: ProblemDetail
   status: 403
 }
 
-export type list16Response404 = {
+export type list15Response404 = {
   data: ProblemDetail
   status: 404
 }
 
-export type list16Response409 = {
+export type list15Response409 = {
   data: ProblemDetail
   status: 409
 }
 
 ;
-export type list16ResponseError = (list16Response400 | list16Response401 | list16Response403 | list16Response404 | list16Response409) & {
+export type list15ResponseError = (list15Response400 | list15Response401 | list15Response403 | list15Response404 | list15Response409) & {
   headers: Headers;
 };
 
-export type list16Response = (list16ResponseError)
+export type list15Response = (list15ResponseError)
 
-export const getList16Url = (params: List16Params,) => {
+export const getList15Url = (params: List15Params,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -9857,9 +9784,9 @@ export const getList16Url = (params: List16Params,) => {
 /**
  * @summary List outbox deliveries
  */
-export const list16 = async (params: List16Params, options?: RequestInit): Promise<list16Response> => {
+export const list15 = async (params: List15Params, options?: RequestInit): Promise<list15Response> => {
 
-  const res = await fetch(getList16Url(params),
+  const res = await fetch(getList15Url(params),
   {
     ...options,
     method: 'GET'
@@ -9871,8 +9798,8 @@ export const list16 = async (params: List16Params, options?: RequestInit): Promi
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: list16Response['data'] = body ? JSON.parse(body) : {}
-  return { data, status: res.status, headers: res.headers } as list16Response
+  const data: list15Response['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as list15Response
 }
 
 

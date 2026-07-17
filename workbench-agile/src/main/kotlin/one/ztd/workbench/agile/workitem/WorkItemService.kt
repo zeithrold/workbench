@@ -6,7 +6,7 @@ import one.ztd.workbench.agile.workitem.model.DeleteWorkItemCommand
 import one.ztd.workbench.agile.workitem.model.UpdateWorkItemCommand
 import one.ztd.workbench.agile.workitem.model.WorkItemCreateFormOption
 import one.ztd.workbench.agile.workitem.model.WorkItemMutationResult
-import one.ztd.workbench.agile.workitem.model.WorkItemRecord
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.identity.UserRepository
 import one.ztd.workbench.kernel.common.errors.InvalidRequestException
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
@@ -22,7 +22,7 @@ class WorkItemService(
   private val mutationSupport: WorkItemMutationSupport,
   private val fieldPipeline: WorkItemFieldMutationPipeline,
 ) {
-  suspend fun create(command: CreateWorkItemCommand): WorkItemMutationResult {
+  suspend fun create(command: CreateWorkItemCommand): WorkItemSearchHit {
     val config =
       configs.resolveEffective(command.tenantId, command.projectId, command.issueTypeApiId)
         ?: throw ResourceNotFoundException(
@@ -44,14 +44,16 @@ class WorkItemService(
         permissionContext = permissionContext,
         createFields = config.config.config.createFields,
       )
-    return repository.create(
-      one.ztd.workbench.agile.workitem.CreateWorkItemPersistenceCommand(
-        command = plan.command,
-        issueTypeId = config.config.config.issueTypeId,
-        issueTypeConfigId = config.config.config.id,
-        initialStatusId = initial.statusId,
-        parentIssueId = parentIssue?.id,
-        propertyValues = plan.propertyValues,
+    return mutationSupport.present(
+      repository.create(
+        one.ztd.workbench.agile.workitem.CreateWorkItemPersistenceCommand(
+          command = plan.command,
+          issueTypeId = config.config.config.issueTypeId,
+          issueTypeConfigId = config.config.config.id,
+          initialStatusId = initial.statusId,
+          parentIssueId = parentIssue?.id,
+          propertyValues = plan.propertyValues,
+        )
       )
     )
   }
@@ -103,19 +105,12 @@ class WorkItemService(
     tenantId: UUID,
     projectId: UUID,
     workItemApiId: String,
-  ): WorkItemRecord =
-    repository.findByApiId(tenantId, projectId, workItemApiId)
-      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
+  ): WorkItemSearchHit = mutationSupport.read(tenantId, projectId, workItemApiId)
 
-  suspend fun list(
-    tenantId: UUID,
-    projectId: UUID,
-    limit: Int = 50,
-    offset: Long = 0,
-  ): List<WorkItemRecord> = repository.listByProject(tenantId, projectId, limit, offset)
-
-  suspend fun update(command: UpdateWorkItemCommand): WorkItemMutationResult {
-    val issue = get(command.tenantId, command.projectId, command.workItemApiId)
+  suspend fun update(command: UpdateWorkItemCommand): WorkItemSearchHit {
+    val issue =
+      repository.findByApiId(command.tenantId, command.projectId, command.workItemApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
     val config = mutationSupport.requireConfig(command.tenantId, issue.issueTypeConfigApiId.value)
     val permissionContext =
       fieldPermissionContext(
@@ -145,7 +140,7 @@ class WorkItemService(
         WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
-    return repository.update(effectiveCommand, values)
+    return mutationSupport.present(repository.update(effectiveCommand, values))
   }
 
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =

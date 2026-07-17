@@ -5,7 +5,8 @@ import kotlinx.serialization.json.JsonObject
 import one.ztd.workbench.agile.workitem.model.WorkItemCommentFormMeta
 import one.ztd.workbench.agile.workitem.model.WorkItemCreateFormOption
 import one.ztd.workbench.agile.workitem.model.WorkItemFormFieldMeta
-import one.ztd.workbench.agile.workitem.model.WorkItemRecord
+import one.ztd.workbench.agile.workitem.model.WorkItemPropertyPresentation
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.model.WorkItemTransitionOption
 
 data class WorkItemResponse(
@@ -13,36 +14,138 @@ data class WorkItemResponse(
   val key: String,
   val title: String,
   val description: RichTextDocumentPayload?,
-  val issueTypeId: String,
+  val projectId: String,
+  val issueType: WorkItemIssueTypeSummaryResponse,
   val issueTypeConfigId: String,
-  val statusId: String,
-  val statusGroup: String,
-  val priorityId: String?,
-  val reporterId: String,
-  val assigneeId: String?,
-  val sprintId: String?,
-  val properties: JsonObject,
-  val createdAt: String,
-  val updatedAt: String,
+  val status: WorkItemStatusSummaryResponse,
+  val priority: WorkItemPrioritySummaryResponse?,
+  val reporter: WorkItemUserSummaryResponse,
+  val assignee: WorkItemUserSummaryResponse?,
+  val sprint: WorkItemSprintSummaryResponse?,
+  val properties: Map<String, WorkItemPropertyPresentationResponse>,
+  val createdAt: java.time.OffsetDateTime,
+  val updatedAt: java.time.OffsetDateTime,
+  val groupKey: kotlinx.serialization.json.JsonObject? = null,
+  val groupLabel: WorkItemGroupLabelResponse? = null,
 ) {
   companion object {
-    fun from(record: WorkItemRecord): WorkItemResponse =
+    fun from(hit: WorkItemSearchHit): WorkItemResponse =
       WorkItemResponse(
-        id = record.apiId.value,
-        key = record.key,
-        title = record.title,
-        description = record.description?.let(RichTextDocumentPayload::from),
-        issueTypeId = record.issueTypeApiId.value,
-        issueTypeConfigId = record.issueTypeConfigApiId.value,
-        statusId = record.statusApiId.value,
-        statusGroup = record.statusGroup.dbValue,
-        priorityId = record.priorityApiId?.value,
-        reporterId = record.reporterApiId.value,
-        assigneeId = record.assigneeApiId?.value,
-        sprintId = record.sprintApiId?.value,
-        properties = record.properties,
-        createdAt = record.createdAt.toString(),
-        updatedAt = record.updatedAt.toString(),
+        id = hit.apiId,
+        key = hit.key,
+        title = hit.title,
+        description = hit.description?.let(RichTextDocumentPayload::from),
+        projectId = hit.projectApiId,
+        issueType = WorkItemIssueTypeSummaryResponse.from(hit.issueType),
+        issueTypeConfigId = hit.issueTypeConfigApiId,
+        status = WorkItemStatusSummaryResponse.from(hit.status),
+        priority = hit.priority?.let(WorkItemPrioritySummaryResponse::from),
+        reporter = WorkItemUserSummaryResponse.from(hit.reporter),
+        assignee = hit.assignee?.let(WorkItemUserSummaryResponse::from),
+        sprint = hit.sprint?.let(WorkItemSprintSummaryResponse::from),
+        properties =
+          hit.properties.mapValues { WorkItemPropertyPresentationResponse.from(it.value) },
+        createdAt = hit.createdAt,
+        updatedAt = hit.updatedAt,
+        groupKey = hit.groupKey?.toJsonObject(),
+        groupLabel = hit.groupLabel?.let(WorkItemGroupLabelResponse::from),
+      )
+  }
+}
+
+data class WorkItemIssueTypeSummaryResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val icon: String?,
+  val color: String?,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemIssueTypeSummary) =
+      WorkItemIssueTypeSummaryResponse(value.id, value.code, value.name, value.icon, value.color)
+  }
+}
+
+data class WorkItemStatusSummaryResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val group: String,
+  val color: String?,
+  val terminal: Boolean,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemStatusSummary) =
+      WorkItemStatusSummaryResponse(
+        value.id,
+        value.code,
+        value.name,
+        value.group,
+        value.color,
+        value.terminal,
+      )
+  }
+}
+
+data class WorkItemPrioritySummaryResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val icon: String?,
+  val color: String?,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemPrioritySummary) =
+      WorkItemPrioritySummaryResponse(value.id, value.code, value.name, value.icon, value.color)
+  }
+}
+
+data class WorkItemUserSummaryResponse(val id: String, val displayName: String) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemUserSummary) =
+      WorkItemUserSummaryResponse(value.id, value.displayName)
+  }
+}
+
+data class WorkItemSprintSummaryResponse(
+  val id: String,
+  val name: String,
+  val status: String,
+  val startAt: java.time.OffsetDateTime?,
+  val endAt: java.time.OffsetDateTime?,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemSprintSummary) =
+      WorkItemSprintSummaryResponse(value.id, value.name, value.status, value.startAt, value.endAt)
+  }
+}
+
+data class WorkItemPropertySummaryResponse(
+  val id: String,
+  val code: String,
+  val name: String,
+  val dataType: String,
+  val array: Boolean,
+)
+
+data class WorkItemPropertyPresentationResponse(
+  val property: WorkItemPropertySummaryResponse,
+  val value: JsonElement,
+  val displayValue: JsonElement,
+) {
+  companion object {
+    fun from(value: WorkItemPropertyPresentation) =
+      WorkItemPropertyPresentationResponse(
+        property =
+          WorkItemPropertySummaryResponse(
+            id = value.property.id,
+            code = value.property.code,
+            name = value.property.name,
+            dataType = value.property.dataType,
+            array = value.property.array,
+          ),
+        value = value.value,
+        displayValue = value.displayValue,
       )
   }
 }

@@ -50,10 +50,10 @@ internal object WorkItemSearchHitSortValues {
       "apiId" -> hit.apiId
       "key" -> hit.key
       "title" -> hit.title
-      "status" -> hit.statusApiId
-      "statusGroup" -> hit.statusGroup
-      "issueType" -> hit.issueTypeApiId
-      "reporter" -> hit.reporterApiId
+      "status" -> hit.status.id
+      "statusGroup" -> hit.status.group
+      "issueType" -> hit.issueType.id
+      "reporter" -> hit.reporter.id
       "createdAt" -> hit.createdAt.toString()
       "updatedAt" -> hit.updatedAt.toString()
       else -> error("Unsupported non-null sort field: $name")
@@ -61,9 +61,9 @@ internal object WorkItemSearchHitSortValues {
 
   private fun nullableStringValue(name: String, hit: WorkItemSearchHit): String? =
     when (name) {
-      "priority" -> hit.priorityApiId
-      "assignee" -> hit.assigneeApiId
-      "sprint" -> hit.sprintApiId
+      "priority" -> hit.priority?.id
+      "assignee" -> hit.assignee?.id
+      "sprint" -> hit.sprint?.id
       else -> error("Unsupported nullable sort field: $name")
     }
 }

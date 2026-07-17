@@ -288,34 +288,6 @@ class ExposedWorkItemRepositoryIntegrationTest :
       }
     }
 
-    "listByProject returns created issues" {
-      withPostgresDatabase { database ->
-        val stack = seedWorkItemStack(database)
-        val repository = workItemRepository(database)
-        repository.create(
-          CreateWorkItemPersistenceCommand(
-            command =
-              CreateWorkItemCommand(
-                tenantId = stack.tenantId,
-                projectId = stack.projectId,
-                issueTypeApiId = stack.issueType.apiId.value,
-                title = "Listed issue",
-                description = null,
-                reporterId = stack.actorId,
-                actorUserId = stack.actorId,
-              ),
-            issueTypeId = stack.issueType.id,
-            issueTypeConfigId = stack.config.config.id,
-            initialStatusId = stack.todoStatus.id,
-            propertyValues = emptyList(),
-          )
-        )
-
-        repository.listByProject(stack.tenantId, stack.projectId).single().title shouldBe
-          "Listed issue"
-      }
-    }
-
     "create persists custom property values" {
       withPostgresDatabase { database ->
         val stack = seedWorkItemStack(database)

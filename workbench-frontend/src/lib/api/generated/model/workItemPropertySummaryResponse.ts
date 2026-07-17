@@ -6,7 +6,10 @@
  * OpenAPI spec version: 2026-07-17
  */
 
-export type List11Params = {
-limit?: number;
-cursor?: string;
-};
+export interface WorkItemPropertySummaryResponse {
+  id?: string;
+  code?: string;
+  name?: string;
+  dataType?: string;
+  array?: boolean;
+}

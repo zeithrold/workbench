@@ -6,7 +6,10 @@
  * OpenAPI spec version: 2026-07-17
  */
 
-export type List8Params = {
-limit?: number;
-offset?: number;
-};
+export interface WorkItemIssueTypeSummaryResponse {
+  id?: string;
+  code?: string;
+  name?: string;
+  icon?: string;
+  color?: string;
+}

@@ -8,16 +8,19 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import one.ztd.workbench.agile.workitem.WorkItemQueryService
 import one.ztd.workbench.agile.workitem.WorkItemSearchPageRequest
 import one.ztd.workbench.agile.workitem.WorkItemSearchScope
 import one.ztd.workbench.agile.workitem.WorkItemService
 import one.ztd.workbench.agile.workitem.WorkItemTransitionService
+import one.ztd.workbench.agile.workitem.model.WorkItemIssueTypeSummary
 import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.model.WorkItemSearchResult
+import one.ztd.workbench.agile.workitem.model.WorkItemStatusSummary
+import one.ztd.workbench.agile.workitem.model.WorkItemUserSummary
 import one.ztd.workbench.agile.workitem.query.WorkItemSearchGroupScope
 import one.ztd.workbench.kernel.common.context.InstanceContextSummary
 import one.ztd.workbench.kernel.common.ids.PublicId
@@ -72,22 +75,37 @@ class ProjectWorkItemControllerUnitTest :
         hits =
           listOf(
             WorkItemSearchHit(
+              databaseId = UUID.randomUUID(),
               apiId = "iss_01JABCDEFGHJKMNPQRSTVWXYZ0",
               key = "CORE-1",
               title = "Fix login",
               description = null,
               projectApiId = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
-              issueTypeApiId = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+              issueType =
+                WorkItemIssueTypeSummary(
+                  id = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                  code = "bug",
+                  name = "Bug",
+                  icon = "bug",
+                  color = "#ef4444",
+                ),
               issueTypeConfigApiId = "itc_01JABCDEFGHJKMNPQRSTVWXYZ0",
-              statusApiId = "sts_01JABCDEFGHJKMNPQRSTVWXYZ0",
-              statusGroup = "todo",
-              priorityApiId = null,
-              reporterApiId = "usr_01JABCDEFGHJKMNPQRSTVWXYZ1",
-              assigneeApiId = null,
-              sprintApiId = null,
+              status =
+                WorkItemStatusSummary(
+                  id = "sts_01JABCDEFGHJKMNPQRSTVWXYZ0",
+                  code = "todo",
+                  name = "Todo",
+                  group = "todo",
+                  color = null,
+                  terminal = false,
+                ),
+              priority = null,
+              reporter = WorkItemUserSummary("usr_01JABCDEFGHJKMNPQRSTVWXYZ1", "Alice"),
+              assignee = null,
+              sprint = null,
               createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
               updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
-              properties = JsonObject(emptyMap()),
+              properties = emptyMap(),
             )
           ),
         nextCursor = nextCursor,

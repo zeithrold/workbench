@@ -12,6 +12,7 @@ import one.ztd.workbench.agile.workitem.WorkItemFieldMutationEngine
 import one.ztd.workbench.agile.workitem.WorkItemFieldMutationPipeline
 import one.ztd.workbench.agile.workitem.WorkItemFieldPermissionService
 import one.ztd.workbench.agile.workitem.WorkItemMutationSupport
+import one.ztd.workbench.agile.workitem.WorkItemReadModelService
 import one.ztd.workbench.agile.workitem.WorkItemRepository
 import one.ztd.workbench.agile.workitem.WorkItemService
 import one.ztd.workbench.agile.workitem.WorkItemTransitionContextLoader
@@ -88,12 +89,13 @@ object AgileServiceFactory {
         displayName = "Test User",
         primaryEmail = "test@example.com",
       )
+    val readModels = mockReadModels(repository)
     return WorkItemService(
       repository,
       configs,
       users,
       WorkItemCreateParentGuard(repository, subtypeConstraints),
-      WorkItemMutationSupport(repository, configs, events),
+      WorkItemMutationSupport(repository, configs, events, readModels),
       fieldMutationPipeline(
         clock,
         fieldPermissions,
@@ -113,7 +115,8 @@ object AgileServiceFactory {
     commentService: WorkItemCommentService = mockk(relaxed = true),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
   ): WorkItemTransitionService {
-    val mutationSupport = WorkItemMutationSupport(repository, configs, events)
+    val readModels = mockReadModels(repository)
+    val mutationSupport = WorkItemMutationSupport(repository, configs, events, readModels)
     val transitionValidator = WorkItemTransitionValidator(repository, accessPolicy)
     val fieldPipeline =
       fieldMutationPipeline(
@@ -141,7 +144,27 @@ object AgileServiceFactory {
         WorkItemTransitionExecutor(
           repository,
           commentService,
+          readModels,
         ),
     )
+  }
+
+  private fun mockReadModels(repository: WorkItemRepository): WorkItemReadModelService {
+    val readModels = mockk<WorkItemReadModelService>()
+    coEvery { readModels.afterMutation(any()) } answers
+      {
+        AgileWorkItemFixtures.searchHit(
+          firstArg<one.ztd.workbench.agile.workitem.model.WorkItemMutationResult>().workItem
+        )
+      }
+    coEvery { readModels.get(any(), any(), any()) } coAnswers
+      {
+        val record = repository.findByApiId(firstArg(), secondArg(), thirdArg())
+        record?.let(AgileWorkItemFixtures::searchHit)
+          ?: throw one.ztd.workbench.kernel.common.errors.ResourceNotFoundException(
+            one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND
+          )
+      }
+    return readModels
   }
 }

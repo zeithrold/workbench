@@ -5,8 +5,8 @@
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
  * OpenAPI spec version: 2026-07-17
  */
+import type { OutboxMessageQuery } from './outboxMessageQuery';
 
 export type List14Params = {
-limit?: number;
-offset?: number;
+query: OutboxMessageQuery;
 };

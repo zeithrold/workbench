@@ -76,13 +76,6 @@ interface WorkItemReadRepository {
     apiId: String,
   ): WorkItemRecord?
 
-  suspend fun listByProject(
-    tenantId: UUID,
-    projectId: UUID,
-    limit: Int = 50,
-    offset: Long = 0,
-  ): List<WorkItemRecord>
-
   suspend fun countUnfinishedBySprint(tenantId: UUID, projectId: UUID, sprintId: UUID): Long
 
   suspend fun listPropertyValues(
@@ -102,6 +95,11 @@ interface WorkItemReadRepository {
 }
 
 interface WorkItemQueryRepository {
+  suspend fun findByApiId(
+    scope: WorkItemSearchScope,
+    apiId: String,
+  ): one.ztd.workbench.agile.workitem.model.WorkItemSearchHit?
+
   suspend fun search(
     scope: WorkItemSearchScope,
     query: WorkItemQuery,

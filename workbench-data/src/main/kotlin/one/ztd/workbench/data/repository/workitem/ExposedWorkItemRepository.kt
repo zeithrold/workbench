@@ -52,7 +52,6 @@ import one.ztd.workbench.data.persistence.postgres.workitem.toJsonValue
 import one.ztd.workbench.data.persistence.postgres.workitem.toWorkItemRecord
 import one.ztd.workbench.kernel.common.ids.PublicId
 import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -205,26 +204,6 @@ class ExposedWorkItemRepository(
         }
         .singleOrNull()
         ?.toWorkItemRecord()
-    }
-
-  override suspend fun listByProject(
-    tenantId: UUID,
-    projectId: UUID,
-    limit: Int,
-    offset: Long,
-  ): List<WorkItemRecord> =
-    suspendTransaction(db = database) {
-      IssuesTable.selectAll()
-        .where {
-          (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
-            (IssuesTable.projectId eq projectId.toKotlinUuid()) and
-            IssuesTable.archivedAt.isNull() and
-            IssuesTable.deletedAt.isNull()
-        }
-        .orderBy(IssuesTable.updatedAt to SortOrder.DESC)
-        .limit(limit)
-        .offset(offset)
-        .map { it.toWorkItemRecord() }
     }
 
   override suspend fun countUnfinishedBySprint(

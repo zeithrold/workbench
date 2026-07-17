@@ -33,7 +33,37 @@ class JdbcWorkItemQueryRepository(
   private val jdbcTemplate: JdbcTemplate,
   private val ioDispatcher: CoroutineDispatcher,
   private val groupLabelResolver: WorkItemGroupLabelResolver,
+  private val propertyPresentationLoader: WorkItemPropertyPresentationLoader,
 ) : WorkItemQueryRepository {
+  override suspend fun findByApiId(
+    scope: WorkItemSearchScope,
+    apiId: String,
+  ): WorkItemSearchHit? =
+    withContext(ioDispatcher) {
+      val predicates = buildList {
+        add("i.tenant_id = ?")
+        scope.projectId?.let { add("i.project_id = ?") }
+        add("i.api_id = ?")
+        if (!scope.includeArchived) add("i.archived_at IS NULL")
+        if (!scope.includeDeleted) add("i.deleted_at IS NULL")
+      }
+      val params = buildList {
+        add(scope.tenantId)
+        scope.projectId?.let(::add)
+        add(apiId)
+      }
+      val sql =
+        """
+        $SEARCH_SELECT_SQL
+        ${PostgresWorkItemFilter.FROM_SQL}
+        WHERE ${predicates.joinToString(" AND ")}
+        LIMIT 1
+        """
+          .trimIndent()
+      enrichHits(scope, groupField = null, queryRows(sql, params, WorkItemSearchHitRowMapper))
+        .singleOrNull()
+    }
+
   override suspend fun search(
     scope: WorkItemSearchScope,
     query: WorkItemQuery,
@@ -115,11 +145,13 @@ class JdbcWorkItemQueryRepository(
     groupField: QueryField?,
     pageRows: List<WorkItemSearchHit>,
   ): List<WorkItemSearchHit> {
-    if (groupField == null) return pageRows
+    val properties = propertyPresentationLoader.load(scope.tenantId, pageRows.map { it.databaseId })
     return pageRows.map { hit ->
+      val presented = hit.copy(properties = properties[hit.databaseId].orEmpty())
+      if (groupField == null) return@map presented
       val bucketValue = WorkItemSearchHitSortValues.bucketValueForField(groupField, hit)
       val groupKey = WorkItemGroupKeySupport.keyFromBucketValue(groupField, bucketValue)
-      hit.copy(
+      presented.copy(
         groupKey = groupKey,
         groupLabel = groupLabelResolver.resolve(scope.tenantId, groupKey),
       )
@@ -178,22 +210,40 @@ class JdbcWorkItemQueryRepository(
     private const val SEARCH_SELECT_SQL =
       """
       SELECT
+        i.id AS issue_id,
         i.api_id,
         COALESCE(keya.issue_key, p.identifier || '-' || i.sequence_no) AS issue_key,
         i.title,
         i.description_document,
         p.api_id AS project_api_id,
         itype.api_id AS issue_type_api_id,
+        itype.code AS issue_type_code,
+        itype.name AS issue_type_name,
+        itype.icon AS issue_type_icon,
+        itype.color AS issue_type_color,
         itc.api_id AS issue_type_config_api_id,
         st.api_id AS status_api_id,
+        st.code AS status_code,
+        st.name AS status_name,
         st.status_group,
+        st.color AS status_color,
+        st.is_terminal AS status_terminal,
         pri.api_id AS priority_api_id,
+        pri.code AS priority_code,
+        pri.name AS priority_name,
+        pri.icon AS priority_icon,
+        pri.color AS priority_color,
         reporter.api_id AS reporter_api_id,
+        reporter.display_name AS reporter_display_name,
         assignee.api_id AS assignee_api_id,
+        assignee.display_name AS assignee_display_name,
         sprint.api_id AS sprint_api_id,
+        sprint.name AS sprint_name,
+        sprint.status AS sprint_status,
+        sprint.start_at AS sprint_start_at,
+        sprint.end_at AS sprint_end_at,
         i.created_at,
-        i.updated_at,
-        i.properties_snapshot::text AS properties_snapshot
+        i.updated_at
       """
   }
 }

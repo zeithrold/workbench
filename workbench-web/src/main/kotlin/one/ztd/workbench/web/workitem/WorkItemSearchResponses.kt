@@ -3,26 +3,26 @@ package one.ztd.workbench.web.workitem
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.JsonNode
-import java.time.OffsetDateTime
+import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.validation.constraints.NotNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import one.ztd.workbench.agile.workitem.model.WorkItemSearchGroupBucket
 import one.ztd.workbench.agile.workitem.model.WorkItemSearchGroupsPage
-import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.query.QueryValue
 import one.ztd.workbench.agile.workitem.query.WorkItemGroupKey
 import one.ztd.workbench.agile.workitem.query.WorkItemGroupLabel
 
 data class WorkItemSearchRequest(
-  val query: JsonNode,
+  @field:NotNull @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val query: JsonNode,
   val scope: JsonNode? = null,
   val limit: Int? = null,
   val cursor: String? = null,
 )
 
 data class WorkItemSearchGroupsRequest(
-  val query: JsonNode,
+  @field:NotNull @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val query: JsonNode,
   val groupLimit: Int? = null,
   val groupCursor: String? = null,
 )
@@ -65,51 +65,6 @@ data class WorkItemGroupLabelMessageResponse(
   val defaultMessage: String,
 ) : WorkItemGroupLabelResponse
 
-data class WorkItemSearchHitResponse(
-  val id: String,
-  val key: String,
-  val title: String,
-  val description: RichTextDocumentPayload?,
-  val projectId: String,
-  val issueTypeId: String,
-  val issueTypeConfigId: String,
-  val statusId: String,
-  val statusGroup: String,
-  val priorityId: String?,
-  val reporterId: String,
-  val assigneeId: String?,
-  val sprintId: String?,
-  val createdAt: OffsetDateTime,
-  val updatedAt: OffsetDateTime,
-  val properties: JsonObject,
-  val groupKey: JsonObject? = null,
-  val groupLabel: WorkItemGroupLabelResponse? = null,
-) {
-  companion object {
-    fun from(hit: WorkItemSearchHit): WorkItemSearchHitResponse =
-      WorkItemSearchHitResponse(
-        id = hit.apiId,
-        key = hit.key,
-        title = hit.title,
-        description = hit.description?.let(RichTextDocumentPayload::from),
-        projectId = hit.projectApiId,
-        issueTypeId = hit.issueTypeApiId,
-        issueTypeConfigId = hit.issueTypeConfigApiId,
-        statusId = hit.statusApiId,
-        statusGroup = hit.statusGroup,
-        priorityId = hit.priorityApiId,
-        reporterId = hit.reporterApiId,
-        assigneeId = hit.assigneeApiId,
-        sprintId = hit.sprintApiId,
-        createdAt = hit.createdAt,
-        updatedAt = hit.updatedAt,
-        properties = hit.properties,
-        groupKey = hit.groupKey?.toJsonObject(),
-        groupLabel = hit.groupLabel?.let(WorkItemGroupLabelResponse::from),
-      )
-  }
-}
-
 data class WorkItemSearchGroupBucketResponse(
   val key: JsonObject,
   val label: WorkItemGroupLabelResponse,
@@ -149,7 +104,7 @@ data class WorkItemSearchGroupsPageInfoResponse(
   val nextGroupCursor: String?,
 )
 
-private fun WorkItemGroupKey.toJsonObject(): JsonObject = buildJsonObject {
+internal fun WorkItemGroupKey.toJsonObject(): JsonObject = buildJsonObject {
   put("field", field.canonicalName)
   put("op", op.wireName)
   value?.let { queryValue ->

@@ -6,9 +6,13 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.mockk.spyk
+import io.mockk.verify
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import one.ztd.workbench.agile.workitem.WorkItemSearchPageRequest
 import one.ztd.workbench.agile.workitem.WorkItemSearchScope
@@ -31,6 +35,15 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
     "search filters work items and maps PostgreSQL rows to common result container" {
       withPostgresJdbc { jdbc ->
         val seed = seedWorkItem(jdbc)
+        jdbc.update(
+          "UPDATE issue_types SET is_active = false, archived_at = now() WHERE id = ?",
+          seed.issueTypeId,
+        )
+        jdbc.update("UPDATE priorities SET is_active = false WHERE id = ?", seed.priorityId)
+        jdbc.update(
+          "UPDATE issue_statuses SET is_active = false WHERE id = ?",
+          seed.statusIdsByGroup.getValue("todo"),
+        )
         val repository = jdbcWorkItemQueryRepository(jdbc)
 
         val page = runBlocking {
@@ -57,17 +70,191 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
           )
         }
 
-        page.hits.single().apiId shouldBe seed.issueApiId
-        page.hits.single().key shouldBe "CORE-1"
-        page.hits.single().statusGroup shouldBe "todo"
-        page.hits.single().properties["storyPoints"] shouldBe JsonPrimitive(8)
+        val hit = page.hits.single()
+        hit.apiId shouldBe seed.issueApiId
+        hit.key shouldBe "CORE-1"
+        hit.issueType.name shouldBe "Task"
+        hit.status.group shouldBe "todo"
+        hit.priority?.name shouldBe "High"
+        hit.reporter.displayName shouldBe "Ada"
+        hit.assignee.shouldBeNull()
+        hit.sprint.shouldBeNull()
+        val property = hit.properties.values.single()
+        property.property.code shouldBe "storyPoints"
+        property.property.dataType shouldBe "number"
+        property.value shouldBe JsonPrimitive(8)
+        property.displayValue shouldBe JsonPrimitive(8)
+      }
+    }
+
+    "property presentation resolves scalar and reference values for a page" {
+      withPostgresJdbc { jdbc ->
+        val seed = seedWorkItem(jdbc)
+        val issueId =
+          requireNotNull(
+            jdbc.queryForObject(
+              "SELECT id FROM issues WHERE api_id = ?",
+              UUID::class.java,
+              seed.issueApiId,
+            )
+          )
+        val userApiId =
+          requireNotNull(
+            jdbc.queryForObject(
+              "SELECT api_id FROM users WHERE id = ?",
+              String::class.java,
+              seed.userId,
+            )
+          )
+        val projectApiId =
+          requireNotNull(
+            jdbc.queryForObject(
+              "SELECT api_id FROM projects WHERE id = ?",
+              String::class.java,
+              seed.projectId,
+            )
+          )
+
+        val text = insertPropertyDefinition(jdbc, seed.tenantId, "impact", "Impact", "text")
+        insertPropertyValue(jdbc, seed.tenantId, issueId, text.id, "value_text", "Customer facing")
+
+        val severity =
+          insertPropertyDefinition(jdbc, seed.tenantId, "severity", "Severity", "single_select")
+        val critical =
+          insertPropertyOption(jdbc, seed.tenantId, severity.id, "critical", "Critical")
+        insertPropertyValue(
+          jdbc,
+          seed.tenantId,
+          issueId,
+          severity.id,
+          "value_option_id",
+          critical.id,
+        )
+        jdbc.update("UPDATE property_options SET is_active = false WHERE id = ?", critical.id)
+
+        val labels =
+          insertPropertyDefinition(
+            jdbc,
+            seed.tenantId,
+            "labels",
+            "Labels",
+            "multi_select",
+            isArray = true,
+          )
+        val frontend = insertPropertyOption(jdbc, seed.tenantId, labels.id, "frontend", "Frontend")
+        insertJsonPropertyValue(
+          jdbc,
+          seed.tenantId,
+          issueId,
+          labels.id,
+          "[\"${frontend.apiId}\"]",
+        )
+
+        val owner = insertPropertyDefinition(jdbc, seed.tenantId, "owner", "Owner", "user")
+        insertPropertyValue(jdbc, seed.tenantId, issueId, owner.id, "value_user_id", seed.userId)
+
+        val reviewers =
+          insertPropertyDefinition(
+            jdbc,
+            seed.tenantId,
+            "reviewers",
+            "Reviewers",
+            "multi_user",
+            isArray = true,
+          )
+        insertJsonPropertyValue(
+          jdbc,
+          seed.tenantId,
+          issueId,
+          reviewers.id,
+          "[\"$userApiId\"]",
+        )
+
+        val project =
+          insertPropertyDefinition(jdbc, seed.tenantId, "projectRef", "Project", "project")
+        insertPropertyValue(
+          jdbc,
+          seed.tenantId,
+          issueId,
+          project.id,
+          "value_project_id",
+          seed.projectId,
+        )
+
+        val issue = insertPropertyDefinition(jdbc, seed.tenantId, "blocks", "Blocks", "issue")
+        insertPropertyValue(jdbc, seed.tenantId, issueId, issue.id, "value_issue_id", issueId)
+
+        val hit =
+          runBlocking {
+              jdbcWorkItemQueryRepository(jdbc)
+                .search(WorkItemSearchScope(seed.tenantId, seed.projectId), WorkItemQuery())
+            }
+            .hits
+            .single()
+        hit.properties[text.apiId]?.displayValue shouldBe JsonPrimitive("Customer facing")
+        hit.properties[severity.apiId]?.value shouldBe JsonPrimitive(critical.apiId)
+        hit.properties[severity.apiId]?.displayValue shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(critical.apiId),
+              "code" to JsonPrimitive("critical"),
+              "label" to JsonPrimitive("Critical"),
+              "color" to JsonPrimitive("#dc2626"),
+            )
+          )
+        hit.properties[labels.apiId]?.value shouldBe
+          JsonArray(listOf(JsonPrimitive(frontend.apiId)))
+        (hit.properties[labels.apiId]?.displayValue as JsonArray).single() shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(frontend.apiId),
+              "code" to JsonPrimitive("frontend"),
+              "label" to JsonPrimitive("Frontend"),
+              "color" to JsonPrimitive("#dc2626"),
+            )
+          )
+        hit.properties[owner.apiId]?.value shouldBe JsonPrimitive(userApiId)
+        hit.properties[owner.apiId]?.displayValue shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(userApiId),
+              "displayName" to JsonPrimitive("Ada"),
+            )
+          )
+        hit.properties[reviewers.apiId]?.value shouldBe JsonArray(listOf(JsonPrimitive(userApiId)))
+        (hit.properties[reviewers.apiId]?.displayValue as JsonArray).single() shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(userApiId),
+              "displayName" to JsonPrimitive("Ada"),
+            )
+          )
+        hit.properties[project.apiId]?.value shouldBe JsonPrimitive(projectApiId)
+        hit.properties[project.apiId]?.displayValue shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(projectApiId),
+              "identifier" to JsonPrimitive("CORE"),
+              "name" to JsonPrimitive("Core"),
+            )
+          )
+        hit.properties[issue.apiId]?.value shouldBe JsonPrimitive(seed.issueApiId)
+        hit.properties[issue.apiId]?.displayValue shouldBe
+          JsonObject(
+            mapOf(
+              "id" to JsonPrimitive(seed.issueApiId),
+              "key" to JsonPrimitive("CORE-1"),
+              "title" to JsonPrimitive("First issue"),
+            )
+          )
       }
     }
 
     "search cursor pagination returns distinct pages without duplicates" {
       withPostgresJdbc { jdbc ->
         val seed = seedWorkItems(jdbc, count = 3)
-        val repository = jdbcWorkItemQueryRepository(jdbc)
+        val propertyLoader = spyk(WorkItemPropertyPresentationLoader(jdbc))
+        val repository = jdbcWorkItemQueryRepository(jdbc, propertyLoader)
         val scope = WorkItemSearchScope(tenantId = seed.tenantId, projectId = seed.projectId)
         val query =
           WorkItemQuery(sort = listOf(SortTerm(QueryField.System("key"), SortDirection.ASC)))
@@ -77,6 +264,7 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
         }
         first.hits shouldHaveSize 2
         first.nextCursor.shouldNotBeNull()
+        verify(exactly = 1) { propertyLoader.load(seed.tenantId, match { it.size == 2 }) }
 
         val second = runBlocking {
           repository.search(
@@ -173,7 +361,7 @@ class JdbcWorkItemQueryRepositoryIntegrationTest :
         }
 
         page.hits shouldHaveSize 1
-        page.hits.single().statusGroup shouldBe "todo"
+        page.hits.single().status.group shouldBe "todo"
       }
     }
   })
@@ -182,6 +370,105 @@ private data class SeededSingleSelectGroup(
   val tenantId: UUID,
   val projectId: UUID,
 )
+
+private data class SeededProperty(val id: UUID, val apiId: String)
+
+private fun insertPropertyDefinition(
+  jdbc: JdbcTemplate,
+  tenantId: UUID,
+  code: String,
+  name: String,
+  dataType: String,
+  isArray: Boolean = false,
+): SeededProperty {
+  val id = UUID.randomUUID()
+  val apiId = "fld_${id.toString().replace("-", "").take(12)}"
+  jdbc.update(
+    """
+    INSERT INTO property_definitions (id, api_id, tenant_id, code, name, data_type, is_array)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """
+      .trimIndent(),
+    id,
+    apiId,
+    tenantId,
+    code,
+    name,
+    dataType,
+    isArray,
+  )
+  return SeededProperty(id, apiId)
+}
+
+private fun insertPropertyOption(
+  jdbc: JdbcTemplate,
+  tenantId: UUID,
+  propertyId: UUID,
+  code: String,
+  label: String,
+): SeededProperty {
+  val id = UUID.randomUUID()
+  val apiId = "opt_${id.toString().replace("-", "").take(12)}"
+  jdbc.update(
+    """
+    INSERT INTO property_options (id, api_id, tenant_id, property_id, code, label, color)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """
+      .trimIndent(),
+    id,
+    apiId,
+    tenantId,
+    propertyId,
+    code,
+    label,
+    "#dc2626",
+  )
+  return SeededProperty(id, apiId)
+}
+
+private fun insertPropertyValue(
+  jdbc: JdbcTemplate,
+  tenantId: UUID,
+  issueId: UUID,
+  propertyId: UUID,
+  valueColumn: String,
+  value: Any,
+) {
+  require(valueColumn in ALLOWED_PROPERTY_VALUE_COLUMNS)
+  jdbc.update(
+    "INSERT INTO issue_property_values (id, tenant_id, issue_id, property_id, $valueColumn) " +
+      "VALUES (?, ?, ?, ?, ?)",
+    UUID.randomUUID(),
+    tenantId,
+    issueId,
+    propertyId,
+    value,
+  )
+}
+
+private fun insertJsonPropertyValue(
+  jdbc: JdbcTemplate,
+  tenantId: UUID,
+  issueId: UUID,
+  propertyId: UUID,
+  value: String,
+) {
+  jdbc.update(
+    """
+    INSERT INTO issue_property_values (id, tenant_id, issue_id, property_id, value_array)
+    VALUES (?, ?, ?, ?, ?::jsonb)
+    """
+      .trimIndent(),
+    UUID.randomUUID(),
+    tenantId,
+    issueId,
+    propertyId,
+    value,
+  )
+}
+
+private val ALLOWED_PROPERTY_VALUE_COLUMNS =
+  setOf("value_text", "value_option_id", "value_user_id", "value_project_id", "value_issue_id")
 
 private fun seedSingleSelectGroupedWorkItems(jdbc: JdbcTemplate): SeededSingleSelectGroup {
   val base = seedWorkItem(jdbc)
@@ -622,5 +909,13 @@ private fun seedWorkItem(
   )
 }
 
-private fun jdbcWorkItemQueryRepository(jdbc: JdbcTemplate) =
-  JdbcWorkItemQueryRepository(jdbc, Dispatchers.IO, WorkItemGroupLabelResolver(jdbc))
+private fun jdbcWorkItemQueryRepository(
+  jdbc: JdbcTemplate,
+  propertyLoader: WorkItemPropertyPresentationLoader = WorkItemPropertyPresentationLoader(jdbc),
+) =
+  JdbcWorkItemQueryRepository(
+    jdbc,
+    Dispatchers.IO,
+    WorkItemGroupLabelResolver(jdbc),
+    propertyLoader,
+  )

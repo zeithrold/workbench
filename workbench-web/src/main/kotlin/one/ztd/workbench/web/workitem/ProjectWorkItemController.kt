@@ -52,21 +52,6 @@ class ProjectWorkItemController(
 ) {
   private val queryParser = WorkItemQueryParser()
 
-  @GetMapping
-  @Authenticated
-  @TenantScoped
-  @ProjectScoped
-  @Authorize(action = "issue.view", resource = "issue")
-  @Operation(summary = "List project work items")
-  suspend fun list(
-    @RequestParam(defaultValue = "50") limit: Int,
-    @RequestParam(defaultValue = "0") offset: Long,
-    projectContext: ProjectRequestContext,
-  ): List<WorkItemResponse> =
-    service
-      .list(projectContext.tenant.id, projectContext.project.id, limit, offset)
-      .map(WorkItemResponse::from)
-
   @PostMapping
   @Authenticated
   @TenantScoped
@@ -79,7 +64,7 @@ class ProjectWorkItemController(
     projectContext: ProjectRequestContext,
   ): ResponseEntity<WorkItemResponse> {
     val result = service.create(request.toCommand(projectContext, projectContext.actorUserId()))
-    val response = WorkItemResponse.from(result.workItem)
+    val response = WorkItemResponse.from(result)
     return ResponseEntity.created(
         workItemLocation(projectContext.project.publicId.value, response.id)
       )
@@ -95,7 +80,7 @@ class ProjectWorkItemController(
   suspend fun search(
     @Valid @RequestBody request: WorkItemSearchRequest,
     projectContext: ProjectRequestContext,
-  ): ResponseEntity<List<WorkItemSearchHitResponse>> {
+  ): ResponseEntity<List<WorkItemResponse>> {
     val result =
       queryService.search(
         scope = WorkItemSearchScope(projectContext.tenant.id, projectContext.project.id),
@@ -109,7 +94,7 @@ class ProjectWorkItemController(
             cursor = request.cursor?.let(WorkItemSearchCursor::decode),
           ),
       )
-    val body = result.hits.map(WorkItemSearchHitResponse::from)
+    val body = result.hits.map(WorkItemResponse::from)
     return ResponseEntity.ok().headersIfNextToken(result.nextCursor?.encode(), body)
   }
 
@@ -180,9 +165,7 @@ class ProjectWorkItemController(
     projectContext: ProjectRequestContext,
   ): WorkItemResponse =
     WorkItemResponse.from(
-      service
-        .update(request.toCommand(projectContext, workItemId, projectContext.actorUserId()))
-        .workItem
+      service.update(request.toCommand(projectContext, workItemId, projectContext.actorUserId()))
     )
 
   @DeleteMapping("/{workItemId}")
@@ -240,16 +223,14 @@ class ProjectWorkItemController(
     projectContext: ProjectRequestContext,
   ): WorkItemResponse =
     WorkItemResponse.from(
-      transitionService
-        .transition(
-          request.toCommand(
-            projectContext,
-            workItemId,
-            projectContext.actorUserId(),
-            projectContext.actorUserApiId(),
-          )
+      transitionService.transition(
+        request.toCommand(
+          projectContext,
+          workItemId,
+          projectContext.actorUserId(),
+          projectContext.actorUserApiId(),
         )
-        .workItem
+      )
     )
 }
 

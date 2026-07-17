@@ -92,54 +92,25 @@ class WorkItemRecordsTest :
         .toStatusApiId shouldBe "sts_done"
     }
 
-    "work item response maps from record" {
-      val record =
-        WorkItemRecord(
-          id = UUID.randomUUID(),
-          apiId = PublicId.new("wki"),
-          tenantId = tenantId,
-          projectId = projectId,
-          issueTypeApiId = PublicId.new("typ"),
-          issueTypeConfigApiId = PublicId.new("itc"),
-          key = "WB-9",
-          title = "Searchable",
-          description = null,
-          statusId = UUID.randomUUID(),
-          statusApiId = PublicId.new("sts"),
-          statusGroup = WorkItemStatusGroup.DONE,
-          reporterId = userId,
-          assigneeId = null,
-          priorityApiId = null,
-          reporterApiId = PublicId.new("usr"),
-          assigneeApiId = null,
-          sprintApiId = null,
-          properties = JsonObject(emptyMap()),
-          createdAt = now,
-          updatedAt = now,
-        )
-
-      WorkItemResponse.from(record).statusGroup shouldBe "done"
-    }
-
     "search and mutation models carry paging metadata" {
       val hit =
         WorkItemSearchHit(
+          databaseId = UUID.randomUUID(),
           apiId = "wki_abc",
           key = "WB-1",
           title = "Hit",
           description = null,
           projectApiId = "prj_abc",
-          issueTypeApiId = "typ_abc",
+          issueType = WorkItemIssueTypeSummary("typ_abc", "task", "Task", null, null),
           issueTypeConfigApiId = "itc_abc",
-          statusApiId = "sts_abc",
-          statusGroup = "todo",
-          priorityApiId = null,
-          reporterApiId = "usr_abc",
-          assigneeApiId = null,
-          sprintApiId = null,
+          status = WorkItemStatusSummary("sts_abc", "todo", "Todo", "todo", null, false),
+          priority = null,
+          reporter = WorkItemUserSummary("usr_abc", "Reporter"),
+          assignee = null,
+          sprint = null,
           createdAt = now,
           updatedAt = now,
-          properties = JsonObject(emptyMap()),
+          properties = emptyMap(),
         )
       WorkItemSearchResult(hits = listOf(hit), nextCursor = null).hits.single().key shouldBe "WB-1"
     }

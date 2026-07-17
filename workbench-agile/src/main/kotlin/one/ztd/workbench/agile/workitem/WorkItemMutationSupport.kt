@@ -5,6 +5,7 @@ import one.ztd.workbench.agile.workitem.events.WorkItemDomainEvents
 import one.ztd.workbench.agile.workitem.events.WorkItemMutationEvent
 import one.ztd.workbench.agile.workitem.model.IssueTypeConfigDetails
 import one.ztd.workbench.agile.workitem.model.WorkItemMutationResult
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.template.WorkItemValueTemplateContext
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
@@ -16,7 +17,14 @@ class WorkItemMutationSupport(
   private val repository: WorkItemRepository,
   private val configs: IssueTypeConfigRepository,
   private val events: DomainEventPublisher,
+  private val readModels: WorkItemReadModelService,
 ) {
+  suspend fun read(tenantId: UUID, projectId: UUID, apiId: String): WorkItemSearchHit =
+    readModels.get(tenantId, projectId, apiId)
+
+  suspend fun present(result: WorkItemMutationResult): WorkItemSearchHit =
+    readModels.afterMutation(result)
+
   fun publish(result: WorkItemMutationResult) {
     val spec =
       when (result.eventType) {

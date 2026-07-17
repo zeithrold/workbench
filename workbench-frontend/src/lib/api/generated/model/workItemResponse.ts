@@ -6,22 +6,32 @@
  * OpenAPI spec version: 2026-07-17
  */
 import type { RichTextDocumentPayload } from './richTextDocumentPayload';
+import type { WorkItemGroupLabelMessageResponse } from './workItemGroupLabelMessageResponse';
+import type { WorkItemGroupLabelTextResponse } from './workItemGroupLabelTextResponse';
+import type { WorkItemIssueTypeSummaryResponse } from './workItemIssueTypeSummaryResponse';
+import type { WorkItemPrioritySummaryResponse } from './workItemPrioritySummaryResponse';
+import type { WorkItemResponseGroupKey } from './workItemResponseGroupKey';
 import type { WorkItemResponseProperties } from './workItemResponseProperties';
+import type { WorkItemSprintSummaryResponse } from './workItemSprintSummaryResponse';
+import type { WorkItemStatusSummaryResponse } from './workItemStatusSummaryResponse';
+import type { WorkItemUserSummaryResponse } from './workItemUserSummaryResponse';
 
 export interface WorkItemResponse {
   id?: string;
   key?: string;
   title?: string;
   description?: RichTextDocumentPayload;
-  issueTypeId?: string;
+  projectId?: string;
+  issueType?: WorkItemIssueTypeSummaryResponse;
   issueTypeConfigId?: string;
-  statusId?: string;
-  statusGroup?: string;
-  priorityId?: string;
-  reporterId?: string;
-  assigneeId?: string;
-  sprintId?: string;
+  status?: WorkItemStatusSummaryResponse;
+  priority?: WorkItemPrioritySummaryResponse;
+  reporter?: WorkItemUserSummaryResponse;
+  assignee?: WorkItemUserSummaryResponse;
+  sprint?: WorkItemSprintSummaryResponse;
   properties?: WorkItemResponseProperties;
   createdAt?: string;
   updatedAt?: string;
+  groupKey?: WorkItemResponseGroupKey;
+  groupLabel?: WorkItemGroupLabelMessageResponse | WorkItemGroupLabelTextResponse;
 }

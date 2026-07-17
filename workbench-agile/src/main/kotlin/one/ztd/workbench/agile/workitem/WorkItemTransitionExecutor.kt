@@ -1,15 +1,16 @@
 package one.ztd.workbench.agile.workitem
 
 import one.ztd.workbench.agile.workitem.model.CreateWorkItemCommentCommand
-import one.ztd.workbench.agile.workitem.model.WorkItemMutationResult
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import org.springframework.stereotype.Component
 
 @Component
 class WorkItemTransitionExecutor(
   private val repository: WorkItemRepository,
   private val commentService: WorkItemCommentService,
+  private val readModels: WorkItemReadModelService,
 ) {
-  suspend fun execute(command: TransitionExecutionCommand): WorkItemMutationResult {
+  suspend fun execute(command: TransitionExecutionCommand): WorkItemSearchHit {
     val result =
       repository.transition(
         command = command.persistence,
@@ -31,6 +32,6 @@ class WorkItemTransitionExecutor(
         )
       )
     }
-    return result
+    return readModels.afterMutation(result)
   }
 }

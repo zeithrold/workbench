@@ -54,15 +54,6 @@ class WorkItemServiceCrudTest :
       shouldThrow<ResourceNotFoundException> { service.get(tenantId, projectId, "missing") }
     }
 
-    "list delegates to repository" {
-      val repository = mockk<WorkItemRepository>()
-      val record = workItem(tenantId, projectId)
-      coEvery { repository.listByProject(tenantId, projectId, 25, 10) } returns listOf(record)
-      val service = workItemService(repository)
-
-      service.list(tenantId, projectId, 25, 10).single().apiId shouldBe record.apiId
-    }
-
     "update delegates to repository" {
       val repository = mockk<WorkItemRepository>()
       val configs = mockk<IssueTypeConfigRepository>()
@@ -87,7 +78,7 @@ class WorkItemServiceCrudTest :
           )
         )
 
-      result.workItem.title shouldBe "Updated"
+      result.title shouldBe "Updated"
       coVerify { repository.update(any(), any()) }
     }
 
@@ -340,12 +331,13 @@ private fun workItemService(
   val clock = Clock.fixed(Instant.parse("2026-07-04T00:00:00Z"), ZoneOffset.UTC)
   val service = AgileServiceFactory.workItemService(repository, configs, events, clock)
   if (subtypeConstraints != null) {
+    val readModels = mockk<WorkItemReadModelService>(relaxed = true)
     return WorkItemService(
       repository = repository,
       configs = configs,
       users = mockk(relaxed = true),
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
-      mutationSupport = WorkItemMutationSupport(repository, configs, events),
+      mutationSupport = WorkItemMutationSupport(repository, configs, events, readModels),
       fieldPipeline = AgileServiceFactory.fieldMutationPipeline(clock),
     )
   }

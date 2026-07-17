@@ -62,28 +62,24 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 )
 class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
   @Test
-  fun `list work items rejects unauthenticated requests`() {
+  fun `search work items rejects unauthenticated requests`() {
     mockMvc
-      .perform(get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items"))
+      .perform(
+        post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/search")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("""{"query":{"version":1,"resource":"work_item"}}""")
+      )
       .andExpect(status().isUnauthorized())
   }
 
   @Test
-  fun `list work items returns project issues for authenticated user`() {
-    val result =
-      mockMvc
-        .perform(
-          get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items")
-            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
-        )
-        .andExpect(request().asyncStarted())
-        .andReturn()
-
+  fun `legacy collection get is not allowed`() {
     mockMvc
-      .perform(asyncDispatch(result))
-      .andExpect(status().isOk())
-      .andExpect(jsonPath("$[0].title").value("Fix login"))
-      .andExpect(jsonPath("$[0].key").value("CORE-1"))
+      .perform(
+        get("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items")
+          .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+      )
+      .andExpect(status().isMethodNotAllowed())
   }
 
   @Test
@@ -104,6 +100,16 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.title").value("Fix login"))
       .andExpect(jsonPath("$.key").value("CORE-1"))
+      .andExpect(jsonPath("$.issueType.name").value("Task"))
+      .andExpect(jsonPath("$.status.group").value("todo"))
+      .andExpect(jsonPath("$.reporter.displayName").value("Reporter"))
+      .andExpect(jsonPath("$.issueTypeId").doesNotExist())
+      .andExpect(jsonPath("$.statusId").doesNotExist())
+      .andExpect(jsonPath("$.statusGroup").doesNotExist())
+      .andExpect(jsonPath("$.priorityId").doesNotExist())
+      .andExpect(jsonPath("$.reporterId").doesNotExist())
+      .andExpect(jsonPath("$.assigneeId").doesNotExist())
+      .andExpect(jsonPath("$.sprintId").doesNotExist())
   }
 
   @Test
@@ -209,7 +215,7 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
     mockMvc
       .perform(asyncDispatch(result))
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.statusGroup").value("in_progress"))
+      .andExpect(jsonPath("$.status.group").value("in_progress"))
   }
 
   @Test
@@ -273,19 +279,14 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
       val createdWorkItem = SAMPLE_WORK_ITEM.copy(title = "New issue", key = "CORE-2")
       val updatedWorkItem = SAMPLE_WORK_ITEM.copy(title = "Updated title")
       coEvery {
-        service.list(TenantWebMvcFixtures.TENANT_ID, TenantWebMvcFixtures.PROJECT_ID, 50, 0)
-      } returns listOf(SAMPLE_WORK_ITEM)
-      coEvery {
         service.get(
           TenantWebMvcFixtures.TENANT_ID,
           TenantWebMvcFixtures.PROJECT_ID,
           SAMPLE_WORK_ITEM.apiId.value,
         )
-      } returns SAMPLE_WORK_ITEM
-      coEvery { service.create(any()) } returns
-        WorkItemMutationResult(workItem = createdWorkItem, eventType = "work_item.created")
-      coEvery { service.update(any()) } returns
-        WorkItemMutationResult(workItem = updatedWorkItem, eventType = "work_item.updated")
+      } returns workItemReadModel(SAMPLE_WORK_ITEM)
+      coEvery { service.create(any()) } returns workItemReadModel(createdWorkItem)
+      coEvery { service.update(any()) } returns workItemReadModel(updatedWorkItem)
       coEvery { service.delete(any()) } returns
         WorkItemMutationResult(workItem = SAMPLE_WORK_ITEM, eventType = "work_item.deleted")
       coEvery {
@@ -331,13 +332,11 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
           )
         )
       coEvery { transitionService.transition(any()) } returns
-        WorkItemMutationResult(
-          workItem =
-            SAMPLE_WORK_ITEM.copy(
-              title = "Updated title",
-              statusGroup = WorkItemStatusGroup.IN_PROGRESS,
-            ),
-          eventType = "work_item.transitioned",
+        workItemReadModel(
+          SAMPLE_WORK_ITEM.copy(
+            title = "Updated title",
+            statusGroup = WorkItemStatusGroup.IN_PROGRESS,
+          )
         )
       return true
     }

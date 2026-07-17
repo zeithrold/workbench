@@ -159,47 +159,77 @@ data class WorkItemMutationResult(
   val streamEventApiId: PublicId? = null,
 )
 
-data class WorkItemResponse(
-  val apiId: String,
-  val key: String,
-  val title: String,
-  val description: RichTextDocument?,
-  val statusGroup: String,
-) {
-  companion object {
-    fun from(record: WorkItemRecord): WorkItemResponse =
-      WorkItemResponse(
-        apiId = record.apiId.value,
-        key = record.key,
-        title = record.title,
-        description = record.description,
-        statusGroup = record.statusGroup.dbValue,
-      )
-  }
-}
-
 data class WorkItemSearchResult(
   val hits: List<WorkItemSearchHit>,
   val nextCursor: WorkItemSearchCursor?,
 )
 
+data class WorkItemIssueTypeSummary(
+  val id: String,
+  val code: String,
+  val name: String,
+  val icon: String?,
+  val color: String?,
+)
+
+data class WorkItemStatusSummary(
+  val id: String,
+  val code: String,
+  val name: String,
+  val group: String,
+  val color: String?,
+  val terminal: Boolean,
+)
+
+data class WorkItemPrioritySummary(
+  val id: String,
+  val code: String,
+  val name: String,
+  val icon: String?,
+  val color: String?,
+)
+
+data class WorkItemUserSummary(val id: String, val displayName: String)
+
+data class WorkItemSprintSummary(
+  val id: String,
+  val name: String,
+  val status: String,
+  val startAt: OffsetDateTime?,
+  val endAt: OffsetDateTime?,
+)
+
+data class WorkItemPropertySummary(
+  val id: String,
+  val code: String,
+  val name: String,
+  val dataType: String,
+  val array: Boolean,
+)
+
+data class WorkItemPropertyPresentation(
+  val property: WorkItemPropertySummary,
+  val value: JsonElement,
+  val displayValue: JsonElement,
+)
+
 data class WorkItemSearchHit(
+  val databaseId: UUID,
   val apiId: String,
   val key: String,
   val title: String,
   val description: RichTextDocument?,
   val projectApiId: String,
-  val issueTypeApiId: String,
+  val issueType: WorkItemIssueTypeSummary,
   val issueTypeConfigApiId: String,
-  val statusApiId: String,
-  val statusGroup: String,
-  val priorityApiId: String?,
-  val reporterApiId: String,
-  val assigneeApiId: String?,
-  val sprintApiId: String?,
+  val status: WorkItemStatusSummary,
+  val priority: WorkItemPrioritySummary?,
+  val reporter: WorkItemUserSummary,
+  val assignee: WorkItemUserSummary?,
+  val sprint: WorkItemSprintSummary?,
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
-  val properties: JsonObject,
+  val properties: Map<String, WorkItemPropertyPresentation>,
   val groupKey: WorkItemGroupKey? = null,
   val groupLabel: WorkItemGroupLabel? = null,
 )

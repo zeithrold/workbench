@@ -8,7 +8,7 @@
 import type { JsonNode } from './jsonNode';
 
 export interface WorkItemSearchRequest {
-  query?: JsonNode;
+  query: JsonNode;
   scope?: JsonNode;
   limit?: number;
   cursor?: string;

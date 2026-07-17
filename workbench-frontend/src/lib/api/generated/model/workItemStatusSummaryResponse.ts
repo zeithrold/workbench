@@ -5,9 +5,12 @@
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
  * OpenAPI spec version: 2026-07-17
  */
-import type { JsonElement } from './jsonElement';
 
-export type WorkItemResponsePropertiesEntriesItem = {
-  value?: JsonElement;
-  key?: string;
-};
+export interface WorkItemStatusSummaryResponse {
+  id?: string;
+  code?: string;
+  name?: string;
+  group?: string;
+  color?: string;
+  terminal?: boolean;
+}

@@ -2,7 +2,7 @@ package one.ztd.workbench.agile.workitem
 
 import java.util.UUID
 import one.ztd.workbench.agile.workitem.model.TransitionRequest
-import one.ztd.workbench.agile.workitem.model.WorkItemMutationResult
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.model.WorkItemTransitionOption
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
@@ -41,7 +41,7 @@ class WorkItemTransitionService(
       }
   }
 
-  suspend fun transition(request: TransitionRequest): WorkItemMutationResult {
+  suspend fun transition(request: TransitionRequest): WorkItemSearchHit {
     val context = contextLoader.load(request)
     val transition =
       workflows.findTransition(request.tenantId, request.transitionApiId)
