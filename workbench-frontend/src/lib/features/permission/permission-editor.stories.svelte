@@ -3,8 +3,8 @@
   import type { PermissionFieldOption, PermissionResourceOption } from './permission-editor-model.js'
   import { defineMeta } from '@storybook/addon-svelte-csf'
   import { expect, fn, spyOn, userEvent, waitFor, within } from 'storybook/test'
+  import AgilePermissionEditorStoryHost from './agile-permission-editor-story-host.svelte'
   import { emptyPermissionPolicyDocument } from './permission-document.js'
-  import PermissionEditorStoryHost from './permission-editor-story-host.svelte'
 
   const actions = [
     { code: 'issue.view', name: 'View work items', description: 'Read work-item details' },
@@ -73,12 +73,42 @@
     ],
   }
 
+  const deeplyNestedPolicy: PermissionPolicyDocument = {
+    ...configuredPolicy,
+    code: 'deeply-nested-agile-policy',
+    name: 'Deeply nested Agile policy',
+    rules: [{
+      action: 'issue.update',
+      resourcePattern: 'issue:*',
+      effect: 'ALLOW',
+      condition: {
+        op: 'and',
+        args: [
+          { field: 'issue.assignee', op: 'eq', value: { var: 'user.currentUser' } },
+          {
+            op: 'or',
+            args: [
+              { field: 'issue.statusGroup', op: 'neq', value: 'completed' },
+              {
+                op: 'and',
+                args: [
+                  { field: { kind: 'property', code: 'support-escalated' }, op: 'eq', value: true },
+                  { op: 'not', arg: { field: { kind: 'property', code: 'due-date' }, op: 'lt', value: '2026-07-16' } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }],
+  }
+
   const emptyChange = fn()
   const configuredChange = fn()
 
   const { Story } = defineMeta({
-    title: 'Features/Permission/Permission editor',
-    component: PermissionEditorStoryHost,
+    title: 'Features/Permission/Agile permission editor',
+    component: AgilePermissionEditorStoryHost,
     parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
   })
 
@@ -212,10 +242,30 @@
     )
     await expect(canvas.getByTestId('permission-document-json')).toHaveTextContent('project-contributor')
   }
+
+  async function deeplyNestedPlay({ canvasElement }: { canvasElement: HTMLElement }) {
+    const canvas = within(canvasElement)
+    const page = within(canvasElement.ownerDocument.body)
+    await expect(canvasElement.querySelectorAll('[data-slot="permission-condition-group"]')).toHaveLength(1)
+    await expect(canvasElement.querySelector('[data-depth="1"]')).toBeVisible()
+    await expect(canvasElement.querySelectorAll('[data-slot="permission-logic-rail"]').length).toBeGreaterThan(0)
+    await expect(canvas.getByTestId('permission-document-json')).not.toHaveTextContent('uiId')
+    canvas.getByRole('button', { name: 'Edit nested condition group' }).focus()
+    await userEvent.keyboard('{Enter}')
+    const firstDrawer = page.getAllByRole('dialog').at(-1) as HTMLElement
+    await expect(firstDrawer.querySelector('[data-depth="2"]')).toBeVisible()
+    within(firstDrawer).getByRole('button', { name: 'Edit nested condition group' }).focus()
+    await userEvent.keyboard('{Enter}')
+    const nestedDrawer = page.getAllByRole('dialog').at(-1) as HTMLElement
+    await expect(nestedDrawer.querySelector('[data-depth="3"]')).toBeVisible()
+    await expect(nestedDrawer.querySelector('[data-slot="permission-not-condition"]')).toBeVisible()
+    const editor = canvasElement.querySelector('[data-slot="permission-policy-editor-core"]') as HTMLElement
+    await expect(editor.scrollWidth).toBeLessThanOrEqual(editor.clientWidth)
+  }
 </script>
 
 <Story
-  name='Empty policy'
+  name='Empty'
   args={{
     initialValue: emptyPermissionPolicyDocument(),
     actions,
@@ -228,7 +278,7 @@
   play={emptyPlay}
 />
 <Story
-  name='Configured policy'
+  name='Configured'
   args={{
     initialValue: configuredPolicy,
     actions,
@@ -261,4 +311,16 @@
     modelId: 'permission-story-json',
   }}
   play={jsonPlay}
+/>
+<Story
+  name='Deep nested conditions'
+  args={{
+    initialValue: deeplyNestedPolicy,
+    actions,
+    fields,
+    resources,
+    modelId: 'permission-story-deeply-nested',
+  }}
+  parameters={{ viewport: { defaultViewport: 'mobile1' } }}
+  play={deeplyNestedPlay}
 />

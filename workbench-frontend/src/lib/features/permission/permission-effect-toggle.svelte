@@ -29,7 +29,7 @@
   </ToggleGroup.Item>
   <ToggleGroup.Item
     value='DENY'
-    class='border border-transparent text-muted-foreground hover:bg-destructive/10 hover:text-destructive data-[state=on]:border-destructive/30 data-[state=on]:bg-destructive/10 data-[state=on]:text-destructive'
+    class='border border-transparent text-muted-foreground hover:bg-destructive/10 hover:text-red-700 data-[state=on]:border-destructive/30 data-[state=on]:bg-destructive/10 data-[state=on]:text-red-700 dark:hover:text-red-400 dark:data-[state=on]:text-red-400'
   >
     <ShieldXIcon class='size-3.5' />
     {m.permission_deny()}

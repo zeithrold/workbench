@@ -1,5 +1,6 @@
+export * from './agile-permission-document.js'
+export { default as AgilePermissionEditor } from './agile-permission-editor.svelte'
 export * from './permission-document.js'
-export { default as PermissionEditor } from './permission-editor.svelte'
 export { default as PermissionValueSelector } from './permission-value-selector.svelte'
 export * from './tenant-permission-document.js'
 export { default as TenantPermissionEditor } from './tenant-permission-editor.svelte'
