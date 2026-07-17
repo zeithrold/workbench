@@ -117,8 +117,32 @@ class RootConventionsPlugin : Plugin<Project> {
         val agentInfraCheck =
             tasks.register("agentInfraCheck") {
                 group = "verification"
-                description = "Validates the local-only ephemeral Infra lease tooling without starting containers."
-                dependsOn(":workbench-frontend:pythonInfraTest")
+                description = "Lints, format-checks, and tests the local-only Infra lease tooling without containers."
+                dependsOn(
+                    ":workbench-frontend:pythonInfraRuffCheck",
+                    ":workbench-frontend:pythonInfraRuffFormatCheck",
+                    ":workbench-frontend:pythonInfraTest",
+                )
+            }
+        val ciPythonRuffCheck =
+            tasks.register("ciPythonRuffCheck", Exec::class.java) {
+                group = "verification"
+                description = "Lints the diff coverage Python tooling with Ruff."
+                workingDir = rootProject.projectDir
+                commandLine("uv", "run", "--directory", "scripts/ci", "ruff", "check", ".")
+            }
+        val ciPythonRuffFormatCheck =
+            tasks.register("ciPythonRuffFormatCheck", Exec::class.java) {
+                group = "verification"
+                description = "Checks the diff coverage Python tooling format with Ruff."
+                workingDir = rootProject.projectDir
+                commandLine("uv", "run", "--directory", "scripts/ci", "ruff", "format", "--check", ".")
+            }
+        val pythonToolingCheck =
+            tasks.register("pythonToolingCheck") {
+                group = "verification"
+                description = "Validates all uv-managed Python tooling."
+                dependsOn(agentInfraCheck, ciPythonRuffCheck, ciPythonRuffFormatCheck)
             }
 
         tasks.register("agentInfraSmokeTest") {
@@ -134,7 +158,7 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn(moduleArchitectureCheck)
             dependsOn(apiControllerVersionCheck)
             dependsOn(detektSuppressionCheck)
-            dependsOn(agentInfraCheck)
+            dependsOn(pythonToolingCheck)
             dependsOn(backendQuickTasks)
             dependsOn(":workbench-test-support:quickCheck")
             dependsOn(":workbench-frontend:quickCheck")
@@ -145,6 +169,7 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn(moduleArchitectureCheck)
             dependsOn(apiControllerVersionCheck)
             dependsOn(detektSuppressionCheck)
+            dependsOn(pythonToolingCheck)
             dependsOn(subprojects.map { subproject -> subproject.tasks.named("check") })
             dependsOn(tasks.named("koverHtmlReport"), tasks.named("koverXmlReport"))
         }

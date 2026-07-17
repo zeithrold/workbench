@@ -12,8 +12,6 @@ concurrency:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 jobs:
   qodana:
@@ -23,9 +21,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Qodana scan
         uses: ./.github/actions/qodana-scan
@@ -65,7 +64,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
@@ -77,7 +78,7 @@ jobs:
 
       - name: Upload module reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-backend-${{ matrix.module }}-${{ github.run_id }}
           path: workbench-${{ matrix.module }}/build
@@ -85,7 +86,7 @@ jobs:
 
       - name: Upload module Gradle profile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gradle-profile-nightly-${{ matrix.module }}-${{ github.run_id }}
           path: build/reports/profile/
@@ -99,7 +100,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
@@ -109,7 +112,7 @@ jobs:
 
       - name: Upload test-support profile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gradle-profile-nightly-test-support-${{ github.run_id }}
           path: build/reports/profile/
@@ -123,7 +126,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
@@ -139,7 +144,7 @@ jobs:
 
       - name: Upload frontend reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-frontend-${{ github.run_id }}
           path: workbench-frontend/coverage
@@ -147,7 +152,7 @@ jobs:
 
       - name: Upload frontend Gradle profile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gradle-profile-nightly-frontend-${{ github.run_id }}
           path: build/reports/profile/
@@ -161,7 +166,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
@@ -173,7 +180,7 @@ jobs:
 
       - name: Upload unit coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-unit-coverage-${{ github.run_id }}
           path: build/reports/kover/unit
@@ -181,7 +188,7 @@ jobs:
 
       - name: Upload unit coverage Gradle profile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gradle-profile-nightly-unit-coverage-${{ github.run_id }}
           path: build/reports/profile/
@@ -197,13 +204,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
 
       - name: Download nightly artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: nightly-*-${{ github.run_id }}
           merge-multiple: false
@@ -255,7 +264,7 @@ jobs:
 
       - name: Upload aggregated reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nightly-reports-${{ github.run_id }}
           path: |

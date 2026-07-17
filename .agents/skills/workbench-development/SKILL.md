@@ -122,8 +122,10 @@ publishes the allocated ports on that host and should use the shortest practical
 | **Full** | `./gradlew check` | Pre-PR, CI push/PR | Quick + `integrationTest`, full Kover gate (90%), frontend Vitest |
 | **Extended** | `./gradlew extendedCheck` | Large local verification | Full + `fuzzTest` + `mutationTest` |
 
-Lease tooling: `./gradlew agentInfraCheck` runs non-Docker unit tests and is included in
-`quickCheck`; `./gradlew agentInfraSmokeTest` performs an isolated local-Docker lifecycle check.
+Python tooling: `./gradlew pythonToolingCheck` validates Ruff for `scripts/ci` and `scripts/dev`,
+plus the non-Docker lease-tool unit tests, and is included in both `quickCheck` and `check`.
+`./gradlew agentInfraCheck` is the focused `scripts/dev` subset; `./gradlew agentInfraSmokeTest`
+performs an isolated local-Docker lifecycle check.
 
 Module tasks: `test` runs unit tests from `src/test`; `integrationTest` runs integration tests from `src/integrationTest`; `check` runs both. Integration tests require Docker.
 
@@ -203,7 +205,14 @@ Lint/format CI Python scripts:
 
 ```bash
 uv run --directory scripts/ci ruff check .
-uv run --directory scripts/ci ruff format .
+uv run --directory scripts/ci ruff format --check .
+```
+
+Lint/format agent Infra Python scripts:
+
+```bash
+uv run --directory scripts/dev ruff check .
+uv run --directory scripts/dev ruff format --check .
 ```
 
 Override compare branch or thresholds: `COMPARE_BRANCH=origin/develop FAIL_UNDER_BACKEND=90 FAIL_UNDER_FRONTEND=70`.

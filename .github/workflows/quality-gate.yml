@@ -8,9 +8,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  checks: write
-  pull-requests: write
 
 concurrency:
   group: quality-gate-${{ github.workflow }}-${{ github.ref }}
@@ -29,10 +26,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Qodana scan
         uses: ./.github/actions/qodana-scan
@@ -47,27 +45,25 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Fetch compare branches
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]; then
-            git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          git fetch origin "${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && [ "${BASE_REF}" != "${DEFAULT_BRANCH}" ]; then
+            git fetch origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           fi
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
         with:
           install-playwright: "true"
-
-      - name: Lint diff coverage Python wrapper
-        working-directory: scripts/ci
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
 
       - name: Static checks, tests, and coverage gate
         env:
@@ -83,7 +79,7 @@ jobs:
         run: ./gradlew :workbench-web:bootJar :workbench-worker:bootJar --no-daemon --scan --profile
 
       - name: Upload boot jars
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: boot-jars
           path: |
@@ -108,7 +104,7 @@ jobs:
 
       - name: Upload quality gate artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: quality-gate-${{ github.run_id }}
           path: |
@@ -128,9 +124,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
@@ -142,7 +139,7 @@ jobs:
 
       - name: Upload frontend E2E artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: frontend-e2e-${{ github.run_id }}
           path: |
@@ -162,29 +159,33 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Fetch compare branches
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          git fetch origin "${{ github.event.repository.default_branch }}:refs/remotes/origin/${{ github.event.repository.default_branch }}"
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" != "${{ github.event.repository.default_branch }}" ]; then
-            git fetch origin "${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          git fetch origin "${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] && [ "${BASE_REF}" != "${DEFAULT_BRANCH}" ]; then
+            git fetch origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
           fi
 
       - name: Set up toolchain
         uses: ./.github/actions/workbench-setup
 
       - name: Download quality gate artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: quality-gate-${{ github.run_id }}
           path: .
 
       - name: Download frontend E2E artifacts
         if: needs.frontend-e2e.result == 'success'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: frontend-e2e-${{ github.run_id }}
           path: .
@@ -212,7 +213,7 @@ jobs:
 
       - name: Upload finalized quality reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: quality-reports-${{ github.run_id }}
           path: |
@@ -244,6 +245,9 @@ jobs:
           || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -257,15 +261,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Download boot jars
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: boot-jars
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -273,7 +279,7 @@ jobs:
 
       - name: Docker metadata (web)
         id: web-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ${{ env.WEB_IMAGE }}
           flavor: suffix=-${{ matrix.arch }},onlatest=true
@@ -284,7 +290,7 @@ jobs:
 
       - name: Docker metadata (worker)
         id: worker-meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ${{ env.WORKER_IMAGE }}
           flavor: suffix=-${{ matrix.arch }},onlatest=true
@@ -294,7 +300,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: workbench-web/Dockerfile
@@ -304,7 +310,7 @@ jobs:
           labels: ${{ steps.web-meta.outputs.labels }}
 
       - name: Build and push worker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: workbench-worker/Dockerfile
@@ -317,38 +323,49 @@ jobs:
     name: Docker manifest
     needs: docker
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        with:
+          images: |
+            ${{ env.WEB_IMAGE }}
+            ${{ env.WORKER_IMAGE }}
+          tags: |
+            type=sha,format=long,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Create multi-arch manifests
         env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           set -euo pipefail
 
           create_manifest() {
-            local image="$1"
-            local tag="$2"
+            local tag="$1"
             docker buildx imagetools create \
-              -t "${image}:${tag}" \
-              "${image}:${tag}-amd64" \
-              "${image}:${tag}-arm64"
+              -t "${tag}" \
+              "${tag}-amd64" \
+              "${tag}-arm64"
           }
 
-          for image in "${WEB_IMAGE}" "${WORKER_IMAGE}"; do
-            create_manifest "${image}" "${GITHUB_SHA}"
-            create_manifest "${image}" "${GITHUB_REF_NAME}"
-
-            if [ "${GITHUB_REF}" = "refs/heads/${DEFAULT_BRANCH}" ]; then
-              create_manifest "${image}" "latest"
+          while IFS= read -r tag; do
+            if [ -n "${tag}" ]; then
+              create_manifest "${tag}"
             fi
-          done
+          done <<< "${IMAGE_TAGS}"

@@ -103,6 +103,16 @@ tasks.register<Exec>("pythonInfraTest") {
     commandLine("uv", "run", "--directory", "scripts/dev", "python", "-m", "unittest", "test_ephemeral_infra.py")
 }
 
+tasks.register<Exec>("pythonInfraRuffCheck") {
+    workingDir(rootProject.projectDir)
+    commandLine("uv", "run", "--directory", "scripts/dev", "ruff", "check", ".")
+}
+
+tasks.register<Exec>("pythonInfraRuffFormatCheck") {
+    workingDir(rootProject.projectDir)
+    commandLine("uv", "run", "--directory", "scripts/dev", "ruff", "format", "--check", ".")
+}
+
 tasks.register<Exec>("pythonInfraSmokeTest") {
     dependsOn(":workbench-web:bootJar")
     workingDir(rootProject.projectDir)
@@ -145,7 +155,7 @@ gradle.projectsEvaluated {
 tasks.register("quickCheck") {
     group = "verification"
     description = "Fast frontend verification: lint and unit tests."
-    dependsOn("pythonInfraTest", "pnpmLint", "pnpmTest")
+    dependsOn("pythonInfraRuffCheck", "pythonInfraRuffFormatCheck", "pythonInfraTest", "pnpmLint", "pnpmTest")
 }
 
 tasks.named("check") {

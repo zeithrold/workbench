@@ -90,7 +90,8 @@ Three tiers (see [AGENTS.md](AGENTS.md) for Cloud caveats):
 ./gradlew extendedCheck                   # full + fuzz + mutation verification
 ./gradlew :workbench-application:ciNightlyCheck  # internal per-module Nightly task
 ./gradlew koverUnitXmlReport              # unit-only coverage report (soft warnings)
-./gradlew agentInfraCheck                 # lease-tool unit tests; does not start Docker resources
+./gradlew pythonToolingCheck               # Ruff checks for all uv projects + Infra unit tests
+./gradlew agentInfraCheck                 # lease-tool Ruff checks + unit tests; no Docker resources
 ./gradlew agentInfraSmokeTest             # isolated local-Docker lifecycle smoke test
 ```
 

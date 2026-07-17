@@ -34,7 +34,9 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 | **Full** (pre-PR / CI) | `./gradlew check` | Quick scope + **integration tests** + Kover **full** coverage gate (90%) + frontend Vitest |
 | **Extended** (large local changes) | `./gradlew extendedCheck` | Full + `fuzzTest` + `mutationTest` |
 
-Infra-tool checks: `./gradlew agentInfraCheck` is non-Docker and part of `quickCheck`;
+Python-tooling checks: `./gradlew pythonToolingCheck` validates Ruff for `scripts/ci` and
+`scripts/dev`, plus the non-Docker lease-tool unit tests, and is part of both `quickCheck` and
+`check`. `./gradlew agentInfraCheck` is the focused `scripts/dev` subset;
 `./gradlew agentInfraSmokeTest` creates and destroys one isolated compact lease.
 
 Backend test tasks: `test` runs unit tests from `src/test`; `integrationTest` runs integration tests from `src/integrationTest`; `check` runs both. Fuzz tests remain tagged under `src/test`; integration tests need Docker.

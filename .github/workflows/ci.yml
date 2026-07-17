@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - "**"
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -12,8 +12,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      checks: write
-      pull-requests: write
     uses: ./.github/workflows/quality-gate.yml
     secrets:
       QODANA_TOKEN: ${{ secrets.QODANA_TOKEN_1857082304 }}
