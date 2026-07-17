@@ -1,9 +1,13 @@
 <script lang='ts'>
   /* eslint-disable style/max-statements-per-line */
   import type { TenantResource } from '$lib/entities/management/model.js'
+  import { browser } from '$app/environment'
+  import { goto } from '$app/navigation'
   import { resolve } from '$app/paths'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { management } from '$lib/entities/management/management.svelte.js'
+  import { session } from '$lib/entities/session/session.svelte.js'
+  import { localeState } from '$lib/i18n/locale.svelte.js'
   import { m } from '$lib/paraglide/messages.js'
   import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, LoadingState, PageHeader } from '$lib/shared/ui'
 
@@ -21,7 +25,18 @@
   }
   async function create(event: SubmitEvent) {
     event.preventDefault(); creating = true
-    try { await managementGateway.createTenant({ name, slug, timezone: 'UTC', locale: 'en-US', adminAssignment: { mode: 'SELF' } }); name = ''; slug = ''; await load() }
+    try {
+      const tenant = await managementGateway.createTenant({
+        name,
+        slug,
+        timezone: browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC',
+        locale: localeState.current,
+        adminAssignment: { mode: 'SELF' },
+      })
+      await session.switchTenant(tenant.id)
+      management.invalidateTenant()
+      await goto(resolve('/onboarding?step=members'))
+    }
     catch (reason) { error = reason as Error }
     finally { creating = false }
   }

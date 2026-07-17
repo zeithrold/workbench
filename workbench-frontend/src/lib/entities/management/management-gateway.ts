@@ -4,6 +4,7 @@ import type {
   GroupMember,
   InstanceCapabilities,
   InstanceOperations,
+  InvitationCreated,
   ManagedInvitation,
   OutboxDelivery,
   OutboxMessage,
@@ -76,7 +77,10 @@ export const managementGateway = {
     request<TenantMember>(`/api/manage/members/${id}`, { method: 'DELETE' }),
   invitations: () => request<ManagedInvitation[]>('/api/manage/invitations'),
   invite: (email: string, displayName?: string) =>
-    request('/api/manage/invitations', json('POST', { email, displayName })),
+    request<InvitationCreated>(
+      '/api/manage/invitations',
+      json('POST', { email, displayName }),
+    ),
   cancelInvitation: (id: string) =>
     request<void>(`/api/manage/invitations/${id}`, { method: 'DELETE' }),
   operations: () => request<InstanceOperations>('/api/admin/operations'),

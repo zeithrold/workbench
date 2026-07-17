@@ -22,6 +22,15 @@ describe('startupDestination', () => {
     expect(startupDestination({ initialized: true, session: null, pathname: '/login' })).toBeNull()
   })
 
+  it('keeps invitation links public before authentication', () => {
+    expect(startupDestination({ initialized: true, session: null, pathname: '/invitations/token' })).toBeNull()
+    expect(startupDestination({
+      initialized: true,
+      session: { ...tenantSession, activeTenant: null },
+      pathname: '/invitations/token',
+    })).toBeNull()
+  })
+
   it('keeps tenantless sessions on setup completion', () => {
     const session = { ...tenantSession, activeTenant: null }
     expect(startupDestination({ initialized: true, session, pathname: '/' })).toBe('/setup/complete')

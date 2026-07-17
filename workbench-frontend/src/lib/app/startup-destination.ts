@@ -12,8 +12,14 @@ export function startupDestination({ initialized, session, pathname }: StartupCo
   if (!initialized)
     return pathname === '/setup' ? null : '/setup'
 
+  if (!session && pathname.startsWith('/invitations/'))
+    return null
+
   if (!session)
     return pathname === '/login' ? null : '/login'
+
+  if (pathname.startsWith('/invitations/'))
+    return null
 
   if (!session.activeTenant) {
     if (session.adminScopes.includes('INSTANCE'))

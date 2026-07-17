@@ -1,6 +1,7 @@
 package one.ztd.workbench.web.project
 
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
@@ -11,11 +12,15 @@ import one.ztd.workbench.agile.project.model.CreateProjectCommand
 import one.ztd.workbench.agile.project.model.NonMemberJoinPolicy
 import one.ztd.workbench.agile.project.model.NonMemberVisibility
 import one.ztd.workbench.agile.project.model.UpdateProjectCommand
+import one.ztd.workbench.application.project.ProjectCapabilityService
 import one.ztd.workbench.application.project.ProjectManagementApplicationService
+import one.ztd.workbench.identity.model.AuthenticatedPrincipal
 import one.ztd.workbench.kernel.common.errors.InvalidRequestException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import one.ztd.workbench.tenant.common.summary.TenantSummary
 import one.ztd.workbench.web.api.Audit
 import one.ztd.workbench.web.api.Authenticated
+import one.ztd.workbench.web.api.AuthenticatedOnly
 import one.ztd.workbench.web.api.Authorize
 import one.ztd.workbench.web.api.MayReturnWarnings
 import one.ztd.workbench.web.api.ProjectScoped
@@ -43,12 +48,13 @@ import org.springframework.web.bind.annotation.RestController
 @StandardErrorResponses
 class ProjectController(
   private val service: ProjectManagementApplicationService,
+  private val capabilities: ProjectCapabilityService,
   private val projectOperationalGuard: ProjectOperationalGuard,
 ) {
   @GetMapping
   @Authenticated
+  @AuthenticatedOnly
   @TenantScoped
-  @Authorize(action = "project.read", resource = "project")
   @Operation(summary = "List visible projects")
   suspend fun list(
     @RequestParam(required = false) identifier: String?,
@@ -59,6 +65,35 @@ class ProjectController(
         ?: throw InvalidRequestException(WorkbenchErrorCode.AUTH_AUTHENTICATED_USER_REQUIRED)
     return service.list(tenantContext.tenant.id, actorUserId, identifier).map(ProjectResponse::from)
   }
+
+  @GetMapping("/capabilities")
+  @Authenticated
+  @AuthenticatedOnly
+  @TenantScoped
+  @Operation(
+    summary = "Get effective project capabilities",
+    responses =
+      [
+        ApiResponse(
+          responseCode = "200",
+          description = "Effective project capabilities",
+          useReturnTypeSchema = true,
+        )
+      ],
+  )
+  suspend fun capabilities(
+    principal: AuthenticatedPrincipal,
+    tenantContext: TenantRequestContext,
+  ): ProjectCapabilityResponse =
+    ProjectCapabilityResponse(
+      tenant =
+        TenantSummary(
+          id = tenantContext.tenant.publicId,
+          name = tenantContext.tenant.name,
+          slug = tenantContext.tenant.slug,
+        ),
+      actions = capabilities.capabilities(principal, tenantContext.tenant.id),
+    )
 
   @PostMapping
   @Authenticated

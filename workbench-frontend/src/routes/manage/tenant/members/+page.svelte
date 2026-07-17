@@ -3,11 +3,12 @@
   import type { ManagedInvitation, TenantMember } from '$lib/entities/management/model.js'
   import { managementGateway } from '$lib/entities/management/management-gateway.js'
   import { management } from '$lib/entities/management/management.svelte.js'
+  import InvitationForm from '$lib/features/invitation/invitation-form.svelte'
   import { m } from '$lib/paraglide/messages.js'
-  import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, LoadingState, PageHeader } from '$lib/shared/ui'
+  import { Badge, Button, Card, CardContent, CardHeader, CardTitle, LoadingState, PageHeader } from '$lib/shared/ui'
 
   let members = $state<TenantMember[]>([]); let invitations = $state<ManagedInvitation[]>([])
-  let email = $state(''); let displayName = $state(''); let loading = $state(true); let error = $state<Error | null>(null)
+  let loading = $state(true); let error = $state<Error | null>(null)
   const canManage = $derived(management.has('TENANT', 'tenant.member.manage'))
   async function load() {
     loading = true; try { [members, invitations] = await Promise.all([managementGateway.members(), managementGateway.invitations()]) }
@@ -23,7 +24,7 @@
 
 <div class='space-y-8'>
   <PageHeader title={m.management_members()} description={m.management_members_description()} />
-  {#if canManage}<Card><CardHeader><CardTitle>{m.management_invite_member()}</CardTitle></CardHeader><CardContent><form class='grid gap-4 md:grid-cols-[1fr_1fr_auto]' onsubmit={async (event) => { event.preventDefault(); await perform(() => managementGateway.invite(email, displayName || undefined)); email = ''; displayName = '' }}><div><Label for='invite-email'>{m.email()}</Label><Input id='invite-email' type='email' bind:value={email} required /></div><div><Label for='invite-name'>{m.display_name()}</Label><Input id='invite-name' bind:value={displayName} /></div><Button class='self-end'>{m.management_send_invite()}</Button></form></CardContent></Card>{:else}<p class='rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground'>{m.management_members_read_only()}</p>{/if}
+  {#if canManage}<Card><CardHeader><CardTitle>{m.management_invite_member()}</CardTitle></CardHeader><CardContent><InvitationForm onInvited={() => void load()} /></CardContent></Card>{:else}<p class='rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground'>{m.management_members_read_only()}</p>{/if}
   {#if error}<p class='text-sm text-destructive'>{error.message}</p>{/if}
   {#if loading}<LoadingState label={m.management_loading_members()} />{:else}
     <Card><CardHeader><CardTitle>{m.management_active_and_former_members()}</CardTitle></CardHeader><CardContent class='overflow-x-auto'><table class='w-full text-left text-sm'><thead><tr class='border-b text-muted-foreground'><th class='py-3'>{m.management_member()}</th><th>{m.management_status()}</th><th>{m.management_role()}</th><th></th></tr></thead><tbody>{#each members as member (member.id)}<tr class='border-b'><td class='py-3'><p class='font-medium'>{member.user.displayName}</p><p class='text-xs text-muted-foreground'>{member.user.primaryEmail ?? member.user.id}</p></td><td><Badge variant='secondary'>{member.status}</Badge></td><td>{member.administrator ? m.administrator() : m.management_member()}</td><td class='space-x-2 text-right'>{#if canManage && member.status === 'ACTIVE'}<Button variant='outline' size='sm' onclick={() => perform(() => managementGateway.suspendMember(member.id))}>{m.management_suspend()}</Button>{:else if canManage && member.status === 'SUSPENDED'}<Button variant='outline' size='sm' onclick={() => perform(() => managementGateway.restoreMember(member.id))}>{m.management_restore()}</Button>{/if}{#if canManage && member.status !== 'REMOVED'}<Button variant='ghost' size='sm' onclick={() => perform(() => managementGateway.removeMember(member.id))}>{m.remove()}</Button>{/if}</td></tr>{/each}</tbody></table></CardContent></Card>

@@ -70,6 +70,13 @@ export interface ManagedInvitation {
   createdAt?: string | null
 }
 
+export interface InvitationCreated {
+  id: string
+  email: string
+  expiresAt: string
+  invitationLink: string
+}
+
 export interface InfrastructureComponent {
   code: string
   name: string

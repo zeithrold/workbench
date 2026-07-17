@@ -5,8 +5,10 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import one.ztd.workbench.identity.model.AuthenticatedIdentity
 import one.ztd.workbench.identity.model.LoginCommand
+import one.ztd.workbench.identity.model.LoginMethodKind
 import one.ztd.workbench.identity.model.TenantMemberStatus
 import one.ztd.workbench.identity.permission.AdminUserQueryRepository
+import one.ztd.workbench.kernel.common.errors.AuthenticationFailedException
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
 import one.ztd.workbench.tenant.TenantRepository
@@ -58,25 +60,24 @@ class LoginCompletionService(
     }
     val activeMemberships =
       tenantMembers.listByUser(identity.user.id).filter { it.status == TenantMemberStatus.ACTIVE }
-    val eligible = activeMemberships.mapNotNull { membership ->
+    val memberTenants = activeMemberships.mapNotNull { membership ->
       val tenant = tenants.findById(membership.tenantId) ?: return@mapNotNull null
-      val summary = TenantSummary.from(tenant)
-      if (methodOptions.any { it.tenant.id == summary.id }) summary else null
+      TenantSummary.from(tenant)
+    }
+    val eligible = memberTenants.filter { summary ->
+      methodOptions.any { it.tenant.id == summary.id }
+    }
+
+    if (command.tenantId != null) {
+      val selectableTenants =
+        if (command.method == LoginMethodKind.PASSWORD) eligible else memberTenants
+      return completeRequestedTenant(command.tenantId, selectableTenants)
     }
 
     return when (eligible.size) {
       1 -> {
         val tenantSummary = eligible.single()
-        val tenant =
-          tenants.findByApiId(tenantSummary.id.value)
-            ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
-        LoginCompletion(
-          loginContext = LoginContext.TENANT,
-          activeTenantId = tenant.id,
-          activeTenant = tenantSummary,
-          eligibleTenants = emptyList(),
-          tenantDefaultLocale = tenant.locale,
-        )
+        completeTenant(tenantSummary)
       }
       else ->
         LoginCompletion(
@@ -87,6 +88,29 @@ class LoginCompletionService(
           tenantDefaultLocale = null,
         )
     }
+  }
+
+  private suspend fun completeRequestedTenant(
+    requestedTenantId: String,
+    eligible: List<TenantSummary>,
+  ): LoginCompletion {
+    val selected =
+      eligible.singleOrNull { it.id.value == requestedTenantId }
+        ?: throw AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
+    return completeTenant(selected)
+  }
+
+  private suspend fun completeTenant(tenantSummary: TenantSummary): LoginCompletion {
+    val tenant =
+      tenants.findByApiId(tenantSummary.id.value)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_TENANT_NOT_FOUND)
+    return LoginCompletion(
+      loginContext = LoginContext.TENANT,
+      activeTenantId = tenant.id,
+      activeTenant = tenantSummary,
+      eligibleTenants = emptyList(),
+      tenantDefaultLocale = tenant.locale,
+    )
   }
 
   suspend fun adminScopes(userId: UUID): List<String> {

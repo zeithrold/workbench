@@ -120,6 +120,7 @@ export * from './permissionPolicySummaryResponse';
 export * from './previewParams';
 export * from './problemDetail';
 export * from './problemDetailProperties';
+export * from './projectCapabilityResponse';
 export * from './projectDestroyScheduledMetaSchema';
 export * from './projectMemberPolicyResponse';
 export * from './projectMemberResponse';

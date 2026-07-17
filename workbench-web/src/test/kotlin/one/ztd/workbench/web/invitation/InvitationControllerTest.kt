@@ -3,6 +3,8 @@ package one.ztd.workbench.web.invitation
 import io.mockk.coEvery
 import io.mockk.mockk
 import one.ztd.workbench.application.invitation.InvitationAcceptView
+import one.ztd.workbench.application.invitation.InvitationAcceptanceApplicationService
+import one.ztd.workbench.application.invitation.InvitationAcceptanceWithSession
 import one.ztd.workbench.application.invitation.InvitationPreviewView
 import one.ztd.workbench.application.invitation.InvitationService
 import one.ztd.workbench.identity.SessionService
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -78,6 +81,13 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
       .perform(asyncDispatch(result))
       .andExpect(status().isCreated())
       .andExpect(jsonPath("$.user.displayName").value("Acme Admin"))
+      .andExpect(
+        header()
+          .string(
+            "Set-Cookie",
+            org.hamcrest.Matchers.containsString("WORKBENCH_SESSION=session-secret"),
+          )
+      )
   }
 
   @TestConfiguration
@@ -110,7 +120,18 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
     @Bean fun invitationService(): InvitationService = mockk(relaxed = true)
 
     @Bean
-    fun invitationServiceSetup(service: InvitationService): Boolean {
+    fun invitationAcceptanceApplicationService(): InvitationAcceptanceApplicationService =
+      mockk(relaxed = true)
+
+    @Bean
+    fun sessionCookieWriter(clock: java.time.Clock) =
+      one.ztd.workbench.web.api.http.SessionCookieWriter(clock, secure = false)
+
+    @Bean
+    fun invitationServiceSetup(
+      service: InvitationService,
+      acceptance: InvitationAcceptanceApplicationService,
+    ): Boolean {
       val tenant =
         TenantSummary(
           id = PublicId("ten_01JABCDEFGHJKMNPQRSTVWXYZ0"),
@@ -124,7 +145,7 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
           email = "admin@acme.test",
           displayName = "Acme Admin",
         )
-      coEvery { service.accept(any()) } returns
+      val accepted =
         InvitationAcceptView(
           type = InvitationType.TENANT_ADMIN,
           tenant = tenant,
@@ -134,6 +155,12 @@ class InvitationControllerTest(@Autowired private val mockMvc: MockMvc) {
               displayName = "Acme Admin",
               primaryEmail = "admin@acme.test",
             ),
+        )
+      coEvery { acceptance.acceptNew(any(), any()) } returns
+        InvitationAcceptanceWithSession(
+          acceptance = accepted,
+          sessionSecret = "session-secret",
+          sessionExpiresAt = java.time.OffsetDateTime.parse("2026-07-05T00:00:00Z"),
         )
       return true
     }

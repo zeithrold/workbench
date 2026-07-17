@@ -4,10 +4,14 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import one.ztd.workbench.agile.project.ProjectRepository
+import one.ztd.workbench.application.project.ProjectCapabilityService
 import one.ztd.workbench.application.project.ProjectManagementApplicationService
 import one.ztd.workbench.application.project.ProjectView
 import one.ztd.workbench.identity.SessionService
 import one.ztd.workbench.identity.common.summary.UserSummary
+import one.ztd.workbench.identity.permission.model.AuthorizationDecision
+import one.ztd.workbench.identity.permission.model.DecisionReason
+import one.ztd.workbench.identity.permission.model.PermissionService
 import one.ztd.workbench.kernel.common.ids.PublicId
 import one.ztd.workbench.security.SecurityConfiguration
 import one.ztd.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
@@ -25,6 +29,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Primary
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
@@ -73,6 +78,24 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
       .andExpect(status().isOk())
       .andExpect(jsonPath("$[0].identifier").value("CORE"))
       .andExpect(jsonPath("$[0].name").value("Core Platform"))
+  }
+
+  @Test
+  fun `project capabilities expose project domain actions`() {
+    val result =
+      mockMvc
+        .perform(
+          get("/api/projects/capabilities")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.tenant.id").value(TenantWebMvcFixtures.TENANT_RECORD.apiId.value))
+      .andExpect(jsonPath("$.actions[0]").value("project.create"))
   }
 
   @Test
@@ -209,6 +232,26 @@ class ProjectControllerTest(@Autowired private val mockMvc: MockMvc) {
     fun sessionService(): SessionService = mockk {
       coEvery { requireActiveTenant(any()) } returns TenantWebMvcFixtures.TENANT_RECORD
     }
+
+    @Bean
+    fun projectCapabilityService(): ProjectCapabilityService = mockk {
+      coEvery { capabilities(any(), TenantWebMvcFixtures.TENANT_ID) } returns
+        listOf("project.create")
+    }
+
+    @Bean
+    @Primary
+    fun projectPermissionService(): PermissionService =
+      object : PermissionService {
+        override suspend fun decide(
+          request: one.ztd.workbench.identity.permission.model.AuthorizationRequest
+        ): AuthorizationDecision =
+          if (request.action.code == "project.read" && request.resource.projectId == null) {
+            AuthorizationDecision.Deny(DecisionReason("missing", "denied"))
+          } else {
+            AuthorizationDecision.Allow(DecisionReason("grant", "allowed"))
+          }
+      }
 
     @Bean
     fun projectResolverSetup(resolver: one.ztd.workbench.agile.project.ProjectResolver): Boolean {

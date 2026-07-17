@@ -11,6 +11,7 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import one.ztd.workbench.application.invitation.CreateManagedInvitationCommand
+import one.ztd.workbench.application.invitation.InvitationAcceptanceApplicationService
 import one.ztd.workbench.application.invitation.InvitationService
 import one.ztd.workbench.identity.model.AcceptInvitationCommand
 import one.ztd.workbench.identity.model.AuthenticatedPrincipal
@@ -25,7 +26,10 @@ import one.ztd.workbench.web.api.StandardErrorResponses
 import one.ztd.workbench.web.api.TenantScoped
 import one.ztd.workbench.web.api.context.TenantRequestContext
 import one.ztd.workbench.web.api.http.HttpClientContext
+import one.ztd.workbench.web.api.http.SessionCookieWriter
+import one.ztd.workbench.web.api.http.toServiceContext
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -38,7 +42,11 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/invitations")
 @Tag(name = "Invitations", description = "Tenant invitation preview and acceptance.")
 @StandardErrorResponses
-class InvitationController(private val service: InvitationService) {
+class InvitationController(
+  private val service: InvitationService,
+  private val acceptance: InvitationAcceptanceApplicationService,
+  private val sessionCookieWriter: SessionCookieWriter,
+) {
   @PostMapping
   @SessionSecured
   @Authenticated
@@ -112,17 +120,24 @@ class InvitationController(private val service: InvitationService) {
       ],
   )
   suspend fun accept(
-    @Valid @RequestBody request: AcceptInvitationRequest
-  ): InvitationAcceptResponse =
-    InvitationAcceptResponse.from(
-      service.accept(
+    @Valid @RequestBody request: AcceptInvitationRequest,
+    httpRequest: HttpServletRequest,
+  ): ResponseEntity<InvitationAcceptResponse> {
+    val result =
+      acceptance.acceptNew(
         AcceptInvitationCommand(
           token = request.token,
           displayName = request.displayName,
           password = request.password,
-        )
+        ),
+        HttpClientContext.from(httpRequest).toServiceContext(),
       )
+    return sessionCookieWriter.createdWithSession(
+      InvitationAcceptResponse.from(result.acceptance),
+      result.sessionSecret,
+      result.sessionExpiresAt,
     )
+  }
 
   @PostMapping("/accept-existing")
   @SessionSecured
@@ -134,7 +149,7 @@ class InvitationController(private val service: InvitationService) {
     @Valid @RequestBody request: AcceptExistingInvitationRequest,
     principal: AuthenticatedPrincipal,
   ): InvitationAcceptResponse =
-    InvitationAcceptResponse.from(service.acceptExisting(request.token, principal.user))
+    InvitationAcceptResponse.from(acceptance.acceptExisting(request.token, principal))
 }
 
 data class CreateTenantMemberInvitationRequest(

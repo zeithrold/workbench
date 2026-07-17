@@ -87,6 +87,7 @@ import type {
   PermissionPolicyResponse,
   PreviewParams,
   ProblemDetail,
+  ProjectCapabilityResponse,
   ProjectMemberResponse,
   ProjectResponse,
   PropertyDefinitionResponse,
@@ -126,6 +127,7 @@ export type preferencesResponse400 = {
   data: ProblemDetail
   status: 400
 }
+
 export type preferencesResponse401 = {
   data: ProblemDetail
   status: 401
@@ -181,6 +183,8 @@ export const preferences = async ( options?: RequestInit): Promise<preferencesRe
   const data: preferencesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as preferencesResponse
 }
+
+
 export type updatePreferenceResponse400 = {
   data: ProblemDetail
   status: 400
@@ -241,6 +245,8 @@ export const updatePreference = async (updateNotificationPreferenceRequest: Upda
   const data: updatePreferenceResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as updatePreferenceResponse
 }
+
+
 
 export type getPolicyResponse200 = {
   data: PermissionPolicyResponse
@@ -8796,6 +8802,76 @@ export const closeOperation = async (id: string,
 
   const data: closeOperationResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as closeOperationResponse
+}
+
+
+
+export type capabilitiesResponse200 = {
+  data: ProjectCapabilityResponse
+  status: 200
+}
+
+export type capabilitiesResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type capabilitiesResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type capabilitiesResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type capabilitiesResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type capabilitiesResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type capabilitiesResponseSuccess = (capabilitiesResponse200) & {
+  headers: Headers;
+};
+export type capabilitiesResponseError = (capabilitiesResponse400 | capabilitiesResponse401 | capabilitiesResponse403 | capabilitiesResponse404 | capabilitiesResponse409) & {
+  headers: Headers;
+};
+
+export type capabilitiesResponse = (capabilitiesResponseSuccess | capabilitiesResponseError)
+
+export const getCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/projects/capabilities`
+}
+
+/**
+ * @summary Get effective project capabilities
+ */
+export const capabilities = async ( options?: RequestInit): Promise<capabilitiesResponse> => {
+
+  const res = await fetch(getCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: capabilitiesResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as capabilitiesResponse
 }
 
 

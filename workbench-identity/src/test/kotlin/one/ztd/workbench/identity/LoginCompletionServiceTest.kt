@@ -1,5 +1,6 @@
 package one.ztd.workbench.identity
 
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
@@ -22,6 +23,8 @@ import one.ztd.workbench.identity.model.TenantMemberRecord
 import one.ztd.workbench.identity.model.TenantMemberStatus
 import one.ztd.workbench.identity.model.UserRecord
 import one.ztd.workbench.identity.permission.AdminUserQueryRepository
+import one.ztd.workbench.kernel.common.errors.AuthenticationFailedException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
 import one.ztd.workbench.kernel.common.ids.PublicId
 import one.ztd.workbench.tenant.TenantRepository
 import one.ztd.workbench.tenant.common.summary.TenantSummary
@@ -147,6 +150,63 @@ class LoginCompletionServiceTest :
       result.activeTenantId shouldBe null
       result.activeTenant shouldBe null
       result.eligibleTenants.map { it.id }.toSet() shouldBe setOf(tenantA.apiId, tenantB.apiId)
+    }
+
+    "explicit eligible tenant selection activates the requested tenant" {
+      val user = sampleUser()
+      val tenantA = sampleTenant()
+      val tenantB =
+        sampleTenant().copy(id = UUID.randomUUID(), apiId = PublicId.new("ten"), slug = "beta")
+      val loginMethod = sampleLoginMethod("password")
+      val identity = AuthenticatedIdentity(user, sampleLoginAccount(loginMethod.id))
+      val command =
+        LoginCommand(
+          LoginMethodKind.PASSWORD,
+          tenantId = tenantB.apiId.value,
+          subject = user.primaryEmail,
+          password = "secret",
+        )
+      val options =
+        listOf(tenantA, tenantB).map {
+          TenantLoginOption(TenantSummary.from(it), LoginMethodSummary.from(loginMethod))
+        }
+      coEvery { loginMethods.findLoginMethodById(loginMethod.id) } returns loginMethod
+      coEvery { loginDiscovery.listLoginOptionsForIdentifier(user.primaryEmail!!) } returns options
+      coEvery { tenantMembers.listByUser(user.id) } returns
+        listOf(sampleMembership(user.id, tenantA.id), sampleMembership(user.id, tenantB.id))
+      coEvery { tenants.findById(tenantA.id) } returns tenantA
+      coEvery { tenants.findById(tenantB.id) } returns tenantB
+      coEvery { tenants.findByApiId(tenantB.apiId.value) } returns tenantB
+
+      val result = runBlocking { service.resolve(identity, command) }
+
+      result.activeTenantId shouldBe tenantB.id
+      result.activeTenant shouldBe TenantSummary.from(tenantB)
+    }
+
+    "explicit ineligible tenant selection is rejected" {
+      val user = sampleUser()
+      val tenant = sampleTenant()
+      val loginMethod = sampleLoginMethod("password")
+      val identity = AuthenticatedIdentity(user, sampleLoginAccount(loginMethod.id))
+      val command =
+        LoginCommand(
+          LoginMethodKind.PASSWORD,
+          tenantId = PublicId.new("ten").value,
+          subject = user.primaryEmail,
+          password = "secret",
+        )
+      coEvery { loginMethods.findLoginMethodById(loginMethod.id) } returns loginMethod
+      coEvery { loginDiscovery.listLoginOptionsForIdentifier(user.primaryEmail!!) } returns
+        listOf(TenantLoginOption(TenantSummary.from(tenant), LoginMethodSummary.from(loginMethod)))
+      coEvery { tenantMembers.listByUser(user.id) } returns
+        listOf(sampleMembership(user.id, tenant.id))
+      coEvery { tenants.findById(tenant.id) } returns tenant
+
+      shouldThrow<AuthenticationFailedException> {
+          runBlocking { service.resolve(identity, command) }
+        }
+        .errorCode shouldBe WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS
     }
 
     "adminScopes returns instance and tenant scopes" {

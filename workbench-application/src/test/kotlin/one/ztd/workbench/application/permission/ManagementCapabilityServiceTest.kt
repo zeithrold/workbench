@@ -48,6 +48,22 @@ class ManagementCapabilityServiceTest :
       runBlocking { service.tenantCapabilities(PRINCIPAL, UUID.randomUUID()) } shouldContainExactly
         emptyList()
     }
+
+    "tenant management capabilities exclude project domain actions" {
+      coEvery { permissions.decide(any()) } answers
+        {
+          val action =
+            firstArg<one.ztd.workbench.identity.permission.model.AuthorizationRequest>().action.code
+          if (action in setOf("tenant.read", "project.read", "project.create")) {
+            AuthorizationDecision.Allow(DecisionReason("grant", "allowed"))
+          } else {
+            AuthorizationDecision.Deny(DecisionReason("missing", "denied"))
+          }
+        }
+
+      runBlocking { service.tenantCapabilities(PRINCIPAL, UUID.randomUUID()) } shouldContainExactly
+        listOf("tenant.read")
+    }
   }) {
   private companion object {
     val PRINCIPAL =

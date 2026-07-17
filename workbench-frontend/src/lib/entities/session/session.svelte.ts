@@ -29,6 +29,7 @@ export class SessionStore {
       this.current = await this.gateway.signIn(credentials)
       localeState.synchronize(this.current.localeContext)
       this.restored = true
+      return this.current
     }
     finally {
       this.pending = false
