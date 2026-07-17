@@ -16,8 +16,8 @@ Durable notes for running/developing Workbench (multi-module Spring Boot 4 + Sve
 ### Agent-owned ephemeral Infra
 - Agents must not start, stop, migrate, repair, or clean the developer-owned default Compose project unless the user explicitly asks for that environment to be diagnosed.
 - Code inspection, `quickCheck`, unit tests, builds, and ordinary integration tests do not start Compose. Integration tests use Testcontainers and only require the Docker daemon.
-- When a real application stack is required for OpenAPI generation, browser verification, or runtime debugging, use `./scripts/dev/ephemeral-infra`. The default `compact` lease starts PostgreSQL, Valkey, Elasticsearch, and MinIO; use `distributed` only for Redpanda/Debezium behavior.
-- The dependency-free Python CLI is `./scripts/dev/ephemeral-infra`. Prefer `run -- <command>` so cleanup happens on exit. For multi-step work, use `up --json`, run commands through `exec <lease-id> -- ...`, and call `down <lease-id>` when finished; a TTL reaper and `gc` provide crash recovery.
+- When a real application stack is required for OpenAPI generation, browser verification, or runtime debugging, use `uv run --directory scripts/dev ephemeral-infra`. The default `compact` lease starts PostgreSQL, Valkey, Elasticsearch, and MinIO; use `distributed` only for Redpanda/Debezium behavior.
+- Prefer `uv run --directory scripts/dev ephemeral-infra run -- <command>` so cleanup happens on exit. For multi-step work, use `up --json`, run commands through `exec <lease-id> -- ...`, and call `down <lease-id>` when finished; a TTL reaper and `gc` provide crash recovery.
 - The tool only operates on manifests under `.gradle/agent-infra` and Compose projects named `workbench-agent-*`. Local leases bind dynamic loopback ports and always start a fresh PostgreSQL database.
 - Local Unix/npipe Docker endpoints may be used autonomously when the task requires Infra. SSH/TCP contexts are rejected; `--allow-remote` may be used only after explicit user approval because it publishes the allocated ports on the remote host. Keep an approved remote lease's TTL as short as practical.
 

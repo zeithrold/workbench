@@ -97,13 +97,13 @@ ordinary builds require no Compose resources; integration tests use Testcontaine
 application stack is necessary, use the lease tool:
 
 ```bash
-./scripts/dev/ephemeral-infra run --profile compact -- <command>
-./scripts/dev/ephemeral-infra up --profile compact --ttl 2h --json
-./scripts/dev/ephemeral-infra exec <lease-id> -- <command>
-./scripts/dev/ephemeral-infra down <lease-id>
+uv run --directory scripts/dev ephemeral-infra run --profile compact -- <command>
+uv run --directory scripts/dev ephemeral-infra up --profile compact --ttl 2h --json
+uv run --directory scripts/dev ephemeral-infra exec <lease-id> -- <command>
+uv run --directory scripts/dev ephemeral-infra down <lease-id>
 ```
 
-The lease manager is a dependency-free Python CLI. `compact` is the default and contains
+The lease manager is a uv-managed Python CLI. `compact` is the default and contains
 PostgreSQL, Valkey, Elasticsearch, and MinIO. Select
 `distributed` only for Redpanda/Debezium behavior. Local leases use dynamic loopback ports, a
 fresh database, a unique `workbench-agent-*` Compose project, and automatic expiry. Non-local

@@ -10,7 +10,8 @@ const playwrightConfigPath = path.join(frontendRoot, 'playwright.config.ts')
 const koverE2eDir = path.join(repoRoot, 'build/kover-e2e')
 const webJar = path.join(repoRoot, 'workbench-web/build/libs/workbench-web.jar')
 const workerJar = path.join(repoRoot, 'workbench-worker/build/libs/workbench-worker.jar')
-const infraCli = path.join(repoRoot, 'scripts/dev/ephemeral-infra')
+const infraCommand = 'uv'
+const infraArgs = ['run', '--directory', 'scripts/dev', 'ephemeral-infra']
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -193,8 +194,8 @@ async function main() {
   try {
     const { agentJar, webArgs, workerArgs } = await readKoverAgentPaths()
     infraLease = JSON.parse(await captureProcess(
-      infraCli,
-      ['up', '--profile', 'distributed', '--ttl', '2h', '--json'],
+      infraCommand,
+      [...infraArgs, 'up', '--profile', 'distributed', '--ttl', '2h', '--json'],
       { cwd: repoRoot },
     ))
     const manifest = infraLease
@@ -260,7 +261,7 @@ async function main() {
     await stopProcess(webProcess, 'workbench-web')
     await stopProcess(workerProcess, 'workbench-worker')
     if (infraLease)
-      await runProcess(infraCli, ['down', infraLease.leaseId], { cwd: repoRoot })
+      await runProcess(infraCommand, [...infraArgs, 'down', infraLease.leaseId], { cwd: repoRoot })
   }
 }
 

@@ -58,20 +58,20 @@ Start the frontend:
 ### Ephemeral Infra for agents and isolated verification
 
 Automated agents and disposable full-stack checks must not reuse the developer Compose project.
-Use the dependency-free Python lease CLI instead:
+Use the uv-managed Python lease CLI instead:
 
 ```bash
 # One command; always destroys its containers, network, and volumes on exit.
-./scripts/dev/ephemeral-infra run --profile compact -- \
+uv run --directory scripts/dev ephemeral-infra run --profile compact -- \
   ./gradlew :workbench-web:bootRun
 
 # Multi-step session; expires after two hours unless stopped sooner.
-./scripts/dev/ephemeral-infra up --profile compact --ttl 2h --json
-./scripts/dev/ephemeral-infra exec <lease-id> -- ./gradlew :workbench-web:bootRun
-./scripts/dev/ephemeral-infra down <lease-id>
+uv run --directory scripts/dev ephemeral-infra up --profile compact --ttl 2h --json
+uv run --directory scripts/dev ephemeral-infra exec <lease-id> -- ./gradlew :workbench-web:bootRun
+uv run --directory scripts/dev ephemeral-infra down <lease-id>
 ```
 
-The CLI uses only the Python standard library. `compact` starts PostgreSQL, Valkey,
+The CLI runtime uses only the Python standard library. `compact` starts PostgreSQL, Valkey,
 Elasticsearch, and MinIO. Use `distributed` only when
 Redpanda and Debezium are required. Local leases bind dynamic ports on `127.0.0.1`, create a
 fresh database, and use a unique `workbench-agent-*` Compose project. Non-local Docker contexts

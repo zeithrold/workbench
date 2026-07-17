@@ -99,13 +99,22 @@ tasks.register<PnpmTask>("pnpmE2e") {
 
 tasks.register<Exec>("pythonInfraTest") {
     workingDir(rootProject.projectDir)
-    commandLine("python3", "scripts/dev/test_ephemeral_infra.py")
+    commandLine("uv", "run", "--directory", "scripts/dev", "python", "-m", "unittest", "test_ephemeral_infra.py")
 }
 
 tasks.register<Exec>("pythonInfraSmokeTest") {
     dependsOn(":workbench-web:bootJar")
     workingDir(rootProject.projectDir)
-    commandLine("python3", "scripts/dev/test_ephemeral_infra_smoke.py")
+    commandLine(
+        "uv",
+        "run",
+        "--directory",
+        "scripts/dev",
+        "python",
+        "-m",
+        "unittest",
+        "test_ephemeral_infra_smoke.py",
+    )
 }
 
 tasks.register<PnpmTask>("pnpmE2eStack") {
