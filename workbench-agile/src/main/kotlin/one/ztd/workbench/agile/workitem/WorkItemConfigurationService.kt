@@ -1,0 +1,427 @@
+package one.ztd.workbench.agile.workitem
+
+import java.time.Clock
+import java.time.OffsetDateTime
+import java.util.UUID
+import one.ztd.workbench.agile.workitem.model.CreateIssueStatusCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueSubtypeConstraintCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueTypeCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import one.ztd.workbench.agile.workitem.model.CreatePropertyDefinitionCommand
+import one.ztd.workbench.agile.workitem.model.CreateWorkflowCommand
+import one.ztd.workbench.agile.workitem.model.CreateWorkflowTransitionCommand
+import one.ztd.workbench.agile.workitem.model.EffectiveIssueTypeConfig
+import one.ztd.workbench.agile.workitem.model.IssueStatusRecord
+import one.ztd.workbench.agile.workitem.model.IssueSubtypeConstraintRecord
+import one.ztd.workbench.agile.workitem.model.IssueTypeConfigDetails
+import one.ztd.workbench.agile.workitem.model.IssueTypeConfigPropertyRecord
+import one.ztd.workbench.agile.workitem.model.IssueTypeConfigRecord
+import one.ztd.workbench.agile.workitem.model.IssueTypeRecord
+import one.ztd.workbench.agile.workitem.model.PropertyDefinitionRecord
+import one.ztd.workbench.agile.workitem.model.WorkItemConfigScope
+import one.ztd.workbench.agile.workitem.model.WorkflowRecord
+import one.ztd.workbench.agile.workitem.model.WorkflowTransitionRecord
+import one.ztd.workbench.agile.workitem.query.WorkItemConditionJson
+import one.ztd.workbench.agile.workitem.query.WorkItemTransitionConditionValidator
+import one.ztd.workbench.agile.workitem.template.TransitionFieldsParser
+import one.ztd.workbench.agile.workitem.template.TransitionFieldsValidator
+import one.ztd.workbench.agile.workitem.template.WorkItemValueTemplateTarget
+import one.ztd.workbench.kernel.common.errors.InvalidRequestException
+import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import one.ztd.workbench.kernel.common.errors.requireFound
+import one.ztd.workbench.kernel.common.errors.requireValid
+import one.ztd.workbench.kernel.common.ids.PublicId
+import org.springframework.stereotype.Service
+
+@Service
+class WorkItemCatalogService(private val repository: WorkItemCatalogRepository) {
+  suspend fun createStatus(command: CreateIssueStatusCommand): IssueStatusRecord =
+    repository.createStatus(command)
+
+  suspend fun listStatuses(tenantId: UUID): List<IssueStatusRecord> =
+    repository.listStatuses(tenantId)
+
+  suspend fun deactivateStatus(
+    tenantId: UUID,
+    statusApiIdOrCode: String,
+    actorUserId: UUID,
+  ): IssueStatusRecord = repository.deactivateStatus(tenantId, statusApiIdOrCode, actorUserId)
+
+  suspend fun createProperty(command: CreatePropertyDefinitionCommand): PropertyDefinitionRecord =
+    repository.createProperty(command)
+
+  suspend fun listProperties(tenantId: UUID): List<PropertyDefinitionRecord> =
+    repository.listProperties(tenantId)
+
+  suspend fun deactivateProperty(
+    tenantId: UUID,
+    propertyApiIdOrCode: String,
+    actorUserId: UUID,
+  ): PropertyDefinitionRecord =
+    repository.deactivateProperty(tenantId, propertyApiIdOrCode, actorUserId)
+
+  suspend fun createIssueType(command: CreateIssueTypeCommand): IssueTypeRecord {
+    validateScope(command.scope, command.projectId)
+    return repository.createIssueType(command)
+  }
+
+  suspend fun listIssueTypes(tenantId: UUID, projectId: UUID? = null): List<IssueTypeRecord> =
+    repository.listIssueTypes(tenantId, projectId)
+
+  suspend fun deactivateIssueType(
+    tenantId: UUID,
+    issueTypeApiIdOrCode: String,
+    actorUserId: UUID,
+    projectId: UUID? = null,
+  ): IssueTypeRecord =
+    repository.deactivateIssueType(tenantId, issueTypeApiIdOrCode, actorUserId, projectId)
+}
+
+@Service
+class IssueSubtypeConstraintService(
+  private val repository: IssueSubtypeConstraintRepository,
+  private val catalog: WorkItemCatalogRepository,
+) {
+  suspend fun create(command: CreateIssueSubtypeConstraintCommand): IssueSubtypeConstraintRecord {
+    command.projectId?.let {
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, it) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+      requireFound(
+        catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, it) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+      )
+    }
+      ?: run {
+        requireFound(
+          catalog.findIssueType(command.tenantId, command.parentIssueTypeApiId, null) != null,
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+        )
+        requireFound(
+          catalog.findIssueType(command.tenantId, command.childIssueTypeApiId, null) != null,
+          WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+        )
+      }
+    return repository.create(command)
+  }
+
+  suspend fun list(
+    tenantId: UUID,
+    projectId: UUID? = null,
+  ): List<IssueSubtypeConstraintRecord> = repository.list(tenantId, projectId)
+
+  suspend fun deactivate(
+    tenantId: UUID,
+    constraintId: UUID,
+    actorUserId: UUID,
+  ): IssueSubtypeConstraintRecord = repository.deactivate(tenantId, constraintId, actorUserId)
+}
+
+@Service
+class WorkflowConfigurationService(
+  private val repository: WorkflowConfigurationRepository,
+  private val catalog: WorkItemCatalogRepository,
+  private val configs: IssueTypeConfigRepository,
+  private val clock: Clock,
+) {
+  private val transitionFieldsParser = TransitionFieldsParser()
+  private val transitionConditionValidator = WorkItemTransitionConditionValidator()
+
+  suspend fun createWorkflow(command: CreateWorkflowCommand): WorkflowRecord =
+    repository.createWorkflow(command)
+
+  suspend fun listWorkflows(tenantId: UUID): List<WorkflowRecord> =
+    repository.listWorkflows(tenantId)
+
+  suspend fun publishWorkflow(tenantId: UUID, workflowApiIdOrCode: String): WorkflowRecord {
+    val workflow =
+      repository.findWorkflow(tenantId, workflowApiIdOrCode)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    return repository.publishWorkflow(tenantId, workflow.id, OffsetDateTime.now(clock))
+  }
+
+  suspend fun deactivateWorkflow(
+    tenantId: UUID,
+    workflowApiIdOrCode: String,
+    actorUserId: UUID,
+  ): WorkflowRecord = repository.deactivateWorkflow(tenantId, workflowApiIdOrCode, actorUserId)
+
+  suspend fun createTransition(command: CreateWorkflowTransitionCommand): WorkflowTransitionRecord {
+    val workflow = findRequiredWorkflow(repository, command.tenantId, command.workflowApiId)
+    requireUnpublishedWorkflow(workflow)
+    requireExistingStatus(catalog, command.tenantId, command.fromStatusApiId)
+    requireExistingStatus(catalog, command.tenantId, command.toStatusApiId)
+    validateTransitionAgainstActiveConfigs(command, workflow)
+    val canonicalCommand =
+      command.copy(preconditionAst = WorkItemConditionJson.canonicalize(command.preconditionAst))
+    transitionConditionValidator.validate(canonicalCommand.preconditionAst)
+    return repository.createTransition(canonicalCommand)
+  }
+
+  suspend fun deactivateTransition(
+    tenantId: UUID,
+    workflowApiIdOrCode: String,
+    transitionApiId: String,
+  ): WorkflowTransitionRecord {
+    val workflow = findRequiredWorkflow(repository, tenantId, workflowApiIdOrCode)
+    findRequiredTransition(repository, tenantId, transitionApiId, workflow.id)
+    requireUnpublishedWorkflow(workflow)
+    return repository.deactivateTransition(tenantId, transitionApiId)
+  }
+
+  private suspend fun validateTransitionAgainstActiveConfigs(
+    command: CreateWorkflowTransitionCommand,
+    workflow: WorkflowRecord,
+  ) {
+    val template = transitionFieldsParser.parse(command.fields)
+    val activeConfigs =
+      configs.listConfigs(command.tenantId).filter {
+        it.config.workflowId == workflow.id && it.config.isActive && it.config.validTo == null
+      }
+    if (activeConfigs.isEmpty()) {
+      TransitionFieldsValidator.validateEnvelope(template)
+      return
+    }
+    activeConfigs.forEach { config ->
+      val statusIds = config.statuses.map { it.statusApiId.value }.toSet()
+      val fromStatusAvailable =
+        command.fromStatusApiId == null || command.fromStatusApiId in statusIds
+      if (command.toStatusApiId !in statusIds || !fromStatusAvailable) {
+        throw InvalidRequestException(
+          WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE,
+          "Transition references a status outside active type config ${config.config.apiId.value}.",
+        )
+      }
+      TransitionFieldsValidator.validate(template, config)
+    }
+  }
+
+  suspend fun listTransitions(
+    tenantId: UUID,
+    workflowApiIdOrCode: String,
+  ): List<WorkflowTransitionRecord> {
+    val workflow =
+      repository.findWorkflow(tenantId, workflowApiIdOrCode)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    return repository.listTransitions(tenantId, workflow.id)
+  }
+}
+
+@Service
+class IssueTypeConfigService(
+  private val configs: IssueTypeConfigRepository,
+  private val catalog: WorkItemCatalogRepository,
+  private val workflows: WorkflowConfigurationRepository,
+) {
+  private val createFieldsParser = TransitionFieldsParser()
+
+  suspend fun create(command: CreateIssueTypeConfigCommand): IssueTypeConfigDetails {
+    validateScope(command.scope, command.projectId)
+    validateBindingShape(command)
+    val propertyRecords = resolveConfigProperties(command)
+    validateIssueTypeWorkflowStatusReferences(command)
+    validateCreateFields(command, propertyRecords)
+    validateWorkflowTransitionsForCreate(command)
+    return configs.createConfig(command)
+  }
+
+  suspend fun list(tenantId: UUID, projectId: UUID? = null): List<IssueTypeConfigDetails> =
+    configs.listConfigs(tenantId, projectId)
+
+  suspend fun resolveEffective(
+    tenantId: UUID,
+    projectId: UUID,
+    issueTypeApiIdOrCode: String,
+  ): EffectiveIssueTypeConfig =
+    configs.resolveEffective(tenantId, projectId, issueTypeApiIdOrCode)
+      ?: throw ResourceNotFoundException(
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_CONFIG_NOT_FOUND
+      )
+
+  private fun validateBindingShape(command: CreateIssueTypeConfigCommand) {
+    requireValid(
+      command.statuses.count { it.isInitial } == 1,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_INITIAL_STATUS_REQUIRED,
+    )
+    requireValid(
+      command.statuses.map { it.statusApiId }.distinct().size == command.statuses.size,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_STATUS,
+    )
+    requireValid(
+      command.properties.map { it.propertyApiId }.distinct().size == command.properties.size,
+      WorkbenchErrorCode.WORK_ITEM_CONFIG_DUPLICATE_PROPERTY,
+    )
+  }
+
+  private suspend fun validateIssueTypeWorkflowStatusReferences(
+    command: CreateIssueTypeConfigCommand
+  ) {
+    requireFound(
+      catalog.findIssueType(command.tenantId, command.issueTypeApiId, command.projectId) != null,
+      WorkbenchErrorCode.RESOURCE_WORK_ITEM_TYPE_NOT_FOUND,
+    )
+    requireFound(
+      workflows.findWorkflow(command.tenantId, command.workflowApiId) != null,
+      WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND,
+    )
+    command.statuses.forEach {
+      requireFound(
+        catalog.findStatus(command.tenantId, it.statusApiId) != null,
+        WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND,
+      )
+    }
+  }
+
+  private suspend fun resolveConfigProperties(
+    command: CreateIssueTypeConfigCommand
+  ): List<IssueTypeConfigPropertyRecord> {
+    val configId = UUID.randomUUID()
+    return command.properties.map { input ->
+      val record =
+        catalog.findProperty(command.tenantId, input.propertyApiId)
+          ?: throw ResourceNotFoundException(
+            WorkbenchErrorCode.RESOURCE_WORK_ITEM_PROPERTY_NOT_FOUND
+          )
+      IssueTypeConfigPropertyRecord(
+        id = UUID.randomUUID(),
+        tenantId = command.tenantId,
+        issueTypeConfigId = configId,
+        propertyId = record.id,
+        propertyApiId = record.apiId,
+        code = record.code,
+        name = record.name,
+        dataType = record.dataType,
+        validationOverride = input.validationOverride,
+        rank = input.rank,
+        displayConfig = input.displayConfig,
+      )
+    }
+  }
+
+  private suspend fun validateWorkflowTransitionsForCreate(command: CreateIssueTypeConfigCommand) {
+    val workflow =
+      workflows.findWorkflow(command.tenantId, command.workflowApiId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+    val statusIds =
+      command.statuses
+        .map { input ->
+          catalog.findStatus(command.tenantId, input.statusApiId)?.id
+            ?: throw ResourceNotFoundException(
+              WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND
+            )
+        }
+        .toSet()
+    validateWorkflowTransitions(command.tenantId, workflow.id, statusIds)
+  }
+
+  private suspend fun validateWorkflowTransitions(
+    tenantId: UUID,
+    workflowId: UUID,
+    statusIds: Set<UUID>,
+  ) {
+    val transitions = workflows.listTransitions(tenantId, workflowId)
+    val invalid = transitions.firstOrNull { transition ->
+      transition.toStatusId !in statusIds ||
+        (transition.fromStatusId != null && transition.fromStatusId !in statusIds)
+    }
+    if (invalid != null) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.WORKFLOW_TRANSITION_STATUS_UNAVAILABLE,
+        "Transition ${invalid.apiId.value} references a status outside the type config.",
+      )
+    }
+  }
+
+  private fun validateCreateFields(
+    command: CreateIssueTypeConfigCommand,
+    propertyRecords: List<IssueTypeConfigPropertyRecord>,
+  ) {
+    val configId = propertyRecords.firstOrNull()?.issueTypeConfigId ?: UUID.randomUUID()
+    val template = createFieldsParser.parseCreateFields(command.createFields)
+    TransitionFieldsValidator.validate(
+      template,
+      IssueTypeConfigDetails(
+        config =
+          IssueTypeConfigRecord(
+            id = configId,
+            apiId = PublicId.new("itc"),
+            tenantId = command.tenantId,
+            scope = command.scope,
+            projectId = command.projectId,
+            issueTypeId = UUID.randomUUID(),
+            issueTypeApiId = PublicId.new("typ"),
+            workflowId = UUID.randomUUID(),
+            workflowApiId = PublicId.new("wfl"),
+            version = 1,
+            nameOverride = command.nameOverride,
+            iconOverride = command.iconOverride,
+            colorOverride = command.colorOverride,
+            rank = command.rank,
+            isActive = true,
+            validFrom = OffsetDateTime.now(),
+            validTo = null,
+            createdBy = command.createdBy,
+            createdAt = OffsetDateTime.now(),
+            updatedAt = OffsetDateTime.now(),
+            createFields = command.createFields,
+          ),
+        statuses = emptyList(),
+        properties = propertyRecords,
+      ),
+      expectedTarget = WorkItemValueTemplateTarget.CREATE,
+    )
+  }
+}
+
+private fun validateScope(scope: WorkItemConfigScope, projectId: UUID?) {
+  if (scope == WorkItemConfigScope.TENANT && projectId != null) {
+    throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_SCOPE_PROJECT_FORBIDDEN)
+  }
+  if (scope == WorkItemConfigScope.PROJECT && projectId == null) {
+    throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_CONFIG_SCOPE_PROJECT_REQUIRED)
+  }
+}
+
+private suspend fun findRequiredWorkflow(
+  repository: WorkflowConfigurationRepository,
+  tenantId: UUID,
+  workflowApiIdOrCode: String,
+): WorkflowRecord =
+  repository.findWorkflow(tenantId, workflowApiIdOrCode)
+    ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_NOT_FOUND)
+
+private suspend fun findRequiredTransition(
+  repository: WorkflowConfigurationRepository,
+  tenantId: UUID,
+  transitionApiId: String,
+  workflowId: UUID,
+) {
+  val transition =
+    repository.findTransition(tenantId, transitionApiId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND)
+  requireFound(
+    transition.workflowId == workflowId,
+    WorkbenchErrorCode.RESOURCE_WORKFLOW_TRANSITION_NOT_FOUND,
+  )
+}
+
+private fun requireUnpublishedWorkflow(workflow: WorkflowRecord) {
+  requireValid(
+    workflow.publishedAt == null,
+    WorkbenchErrorCode.WORKFLOW_PUBLISHED_UPDATE_FORBIDDEN,
+  )
+}
+
+private suspend fun requireExistingStatus(
+  catalog: WorkItemCatalogRepository,
+  tenantId: UUID,
+  statusApiId: String?,
+) {
+  statusApiId ?: return
+  requireFound(
+    catalog.findStatus(tenantId, statusApiId) != null,
+    WorkbenchErrorCode.RESOURCE_WORK_ITEM_STATUS_NOT_FOUND,
+  )
+}

@@ -90,7 +90,7 @@ internal object ModuleArchitectureConventions {
     private fun inspectSource(rootDirectory: File, module: String, file: File): List<String> {
         val source = file.readText()
         val path = file.relativeTo(rootDirectory).invariantSeparatorsPath
-        val expected = "package ink.doa.workbench.${expectedPackageRoot.getValue(module)}"
+        val expected = "package one.ztd.workbench.${expectedPackageRoot.getValue(module)}"
         val violations = mutableListOf<String>()
         if (!source.lineSequence().any { it == expected || it.startsWith("$expected.") }) {
             violations += "$path: package must be rooted at ${expected.removePrefix("package ")}"
@@ -104,11 +104,11 @@ internal object ModuleArchitectureConventions {
             }
         }
         if (module == "workbench-application") {
-            listOf("ink.doa.workbench.data.", "ink.doa.workbench.security.", "ink.doa.workbench.web.", "ink.doa.workbench.worker.")
+            listOf("one.ztd.workbench.data.", "one.ztd.workbench.security.", "one.ztd.workbench.web.", "one.ztd.workbench.worker.")
                 .filter(source::contains)
                 .forEach { forbidden -> violations += "$path: application must not reference $forbidden" }
         }
-        if ("scanBasePackages = [\"ink.doa.workbench\"]" in source) {
+        if ("scanBasePackages = [\"one.ztd.workbench\"]" in source) {
             violations += "$path: full repository component scanning is forbidden"
         }
         return violations

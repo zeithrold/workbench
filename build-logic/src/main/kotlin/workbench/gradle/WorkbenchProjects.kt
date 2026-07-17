@@ -27,7 +27,7 @@ internal val koverExcludedClasses =
         "*.security.*Configuration",
         "*.infrastructure.persistence.*Configuration",
         "*.data.persistence.*Configuration",
-        "ink.doa.workbench.security.identity.auth.support.*",
+        "one.ztd.workbench.security.identity.auth.support.*",
     )
 
 internal fun moduleLineCoverageFloor(moduleName: String): Int = 90

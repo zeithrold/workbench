@@ -1,0 +1,105 @@
+package one.ztd.workbench.application.permission
+
+import java.time.Clock
+import java.time.OffsetDateTime
+import java.util.UUID
+import one.ztd.workbench.application.identity.PublicIdResolver
+import one.ztd.workbench.identity.permission.CreatePermissionBindingCommand
+import one.ztd.workbench.identity.permission.PermissionBindingRepository
+import one.ztd.workbench.identity.permission.PermissionPrincipalType
+import one.ztd.workbench.identity.permission.model.PermissionEffect
+import one.ztd.workbench.kernel.common.errors.InvalidRequestException
+import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import org.springframework.stereotype.Service
+
+@Service
+class PermissionBindingManagementService(
+  private val bindings: PermissionBindingRepository,
+  private val bindingViews: PermissionBindingViewAssembler,
+  private val groupManagement: PermissionGroupManagementService,
+  private val tenantPolicies: TenantPermissionPolicyGuard,
+  private val publicIds: PublicIdResolver,
+  private val clock: Clock,
+) {
+  suspend fun listBindings(tenantId: UUID): List<PermissionBindingView> =
+    bindings
+      .listByTenant(tenantId)
+      .filter { binding ->
+        binding.projectId == null && tenantPolicies.contains(tenantId, binding.policyId)
+      }
+      .map { bindingViews.assemble(tenantId, it) }
+
+  suspend fun createBinding(command: CreateManagedPermissionBindingCommand): PermissionBindingView {
+    if (command.effect != null && command.effect != PermissionEffect.ALLOW) {
+      throw InvalidRequestException(
+        WorkbenchErrorCode.PERMISSION_BINDING_EFFECT_OVERRIDE_UNSUPPORTED
+      )
+    }
+    val userId = command.userPublicId?.let { publicIds.resolveUser(it).id }
+    val groupId =
+      command.groupPublicId?.let { groupManagement.requireGroup(command.tenantId, it).id }
+    val policy = tenantPolicies.requirePolicy(command.tenantId, command.policyPublicId)
+    validatePrincipal(command.principalType, userId, groupId)
+    val now = OffsetDateTime.now(clock)
+    if (command.validTo != null && !command.validTo.isAfter(now)) {
+      throw InvalidRequestException(WorkbenchErrorCode.PERMISSION_BINDING_EXPIRATION_INVALID)
+    }
+    val binding =
+      bindings.create(
+        CreatePermissionBindingCommand(
+          tenantId = command.tenantId,
+          projectId = null,
+          principalType = command.principalType,
+          principalUserId = userId,
+          principalGroupId = groupId,
+          policyId = policy.id,
+          validFrom = now,
+          validTo = command.validTo,
+          createdBy = command.actorUserId,
+        )
+      )
+    return bindingViews.assemble(command.tenantId, binding)
+  }
+
+  suspend fun expireBinding(tenantId: UUID, publicId: String): Boolean {
+    val binding =
+      bindings.findByApiId(tenantId, publicId)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
+    if (binding.projectId != null || !tenantPolicies.contains(tenantId, binding.policyId)) {
+      throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PERMISSION_BINDING_NOT_FOUND)
+    }
+    return bindings.expire(tenantId, binding.id, OffsetDateTime.now(clock))
+  }
+
+  private fun validatePrincipal(
+    principalType: PermissionPrincipalType,
+    userId: UUID?,
+    groupId: UUID?,
+  ) {
+    val errorCode =
+      when (principalType) {
+        PermissionPrincipalType.USER ->
+          if (userId == null || groupId != null) {
+            WorkbenchErrorCode.PERMISSION_BINDING_USER_TARGET_INVALID
+          } else {
+            null
+          }
+        PermissionPrincipalType.GROUP ->
+          if (groupId == null || userId != null) {
+            WorkbenchErrorCode.PERMISSION_BINDING_GROUP_TARGET_INVALID
+          } else {
+            null
+          }
+        PermissionPrincipalType.TENANT_MEMBER ->
+          if (userId != null || groupId != null) {
+            WorkbenchErrorCode.PERMISSION_BINDING_TENANT_MEMBER_TARGET_INVALID
+          } else {
+            null
+          }
+      }
+    if (errorCode != null) {
+      throw InvalidRequestException(errorCode)
+    }
+  }
+}

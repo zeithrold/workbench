@@ -50,7 +50,7 @@ sourceSets.named("integrationTest") {
 }
 
 springBoot {
-  mainClass.set("ink.doa.workbench.web.WorkbenchApplicationKt")
+  mainClass.set("one.ztd.workbench.web.WorkbenchApplicationKt")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

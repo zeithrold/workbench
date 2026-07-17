@@ -1,0 +1,173 @@
+package one.ztd.workbench.identity.auth
+
+import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import java.time.Clock
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.util.UUID
+import kotlinx.coroutines.runBlocking
+import one.ztd.workbench.identity.AuthEventRepository
+import one.ztd.workbench.identity.LoginAccountStore
+import one.ztd.workbench.identity.model.AuditEventResult
+import one.ztd.workbench.identity.model.AuthEventRecord
+import one.ztd.workbench.identity.model.AuthEventType
+import one.ztd.workbench.identity.model.AuthenticatedIdentity
+import one.ztd.workbench.identity.model.CreateAuthEventCommand
+import one.ztd.workbench.identity.model.IssuedCredential
+import one.ztd.workbench.identity.model.LoginAccountRecord
+import one.ztd.workbench.identity.model.LoginCommand
+import one.ztd.workbench.identity.model.LoginMethodKind
+import one.ztd.workbench.identity.model.UserRecord
+import one.ztd.workbench.kernel.common.errors.AuthenticationFailedException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import one.ztd.workbench.kernel.common.ids.PublicId
+
+class AuthenticationServiceTest :
+  StringSpec({
+    "password login issues a session and records success" {
+      val fixture = Fixture()
+      val result = runBlocking { fixture.service.login(fixture.loginCommand) }
+
+      result.session.secret shouldBe "secret-1"
+      result.principal.user.id shouldBe fixture.user.id
+      result.principal.loginAccountId shouldBe fixture.loginAccount.id
+      fixture.appendedEvents.single().eventType shouldBe AuthEventType.LOGIN_SUCCESS
+      coVerify(exactly = 1) {
+        fixture.sessionCredentialService.issueSession(
+          fixture.user.id,
+          fixture.loginAccount.id,
+          any(),
+          any(),
+        )
+      }
+      coVerify(exactly = 1) { fixture.loginAccounts.touchLastUsed(fixture.loginAccount.id, any()) }
+    }
+
+    "password login failure records a generic failure event" {
+      val fixture = Fixture(authenticateFails = true)
+
+      shouldThrow<AuthenticationFailedException> {
+        runBlocking { fixture.service.login(fixture.loginCommand) }
+      }
+
+      fixture.appendedEvents.single().eventType shouldBe AuthEventType.LOGIN_FAILURE
+      fixture.appendedEvents.single().result shouldBe AuditEventResult.FAILURE
+      coVerify(exactly = 0) {
+        fixture.sessionCredentialService.issueSession(any(), any(), any(), any())
+      }
+    }
+
+    "login with bearer token issues token credential" {
+      val fixture = Fixture()
+      coEvery { fixture.bearerCredentialService.issueBearerToken(any()) } returns
+        IssuedCredential(
+          id = UUID.randomUUID(),
+          apiId = PublicId.new("btk"),
+          secret = "bearer-secret",
+          expiresAt = Fixture.now.plusDays(30),
+        )
+
+      val result = runBlocking {
+        fixture.service.login(fixture.loginCommand.copy(issueBearerToken = true))
+      }
+
+      result.bearerToken?.secret shouldBe "bearer-secret"
+    }
+  })
+
+private class Fixture(authenticateFails: Boolean = false) {
+  val user =
+    UserRecord(
+      id = UUID.randomUUID(),
+      apiId = PublicId.new("usr"),
+      displayName = "Ada",
+      primaryEmail = "ada@example.test",
+    )
+  val loginAccount =
+    LoginAccountRecord(
+      id = UUID.randomUUID(),
+      apiId = PublicId.new("lac"),
+      loginMethodId = UUID.randomUUID(),
+      subject = "Ada@Example.Test",
+      normalizedSubject = "ada@example.test",
+      displayName = "Ada",
+      lastUsedAt = null,
+      disabledAt = null,
+      disabledBy = null,
+      createdAt = now,
+      updatedAt = now,
+    )
+  val loginCommand =
+    LoginCommand(
+      method = LoginMethodKind.PASSWORD,
+      subject = "Ada@Example.Test",
+      password = "correct-password",
+      ipAddress = "127.0.0.1",
+      userAgent = "test",
+    )
+
+  val loginAccounts = mockk<LoginAccountStore>()
+  val authEvents = mockk<AuthEventRepository>()
+  val loginOrchestrator = mockk<LoginOrchestrator>()
+  val sessionCredentialService = mockk<SessionCredentialService>()
+  val bearerCredentialService = mockk<BearerCredentialService>()
+  val appendedEvents = mutableListOf<CreateAuthEventCommand>()
+  val service =
+    AuthenticationService(
+      loginAccounts = loginAccounts,
+      authEvents = authEvents,
+      loginOrchestrator = loginOrchestrator,
+      sessionCredentialService = sessionCredentialService,
+      bearerCredentialService = bearerCredentialService,
+      clock = Clock.fixed(Instant.parse("2026-07-02T00:00:00Z"), ZoneOffset.UTC),
+    )
+
+  init {
+    if (authenticateFails) {
+      coEvery { loginOrchestrator.authenticate(any()) } throws
+        AuthenticationFailedException(WorkbenchErrorCode.AUTH_INVALID_CREDENTIALS)
+    } else {
+      coEvery { loginOrchestrator.authenticate(any()) } returns
+        AuthenticatedIdentity(user = user, loginAccount = loginAccount)
+    }
+    coEvery { sessionCredentialService.issueSession(any(), any(), any(), any()) } returns
+      IssuedCredential(
+        id = UUID.randomUUID(),
+        apiId = null,
+        secret = "secret-1",
+        expiresAt = now.plusHours(12),
+      )
+    coEvery { loginAccounts.touchLastUsed(loginAccount.id, any()) } returns true
+    coEvery { authEvents.append(any<CreateAuthEventCommand>()) } answers
+      {
+        firstArg<CreateAuthEventCommand>().let { event ->
+          appendedEvents += event
+          AuthEventRecord(
+            id = UUID.randomUUID(),
+            authEventId = PublicId.new("aut"),
+            tenantId = event.tenantId,
+            userId = event.userId,
+            loginAccountId = event.loginAccountId,
+            loginMethodId = event.loginMethodId,
+            eventType = event.eventType,
+            result = event.result,
+            failureReason = event.failureReason,
+            ipAddress = event.ipAddress,
+            userAgent = event.userAgent,
+            metadata = event.metadata,
+            occurredAt = now,
+          )
+        }
+      }
+  }
+
+  companion object {
+    val now: OffsetDateTime = OffsetDateTime.parse("2026-07-02T00:00:00Z")
+  }
+}

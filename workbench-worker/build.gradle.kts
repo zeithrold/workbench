@@ -29,7 +29,7 @@ sourceSets.main.get().resources.srcDir(rootProject.file("config/logging"))
 sourceSets.main.get().resources.srcDir(rootProject.file("config/application"))
 
 springBoot {
-  mainClass.set("ink.doa.workbench.worker.WorkbenchWorkerApplicationKt")
+  mainClass.set("one.ztd.workbench.worker.WorkbenchWorkerApplicationKt")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {

@@ -13,16 +13,16 @@ class ModuleArchitectureConventionsTest {
         val root = Files.createTempDirectory("module-architecture")
         root.write("workbench-kernel/build.gradle.kts", "plugins {}")
         root.write(
-            "workbench-kernel/src/main/kotlin/ink/doa/workbench/kernel/Ids.kt",
-            "package ink.doa.workbench.kernel.common.ids",
+            "workbench-kernel/src/main/kotlin/one/ztd/workbench/kernel/Ids.kt",
+            "package one.ztd.workbench.kernel.common.ids",
         )
         root.write(
             "workbench-tenant/build.gradle.kts",
             "implementation(project(\":workbench-kernel\"))",
         )
         root.write(
-            "workbench-tenant/src/main/kotlin/ink/doa/workbench/tenant/Tenant.kt",
-            "package ink.doa.workbench.tenant",
+            "workbench-tenant/src/main/kotlin/one/ztd/workbench/tenant/Tenant.kt",
+            "package one.ztd.workbench.tenant",
         )
 
         val violations = ModuleArchitectureConventions.inspect(root.toFile())
@@ -44,10 +44,10 @@ class ModuleArchitectureConventionsTest {
             """.trimIndent(),
         )
         root.write(
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/App.kt",
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/App.kt",
             """
-            package ink.doa.workbench.web
-            @SpringBootApplication(scanBasePackages = ["ink.doa.workbench"])
+            package one.ztd.workbench.web
+            @SpringBootApplication(scanBasePackages = ["one.ztd.workbench"])
             class App
             """.trimIndent(),
         )

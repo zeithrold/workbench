@@ -28,7 +28,7 @@ abstract class PrepareKoverE2eAgentTask : DefaultTask() {
 
         val webReport = output.resolve("web.ic").absolutePath
         val workerReport = output.resolve("worker.ic").absolutePath
-        val includeFilter = "ink.doa.workbench.*"
+        val includeFilter = "one.ztd.workbench.*"
 
         output.resolve("web.args").writeText(
             """

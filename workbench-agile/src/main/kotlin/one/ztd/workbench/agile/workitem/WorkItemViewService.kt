@@ -1,0 +1,126 @@
+package one.ztd.workbench.agile.workitem
+
+import java.time.OffsetDateTime
+import java.util.UUID
+import kotlinx.serialization.json.JsonElement
+import one.ztd.workbench.agile.project.ProjectRepository
+import one.ztd.workbench.agile.project.ProjectSummary
+import one.ztd.workbench.agile.workitem.view.CreateWorkItemViewCommand
+import one.ztd.workbench.agile.workitem.view.DeleteWorkItemViewCommand
+import one.ztd.workbench.agile.workitem.view.UpdateWorkItemViewCommand
+import one.ztd.workbench.agile.workitem.view.WorkItemViewConfigurationValidator
+import one.ztd.workbench.agile.workitem.view.WorkItemViewRecord
+import one.ztd.workbench.agile.workitem.view.WorkItemViewRepository
+import one.ztd.workbench.agile.workitem.view.WorkItemViewVisibility
+import one.ztd.workbench.identity.UserRepository
+import one.ztd.workbench.identity.common.summary.UserSummary
+import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import org.springframework.stereotype.Service
+
+data class WorkItemViewView(
+  val id: String,
+  val name: String,
+  val description: String?,
+  val visibility: WorkItemViewVisibility,
+  val owner: UserSummary,
+  val project: ProjectSummary?,
+  val query: JsonElement,
+  val displayFields: JsonElement,
+  val createdAt: OffsetDateTime,
+  val updatedAt: OffsetDateTime,
+)
+
+@Service
+class WorkItemViewService(
+  private val views: WorkItemViewRepository,
+  private val access: WorkItemViewAccessService,
+  private val users: UserRepository,
+  private val projects: ProjectRepository,
+  private val validator: WorkItemViewConfigurationValidator = WorkItemViewConfigurationValidator(),
+) {
+  suspend fun list(
+    tenantId: UUID,
+    projectId: UUID?,
+    actorUserId: UUID,
+  ): List<WorkItemViewView> {
+    val records =
+      if (projectId == null) views.listTenantScoped(tenantId)
+      else views.listByProject(tenantId, projectId)
+    return records.filter { access.canRead(it, actorUserId) }.map { assemble(it) }
+  }
+
+  suspend fun get(
+    tenantId: UUID,
+    projectId: UUID?,
+    viewApiId: String,
+    actorUserId: UUID,
+  ): WorkItemViewView {
+    val view = requireView(tenantId, viewApiId, projectId)
+    access.requireRead(view, actorUserId)
+    return assemble(view)
+  }
+
+  suspend fun create(command: CreateWorkItemViewCommand): WorkItemViewView {
+    access.requireCreate(command.tenantId, command.projectId, command.ownerId)
+    validateLayout(command)
+    return assemble(views.create(command))
+  }
+
+  suspend fun update(command: UpdateWorkItemViewCommand): WorkItemViewView {
+    val existing = requireView(command.tenantId, command.viewApiId, command.projectId)
+    access.requireManage(existing, command.actorUserId)
+    val nextVisibility = command.visibility ?: existing.visibility
+    validator.validateVisibility(command.projectId, nextVisibility)
+    validator.validateLayout(
+      queryAst = command.queryAst ?: existing.queryAst,
+      displayFields = command.displayFields ?: existing.displayFields,
+    )
+    return assemble(views.update(command))
+  }
+
+  suspend fun delete(command: DeleteWorkItemViewCommand) {
+    val view = requireView(command.tenantId, command.viewApiId, command.projectId)
+    access.requireManage(view, command.actorUserId)
+    views.delete(command)
+  }
+
+  private fun validateLayout(command: CreateWorkItemViewCommand) {
+    validator.validateVisibility(command.projectId, command.visibility)
+    validator.validateLayout(
+      queryAst = command.queryAst,
+      displayFields = command.displayFields,
+    )
+  }
+
+  private suspend fun requireView(
+    tenantId: UUID,
+    viewApiId: String,
+    projectId: UUID?,
+  ): WorkItemViewRecord =
+    views.findByApiId(tenantId, viewApiId, projectId)
+      ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_VIEW_NOT_FOUND)
+
+  private suspend fun assemble(record: WorkItemViewRecord): WorkItemViewView {
+    val owner =
+      users.findById(record.ownerId)?.let(UserSummary::from)
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
+    val project =
+      record.projectId?.let { projectId ->
+        projects.findById(record.tenantId, projectId)?.let(ProjectSummary::from)
+          ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
+      }
+    return WorkItemViewView(
+      id = record.apiId.value,
+      name = record.name,
+      description = record.description,
+      visibility = record.visibility,
+      owner = owner,
+      project = project,
+      query = record.queryAst,
+      displayFields = record.displayFields,
+      createdAt = record.createdAt,
+      updatedAt = record.updatedAt,
+    )
+  }
+}

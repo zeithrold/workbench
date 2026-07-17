@@ -13,5 +13,5 @@ plugins {
     id("workbench.ci-conventions")
 }
 
-group = "ink.doa.workbench"
+group = "one.ztd.workbench"
 version = "0.1.0-SNAPSHOT"

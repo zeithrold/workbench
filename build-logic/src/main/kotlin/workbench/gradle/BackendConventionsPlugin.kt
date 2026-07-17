@@ -102,7 +102,7 @@ class BackendConventionsPlugin : Plugin<Project> {
             if (skipPitest) return@afterEvaluate
 
             val moduleSuffix = name.removePrefix("workbench-")
-            val packageGlob = "ink.doa.workbench.$moduleSuffix.*"
+            val packageGlob = "one.ztd.workbench.$moduleSuffix.*"
             extensions.configure<PitestPluginExtension> {
                 junit5PluginVersion.set(pitestProperties.string("junit5PluginVersion"))
                 targetClasses.set(setOf(packageGlob))

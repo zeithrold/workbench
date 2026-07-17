@@ -1,0 +1,194 @@
+package one.ztd.workbench.data.support
+
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.util.UUID
+import kotlin.uuid.toKotlinUuid
+import kotlinx.serialization.json.JsonObject
+import one.ztd.workbench.agile.project.model.CreateProjectCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueStatusCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueTypeCommand
+import one.ztd.workbench.agile.workitem.model.CreateIssueTypeConfigCommand
+import one.ztd.workbench.agile.workitem.model.CreateWorkflowCommand
+import one.ztd.workbench.agile.workitem.model.IssueTypeConfigStatusInput
+import one.ztd.workbench.agile.workitem.model.WorkItemConfigScope
+import one.ztd.workbench.agile.workitem.model.WorkItemStatusGroup
+import one.ztd.workbench.agile.workitem.stream.WorkItemEventCodec
+import one.ztd.workbench.data.messaging.ExposedDomainEventOutbox
+import one.ztd.workbench.data.messaging.WorkItemOutboxAppender
+import one.ztd.workbench.data.persistence.postgres.identity.TenantsTable
+import one.ztd.workbench.data.persistence.postgres.identity.UsersTable
+import one.ztd.workbench.data.repository.project.ExposedProjectRepository
+import one.ztd.workbench.data.repository.workitem.ExposedIssueTypeConfigRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkItemCatalogRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkItemCommentRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkItemEventRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkItemRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkItemTimelineRepository
+import one.ztd.workbench.data.repository.workitem.ExposedWorkflowConfigurationRepository
+import one.ztd.workbench.data.repository.workitem.WorkItemEventFactory
+import one.ztd.workbench.kernel.common.ids.PublicId
+import one.ztd.workbench.kernel.messaging.DomainEventEncoder
+import one.ztd.workbench.testsupport.postgres.MigrationSpec
+import one.ztd.workbench.testsupport.postgres.WorkbenchPostgresTestSupport
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+
+internal fun withPostgresDatabase(block: suspend (Database) -> Unit) {
+  WorkbenchPostgresTestSupport.withDatabase(MigrationSpec.Full, block)
+}
+
+internal fun withCorePostgresDatabase(block: suspend (Database) -> Unit) {
+  WorkbenchPostgresTestSupport.withDatabase(MigrationSpec.Core, block)
+}
+
+internal fun seedTenant(database: Database): UUID {
+  val tenantId = UUID.randomUUID()
+  val now = OffsetDateTime.now(ZoneOffset.UTC)
+  transaction(database) {
+    TenantsTable.insert {
+      it[id] = tenantId.toKotlinUuid()
+      it[apiId] = PublicId.new("ten").value
+      it[name] = "Test Tenant"
+      it[slug] = "test-${tenantId.toString().take(8)}"
+      it[timezone] = "UTC"
+      it[locale] = "en-US"
+      it[createdAt] = now
+      it[updatedAt] = now
+    }
+  }
+  return tenantId
+}
+
+internal fun seedUser(database: Database): UUID {
+  val userId = UUID.randomUUID()
+  val now = OffsetDateTime.now(ZoneOffset.UTC)
+  transaction(database) {
+    UsersTable.insert {
+      it[id] = userId.toKotlinUuid()
+      it[apiId] = PublicId.new("usr").value
+      it[displayName] = "Ada"
+      it[primaryEmail] = "ada-${userId.toString().take(8)}@example.test"
+      it[createdAt] = now
+      it[updatedAt] = now
+    }
+  }
+  return userId
+}
+
+internal suspend fun seedWorkItemStack(database: Database): WorkItemStack {
+  val tenantId = seedTenant(database)
+  val actorId = seedUser(database)
+  val projects = ExposedProjectRepository(database)
+  val project =
+    projects.create(
+      CreateProjectCommand(
+        tenantId = tenantId,
+        identifier = "WB",
+        name = "Workbench",
+        description = null,
+        createdBy = actorId,
+        leadUserId = actorId,
+      )
+    )
+  val catalog = ExposedWorkItemCatalogRepository(database)
+  val todoStatus =
+    catalog.createStatus(
+      CreateIssueStatusCommand(
+        tenantId = tenantId,
+        code = "todo",
+        name = "To Do",
+        statusGroup = WorkItemStatusGroup.TODO,
+        rank = 10,
+      )
+    )
+  val doneStatus =
+    catalog.createStatus(
+      CreateIssueStatusCommand(
+        tenantId = tenantId,
+        code = "done",
+        name = "Done",
+        statusGroup = WorkItemStatusGroup.DONE,
+        rank = 20,
+        isTerminal = true,
+      )
+    )
+  val issueType =
+    catalog.createIssueType(
+      CreateIssueTypeCommand(
+        tenantId = tenantId,
+        scope = WorkItemConfigScope.TENANT,
+        code = "task",
+        name = "Task",
+      )
+    )
+  val workflows = ExposedWorkflowConfigurationRepository(database, catalog)
+  val workflow =
+    workflows.createWorkflow(
+      CreateWorkflowCommand(
+        tenantId = tenantId,
+        code = "default",
+        name = "Default",
+        createdBy = actorId,
+      )
+    )
+  val issueTypeConfigs = ExposedIssueTypeConfigRepository(database, catalog, workflows)
+  val config =
+    issueTypeConfigs.createConfig(
+      CreateIssueTypeConfigCommand(
+        tenantId = tenantId,
+        scope = WorkItemConfigScope.TENANT,
+        projectId = null,
+        issueTypeApiId = issueType.apiId.value,
+        workflowApiId = workflow.apiId.value,
+        createdBy = actorId,
+        createFields = JsonObject(emptyMap()),
+        statuses =
+          listOf(
+            IssueTypeConfigStatusInput(
+              statusApiId = todoStatus.apiId.value,
+              isInitial = true,
+            ),
+            IssueTypeConfigStatusInput(
+              statusApiId = doneStatus.apiId.value,
+              isTerminal = true,
+            ),
+          ),
+      )
+    )
+  return WorkItemStack(
+    tenantId = tenantId,
+    actorId = actorId,
+    projectId = project.id,
+    issueType = issueType,
+    workflow = workflow,
+    todoStatus = todoStatus,
+    doneStatus = doneStatus,
+    config = config,
+  )
+}
+
+internal fun workItemRepository(database: Database): ExposedWorkItemRepository {
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
+  val clock = java.time.Clock.systemUTC()
+  val encoder = DomainEventEncoder(clock)
+  val outbox = ExposedDomainEventOutbox(database, encoder)
+  val outboxAppender = WorkItemOutboxAppender(outbox)
+  return ExposedWorkItemRepository(database, factory, codec, outboxAppender)
+}
+
+internal fun workItemCommentRepository(database: Database): ExposedWorkItemCommentRepository {
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
+  return ExposedWorkItemCommentRepository(database, factory, codec)
+}
+
+internal fun workItemTimelineRepository(database: Database): ExposedWorkItemTimelineRepository {
+  val codec = WorkItemEventCodec()
+  val factory = WorkItemEventFactory()
+  val events = ExposedWorkItemEventRepository(database, codec)
+  val comments = ExposedWorkItemCommentRepository(database, factory, codec)
+  return ExposedWorkItemTimelineRepository(database, events, comments)
+}

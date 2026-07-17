@@ -13,7 +13,7 @@ class DetektSuppressionConventionsTest {
         val root = Files.createTempDirectory("suppression-governance")
         val source =
             root.writeSource(
-                "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/InfrastructureAspect.kt",
+                "workbench-web/src/main/kotlin/one/ztd/workbench/web/api/InfrastructureAspect.kt",
                 "fun audit() = try { Unit } catch (@Suppress(\"TooGenericExceptionCaught\") error: RuntimeException) { throw error }",
             )
 
@@ -30,7 +30,7 @@ class DetektSuppressionConventionsTest {
             )
         val excessive =
             root.writeSource(
-                "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/InfrastructureAspect.kt",
+                "workbench-web/src/main/kotlin/one/ztd/workbench/web/api/InfrastructureAspect.kt",
                 "@Suppress(\"TooGenericExceptionCaught\") fun one() = Unit\n" +
                     "@Suppress(\"TooGenericExceptionCaught\") fun two() = Unit",
             )

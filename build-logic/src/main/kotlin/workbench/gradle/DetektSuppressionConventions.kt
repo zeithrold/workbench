@@ -16,43 +16,43 @@ internal object DetektSuppressionConventions {
 
     private val allowances =
         mapOf(
-            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/sprint/SprintCloseRequestedEventHandler.kt" to
+            "workbench-application/src/main/kotlin/one/ztd/workbench/application/jobs/sprint/SprintCloseRequestedEventHandler.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "consumer failure boundary")),
-            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/messaging/DomainEventExecutionService.kt" to
+            "workbench-application/src/main/kotlin/one/ztd/workbench/application/jobs/messaging/DomainEventExecutionService.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "shared handler execution boundary")),
-            "workbench-application/src/main/kotlin/ink/doa/workbench/application/jobs/notification/EmailNotificationRelay.kt" to
+            "workbench-application/src/main/kotlin/one/ztd/workbench/application/jobs/notification/EmailNotificationRelay.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "relay failure boundary")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/PostgresEmbeddedJobs.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/messaging/PostgresEmbeddedJobs.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 2, "listener and delivery failure boundaries")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/RedisStreamsEmbeddedJobs.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/messaging/RedisStreamsEmbeddedJobs.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 2, "relay and delivery failure boundaries")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/InfrastructureAspect.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/api/InfrastructureAspect.kt" to
                 listOf(Allowance("TooGenericExceptionCaught", 1, "audit failure boundary")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/admin/AdminUserController.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/admin/AdminUserController.kt" to
                 listOf(Allowance("UnusedParameter", 5, "AOP request context binding")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/instance/TenantAdminController.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/instance/TenantAdminController.kt" to
                 listOf(Allowance("UnusedParameter", 3, "AOP request context binding")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/OutboxAdminController.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/messaging/OutboxAdminController.kt" to
                 listOf(
                     Allowance("UnusedParameter", 3, "AOP request context binding"),
                     Allowance("RedundantSuspendModifier", 3, "security aspect endpoint signature"),
                 ),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/messaging/OutboxDeliveryAdminController.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/messaging/OutboxDeliveryAdminController.kt" to
                 listOf(
                     Allowance("UnusedParameter", 2, "AOP request context binding"),
                     Allowance("RedundantSuspendModifier", 2, "security aspect endpoint signature"),
                 ),
-            "workbench-data/src/main/kotlin/ink/doa/workbench/data/persistence/postgres/ExposedColumnLookup.kt" to
+            "workbench-data/src/main/kotlin/one/ztd/workbench/data/persistence/postgres/ExposedColumnLookup.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 2, "Exposed dynamic column lookup")),
-            "workbench-web/src/main/kotlin/ink/doa/workbench/web/api/ProjectRequestContextResolver.kt" to
+            "workbench-web/src/main/kotlin/one/ztd/workbench/web/api/ProjectRequestContextResolver.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 1, "Spring URI variable attribute type")),
-            "workbench-application/src/testFixtures/kotlin/ink/doa/workbench/application/messaging/support/RecordingDomainEventPublisher.kt" to
+            "workbench-application/src/testFixtures/kotlin/one/ztd/workbench/application/messaging/support/RecordingDomainEventPublisher.kt" to
                 listOf(Allowance("UNCHECKED_CAST", 1, "generic recording fixture")),
-            "workbench-test-support/src/main/kotlin/ink/doa/workbench/testsupport/postgres/PostgresDatabaseProvisioner.kt" to
+            "workbench-test-support/src/main/kotlin/one/ztd/workbench/testsupport/postgres/PostgresDatabaseProvisioner.kt" to
                 listOf(Allowance("SpreadOperator", 1, "Flyway Java vararg boundary")),
-            "workbench-data/src/main/kotlin/ink/doa/workbench/data/storage/config/CoroutineDispatchersConfiguration.kt" to
+            "workbench-data/src/main/kotlin/one/ztd/workbench/data/storage/config/CoroutineDispatchersConfiguration.kt" to
                 listOf(Allowance("InjectDispatcher", 1, "dispatcher composition root")),
-            "workbench-web/src/test/kotlin/ink/doa/workbench/web/api/InfrastructureAspectTest.kt" to
+            "workbench-web/src/test/kotlin/one/ztd/workbench/web/api/InfrastructureAspectTest.kt" to
                 listOf(Allowance("DEPRECATION", 1, "deprecated annotation compatibility test")),
         )
 
