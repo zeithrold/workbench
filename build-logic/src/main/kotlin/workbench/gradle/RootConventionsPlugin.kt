@@ -208,6 +208,12 @@ class RootConventionsPlugin : Plugin<Project> {
             dependsOn(":workbench-frontend:pnpmCoverageFull")
         }
 
+        tasks.register("frontendStorybookComponentCoverage") {
+            group = "coverage"
+            description = "Runs Storybook and enforces production Svelte component mount coverage."
+            dependsOn(":workbench-frontend:pnpmStorybookTest")
+        }
+
         tasks.register("frontendE2eCoverage") {
             group = "coverage"
             description = "Generates E2E frontend Playwright coverage."

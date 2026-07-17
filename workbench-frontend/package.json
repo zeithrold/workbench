@@ -22,7 +22,7 @@
     "coverage:e2e": "node tests/e2e/stack/collect-e2e-coverage.mjs",
     "storybook": "storybook dev --port 6006",
     "storybook:build": "storybook build --output-dir storybook-static",
-    "storybook:test": "vitest --project storybook --run",
+    "storybook:test": "vitest --project storybook --run --coverage --coverage.include='src/lib/**/*.svelte' --coverage.exclude='src/**/*.stories.svelte' --coverage.reporter=lcov --coverage.reportsDirectory=./coverage/storybook-components && node scripts/storybook-component-coverage.mjs",
     "test:e2e": "playwright test",
     "test:e2e:coverage": "E2E_COLLECT_COVERAGE=true playwright test",
     "test:e2e:stack": "node tests/e2e/stack/run.mjs",

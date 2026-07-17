@@ -152,6 +152,7 @@ Module tasks: `test` runs unit tests from `src/test`; `integrationTest` runs int
 | **Full** (unit + integration) | `build/reports/kover/report.xml` | `./gradlew check` | **90%** line (aggregate + per backend module) |
 | **Unit** (unit tests only) | `build/reports/kover/unit/report.xml` | Soft warning | **70%+** line; warns when full-unit line delta > **15pp** |
 | **Diff** (full Kover / Vitest LCOV) | `scripts/ci/diff-cover-*.html` | CI after `check` | Backend changed lines **90%**, frontend **70%** |
+| **Storybook components** | `workbench-frontend/coverage/storybook-components/component-coverage.json` | `./gradlew check` | New/changed eligible production-reachable Svelte components **100% mounted**; aggregate may not regress (`components/ui/**` shadcn source excluded) |
 | **Mutation / Strength** | `build/reports/pitest/` | Nightly report | Track via Quality Report; no hard gate yet |
 
 If full line coverage exceeds unit by **> 15%** for a module, add unit tests or contract tests — do not compensate with more integration tests alone.
@@ -191,6 +192,7 @@ Install [uv](https://docs.astral.sh/uv/) once (`curl -LsSf https://astral.sh/uv/
 ```bash
 ./gradlew check --no-daemon
 ./gradlew frontendFullCoverage --no-daemon
+./gradlew frontendStorybookComponentCoverage --no-daemon
 git fetch origin main
 uv run --directory scripts/ci check-diff-coverage              # both stacks
 uv run --directory scripts/ci check-diff-coverage --target backend
@@ -247,6 +249,7 @@ Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summar
 - [ ] Diff coverage passes locally when Kotlin or frontend source changed (`uv run --directory scripts/ci check-diff-coverage`)
 - [ ] Kotlin changes: unit/integration tests added; backend diff ≥ 90%
 - [ ] Frontend changes: Vitest tests added; frontend diff ≥ 70%
+- [ ] Eligible production-reachable Svelte components are mounted in Storybook; new/changed components have 100% mount coverage and the baseline only shrinks (`components/ui/**` shadcn source excluded)
 - [ ] API changes: `pnpm openapi` run; generated client committed
 - [ ] New Flyway version: `PostgresMigrationIntegrationTest` expected count updated
 - [ ] No secrets or debug logging left in diff
@@ -262,6 +265,7 @@ Reports: `uv run check-diff-coverage` writes diff coverage to GitHub Step Summar
 - PR with only a module `test` — skips Spotless, Detekt, integration tests, and frontend verification
 - Opening a PR after only `./gradlew check` when source changed but diff coverage was not run locally
 - Changing Kotlin or frontend business logic without tests for the new/changed lines
+- Adding or changing an eligible production-reachable Svelte component without mounting it in a meaningful Storybook scenario
 - Writing contorted or shallow tests to work around bad design instead of flagging the design issue
 
 ## Additional Resources

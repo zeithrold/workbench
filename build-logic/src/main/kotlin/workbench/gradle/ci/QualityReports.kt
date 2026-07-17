@@ -63,6 +63,20 @@ data class FrontendCoverageDelta(
         }
 }
 
+data class StorybookComponentLayer(
+    val total: Int,
+    val mounted: Int,
+    val percentage: Double,
+)
+
+data class StorybookComponentCoverage(
+    val total: Int,
+    val mounted: Int,
+    val percentage: Double,
+    val targetPercentage: Double,
+    val layers: Map<String, StorybookComponentLayer>,
+)
+
 data class ModuleCoverageDelta(
     val module: String,
     val full: CoverageMetrics?,
@@ -254,6 +268,44 @@ object QualityReports {
         )
     }
 
+    fun parseStorybookComponentCoverage(path: File): StorybookComponentCoverage? {
+        if (!path.isFile) return null
+        val json = path.readText()
+        fun number(name: String): Double? =
+            Regex("""\"$name\"\s*:\s*([0-9]+(?:\.[0-9]+)?)""")
+                .find(json)
+                ?.groupValues
+                ?.get(1)
+                ?.toDoubleOrNull()
+
+        val layersJson =
+            Regex("""\"layers\"\s*:\s*\{(.*?)}\s*,\s*\"uncoveredComponents\"""", RegexOption.DOT_MATCHES_ALL)
+                .find(json)
+                ?.groupValues
+                ?.get(1)
+                .orEmpty()
+        val layerPattern =
+            Regex(
+                """\"([^\"]+)\"\s*:\s*\{\s*\"total\"\s*:\s*(\d+)\s*,\s*""" +
+                    """\"mounted\"\s*:\s*(\d+)\s*,\s*\"percentage\"\s*:\s*([0-9.]+)""",
+                RegexOption.DOT_MATCHES_ALL,
+            )
+        val layers =
+            layerPattern.findAll(layersJson).associate { match ->
+                match.groupValues[1] to
+                    StorybookComponentLayer(
+                        total = match.groupValues[2].toInt(),
+                        mounted = match.groupValues[3].toInt(),
+                        percentage = match.groupValues[4].toDouble(),
+                    )
+            }
+        val total = number("total")?.toInt() ?: return null
+        val mounted = number("mounted")?.toInt() ?: return null
+        val percentage = number("percentage") ?: return null
+        val target = number("targetPercentage") ?: return null
+        return StorybookComponentCoverage(total, mounted, percentage, target, layers)
+    }
+
     fun loadMutationMetrics(path: File): MutationMetrics? {
         val mutations = parsePitMutations(path.resolve("mutations.xml")) ?: return null
         return mutations.copy(pitLine = parsePitLineCoverage(path))
@@ -288,6 +340,10 @@ object QualityReports {
         val deltas = moduleCoverageDeltas(repoRoot, modules)
         val backendDelta = backendCoverageDelta(repoRoot)
         val frontendDelta = frontendCoverageDelta(repoRoot)
+        val storybookComponents =
+            parseStorybookComponentCoverage(
+                repoRoot.resolve("workbench-frontend/coverage/storybook-components/component-coverage.json"),
+            )
 
         val markdown =
             buildString {
@@ -296,10 +352,19 @@ object QualityReports {
                 appendCoverageSection(modules, repoRoot, fullTotal, unitTotal, deltas)
                 appendBackendE2eCoverageSection(backendDelta)
                 appendFrontendCoverageSection(frontendDelta)
+                appendStorybookComponentCoverageSection(storybookComponents)
                 val mutationResult = appendMutationSection(repoRoot, extendedTests)
                 appendCorrelationSection(repoRoot, extendedTests, mutationResult)
             }
-        return markdown to coverageSummaryJson(fullTotal, unitTotal, deltas, backendDelta, frontendDelta)
+        return markdown to
+            coverageSummaryJson(
+                fullTotal,
+                unitTotal,
+                deltas,
+                backendDelta,
+                frontendDelta,
+                storybookComponents,
+            )
     }
 
     private fun StringBuilder.appendBackendE2eCoverageSection(backendDelta: BackendCoverageDelta) {
@@ -428,6 +493,30 @@ object QualityReports {
         appendLine()
     }
 
+    private fun StringBuilder.appendStorybookComponentCoverageSection(
+        coverage: StorybookComponentCoverage?,
+    ) {
+        appendLine("### Storybook Component Mount Coverage")
+        appendLine()
+        if (coverage == null) {
+            appendLine("_No component mount report found. Run `./gradlew frontendStorybookComponentCoverage`._")
+            appendLine()
+            return
+        }
+
+        appendLine(
+            "**${coverage.mounted}/${coverage.total} components mounted " +
+                "(${coverage.percentage.fmt()}, target ${coverage.targetPercentage.fmt()}).**",
+        )
+        appendLine()
+        appendLine("| Layer | Mounted | Total | Coverage |")
+        appendLine("|-------|---------|-------|----------|")
+        coverage.layers.forEach { (layer, metrics) ->
+            appendLine("| $layer | ${metrics.mounted} | ${metrics.total} | ${metrics.percentage.fmt()} |")
+        }
+        appendLine()
+    }
+
     private data class MutationSectionResult(
         val moduleMetrics: Map<String, MutationMetrics>,
         val aggregate: MutationMetrics?,
@@ -527,6 +616,7 @@ object QualityReports {
         deltas: List<ModuleCoverageDelta>,
         backendDelta: BackendCoverageDelta,
         frontendDelta: FrontendCoverageDelta,
+        storybookComponents: StorybookComponentCoverage?,
     ): String =
         buildString {
             appendLine("{")
@@ -550,6 +640,7 @@ object QualityReports {
                     "\n    \"e2eMinusFull\": ${frontendDelta.e2eMinusFull.toJsonNumber()}",
             )
             appendLine("  },")
+            appendLine("  \"storybookComponents\": ${storybookComponents.toJson(2)},")
             appendLine("  \"modules\": [")
             deltas.forEachIndexed { index, delta ->
                 appendLine("    {")
@@ -569,6 +660,20 @@ object QualityReports {
             appendLine("  ]")
             appendLine("}")
         }
+
+    private fun StorybookComponentCoverage?.toJson(indent: Int): String {
+        if (this == null) return "null"
+        val padding = " ".repeat(indent)
+        val nested = " ".repeat(indent + 2)
+        return buildString {
+            appendLine("{")
+            appendLine("$nested\"total\": $total,")
+            appendLine("$nested\"mounted\": $mounted,")
+            appendLine("$nested\"percentage\": ${percentage.toJsonNumber()},")
+            appendLine("$nested\"targetPercentage\": ${targetPercentage.toJsonNumber()}")
+            append("$padding}")
+        }
+    }
 
     private fun mergeKoverCounters(reports: List<File>): Map<String, Counter> =
         reports.fold(mutableMapOf()) { merged, report ->

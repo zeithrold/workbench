@@ -101,8 +101,11 @@ Focused verification and reporting:
 ./gradlew :workbench-application:pitest
 ./gradlew frontendUnitCoverage
 ./gradlew frontendFullCoverage
+./gradlew frontendStorybookComponentCoverage
 ./gradlew :workbench-frontend:e2eCheck
 ```
+
+`frontendStorybookComponentCoverage` enforces the frontend component discipline: every self-authored Svelte component reachable from a production route or layout must be mounted by Storybook. Shadcn-managed components under `src/lib/components/ui/**` are excluded; composite stories may cover eligible child components transitively. The report is written to `workbench-frontend/coverage/storybook-components/component-coverage.json`; the checked-in debt baseline can only shrink and the long-term target is 100%.
 
 **Diff coverage** (same gate as CI; requires [uv](https://docs.astral.sh/uv/)):
 

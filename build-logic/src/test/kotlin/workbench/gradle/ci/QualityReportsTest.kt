@@ -95,6 +95,40 @@ class QualityReportsTest {
     }
 
     @Test
+    fun `parses and renders Storybook component mount coverage`() {
+        val root = Files.createTempDirectory("storybook-component-coverage")
+        val report =
+            root.resolve("workbench-frontend/coverage/storybook-components/component-coverage.json")
+        report.parent.createDirectories()
+        report.writeText(
+            """
+            {
+              "version": 1,
+              "total": 10,
+              "mounted": 8,
+              "percentage": 80.0,
+              "targetPercentage": 100,
+              "layers": {
+                "components": { "total": 6, "mounted": 5, "percentage": 83.3333 },
+                "features": { "total": 4, "mounted": 3, "percentage": 75.0 }
+              },
+              "uncoveredComponents": []
+            }
+            """.trimIndent(),
+        )
+
+        val coverage = QualityReports.parseStorybookComponentCoverage(report.toFile())
+        val (markdown, json) = QualityReports.renderQualitySummary(root.toFile(), extendedTests = false)
+
+        assertEquals(80.0, coverage?.percentage)
+        assertEquals(5, coverage?.layers?.get("components")?.mounted)
+        assertContains(markdown, "Storybook Component Mount Coverage")
+        assertContains(markdown, "8/10 components mounted")
+        assertContains(json, "\"storybookComponents\": {")
+        assertContains(json, "\"percentage\": 80.0000")
+    }
+
+    @Test
     fun `renders coverage summary markdown and json`() {
         val root = Files.createTempDirectory("summary")
         val full = root.resolve("workbench-kernel/build/reports/kover/report.xml")

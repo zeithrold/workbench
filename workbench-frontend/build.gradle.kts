@@ -77,6 +77,7 @@ tasks.register<PnpmTask>("pnpmStorybookBuild") {
 
 tasks.register<PnpmTask>("pnpmStorybookTest") {
     dependsOn("prepareFrontendEnv", "pnpmInstall")
+    description = "Runs Storybook browser tests and enforces production component mount coverage."
     args.set(listOf("storybook:test"))
 }
 
