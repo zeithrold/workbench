@@ -68,6 +68,12 @@ interface WorkItemMutationRepository {
 }
 
 interface WorkItemReadRepository {
+  suspend fun findByDatabaseIds(
+    tenantId: UUID,
+    projectId: UUID,
+    ids: Set<UUID>,
+  ): List<WorkItemRecord> = emptyList()
+
   suspend fun findByApiId(tenantId: UUID, apiId: String): WorkItemRecord?
 
   suspend fun findByApiId(

@@ -87,6 +87,25 @@ class ExposedWorkItemRepository(
   private val eventCodec: WorkItemEventCodec,
   private val outboxAppender: WorkItemOutboxAppender,
 ) : WorkItemRepository {
+  override suspend fun findByDatabaseIds(
+    tenantId: UUID,
+    projectId: UUID,
+    ids: Set<UUID>,
+  ): List<WorkItemRecord> {
+    if (ids.isEmpty()) return emptyList()
+    return suspendTransaction(db = database) {
+      IssuesTable.selectAll()
+        .where {
+          (IssuesTable.tenantId eq tenantId.toKotlinUuid()) and
+            (IssuesTable.projectId eq projectId.toKotlinUuid()) and
+            (IssuesTable.id inList ids.map { it.toKotlinUuid() }) and
+            IssuesTable.archivedAt.isNull() and
+            IssuesTable.deletedAt.isNull()
+        }
+        .map(ResultRow::toWorkItemRecord)
+    }
+  }
+
   override suspend fun create(command: CreateWorkItemPersistenceCommand): WorkItemMutationResult =
     suspendTransaction(db = database) {
       val prepared = prepareWorkItemInsert(command.command, command.propertyValues)

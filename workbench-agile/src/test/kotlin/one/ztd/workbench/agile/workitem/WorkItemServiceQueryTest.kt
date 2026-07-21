@@ -60,7 +60,7 @@ class WorkItemServiceQueryTest :
           users,
           createParentGuard,
           mutationSupport,
-          fieldPipeline,
+          WorkItemUpdateSupport(fieldPipeline, mockk(relaxed = true)),
         )
 
       service.get(tenantId, projectId, "WB-1") shouldBe hit

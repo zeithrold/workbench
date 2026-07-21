@@ -28,6 +28,7 @@ import one.ztd.workbench.agile.workitem.model.WorkItemRecord
 import one.ztd.workbench.agile.workitem.model.WorkItemStatusGroup
 import one.ztd.workbench.kernel.common.errors.InvalidRequestException
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
+import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
 import one.ztd.workbench.kernel.common.ids.PublicId
 import one.ztd.workbench.kernel.port.messaging.DomainEventPublisher
 
@@ -64,6 +65,12 @@ class WorkItemServiceCrudTest :
 
       coEvery { repository.findByApiId(tenantId, projectId, record.apiId.value) } returns record
       coEvery { configs.findConfig(tenantId, record.issueTypeConfigApiId.value) } returns config
+      coEvery { repository.listPropertyValues(tenantId, record.id) } returns emptyMap()
+      coEvery {
+        repository.countChildrenNotInStatusGroups(tenantId, record.id, setOf("done"))
+      } returns 0
+      coEvery { repository.resolveProjectApiId(tenantId, projectId) } returns PublicId.new("prj")
+      coEvery { repository.resolveUserApiId(actorId) } returns PublicId.new("usr")
       coEvery { repository.update(any(), any()) } returns updated
 
       val service = workItemService(repository, configs, events)
@@ -80,6 +87,48 @@ class WorkItemServiceCrudTest :
 
       result.title shouldBe "Updated"
       coVerify { repository.update(any(), any()) }
+    }
+
+    "update rejects an empty patch before reading or writing the work item" {
+      val repository = mockk<WorkItemRepository>()
+      val error =
+        shouldThrow<InvalidRequestException> {
+          workItemService(repository)
+            .update(
+              UpdateWorkItemCommand(
+                tenantId = tenantId,
+                projectId = projectId,
+                workItemApiId = "wi_empty",
+                actorUserId = actorId,
+              )
+            )
+        }
+
+      error.errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_PATCH_EMPTY
+      coVerify(exactly = 0) { repository.findByApiId(any(), any(), any()) }
+      coVerify(exactly = 0) { repository.update(any(), any()) }
+    }
+
+    "update rejects sprint assignment and clearing in the same patch" {
+      val repository = mockk<WorkItemRepository>()
+      val error =
+        shouldThrow<InvalidRequestException> {
+          workItemService(repository)
+            .update(
+              UpdateWorkItemCommand(
+                tenantId = tenantId,
+                projectId = projectId,
+                workItemApiId = "wi_sprint",
+                sprintApiId = "spr_next",
+                clearSprint = true,
+                actorUserId = actorId,
+              )
+            )
+        }
+
+      error.errorCode shouldBe WorkbenchErrorCode.WORK_ITEM_PATCH_SPRINT_CONFLICT
+      coVerify(exactly = 0) { repository.findByApiId(any(), any(), any()) }
+      coVerify(exactly = 0) { repository.update(any(), any()) }
     }
 
     "delete soft deletes through repository" {
@@ -338,7 +387,11 @@ private fun workItemService(
       users = mockk(relaxed = true),
       createParentGuard = WorkItemCreateParentGuard(repository, subtypeConstraints),
       mutationSupport = WorkItemMutationSupport(repository, configs, events, readModels),
-      fieldPipeline = AgileServiceFactory.fieldMutationPipeline(clock),
+      updateSupport =
+        WorkItemUpdateSupport(
+          AgileServiceFactory.fieldMutationPipeline(clock),
+          mockk(relaxed = true),
+        ),
     )
   }
   return service

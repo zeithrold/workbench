@@ -40,6 +40,8 @@ data class WorkItemFieldPermissionContext(
   val accessEvaluation: one.ztd.workbench.agile.workitem.access.WorkItemAccessEvaluationContext? =
     null,
   val resourceAttributes: Map<String, String> = emptyMap(),
+  val bindingRules: List<one.ztd.workbench.identity.permission.ResolvedPermissionRule>? = null,
+  val accessRules: List<one.ztd.workbench.agile.workitem.access.WorkItemAccessRuleRecord>? = null,
 )
 
 fun FieldMutationPolicy.allowsFormEdit(spec: TransitionFieldSpec): Boolean =

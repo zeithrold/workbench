@@ -5,5 +5,32 @@
  * Multi-tenant work management API. Use X-Workbench-API-Version for date-based API versioning. Successful responses may include X-Workbench-Warning for non-blocking business risks.
  * OpenAPI spec version: 2026-07-17
  */
+import type { JsonNodeNodeType } from './jsonNodeNodeType';
 
-export interface JsonNode {}
+export interface JsonNode {
+  number?: boolean;
+  nodeType?: JsonNodeNodeType;
+  string?: boolean;
+  integralNumber?: boolean;
+  missingNode?: boolean;
+  valueNode?: boolean;
+  container?: boolean;
+  pojo?: boolean;
+  short?: boolean;
+  int?: boolean;
+  long?: boolean;
+  double?: boolean;
+  bigDecimal?: boolean;
+  bigInteger?: boolean;
+  /** @deprecated */
+  textual?: boolean;
+  boolean?: boolean;
+  binary?: boolean;
+  floatingPointNumber?: boolean;
+  empty?: boolean;
+  array?: boolean;
+  null?: boolean;
+  object?: boolean;
+  float?: boolean;
+  embeddedValue?: boolean;
+}

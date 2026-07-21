@@ -11,7 +11,14 @@ import one.ztd.workbench.identity.UserRepository
 import one.ztd.workbench.kernel.common.errors.InvalidRequestException
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
+import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
+
+@Component
+class WorkItemUpdateSupport(
+  val fieldPipeline: WorkItemFieldMutationPipeline,
+  val transitionContextLoader: WorkItemTransitionContextLoader,
+)
 
 @Service
 class WorkItemService(
@@ -20,7 +27,7 @@ class WorkItemService(
   private val users: UserRepository,
   private val createParentGuard: WorkItemCreateParentGuard,
   private val mutationSupport: WorkItemMutationSupport,
-  private val fieldPipeline: WorkItemFieldMutationPipeline,
+  private val updateSupport: WorkItemUpdateSupport,
 ) {
   suspend fun create(command: CreateWorkItemCommand): WorkItemSearchHit {
     val config =
@@ -37,7 +44,7 @@ class WorkItemService(
       createParentGuard.resolveAndValidate(command, config.config.config.issueTypeId)
     val (permissionContext, templateContext) = createMutationContexts(command)
     val plan =
-      fieldPipeline.applyCreate(
+      updateSupport.fieldPipeline.applyCreate(
         command = command,
         config = config.config,
         templateContext = templateContext,
@@ -86,7 +93,7 @@ class WorkItemService(
         )
       )
     val formPlan =
-      fieldPipeline.planCreateForm(
+      updateSupport.fieldPipeline.planCreateForm(
         config = config.config,
         createFields = config.config.config.createFields,
         templateContext = templateContext,
@@ -108,39 +115,59 @@ class WorkItemService(
   ): WorkItemSearchHit = mutationSupport.read(tenantId, projectId, workItemApiId)
 
   suspend fun update(command: UpdateWorkItemCommand): WorkItemSearchHit {
+    validatePatch(command)
     val issue =
       repository.findByApiId(command.tenantId, command.projectId, command.workItemApiId)
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_WORK_ITEM_NOT_FOUND)
-    val config = mutationSupport.requireConfig(command.tenantId, issue.issueTypeConfigApiId.value)
-    val permissionContext =
-      fieldPermissionContext(
-        command.tenantId,
-        command.projectId,
-        command.actorUserId,
-        FieldPermissionOperation.UPDATE,
-      )
-    fieldPipeline.engine.assertPatch(
+    val actorUserApiId =
+      users.findById(command.actorUserId)?.apiId?.value
+        ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_USER_NOT_FOUND)
+    val context =
+      updateSupport.transitionContextLoader.load(issue, command.actorUserId, actorUserApiId)
+    val config = context.config
+    val permissionContext = context.permissionContext
+    val propertyInputs = WorkItemPropertySupport.run { command.properties.filterPropertyInputs() }
+    updateSupport.fieldPipeline.engine.assertPatch(
       PatchMutationContext(
         config = config,
         permissionContext = permissionContext,
-        propertyInputs = WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
+        propertyInputs = propertyInputs,
         systemFieldInputs =
           mapOf(
             "title" to command.title,
             "description" to command.description,
             "assignee" to command.assigneeApiId,
             "priority" to command.priorityApiId,
-            "sprint" to command.sprintApiId,
+            "sprint" to (command.sprintApiId ?: command.clearSprint.takeIf { it }),
           ),
       )
     )
     val values =
       WorkItemPropertySupport.normalizeProperties(
         config,
-        WorkItemPropertySupport.run { command.properties.filterPropertyInputs() },
+        propertyInputs,
       )
     val effectiveCommand = WorkItemPropertySupport.applyDescriptionProcessing(command)
     return mutationSupport.present(repository.update(effectiveCommand, values))
+  }
+
+  private fun validatePatch(command: UpdateWorkItemCommand) {
+    if (command.sprintApiId != null && command.clearSprint) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_PATCH_SPRINT_CONFLICT)
+    }
+    val properties = WorkItemPropertySupport.run { command.properties.filterPropertyInputs() }
+    val hasSystemInput =
+      listOf(
+          command.title,
+          command.description,
+          command.assigneeApiId,
+          command.priorityApiId,
+          command.sprintApiId,
+        )
+        .any { it != null } || command.clearSprint
+    if (!hasSystemInput && properties.isEmpty()) {
+      throw InvalidRequestException(WorkbenchErrorCode.WORK_ITEM_PATCH_EMPTY)
+    }
   }
 
   suspend fun delete(command: DeleteWorkItemCommand): WorkItemMutationResult =

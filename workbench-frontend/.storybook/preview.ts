@@ -1,7 +1,16 @@
 import type { Preview } from '@storybook/sveltekit'
+import { initialize, mswLoader } from 'msw-storybook-addon'
 import '../src/app.css'
 
+initialize({
+  onUnhandledRequest(request, print) {
+    if (new URL(request.url).pathname.startsWith('/api/'))
+      print.error()
+  },
+})
+
 const preview: Preview = {
+  loaders: [mswLoader],
   globalTypes: {
     theme: {
       description: 'Color theme',

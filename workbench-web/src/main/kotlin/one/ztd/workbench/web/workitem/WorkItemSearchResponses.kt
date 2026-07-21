@@ -2,7 +2,6 @@ package one.ztd.workbench.web.workitem
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.databind.JsonNode
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.NotNull
 import kotlinx.serialization.json.JsonObject
@@ -13,6 +12,7 @@ import one.ztd.workbench.agile.workitem.model.WorkItemSearchGroupsPage
 import one.ztd.workbench.agile.workitem.query.QueryValue
 import one.ztd.workbench.agile.workitem.query.WorkItemGroupKey
 import one.ztd.workbench.agile.workitem.query.WorkItemGroupLabel
+import tools.jackson.databind.JsonNode
 
 data class WorkItemSearchRequest(
   @field:NotNull @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val query: JsonNode,
@@ -54,21 +54,22 @@ sealed interface WorkItemGroupLabelResponse {
 }
 
 data class WorkItemGroupLabelTextResponse(
-  override val kind: String = "text",
-  val text: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) override val kind: String = "text",
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val text: String,
 ) : WorkItemGroupLabelResponse
 
 data class WorkItemGroupLabelMessageResponse(
-  override val kind: String = "message",
-  val code: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) override val kind: String = "message",
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val code: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val args: Map<String, String> = emptyMap(),
-  val defaultMessage: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val defaultMessage: String,
 ) : WorkItemGroupLabelResponse
 
 data class WorkItemSearchGroupBucketResponse(
-  val key: JsonObject,
-  val label: WorkItemGroupLabelResponse,
-  val count: Long,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val key: JsonObject,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val label: WorkItemGroupLabelResponse,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val count: Long,
 ) {
   companion object {
     fun from(bucket: WorkItemSearchGroupBucket): WorkItemSearchGroupBucketResponse =
@@ -81,7 +82,9 @@ data class WorkItemSearchGroupBucketResponse(
 }
 
 data class WorkItemSearchGroupsPageResponse(
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val groups: List<WorkItemSearchGroupBucketResponse>,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val groupsPage: WorkItemSearchGroupsPageInfoResponse,
 ) {
   companion object {
@@ -99,9 +102,9 @@ data class WorkItemSearchGroupsPageResponse(
 }
 
 data class WorkItemSearchGroupsPageInfoResponse(
-  val limit: Int,
-  val truncated: Boolean,
-  val nextGroupCursor: String?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val limit: Int,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val truncated: Boolean,
+  @get:Schema(nullable = true) val nextGroupCursor: String?,
 )
 
 internal fun WorkItemGroupKey.toJsonObject(): JsonObject = buildJsonObject {

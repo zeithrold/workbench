@@ -141,6 +141,7 @@ data class WorkItemTransitionOption(
   val editableFields: List<String> = emptyList(),
   val fieldMeta: List<WorkItemFormFieldMeta> = emptyList(),
   val commentMeta: WorkItemCommentFormMeta? = null,
+  val targetStatus: WorkItemStatusSummary? = null,
 )
 
 data class WorkItemCreateFormOption(
@@ -230,8 +231,20 @@ data class WorkItemSearchHit(
   val createdAt: OffsetDateTime,
   val updatedAt: OffsetDateTime,
   val properties: Map<String, WorkItemPropertyPresentation>,
+  val fieldCapabilities: Map<String, WorkItemFieldCapability> = emptyMap(),
   val groupKey: WorkItemGroupKey? = null,
   val groupLabel: WorkItemGroupLabel? = null,
+)
+
+enum class WorkItemFieldCapabilityState {
+  EDITABLE,
+  READ_ONLY,
+  UNAVAILABLE,
+}
+
+data class WorkItemFieldCapability(
+  val state: WorkItemFieldCapabilityState,
+  val reason: String? = null,
 )
 
 data class WorkItemSearchGroupBucket(

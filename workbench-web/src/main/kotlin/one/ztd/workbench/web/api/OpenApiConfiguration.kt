@@ -14,6 +14,7 @@ import one.ztd.workbench.web.api.context.RequestContext
 import one.ztd.workbench.web.api.context.TenantContextSummary
 import one.ztd.workbench.web.api.context.TenantRequestContext
 import one.ztd.workbench.web.api.context.UserContextSummary
+import one.ztd.workbench.web.workitem.WorkItemOpenApiCustomizer
 import org.springdoc.core.customizers.OpenApiCustomizer
 import org.springdoc.core.utils.SpringDocUtils
 import org.springframework.context.annotation.Bean
@@ -43,6 +44,8 @@ class OpenApiConfiguration {
   }
 
   @Bean fun pathParameterCustomizer(): OpenApiCustomizer = OpenApiPathParameterCustomizer()
+
+  @Bean fun workItemOpenApiCustomizer(): OpenApiCustomizer = WorkItemOpenApiCustomizer()
 
   @Bean
   fun workbenchOpenApi(): OpenAPI =

@@ -53,4 +53,26 @@ class WorkItemQueryServiceTest :
 
       coVerify(exactly = 0) { repository.search(any(), any(), any(), any()) }
     }
+
+    "attaches field capabilities for project-scoped authenticated searches" {
+      val repository = mockk<WorkItemQueryRepository>()
+      val capabilities = mockk<WorkItemFieldCapabilityService>()
+      val tenantId = UUID.randomUUID()
+      val projectId = UUID.randomUUID()
+      val actor = WorkItemSearchActor(UUID.randomUUID(), "usr_actor")
+      val scope = WorkItemSearchScope(tenantId = tenantId, projectId = projectId)
+      val query = WorkItemQuery()
+      val expected = WorkItemSearchResult(hits = emptyList(), nextCursor = null)
+      coEvery { repository.search(scope, query, any(), any()) } returns expected
+      coEvery {
+        capabilities.attach(tenantId, projectId, actor.userId, actor.userApiId, emptyList())
+      } returns emptyList()
+
+      WorkItemQueryService(repository, capabilities).search(scope, query, actor = actor) shouldBe
+        expected
+
+      coVerify(exactly = 1) {
+        capabilities.attach(tenantId, projectId, actor.userId, actor.userApiId, emptyList())
+      }
+    }
   })

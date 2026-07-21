@@ -43,6 +43,7 @@ import type {
   DestroyTenantRequest,
   FederatedAuthorizeRequest,
   FederatedAuthorizeResponse,
+  FieldOptionsParams,
   GrantAdminRequest,
   GroupMemberResponse,
   InitiateWorkItemAttachmentUploadRequest,
@@ -111,9 +112,13 @@ import type {
   WorkItemAccessRuleResponse,
   WorkItemAttachmentUploadSessionResponse,
   WorkItemCommentResponse,
+  WorkItemDisplayFieldDefinitionResponse,
+  WorkItemFieldOptionResponse,
   WorkItemResponse,
+  WorkItemSearchGroupsPageResponse,
   WorkItemSearchGroupsRequest,
   WorkItemSearchRequest,
+  WorkItemTransitionResponse,
   WorkItemViewResponse,
   WorkflowResponse,
   WorkflowTransitionResponse
@@ -124,7 +129,6 @@ export type preferencesResponse400 = {
   data: ProblemDetail
   status: 400
 }
-
 export type preferencesResponse401 = {
   data: ProblemDetail
   status: 401
@@ -2001,6 +2005,11 @@ export const create8 = async (id: string,
 
 
 
+export type transitionsResponse200 = {
+  data: WorkItemTransitionResponse[]
+  status: 200
+}
+
 export type transitionsResponse400 = {
   data: ProblemDetail
   status: 400
@@ -2026,12 +2035,14 @@ export type transitionsResponse409 = {
   status: 409
 }
 
-;
+export type transitionsResponseSuccess = (transitionsResponse200) & {
+  headers: Headers;
+};
 export type transitionsResponseError = (transitionsResponse400 | transitionsResponse401 | transitionsResponse403 | transitionsResponse404 | transitionsResponse409) & {
   headers: Headers;
 };
 
-export type transitionsResponse = (transitionsResponseError)
+export type transitionsResponse = (transitionsResponseSuccess | transitionsResponseError)
 
 export const getTransitionsUrl = (id: string,
     workItemId: string,) => {
@@ -2057,14 +2068,19 @@ export const transitions = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: transitionsResponse['data'] = body ? JSON.parse(body) : {}
+  const data: transitionsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as transitionsResponse
 }
 
 
+
+export type transitionResponse200 = {
+  data: WorkItemResponse
+  status: 200
+}
 
 export type transitionResponse400 = {
   data: ProblemDetail
@@ -2091,12 +2107,14 @@ export type transitionResponse409 = {
   status: 409
 }
 
-;
+export type transitionResponseSuccess = (transitionResponse200) & {
+  headers: Headers;
+};
 export type transitionResponseError = (transitionResponse400 | transitionResponse401 | transitionResponse403 | transitionResponse404 | transitionResponse409) & {
   headers: Headers;
 };
 
-export type transitionResponse = (transitionResponseError)
+export type transitionResponse = (transitionResponseSuccess | transitionResponseError)
 
 export const getTransitionUrl = (id: string,
     workItemId: string,) => {
@@ -2123,10 +2141,10 @@ export const transition = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: transitionResponse['data'] = body ? JSON.parse(body) : {}
+  const data: transitionResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as transitionResponse
 }
 
@@ -2345,6 +2363,11 @@ export const completeUploadSession = async (id: string,
 
 
 
+export type searchResponse200 = {
+  data: WorkItemResponse[]
+  status: 200
+}
+
 export type searchResponse400 = {
   data: ProblemDetail
   status: 400
@@ -2370,12 +2393,14 @@ export type searchResponse409 = {
   status: 409
 }
 
-;
+export type searchResponseSuccess = (searchResponse200) & {
+  headers: Headers;
+};
 export type searchResponseError = (searchResponse400 | searchResponse401 | searchResponse403 | searchResponse404 | searchResponse409) & {
   headers: Headers;
 };
 
-export type searchResponse = (searchResponseError)
+export type searchResponse = (searchResponseSuccess | searchResponseError)
 
 export const getSearchUrl = (id: string,) => {
 
@@ -2400,14 +2425,19 @@ export const search = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: searchResponse['data'] = body ? JSON.parse(body) : {}
+  const data: searchResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as searchResponse
 }
 
 
+
+export type searchGroupsResponse200 = {
+  data: WorkItemSearchGroupsPageResponse
+  status: 200
+}
 
 export type searchGroupsResponse400 = {
   data: ProblemDetail
@@ -2434,12 +2464,14 @@ export type searchGroupsResponse409 = {
   status: 409
 }
 
-;
+export type searchGroupsResponseSuccess = (searchGroupsResponse200) & {
+  headers: Headers;
+};
 export type searchGroupsResponseError = (searchGroupsResponse400 | searchGroupsResponse401 | searchGroupsResponse403 | searchGroupsResponse404 | searchGroupsResponse409) & {
   headers: Headers;
 };
 
-export type searchGroupsResponse = (searchGroupsResponseError)
+export type searchGroupsResponse = (searchGroupsResponseSuccess | searchGroupsResponseError)
 
 export const getSearchGroupsUrl = (id: string,) => {
 
@@ -2464,10 +2496,10 @@ export const searchGroups = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: searchGroupsResponse['data'] = body ? JSON.parse(body) : {}
+  const data: searchGroupsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as searchGroupsResponse
 }
 
@@ -6969,6 +7001,11 @@ export const delete2 = async (id: string,
 
 
 
+export type update2Response200 = {
+  data: WorkItemResponse
+  status: 200
+}
+
 export type update2Response400 = {
   data: ProblemDetail
   status: 400
@@ -6994,12 +7031,14 @@ export type update2Response409 = {
   status: 409
 }
 
-;
+export type update2ResponseSuccess = (update2Response200) & {
+  headers: Headers;
+};
 export type update2ResponseError = (update2Response400 | update2Response401 | update2Response403 | update2Response404 | update2Response409) & {
   headers: Headers;
 };
 
-export type update2Response = (update2ResponseError)
+export type update2Response = (update2ResponseSuccess | update2ResponseError)
 
 export const getUpdate2Url = (id: string,
     workItemId: string,) => {
@@ -7026,10 +7065,10 @@ export const update2 = async (id: string,
   }
 )
 
-
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: update2Response['data'] = body ? JSON.parse(body) : {}
+  const data: update2Response['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
   return { data, status: res.status, headers: res.headers } as update2Response
 }
 
@@ -8324,6 +8363,89 @@ export const list11 = async (id: string,
 
 
 
+export type fieldOptionsResponse200 = {
+  data: WorkItemFieldOptionResponse[]
+  status: 200
+}
+
+export type fieldOptionsResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type fieldOptionsResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type fieldOptionsResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type fieldOptionsResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type fieldOptionsResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type fieldOptionsResponseSuccess = (fieldOptionsResponse200) & {
+  headers: Headers;
+};
+export type fieldOptionsResponseError = (fieldOptionsResponse400 | fieldOptionsResponse401 | fieldOptionsResponse403 | fieldOptionsResponse404 | fieldOptionsResponse409) & {
+  headers: Headers;
+};
+
+export type fieldOptionsResponse = (fieldOptionsResponseSuccess | fieldOptionsResponseError)
+
+export const getFieldOptionsUrl = (id: string,
+    workItemId: string,
+    fieldKey: string,
+    params?: FieldOptionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/projects/${id}/work-items/${workItemId}/fields/${fieldKey}/options?${stringifiedParams}` : `/api/projects/${id}/work-items/${workItemId}/fields/${fieldKey}/options`
+}
+
+/**
+ * @summary List work item field options
+ */
+export const fieldOptions = async (id: string,
+    workItemId: string,
+    fieldKey: string,
+    params?: FieldOptionsParams, options?: RequestInit): Promise<fieldOptionsResponse> => {
+
+  const res = await fetch(getFieldOptionsUrl(id,workItemId,fieldKey,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: fieldOptionsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as fieldOptionsResponse
+}
+
+
+
 export type list12Response400 = {
   data: ProblemDetail
   status: 400
@@ -8595,6 +8717,76 @@ export const downloadContent = async (id: string,
 
   const data: downloadContentResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as downloadContentResponse
+}
+
+
+
+export type displayFieldsResponse200 = {
+  data: WorkItemDisplayFieldDefinitionResponse[]
+  status: 200
+}
+
+export type displayFieldsResponse400 = {
+  data: ProblemDetail
+  status: 400
+}
+
+export type displayFieldsResponse401 = {
+  data: ProblemDetail
+  status: 401
+}
+
+export type displayFieldsResponse403 = {
+  data: ProblemDetail
+  status: 403
+}
+
+export type displayFieldsResponse404 = {
+  data: ProblemDetail
+  status: 404
+}
+
+export type displayFieldsResponse409 = {
+  data: ProblemDetail
+  status: 409
+}
+
+export type displayFieldsResponseSuccess = (displayFieldsResponse200) & {
+  headers: Headers;
+};
+export type displayFieldsResponseError = (displayFieldsResponse400 | displayFieldsResponse401 | displayFieldsResponse403 | displayFieldsResponse404 | displayFieldsResponse409) & {
+  headers: Headers;
+};
+
+export type displayFieldsResponse = (displayFieldsResponseSuccess | displayFieldsResponseError)
+
+export const getDisplayFieldsUrl = (id: string,) => {
+
+
+
+
+  return `/api/projects/${id}/work-items/display-fields`
+}
+
+/**
+ * @summary List work item display fields
+ */
+export const displayFields = async (id: string, options?: RequestInit): Promise<displayFieldsResponse> => {
+
+  const res = await fetch(getDisplayFieldsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const contentType = (res.headers.get('content-type') ?? '').toLowerCase();
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: displayFieldsResponse['data'] = body ? (contentType.includes('json') ? JSON.parse(body) : body) : {}
+  return { data, status: res.status, headers: res.headers } as displayFieldsResponse
 }
 
 

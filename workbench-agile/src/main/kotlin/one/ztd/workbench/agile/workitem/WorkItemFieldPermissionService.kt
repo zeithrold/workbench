@@ -56,6 +56,7 @@ class WorkItemFieldPermissionService(private val accessPolicy: WorkItemAccessPol
       issueTypeConfigId = evaluation.issueTypeConfigId,
       field = field,
       evaluationContext = evaluation,
+      preloadedRules = context.accessRules,
     )
   }
 }

@@ -40,6 +40,7 @@ class WorkItemAccessPolicyEngine(
     issueTypeConfigId: UUID,
     transitionId: UUID,
     evaluationContext: WorkItemAccessEvaluationContext,
+    preloadedRules: List<WorkItemAccessRuleRecord>? = null,
   ): Boolean =
     evaluateTypeScopedAction(
       TypeScopedActionQuery(
@@ -49,13 +50,15 @@ class WorkItemAccessPolicyEngine(
         transitionId = transitionId,
         fieldKey = null,
         defaultWhenNoRules = true,
-      )
+      ),
+      preloadedRules,
     )
 
   suspend fun isFieldWritePermitted(
     issueTypeConfigId: UUID,
     field: TemplateField,
     evaluationContext: WorkItemAccessEvaluationContext,
+    preloadedRules: List<WorkItemAccessRuleRecord>? = null,
   ): Boolean {
     val fieldKey = field.toPermissionResourceId().removePrefix("issue:field:")
     if (
@@ -67,7 +70,8 @@ class WorkItemAccessPolicyEngine(
           transitionId = null,
           fieldKey = null,
           defaultWhenNoRules = true,
-        )
+        ),
+        preloadedRules,
       )
     ) {
       return false
@@ -80,7 +84,8 @@ class WorkItemAccessPolicyEngine(
         transitionId = null,
         fieldKey = fieldKey,
         defaultWhenNoRules = true,
-      )
+      ),
+      preloadedRules,
     )
   }
 
@@ -112,10 +117,16 @@ class WorkItemAccessPolicyEngine(
     action: one.ztd.workbench.identity.permission.model.AuthorizationAction,
   ): Boolean = bindingEvaluator.allowsComment(tenantId, projectId, actorUserId, action)
 
-  private suspend fun evaluateTypeScopedAction(query: TypeScopedActionQuery): Boolean {
+  private suspend fun evaluateTypeScopedAction(
+    query: TypeScopedActionQuery,
+    preloadedRules: List<WorkItemAccessRuleRecord>? = null,
+  ): Boolean {
     val rules =
-      accessRules
-        .listByConfig(query.evaluationContext.workItem.tenantId, query.issueTypeConfigId)
+      (preloadedRules
+          ?: accessRules.listByConfig(
+            query.evaluationContext.workItem.tenantId,
+            query.issueTypeConfigId,
+          ))
         .filter { rule ->
           rule.actionType == query.actionType &&
             rule.matchesTarget(query.transitionId, query.fieldKey)
@@ -137,6 +148,11 @@ class WorkItemAccessPolicyEngine(
       else -> query.defaultWhenNoRules
     }
   }
+
+  suspend fun loadAccessRules(
+    tenantId: UUID,
+    issueTypeConfigId: UUID,
+  ): List<WorkItemAccessRuleRecord> = accessRules.listByConfig(tenantId, issueTypeConfigId)
 
   private fun matchesSubject(rule: WorkItemAccessRuleRecord, actor: WorkItemAccessActor): Boolean =
     when (rule.subjectType) {

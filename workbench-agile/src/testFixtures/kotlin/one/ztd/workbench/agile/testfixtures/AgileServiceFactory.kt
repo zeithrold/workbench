@@ -6,6 +6,7 @@ import java.time.Clock
 import one.ztd.workbench.agile.workitem.IssueSubtypeConstraintRepository
 import one.ztd.workbench.agile.workitem.IssueTypeConfigRepository
 import one.ztd.workbench.agile.workitem.WorkItemAccessPolicyEngine
+import one.ztd.workbench.agile.workitem.WorkItemBindingPermissionEvaluator
 import one.ztd.workbench.agile.workitem.WorkItemCommentService
 import one.ztd.workbench.agile.workitem.WorkItemCreateParentGuard
 import one.ztd.workbench.agile.workitem.WorkItemFieldMutationEngine
@@ -40,7 +41,9 @@ object AgileServiceFactory {
         projectRoles = setOf("admin", "member"),
       )
     coEvery { accessPolicy.isTransitionPermitted(any(), any(), any()) } returns true
+    coEvery { accessPolicy.isTransitionPermitted(any(), any(), any(), any()) } returns true
     coEvery { accessPolicy.isFieldWritePermitted(any(), any(), any()) } returns true
+    coEvery { accessPolicy.isFieldWritePermitted(any(), any(), any(), any()) } returns true
     coEvery { accessPolicy.isCommentPermitted(any(), any()) } returns true
     coEvery { accessPolicy.bindingAllowsFieldWrite(any(), any(), any()) } returns true
     listOf("issue.comment.create", "issue.comment.update", "issue.comment.delete").forEach { action
@@ -78,6 +81,7 @@ object AgileServiceFactory {
     clock: Clock,
     fieldPermissions: WorkItemFieldPermissionService = mockFieldPermissions(),
     transitionFieldsParser: TransitionFieldsParser = TransitionFieldsParser(),
+    accessPolicy: WorkItemAccessPolicyEngine = mockAccessPolicy(),
   ): WorkItemService {
     val subtypeConstraints = mockk<IssueSubtypeConstraintRepository>()
     coEvery { subtypeConstraints.isChildOnlyType(any(), any(), any()) } returns false
@@ -90,16 +94,27 @@ object AgileServiceFactory {
         primaryEmail = "test@example.com",
       )
     val readModels = mockReadModels(repository)
+    val mutationSupport = WorkItemMutationSupport(repository, configs, events, readModels)
+    val bindingPermissions = mockk<WorkItemBindingPermissionEvaluator>(relaxed = true)
     return WorkItemService(
       repository,
       configs,
       users,
       WorkItemCreateParentGuard(repository, subtypeConstraints),
-      WorkItemMutationSupport(repository, configs, events, readModels),
-      fieldMutationPipeline(
-        clock,
-        fieldPermissions,
-        transitionFieldsParser,
+      mutationSupport,
+      one.ztd.workbench.agile.workitem.WorkItemUpdateSupport(
+        fieldMutationPipeline(
+          clock,
+          fieldPermissions,
+          transitionFieldsParser,
+        ),
+        WorkItemTransitionContextLoader(
+          repository,
+          mutationSupport,
+          WorkItemTransitionValidator(repository, accessPolicy),
+          accessPolicy,
+          bindingPermissions,
+        ),
       ),
     )
   }
@@ -131,6 +146,8 @@ object AgileServiceFactory {
           repository,
           mutationSupport,
           transitionValidator,
+          accessPolicy,
+          mockk<WorkItemBindingPermissionEvaluator>(relaxed = true),
         ),
       evaluator =
         WorkItemTransitionEvaluator(

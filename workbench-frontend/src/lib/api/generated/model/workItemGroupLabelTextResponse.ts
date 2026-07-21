@@ -8,5 +8,7 @@
 import type { WorkItemGroupLabelResponse } from './workItemGroupLabelResponse';
 
 export type WorkItemGroupLabelTextResponse = WorkItemGroupLabelResponse & {
-  text?: string;
-};
+  text: string;
+} & Required<Pick<WorkItemGroupLabelResponse & {
+  text: string;
+}, 'kind'>>;

@@ -5,18 +5,27 @@ import io.mockk.mockk
 import jakarta.servlet.http.Cookie
 import java.time.OffsetDateTime
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import one.ztd.workbench.agile.project.ProjectResolver
+import one.ztd.workbench.agile.workitem.WorkItemDisplayFieldCatalogService
+import one.ztd.workbench.agile.workitem.WorkItemFieldOptionService
 import one.ztd.workbench.agile.workitem.WorkItemQueryService
 import one.ztd.workbench.agile.workitem.WorkItemService
 import one.ztd.workbench.agile.workitem.WorkItemTransitionService
 import one.ztd.workbench.agile.workitem.model.WorkItemCreateFormOption
 import one.ztd.workbench.agile.workitem.model.WorkItemFormFieldMeta
+import one.ztd.workbench.agile.workitem.model.WorkItemIssueTypeSummary
 import one.ztd.workbench.agile.workitem.model.WorkItemMutationResult
 import one.ztd.workbench.agile.workitem.model.WorkItemRecord
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
+import one.ztd.workbench.agile.workitem.model.WorkItemSearchResult
 import one.ztd.workbench.agile.workitem.model.WorkItemStatusGroup
+import one.ztd.workbench.agile.workitem.model.WorkItemStatusSummary
 import one.ztd.workbench.agile.workitem.model.WorkItemTransitionOption
+import one.ztd.workbench.agile.workitem.model.WorkItemUserSummary
 import one.ztd.workbench.identity.SessionService
 import one.ztd.workbench.kernel.common.ids.PublicId
+import one.ztd.workbench.kernel.common.pagination.WorkItemSearchCursor
 import one.ztd.workbench.security.SecurityConfiguration
 import one.ztd.workbench.security.WORKBENCH_SESSION_COOKIE_NAME
 import one.ztd.workbench.security.WorkbenchAuthenticationFilter
@@ -25,6 +34,7 @@ import one.ztd.workbench.web.api.InfrastructureAspect
 import one.ztd.workbench.web.api.ProjectRequestContextResolver
 import one.ztd.workbench.web.api.RequestContextResolver
 import one.ztd.workbench.web.api.TenantRequestContextResolver
+import one.ztd.workbench.web.api.http.WORKBENCH_NEXT_CURSOR_HEADER
 import one.ztd.workbench.web.support.TenantScopedWebMvcSupport
 import one.ztd.workbench.web.support.TenantWebMvcFixtures
 import org.junit.jupiter.api.Test
@@ -41,6 +51,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.request
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -70,6 +81,27 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
           .content("""{"query":{"version":1,"resource":"work_item"}}""")
       )
       .andExpect(status().isUnauthorized())
+  }
+
+  @Test
+  fun `search work items returns an array and next cursor`() {
+    val result =
+      mockMvc
+        .perform(
+          post("/api/projects/${TenantWebMvcFixtures.PROJECT_PUBLIC_ID}/work-items/search")
+            .cookie(Cookie(WORKBENCH_SESSION_COOKIE_NAME, TenantWebMvcFixtures.SESSION))
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"query":{"version":1,"resource":"work_item","sort":[]}}""")
+        )
+        .andExpect(request().asyncStarted())
+        .andReturn()
+
+    mockMvc
+      .perform(asyncDispatch(result))
+      .andExpect(status().isOk())
+      .andExpect(header().string(WORKBENCH_NEXT_CURSOR_HEADER, SAMPLE_CURSOR.encode()))
+      .andExpect(jsonPath("$[0].id").value(SAMPLE_WORK_ITEM.apiId.value))
+      .andExpect(jsonPath("$[0].title").value("Fix login"))
   }
 
   @Test
@@ -270,9 +302,19 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
 
     @Bean fun workItemService(): WorkItemService = mockk(relaxed = true)
 
-    @Bean fun workItemQueryService(): WorkItemQueryService = mockk(relaxed = true)
+    @Bean
+    fun workItemQueryService(): WorkItemQueryService = mockk {
+      coEvery { search(any(), any(), any(), any(), any()) } returns
+        WorkItemSearchResult(hits = listOf(SAMPLE_SEARCH_HIT), nextCursor = SAMPLE_CURSOR)
+    }
 
     @Bean fun workItemTransitionService(): WorkItemTransitionService = mockk(relaxed = true)
+
+    @Bean
+    fun workItemDisplayFieldCatalogService(): WorkItemDisplayFieldCatalogService =
+      mockk(relaxed = true)
+
+    @Bean fun workItemFieldOptionService(): WorkItemFieldOptionService = mockk(relaxed = true)
 
     @Bean
     fun workItemServiceSetup(service: WorkItemService): Boolean {
@@ -343,6 +385,8 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
   }
 
   private companion object {
+    val SAMPLE_CURSOR =
+      WorkItemSearchCursor(sortValues = listOf(JsonPrimitive("todo")), apiId = "iss_next")
     val SAMPLE_WORK_ITEM =
       WorkItemRecord(
         id = java.util.UUID.randomUUID(),
@@ -366,6 +410,41 @@ class ProjectWorkItemControllerTest(@Autowired private val mockMvc: MockMvc) {
         properties = JsonObject(emptyMap()),
         createdAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
         updatedAt = OffsetDateTime.parse("2026-07-04T00:00:00Z"),
+      )
+
+    val SAMPLE_SEARCH_HIT =
+      WorkItemSearchHit(
+        databaseId = SAMPLE_WORK_ITEM.id,
+        apiId = SAMPLE_WORK_ITEM.apiId.value,
+        key = SAMPLE_WORK_ITEM.key,
+        title = SAMPLE_WORK_ITEM.title,
+        description = null,
+        projectApiId = TenantWebMvcFixtures.PROJECT_PUBLIC_ID,
+        issueType =
+          WorkItemIssueTypeSummary(
+            id = "typ_01JABCDEFGHJKMNPQRSTVWXYZ0",
+            code = "task",
+            name = "Task",
+            icon = null,
+            color = null,
+          ),
+        issueTypeConfigApiId = SAMPLE_WORK_ITEM.issueTypeConfigApiId.value,
+        status =
+          WorkItemStatusSummary(
+            id = SAMPLE_WORK_ITEM.statusApiId.value,
+            code = "todo",
+            name = "Todo",
+            group = "todo",
+            color = null,
+            terminal = false,
+          ),
+        priority = null,
+        reporter = WorkItemUserSummary(SAMPLE_WORK_ITEM.reporterApiId.value, "Reporter"),
+        assignee = null,
+        sprint = null,
+        createdAt = SAMPLE_WORK_ITEM.createdAt,
+        updatedAt = SAMPLE_WORK_ITEM.updatedAt,
+        properties = emptyMap(),
       )
   }
 }

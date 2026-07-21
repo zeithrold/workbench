@@ -7,9 +7,9 @@
  */
 
 export interface WorkItemSprintSummaryResponse {
-  id?: string;
-  name?: string;
-  status?: string;
-  startAt?: string;
-  endAt?: string;
+  id: string;
+  name: string;
+  status: string;
+  startAt?: string | null;
+  endAt?: string | null;
 }

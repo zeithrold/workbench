@@ -1,5 +1,6 @@
 package one.ztd.workbench.web.workitem
 
+import io.swagger.v3.oas.annotations.media.Schema
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import one.ztd.workbench.agile.workitem.model.WorkItemCommentFormMeta
@@ -10,23 +11,31 @@ import one.ztd.workbench.agile.workitem.model.WorkItemSearchHit
 import one.ztd.workbench.agile.workitem.model.WorkItemTransitionOption
 
 data class WorkItemResponse(
-  val id: String,
-  val key: String,
-  val title: String,
-  val description: RichTextDocumentPayload?,
-  val projectId: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val key: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val title: String,
+  @get:Schema(nullable = true) val description: RichTextDocumentPayload?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val projectId: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val issueType: WorkItemIssueTypeSummaryResponse,
-  val issueTypeConfigId: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val issueTypeConfigId: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val status: WorkItemStatusSummaryResponse,
-  val priority: WorkItemPrioritySummaryResponse?,
+  @get:Schema(nullable = true) val priority: WorkItemPrioritySummaryResponse?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val reporter: WorkItemUserSummaryResponse,
-  val assignee: WorkItemUserSummaryResponse?,
-  val sprint: WorkItemSprintSummaryResponse?,
+  @get:Schema(nullable = true) val assignee: WorkItemUserSummaryResponse?,
+  @get:Schema(nullable = true) val sprint: WorkItemSprintSummaryResponse?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val properties: Map<String, WorkItemPropertyPresentationResponse>,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+  val fieldCapabilities: Map<String, WorkItemFieldCapabilityResponse>,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val createdAt: java.time.OffsetDateTime,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
   val updatedAt: java.time.OffsetDateTime,
-  val groupKey: kotlinx.serialization.json.JsonObject? = null,
-  val groupLabel: WorkItemGroupLabelResponse? = null,
+  @get:Schema(nullable = true) val groupKey: kotlinx.serialization.json.JsonObject? = null,
+  @get:Schema(nullable = true) val groupLabel: WorkItemGroupLabelResponse? = null,
 ) {
   companion object {
     fun from(hit: WorkItemSearchHit): WorkItemResponse =
@@ -45,6 +54,8 @@ data class WorkItemResponse(
         sprint = hit.sprint?.let(WorkItemSprintSummaryResponse::from),
         properties =
           hit.properties.mapValues { WorkItemPropertyPresentationResponse.from(it.value) },
+        fieldCapabilities =
+          hit.fieldCapabilities.mapValues { WorkItemFieldCapabilityResponse.from(it.value) },
         createdAt = hit.createdAt,
         updatedAt = hit.updatedAt,
         groupKey = hit.groupKey?.toJsonObject(),
@@ -53,12 +64,65 @@ data class WorkItemResponse(
   }
 }
 
+data class WorkItemFieldCapabilityResponse(
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+  val state: one.ztd.workbench.agile.workitem.model.WorkItemFieldCapabilityState,
+  @get:Schema(nullable = true) val reason: String?,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemFieldCapability) =
+      WorkItemFieldCapabilityResponse(value.state, value.reason)
+  }
+}
+
+data class WorkItemDisplayFieldDefinitionResponse(
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val key: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val dataType: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val array: Boolean,
+  @get:Schema(nullable = true) val propertyId: String?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val validation: JsonObject,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.WorkItemDisplayFieldDefinition) =
+      WorkItemDisplayFieldDefinitionResponse(
+        value.key,
+        value.name,
+        value.dataType,
+        value.array,
+        value.propertyId,
+        value.validation,
+      )
+  }
+}
+
+data class WorkItemFieldOptionResponse(
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val label: String,
+  @get:Schema(nullable = true) val description: String?,
+  @get:Schema(nullable = true) val color: String?,
+  @get:Schema(nullable = true) val icon: String?,
+  @get:Schema(nullable = true) val status: String?,
+) {
+  companion object {
+    fun from(value: one.ztd.workbench.agile.workitem.WorkItemFieldOption) =
+      WorkItemFieldOptionResponse(
+        value.id,
+        value.label,
+        value.description,
+        value.color,
+        value.icon,
+        value.status,
+      )
+  }
+}
+
 data class WorkItemIssueTypeSummaryResponse(
-  val id: String,
-  val code: String,
-  val name: String,
-  val icon: String?,
-  val color: String?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val code: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+  @get:Schema(nullable = true) val icon: String?,
+  @get:Schema(nullable = true) val color: String?,
 ) {
   companion object {
     fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemIssueTypeSummary) =
@@ -67,12 +131,12 @@ data class WorkItemIssueTypeSummaryResponse(
 }
 
 data class WorkItemStatusSummaryResponse(
-  val id: String,
-  val code: String,
-  val name: String,
-  val group: String,
-  val color: String?,
-  val terminal: Boolean,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val code: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val group: String,
+  @get:Schema(nullable = true) val color: String?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val terminal: Boolean,
 ) {
   companion object {
     fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemStatusSummary) =
@@ -88,11 +152,11 @@ data class WorkItemStatusSummaryResponse(
 }
 
 data class WorkItemPrioritySummaryResponse(
-  val id: String,
-  val code: String,
-  val name: String,
-  val icon: String?,
-  val color: String?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val code: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+  @get:Schema(nullable = true) val icon: String?,
+  @get:Schema(nullable = true) val color: String?,
 ) {
   companion object {
     fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemPrioritySummary) =
@@ -100,7 +164,10 @@ data class WorkItemPrioritySummaryResponse(
   }
 }
 
-data class WorkItemUserSummaryResponse(val id: String, val displayName: String) {
+data class WorkItemUserSummaryResponse(
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val displayName: String,
+) {
   companion object {
     fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemUserSummary) =
       WorkItemUserSummaryResponse(value.id, value.displayName)
@@ -108,11 +175,11 @@ data class WorkItemUserSummaryResponse(val id: String, val displayName: String) 
 }
 
 data class WorkItemSprintSummaryResponse(
-  val id: String,
-  val name: String,
-  val status: String,
-  val startAt: java.time.OffsetDateTime?,
-  val endAt: java.time.OffsetDateTime?,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val id: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val name: String,
+  @field:Schema(requiredMode = Schema.RequiredMode.REQUIRED) val status: String,
+  @get:Schema(nullable = true) val startAt: java.time.OffsetDateTime?,
+  @get:Schema(nullable = true) val endAt: java.time.OffsetDateTime?,
 ) {
   companion object {
     fun from(value: one.ztd.workbench.agile.workitem.model.WorkItemSprintSummary) =
@@ -161,6 +228,7 @@ data class WorkItemTransitionResponse(
   val editableFields: List<String>,
   val fieldMeta: List<WorkItemFormFieldMetaResponse>,
   val commentMeta: WorkItemCommentFormMetaResponse?,
+  @get:Schema(nullable = true) val targetStatus: WorkItemStatusSummaryResponse?,
 ) {
   companion object {
     fun from(option: WorkItemTransitionOption): WorkItemTransitionResponse =
@@ -175,6 +243,7 @@ data class WorkItemTransitionResponse(
         editableFields = option.editableFields,
         fieldMeta = option.fieldMeta.map(WorkItemFormFieldMetaResponse::from),
         commentMeta = option.commentMeta?.let(WorkItemCommentFormMetaResponse::from),
+        targetStatus = option.targetStatus?.let(WorkItemStatusSummaryResponse::from),
       )
   }
 }

@@ -9,7 +9,11 @@ import type { WorkItemGroupLabelMessageResponseArgs } from './workItemGroupLabel
 import type { WorkItemGroupLabelResponse } from './workItemGroupLabelResponse';
 
 export type WorkItemGroupLabelMessageResponse = WorkItemGroupLabelResponse & {
-  code?: string;
-  args?: WorkItemGroupLabelMessageResponseArgs;
-  defaultMessage?: string;
-};
+  code: string;
+  args: WorkItemGroupLabelMessageResponseArgs;
+  defaultMessage: string;
+} & Required<Pick<WorkItemGroupLabelResponse & {
+  code: string;
+  args: WorkItemGroupLabelMessageResponseArgs;
+  defaultMessage: string;
+}, 'kind'>>;

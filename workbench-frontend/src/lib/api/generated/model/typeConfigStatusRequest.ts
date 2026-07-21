@@ -10,6 +10,6 @@ export interface TypeConfigStatusRequest {
   /** @minLength 1 */
   statusId: string;
   rank?: number;
-  terminal?: boolean;
   initial?: boolean;
+  terminal?: boolean;
 }

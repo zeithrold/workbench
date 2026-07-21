@@ -15,4 +15,4 @@ export type WorkItemResponseGroupKey = {
   entries?: WorkItemResponseGroupKeyEntriesItem[];
   keys?: string[];
   [key: string]: unknown;
-};
+} | null;

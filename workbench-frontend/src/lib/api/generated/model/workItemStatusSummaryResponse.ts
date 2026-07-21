@@ -7,10 +7,10 @@
  */
 
 export interface WorkItemStatusSummaryResponse {
-  id?: string;
-  code?: string;
-  name?: string;
-  group?: string;
-  color?: string;
-  terminal?: boolean;
+  id: string;
+  code: string;
+  name: string;
+  group: string;
+  color?: string | null;
+  terminal: boolean;
 }

@@ -32,6 +32,19 @@ class WorkItemTransitionOptionBuilder(private val fieldPipeline: WorkItemFieldMu
       editableFields = formDetails.editableFields,
       fieldMeta = formDetails.fieldMeta,
       commentMeta = formDetails.commentMeta,
+      targetStatus =
+        context.config.statuses
+          .singleOrNull { it.statusId == transition.toStatusId }
+          ?.let {
+            one.ztd.workbench.agile.workitem.model.WorkItemStatusSummary(
+              id = it.statusApiId.value,
+              code = it.code,
+              name = it.name,
+              group = it.statusGroup.dbValue,
+              color = null,
+              terminal = it.isTerminal,
+            )
+          },
     )
   }
 

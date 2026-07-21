@@ -2,12 +2,15 @@ package one.ztd.workbench.agile.workitem
 
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.clearMocks
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.util.UUID
+import one.ztd.workbench.agile.workitem.access.AccessConditionContext
 import one.ztd.workbench.agile.workitem.access.AccessConditionEvaluator
 import one.ztd.workbench.agile.workitem.template.FieldParticipation
 import one.ztd.workbench.agile.workitem.template.FieldWriteGrant
@@ -116,6 +119,43 @@ class WorkItemFieldPermissionServiceTest :
         listOf(issueUpdateAllow(), fieldWriteRule("issue:field:*", PermissionEffect.DENY))
 
       service.bindingAllowsWrite(context(FieldPermissionOperation.UPDATE), field) shouldBe false
+    }
+
+    "preloaded binding rules are reused across fields without repository queries" {
+      clearMocks(bindings, answers = false, recordedCalls = true)
+      val rules = listOf(issueUpdateAllow())
+      val preloaded = context(FieldPermissionOperation.UPDATE).copy(bindingRules = rules)
+
+      service.bindingAllowsWrite(preloaded, field) shouldBe true
+      service.bindingAllowsWrite(preloaded, TemplateField.System("assignee")) shouldBe true
+
+      coVerify(exactly = 0) {
+        bindings.listActiveRulesForSubject(any(), any(), any(), any())
+      }
+    }
+
+    "evaluates issue actions and comment grants from active bindings" {
+      val action = AuthorizationAction("issue.transition")
+      val allow =
+        ResolvedPermissionRule(
+          bindingId = UUID.randomUUID(),
+          action = action,
+          resourcePattern = "issue:*",
+          effect = PermissionEffect.ALLOW,
+        )
+      val deny = allow.copy(bindingId = UUID.randomUUID(), effect = PermissionEffect.DENY)
+      val conditionContext =
+        AccessConditionContext.fromResourceAttributes(
+          "usr_01JABCDEFGHJKMNPQRSTVWXYZ0",
+          emptyMap<String, String>(),
+        )
+      coEvery { bindings.listActiveRulesForSubject(userId, tenantId, projectId, any()) } returns
+        listOf(allow)
+
+      bindingEvaluator.allowsComment(tenantId, projectId, userId, action) shouldBe true
+      bindingEvaluator.allowsIssueAction(listOf(allow), action, conditionContext) shouldBe true
+      bindingEvaluator.allowsIssueAction(listOf(allow, deny), action, conditionContext) shouldBe
+        false
     }
 
     "resolvePolicy returns read-only submission for immutable and system-only grants" {

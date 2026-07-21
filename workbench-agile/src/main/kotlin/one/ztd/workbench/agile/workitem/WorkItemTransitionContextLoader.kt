@@ -1,7 +1,11 @@
 package one.ztd.workbench.agile.workitem
 
 import java.util.UUID
+import one.ztd.workbench.agile.workitem.access.WorkItemAccessActor
+import one.ztd.workbench.agile.workitem.access.WorkItemAccessRuleRecord
+import one.ztd.workbench.agile.workitem.model.IssueTypeConfigDetails
 import one.ztd.workbench.agile.workitem.model.TransitionRequest
+import one.ztd.workbench.identity.permission.ResolvedPermissionRule
 import one.ztd.workbench.kernel.common.errors.ResourceNotFoundException
 import one.ztd.workbench.kernel.common.errors.WorkbenchErrorCode
 import org.springframework.stereotype.Component
@@ -11,7 +15,17 @@ class WorkItemTransitionContextLoader(
   private val repository: WorkItemRepository,
   private val mutationSupport: WorkItemMutationSupport,
   private val transitionValidator: WorkItemTransitionValidator,
+  private val accessPolicy: WorkItemAccessPolicyEngine,
+  private val bindingPermissions: WorkItemBindingPermissionEvaluator,
 ) {
+  data class Overrides(
+    val bindingRules: List<ResolvedPermissionRule>? = null,
+    val accessRules: List<WorkItemAccessRuleRecord>? = null,
+    val config: IssueTypeConfigDetails? = null,
+    val actor: WorkItemAccessActor? = null,
+    val projectApiId: String? = null,
+  )
+
   suspend fun loadForIssue(
     tenantId: UUID,
     projectId: UUID,
@@ -29,11 +43,15 @@ class WorkItemTransitionContextLoader(
     issue: one.ztd.workbench.agile.workitem.model.WorkItemRecord,
     actorUserId: UUID,
     actorUserApiId: String,
+    overrides: Overrides = Overrides(),
   ): WorkItemTransitionContext {
-    val config = mutationSupport.requireConfig(issue.tenantId, issue.issueTypeConfigApiId.value)
+    val config =
+      overrides.config
+        ?: mutationSupport.requireConfig(issue.tenantId, issue.issueTypeConfigApiId.value)
     val currentProperties = repository.listPropertyValues(issue.tenantId, issue.id)
     val projectApiId =
-      repository.resolveProjectApiId(issue.tenantId, issue.projectId)?.value
+      overrides.projectApiId
+        ?: repository.resolveProjectApiId(issue.tenantId, issue.projectId)?.value
         ?: throw ResourceNotFoundException(WorkbenchErrorCode.RESOURCE_PROJECT_NOT_FOUND)
     val conditionContext =
       transitionValidator.conditionContext(
@@ -51,17 +69,15 @@ class WorkItemTransitionContextLoader(
           projectApiId = projectApiId,
           properties = currentProperties,
           issueTypeConfigId = config.config.id,
+          actor = overrides.actor,
         )
       )
     val permissionContext =
-      WorkItemFieldPermissionContext(
-        tenantId = issue.tenantId,
-        projectId = issue.projectId,
-        actorUserId = actorUserId,
-        actorUserApiId = actorUserApiId,
-        operation = FieldPermissionOperation.UPDATE,
-        accessEvaluation = accessEvaluation,
-        resourceAttributes = workItemResourceAttributes(issue, projectApiId),
+      permissionContext(
+        issue,
+        config,
+        accessEvaluation,
+        PermissionRequest(actorUserId, actorUserApiId, projectApiId, overrides),
       )
     val templateContext =
       mutationSupport.templateContext(
@@ -87,6 +103,39 @@ class WorkItemTransitionContextLoader(
       permissionContext = permissionContext,
     )
   }
+
+  private suspend fun permissionContext(
+    issue: one.ztd.workbench.agile.workitem.model.WorkItemRecord,
+    config: IssueTypeConfigDetails,
+    accessEvaluation: one.ztd.workbench.agile.workitem.access.WorkItemAccessEvaluationContext,
+    request: PermissionRequest,
+  ): WorkItemFieldPermissionContext =
+    WorkItemFieldPermissionContext(
+      tenantId = issue.tenantId,
+      projectId = issue.projectId,
+      actorUserId = request.actorUserId,
+      actorUserApiId = request.actorUserApiId,
+      operation = FieldPermissionOperation.UPDATE,
+      accessEvaluation = accessEvaluation,
+      resourceAttributes = workItemResourceAttributes(issue, request.projectApiId),
+      bindingRules =
+        request.overrides.bindingRules
+          ?: bindingPermissions.loadActiveRules(
+            issue.tenantId,
+            issue.projectId,
+            request.actorUserId,
+          ),
+      accessRules =
+        request.overrides.accessRules
+          ?: accessPolicy.loadAccessRules(issue.tenantId, config.config.id),
+    )
+
+  private data class PermissionRequest(
+    val actorUserId: UUID,
+    val actorUserApiId: String,
+    val projectApiId: String,
+    val overrides: Overrides,
+  )
 
   suspend fun load(request: TransitionRequest): WorkItemTransitionContext =
     loadForIssue(

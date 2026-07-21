@@ -3,6 +3,7 @@ package one.ztd.workbench.agile.workitem
 import java.util.UUID
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import one.ztd.workbench.agile.workitem.access.WorkItemAccessActor
 import one.ztd.workbench.agile.workitem.model.IssueTypeConfigDetails
 import one.ztd.workbench.agile.workitem.model.WorkItemRecord
 import one.ztd.workbench.agile.workitem.model.WorkflowTransitionRecord
@@ -17,6 +18,7 @@ data class WorkItemTransitionEvaluationRequest(
   val projectApiId: String,
   val properties: Map<String, JsonElement>,
   val issueTypeConfigId: UUID,
+  val actor: WorkItemAccessActor? = null,
 )
 
 @Component
@@ -53,11 +55,12 @@ class WorkItemTransitionValidator(
       )
     return one.ztd.workbench.agile.workitem.access.WorkItemAccessEvaluationContext(
       actor =
-        accessPolicy.resolveActor(
-          tenantId = request.issue.tenantId,
-          projectId = request.issue.projectId,
-          actorUserId = request.actorUserId,
-        ),
+        request.actor
+          ?: accessPolicy.resolveActor(
+            tenantId = request.issue.tenantId,
+            projectId = request.issue.projectId,
+            actorUserId = request.actorUserId,
+          ),
       workItem = request.issue,
       issueTypeConfigId = request.issueTypeConfigId,
       projectApiId = request.projectApiId,

@@ -10,6 +10,7 @@ import type { WorkItemGroupLabelMessageResponse } from './workItemGroupLabelMess
 import type { WorkItemGroupLabelTextResponse } from './workItemGroupLabelTextResponse';
 import type { WorkItemIssueTypeSummaryResponse } from './workItemIssueTypeSummaryResponse';
 import type { WorkItemPrioritySummaryResponse } from './workItemPrioritySummaryResponse';
+import type { WorkItemResponseFieldCapabilities } from './workItemResponseFieldCapabilities';
 import type { WorkItemResponseGroupKey } from './workItemResponseGroupKey';
 import type { WorkItemResponseProperties } from './workItemResponseProperties';
 import type { WorkItemSprintSummaryResponse } from './workItemSprintSummaryResponse';
@@ -17,21 +18,22 @@ import type { WorkItemStatusSummaryResponse } from './workItemStatusSummaryRespo
 import type { WorkItemUserSummaryResponse } from './workItemUserSummaryResponse';
 
 export interface WorkItemResponse {
-  id?: string;
-  key?: string;
-  title?: string;
-  description?: RichTextDocumentPayload;
-  projectId?: string;
-  issueType?: WorkItemIssueTypeSummaryResponse;
-  issueTypeConfigId?: string;
-  status?: WorkItemStatusSummaryResponse;
-  priority?: WorkItemPrioritySummaryResponse;
-  reporter?: WorkItemUserSummaryResponse;
-  assignee?: WorkItemUserSummaryResponse;
-  sprint?: WorkItemSprintSummaryResponse;
-  properties?: WorkItemResponseProperties;
-  createdAt?: string;
-  updatedAt?: string;
+  id: string;
+  key: string;
+  title: string;
+  description?: RichTextDocumentPayload | null;
+  projectId: string;
+  issueType: WorkItemIssueTypeSummaryResponse;
+  issueTypeConfigId: string;
+  status: WorkItemStatusSummaryResponse;
+  priority?: WorkItemPrioritySummaryResponse | null;
+  reporter: WorkItemUserSummaryResponse;
+  assignee?: WorkItemUserSummaryResponse | null;
+  sprint?: WorkItemSprintSummaryResponse | null;
+  properties: WorkItemResponseProperties;
+  fieldCapabilities: WorkItemResponseFieldCapabilities;
+  createdAt: string;
+  updatedAt: string;
   groupKey?: WorkItemResponseGroupKey;
-  groupLabel?: WorkItemGroupLabelMessageResponse | WorkItemGroupLabelTextResponse;
+  groupLabel?: WorkItemGroupLabelMessageResponse | WorkItemGroupLabelTextResponse | null;
 }

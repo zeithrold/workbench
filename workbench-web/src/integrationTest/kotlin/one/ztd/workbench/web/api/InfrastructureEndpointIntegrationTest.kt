@@ -93,7 +93,7 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
   }
 
   @Test
-  fun `openapi exposes navigation without capability contracts`() {
+  fun `openapi exposes navigation without standalone capability endpoints`() {
     val response =
       mockMvc.perform(get("/api/openapi")).andExpect(status().isOk()).andReturn().response
     val document = JsonMapper.builder().build().readTree(response.contentAsByteArray)
@@ -105,7 +105,10 @@ class InfrastructureEndpointIntegrationTest(@Autowired private val mockMvc: Mock
     assertFalse(paths.has("/api/manage/capabilities"))
     assertFalse(paths.has("/api/projects/capabilities"))
     assertTrue(schemas.has("ManagementNavigationResponse"))
-    assertFalse(schemas.properties().asSequence().any { (name) -> name.contains("Capability") })
+    assertEquals(
+      setOf("WorkItemFieldCapabilityResponse"),
+      schemas.properties().asSequence().map { it.key }.filter { it.contains("Capability") }.toSet(),
+    )
   }
 
   @TestConfiguration

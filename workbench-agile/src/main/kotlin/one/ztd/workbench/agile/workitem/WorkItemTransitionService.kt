@@ -32,14 +32,19 @@ class WorkItemTransitionService(
         actorUserId,
         actorUserApiId,
       )
-    return workflows
-      .listTransitions(tenantId, context.config.config.workflowId)
+    return availableTransitions(context)
+  }
+
+  suspend fun availableTransitions(
+    context: WorkItemTransitionContext
+  ): List<WorkItemTransitionOption> =
+    workflows
+      .listTransitions(context.tenantId, context.config.config.workflowId)
       .filter { it.fromStatusId == null || it.fromStatusId == context.issue.statusId }
       .map { transition ->
         val evaluation = evaluator.evaluate(context, transition)
         optionBuilder.build(transition, context, evaluation)
       }
-  }
 
   suspend fun transition(request: TransitionRequest): WorkItemSearchHit {
     val context = contextLoader.load(request)

@@ -7,9 +7,9 @@
  */
 
 export interface WorkItemIssueTypeSummaryResponse {
-  id?: string;
-  code?: string;
-  name?: string;
-  icon?: string;
-  color?: string;
+  id: string;
+  code: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
 }

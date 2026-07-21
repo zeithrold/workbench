@@ -25,7 +25,9 @@ class WorkItemBindingPermissionEvaluator(
     field: TemplateField,
     resourceAttributes: Map<String, String> = emptyMap(),
   ): Boolean {
-    val rules = activeRules(context.tenantId, context.projectId, context.actorUserId)
+    val rules =
+      context.bindingRules
+        ?: loadActiveRules(context.tenantId, context.projectId, context.actorUserId)
     val fieldResource = field.toPermissionResourceId()
     val fieldRules = rules.filter { it.matchesFieldWrite(fieldResource) }
     val conditionContext =
@@ -48,7 +50,7 @@ class WorkItemBindingPermissionEvaluator(
     actorUserId: java.util.UUID,
     action: AuthorizationAction,
   ): Boolean {
-    val rules = activeRules(tenantId, projectId, actorUserId)
+    val rules = loadActiveRules(tenantId, projectId, actorUserId)
     return rules.any {
       it.action == action &&
         it.effect == PermissionEffect.ALLOW &&
@@ -56,7 +58,19 @@ class WorkItemBindingPermissionEvaluator(
     }
   }
 
-  private suspend fun activeRules(
+  fun allowsIssueAction(
+    rules: List<ResolvedPermissionRule>,
+    action: AuthorizationAction,
+    context: AccessConditionContext,
+  ): Boolean {
+    val matching = rules.filter {
+      it.action == action && (it.resourcePattern == "issue:*" || it.resourcePattern == "*")
+    }
+    if (matching.any { it.denies(context) }) return false
+    return matching.any { it.allows(context) }
+  }
+
+  suspend fun loadActiveRules(
     tenantId: java.util.UUID,
     projectId: java.util.UUID,
     actorUserId: java.util.UUID,

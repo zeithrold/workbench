@@ -7,6 +7,6 @@
  */
 
 export interface WorkItemUserSummaryResponse {
-  id?: string;
-  displayName?: string;
+  id: string;
+  displayName: string;
 }

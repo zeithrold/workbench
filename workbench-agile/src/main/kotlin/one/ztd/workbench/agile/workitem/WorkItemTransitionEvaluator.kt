@@ -51,6 +51,7 @@ class WorkItemTransitionEvaluator(
           issueTypeConfigId = context.config.config.id,
           transitionId = transition.id,
           evaluationContext = accessEvaluation,
+          preloadedRules = context.permissionContext.accessRules,
         )
       } else {
         false

@@ -749,6 +749,14 @@ enum class WorkbenchErrorCode(
     "work_item.field.write_denied",
     "Work item field write permission denied.",
   ),
+  WORK_ITEM_PATCH_EMPTY(
+    "work_item.patch.empty",
+    "Work item update must contain at least one field.",
+  ),
+  WORK_ITEM_PATCH_SPRINT_CONFLICT(
+    "work_item.patch.sprint_conflict",
+    "sprintId and clearSprint cannot be submitted together.",
+  ),
   WORK_ITEM_TRANSITION_FIELD_IMMUTABLE_BUT_REQUIRED(
     "work_item.transition.field_immutable_but_required",
     "Required transition field is immutable and has no value.",

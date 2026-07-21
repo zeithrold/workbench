@@ -13,6 +13,7 @@ export default antfu(
       'project.inlang/**',
       'src/lib/api/generated/**',
       'src/lib/paraglide/**',
+      'static/mockServiceWorker.js',
       'test-results/**',
     ],
   },

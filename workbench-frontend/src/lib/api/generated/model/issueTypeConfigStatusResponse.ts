@@ -12,6 +12,6 @@ export interface IssueTypeConfigStatusResponse {
   name?: string;
   statusGroup?: string;
   rank?: number;
-  terminal?: boolean;
   initial?: boolean;
+  terminal?: boolean;
 }
